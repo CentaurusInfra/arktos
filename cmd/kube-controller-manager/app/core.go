@@ -45,8 +45,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
-	nodeipamcontroller "k8s.io/kubernetes/pkg/controller/nodeipam"
-	"k8s.io/kubernetes/pkg/controller/nodeipam/ipam"
 	lifecyclecontroller "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
@@ -78,45 +76,6 @@ func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
 		return nil, false, nil
 	}
 	go serviceController.Run(ctx.Stop, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-	return nil, true, nil
-}
-
-func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) {
-	var clusterCIDR *net.IPNet
-	var serviceCIDR *net.IPNet
-
-	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs {
-		return nil, false, nil
-	}
-
-	var err error
-	if len(strings.TrimSpace(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)) != 0 {
-		_, clusterCIDR, err = net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
-		}
-	}
-
-	if len(strings.TrimSpace(ctx.ComponentConfig.NodeIPAMController.ServiceCIDR)) != 0 {
-		_, serviceCIDR, err = net.ParseCIDR(ctx.ComponentConfig.NodeIPAMController.ServiceCIDR)
-		if err != nil {
-			klog.Warningf("Unsuccessful parsing of service CIDR %v: %v", ctx.ComponentConfig.NodeIPAMController.ServiceCIDR, err)
-		}
-	}
-
-	nodeIpamController, err := nodeipamcontroller.NewNodeIpamController(
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.Cloud,
-		ctx.ClientBuilder.ClientOrDie("node-controller"),
-		clusterCIDR,
-		serviceCIDR,
-		int(ctx.ComponentConfig.NodeIPAMController.NodeCIDRMaskSize),
-		ipam.CIDRAllocatorType(ctx.ComponentConfig.KubeCloudShared.CIDRAllocatorType),
-	)
-	if err != nil {
-		return nil, true, err
-	}
-	go nodeIpamController.Run(ctx.Stop)
 	return nil, true, nil
 }
 

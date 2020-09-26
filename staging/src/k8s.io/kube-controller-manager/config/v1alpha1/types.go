@@ -111,9 +111,6 @@ type KubeControllerManagerConfiguration struct {
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController NamespaceControllerConfiguration
-	// NodeIPAMControllerConfiguration holds configuration for NodeIPAMController
-	// related features.
-	NodeIPAMController NodeIPAMControllerConfiguration
 	// NodeLifecycleControllerConfiguration holds configuration for
 	// NodeLifecycleController related features.
 	NodeLifecycleController NodeLifecycleControllerConfiguration
@@ -302,14 +299,6 @@ type NamespaceControllerConfiguration struct {
 	// concurrentNamespaceSyncs is the number of namespace objects that are
 	// allowed to sync concurrently.
 	ConcurrentNamespaceSyncs int32
-}
-
-// NodeIPAMControllerConfiguration contains elements describing NodeIpamController.
-type NodeIPAMControllerConfiguration struct {
-	// serviceCIDR is CIDR Range for Services in cluster.
-	ServiceCIDR string
-	// NodeCIDRMaskSize is the mask size for node cidr in cluster.
-	NodeCIDRMaskSize int32
 }
 
 // NodeLifecycleControllerConfiguration contains elements describing NodeLifecycleController.

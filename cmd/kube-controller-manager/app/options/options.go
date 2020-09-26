@@ -68,7 +68,6 @@ type KubeControllerManagerOptions struct {
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	HPAController                    *HPAControllerOptions
 	NamespaceController              *NamespaceControllerOptions
-	NodeIPAMController               *NodeIPAMControllerOptions
 	NodeLifecycleController          *NodeLifecycleControllerOptions
 	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
 	PodGCController                  *PodGCControllerOptions
@@ -119,9 +118,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
-		},
-		NodeIPAMController: &NodeIPAMControllerOptions{
-			&componentConfig.NodeIPAMController,
 		},
 		NodeLifecycleController: &NodeLifecycleControllerOptions{
 			&componentConfig.NodeLifecycleController,
@@ -202,7 +198,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
-	s.NodeIPAMController.AddFlags(fss.FlagSet("nodeipam controller"))
 	s.NodeLifecycleController.AddFlags(fss.FlagSet("nodelifecycle controller"))
 	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
@@ -245,9 +240,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
-		return err
-	}
-	if err := s.NodeIPAMController.ApplyTo(&c.ComponentConfig.NodeIPAMController); err != nil {
 		return err
 	}
 	if err := s.NodeLifecycleController.ApplyTo(&c.ComponentConfig.NodeLifecycleController); err != nil {
@@ -307,7 +299,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.HPAController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
-	errs = append(errs, s.NodeIPAMController.Validate()...)
 	errs = append(errs, s.NodeLifecycleController.Validate()...)
 	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)

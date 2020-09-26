@@ -36,7 +36,6 @@ import (
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
-	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
 	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
 	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
@@ -104,7 +103,6 @@ func TestAddFlags(t *testing.T) {
 		"--master=192.168.4.20",
 		"--min-resync-period=8h",
 		"--namespace-sync-period=10m",
-		"--node-cidr-mask-size=48",
 		"--node-eviction-rate=0.2",
 		"--node-monitor-grace-period=30s",
 		"--node-monitor-period=10s",
@@ -235,11 +233,6 @@ func TestAddFlags(t *testing.T) {
 			&namespaceconfig.NamespaceControllerConfiguration{
 				NamespaceSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
 				ConcurrentNamespaceSyncs: 20,
-			},
-		},
-		NodeIPAMController: &NodeIPAMControllerOptions{
-			&nodeipamconfig.NodeIPAMControllerConfiguration{
-				NodeCIDRMaskSize: 48,
 			},
 		},
 		NodeLifecycleController: &NodeLifecycleControllerOptions{
