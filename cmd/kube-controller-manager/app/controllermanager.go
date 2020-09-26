@@ -404,7 +404,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["attachdetach"] = startAttachDetachController
 	controllers["persistentvolume-expander"] = startVolumeExpandController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
-	controllers["network"] = startNetworkController
 
 	return controllers
 }

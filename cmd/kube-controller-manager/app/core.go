@@ -43,7 +43,6 @@ import (
 	cloudcontroller "k8s.io/kubernetes/pkg/controller/cloud"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
-	networkcontroller "k8s.io/kubernetes/pkg/controller/network"
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
@@ -342,14 +341,4 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 	go garbageCollector.Sync(gcClientset.Discovery(), 30*time.Second, ctx.Stop)
 
 	return garbagecollector.NewDebugHandler(garbageCollector), true, nil
-}
-
-func startNetworkController(ctx ControllerContext) (http.Handler, bool, error) {
-	klog.V(2).Infof("Starting start %v controller", "network-controller")
-
-	go networkcontroller.NewNetworkController(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie("network-controller"),
-	).Run(1, ctx.Stop)
-	return nil, true, nil
 }
