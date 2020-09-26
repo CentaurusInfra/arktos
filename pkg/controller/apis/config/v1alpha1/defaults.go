@@ -25,7 +25,6 @@ import (
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
 	kubectrlmgrconfigv1alpha1 "k8s.io/kube-controller-manager/config/v1alpha1"
 	csrsigningconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/certificates/signer/config/v1alpha1"
-	daemonconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/daemon/config/v1alpha1"
 	deploymentconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/deployment/config/v1alpha1"
 	garbagecollectorconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/garbagecollector/config/v1alpha1"
 	jobconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/job/config/v1alpha1"
@@ -68,8 +67,6 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 	attachdetachconfigv1alpha1.RecommendedDefaultAttachDetachControllerConfiguration(&obj.AttachDetachController)
 	// Use the default RecommendedDefaultCSRSigningControllerConfiguration options
 	csrsigningconfigv1alpha1.RecommendedDefaultCSRSigningControllerConfiguration(&obj.CSRSigningController)
-	// Use the default RecommendedDefaultDaemonSetControllerConfiguration options
-	daemonconfigv1alpha1.RecommendedDefaultDaemonSetControllerConfiguration(&obj.DaemonSetController)
 	// Use the default RecommendedDefaultDeploymentControllerConfiguration options
 	deploymentconfigv1alpha1.RecommendedDefaultDeploymentControllerConfiguration(&obj.DeploymentController)
 	// Use the default RecommendedDefaultGenericControllerManagerConfiguration options

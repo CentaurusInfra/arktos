@@ -33,7 +33,6 @@ import (
 	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
-	daemonconfig "k8s.io/kubernetes/pkg/controller/daemon/config"
 	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
@@ -200,11 +199,6 @@ func TestAddFlags(t *testing.T) {
 				ClusterSigningCertFile: "/cluster-signing-cert",
 				ClusterSigningKeyFile:  "/cluster-signing-key",
 				ClusterSigningDuration: metav1.Duration{Duration: 10 * time.Hour},
-			},
-		},
-		DaemonSetController: &DaemonSetControllerOptions{
-			&daemonconfig.DaemonSetControllerConfiguration{
-				ConcurrentDaemonSetSyncs: 2,
 			},
 		},
 		DeploymentController: &DeploymentControllerOptions{

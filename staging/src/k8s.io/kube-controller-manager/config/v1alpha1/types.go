@@ -97,9 +97,6 @@ type KubeControllerManagerConfiguration struct {
 	// CSRSigningControllerConfiguration holds configuration for
 	// CSRSigningController related features.
 	CSRSigningController CSRSigningControllerConfiguration
-	// DaemonSetControllerConfiguration holds configuration for DaemonSetController
-	// related features.
-	DaemonSetController DaemonSetControllerConfiguration
 	// DeploymentControllerConfiguration holds configuration for
 	// DeploymentController related features.
 	DeploymentController DeploymentControllerConfiguration
@@ -235,14 +232,6 @@ type CSRSigningControllerConfiguration struct {
 	// clusterSigningDuration is the length of duration signed certificates
 	// will be given.
 	ClusterSigningDuration metav1.Duration
-}
-
-// DaemonSetControllerConfiguration contains elements describing DaemonSetController.
-type DaemonSetControllerConfiguration struct {
-	// concurrentDaemonSetSyncs is the number of daemonset objects that are
-	// allowed to sync concurrently. Larger number = more responsive daemonset,
-	// but more CPU (and network) load.
-	ConcurrentDaemonSetSyncs int32
 }
 
 // DeploymentControllerConfiguration contains elements describing DeploymentController.

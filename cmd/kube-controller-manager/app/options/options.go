@@ -63,7 +63,6 @@ type KubeControllerManagerOptions struct {
 
 	AttachDetachController           *AttachDetachControllerOptions
 	CSRSigningController             *CSRSigningControllerOptions
-	DaemonSetController              *DaemonSetControllerOptions
 	DeploymentController             *DeploymentControllerOptions
 	DeprecatedFlags                  *DeprecatedControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
@@ -107,9 +106,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		CSRSigningController: &CSRSigningControllerOptions{
 			&componentConfig.CSRSigningController,
-		},
-		DaemonSetController: &DaemonSetControllerOptions{
-			&componentConfig.DaemonSetController,
 		},
 		DeploymentController: &DeploymentControllerOptions{
 			&componentConfig.DeploymentController,
@@ -210,7 +206,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.AttachDetachController.AddFlags(fss.FlagSet("attachdetach controller"))
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
 	s.DeploymentController.AddFlags(fss.FlagSet("deployment controller"))
-	s.DaemonSetController.AddFlags(fss.FlagSet("daemonset controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
@@ -245,9 +240,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.CSRSigningController.ApplyTo(&c.ComponentConfig.CSRSigningController); err != nil {
-		return err
-	}
-	if err := s.DaemonSetController.ApplyTo(&c.ComponentConfig.DaemonSetController); err != nil {
 		return err
 	}
 	if err := s.DeploymentController.ApplyTo(&c.ComponentConfig.DeploymentController); err != nil {
@@ -326,7 +318,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.KubeCloudShared.Validate()...)
 	errs = append(errs, s.AttachDetachController.Validate()...)
 	errs = append(errs, s.CSRSigningController.Validate()...)
-	errs = append(errs, s.DaemonSetController.Validate()...)
 	errs = append(errs, s.DeploymentController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
