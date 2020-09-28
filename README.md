@@ -1,6 +1,6 @@
 # Arktos
 
-centaurus cloud
+centaurus-cloud
 
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/futurewei-cloud/arktos)](https://goreportcard.com/report/github.com/futurewei-cloud/arktos)
