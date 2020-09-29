@@ -62,7 +62,6 @@ filegroup(
         "//test/integration/scheduler_perf:all-srcs",
         "//test/integration/secrets:all-srcs",
         "//test/integration/serviceaccount:all-srcs",
-        "//test/integration/serving:all-srcs",
         "//test/integration/storageclasses:all-srcs",
         "//test/integration/tenantcontroller:all-srcs",
         "//test/integration/tls:all-srcs",

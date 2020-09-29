@@ -12,7 +12,6 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//cmd/clicheck:all-srcs",
-        "//cmd/cloud-controller-manager:all-srcs",
         "//cmd/controller-manager/app:all-srcs",
         "//cmd/flat-network-controller:all-srcs",
         "//cmd/gendocs:all-srcs",
