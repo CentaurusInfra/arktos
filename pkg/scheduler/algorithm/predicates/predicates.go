@@ -69,12 +69,8 @@ const (
 	PodFitsResourcesPred = "PodFitsResources"
 	// NoDiskConflictPred defines the name of predicate NoDiskConflict.
 	NoDiskConflictPred = "NoDiskConflict"
-	// PodToleratesNodeTaintsPred defines the name of predicate PodToleratesNodeTaints.
-	PodToleratesNodeTaintsPred = "PodToleratesNodeTaints"
 	// CheckNodeUnschedulablePred defines the name of predicate CheckNodeUnschedulablePredicate.
 	CheckNodeUnschedulablePred = "CheckNodeUnschedulable"
-	// PodToleratesNodeNoExecuteTaintsPred defines the name of predicate PodToleratesNodeNoExecuteTaints.
-	PodToleratesNodeNoExecuteTaintsPred = "PodToleratesNodeNoExecuteTaints"
 	// CheckNodeLabelPresencePred defines the name of predicate CheckNodeLabelPresence.
 	CheckNodeLabelPresencePred = "CheckNodeLabelPresence"
 	// CheckServiceAffinityPred defines the name of predicate checkServiceAffinity.
@@ -105,8 +101,6 @@ const (
 	CheckNodeDiskPressurePred = "CheckNodeDiskPressure"
 	// CheckNodePIDPressurePred defines the name of predicate CheckNodePIDPressure.
 	CheckNodePIDPressurePred = "CheckNodePIDPressure"
-	// CheckNodeRuntimeReadinessPred defines the name of predicate CheckNodeRuntimeReadiness
-	CheckNodeRuntimeReadinessPred = "CheckNodeRuntimeReadiness"
 
 	// DefaultMaxGCEPDVolumes defines the maximum number of PD Volumes for GCE
 	// GCE instances can have up to 16 PD volumes attached.
@@ -143,10 +137,10 @@ const (
 // The order is based on the restrictiveness & complexity of predicates.
 // Design doc: https://github.com/kubernetes/community/blob/master/contributors/design-proposals/scheduling/predicates-ordering.md
 var (
-	predicatesOrdering = []string{CheckNodeRuntimeReadinessPred, CheckNodeConditionPred, CheckNodeUnschedulablePred,
+	predicatesOrdering = []string{CheckNodeConditionPred, CheckNodeUnschedulablePred,
 		GeneralPred, HostNamePred, PodFitsHostPortsPred,
 		MatchNodeSelectorPred, PodFitsResourcesPred, NoDiskConflictPred,
-		PodToleratesNodeTaintsPred, PodToleratesNodeNoExecuteTaintsPred, CheckNodeLabelPresencePred,
+		CheckNodeLabelPresencePred,
 		CheckServiceAffinityPred, MaxEBSVolumeCountPred, MaxGCEPDVolumeCountPred, MaxCSIVolumeCountPred,
 		MaxAzureDiskVolumeCountPred, MaxCinderVolumeCountPred, CheckVolumeBindingPred, NoVolumeZoneConflictPred,
 		CheckNodeMemoryPressurePred, CheckNodePIDPressurePred, CheckNodeDiskPressurePred, MatchInterPodAffinityPred}
@@ -1530,37 +1524,6 @@ func CheckNodeUnschedulablePredicate(pod *v1.Pod, meta PredicateMetadata, nodeIn
 	return true, nil, nil
 }
 
-// PodToleratesNodeTaints checks if a pod tolerations can tolerate the node taints
-func PodToleratesNodeTaints(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
-	if nodeInfo == nil || nodeInfo.Node() == nil {
-		return false, []PredicateFailureReason{ErrNodeUnknownCondition}, nil
-	}
-
-	return podToleratesNodeTaints(pod, nodeInfo, func(t *v1.Taint) bool {
-		// PodToleratesNodeTaints is only interested in NoSchedule and NoExecute taints.
-		return t.Effect == v1.TaintEffectNoSchedule || t.Effect == v1.TaintEffectNoExecute
-	})
-}
-
-// PodToleratesNodeNoExecuteTaints checks if a pod tolerations can tolerate the node's NoExecute taints
-func PodToleratesNodeNoExecuteTaints(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
-	return podToleratesNodeTaints(pod, nodeInfo, func(t *v1.Taint) bool {
-		return t.Effect == v1.TaintEffectNoExecute
-	})
-}
-
-func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *schedulernodeinfo.NodeInfo, filter func(t *v1.Taint) bool) (bool, []PredicateFailureReason, error) {
-	taints, err := nodeInfo.Taints()
-	if err != nil {
-		return false, nil, err
-	}
-
-	if v1helper.TolerationsTolerateTaintsWithFilter(pod.Spec.Tolerations, taints, filter) {
-		return true, nil, nil
-	}
-	return false, []PredicateFailureReason{ErrTaintsTolerationsNotMatch}, nil
-}
-
 // isPodBestEffort checks if pod is scheduled with best-effort QoS
 func isPodBestEffort(pod *v1.Pod) bool {
 	return v1qos.GetPodQOS(pod) == v1.PodQOSBestEffort
@@ -1606,32 +1569,6 @@ func CheckNodePIDPressurePredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo
 		return false, []PredicateFailureReason{ErrNodeUnderPIDPressure}, nil
 	}
 	return true, nil, nil
-}
-
-// CheckNodeRuntimeReadiness checks if the desired runtime service is ready on a node
-// Return ture IIF the desired node condition exists, AND the condition is TRUE
-func CheckNodeRuntimeReadinessPredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
-	if nodeInfo == nil || nodeInfo.Node() == nil {
-		return false, []PredicateFailureReason{ErrNodeUnknownCondition}, nil
-	}
-	node := nodeInfo.Node()
-
-	var podRequestedRuntimeReady v1.NodeConditionType
-
-	if pod.Spec.VirtualMachine == nil {
-		podRequestedRuntimeReady = v1.NodeContainerRuntimeReady
-	} else {
-		podRequestedRuntimeReady = v1.NodeVmRuntimeReady
-	}
-
-	for _, cond := range node.Status.Conditions {
-		if cond.Type == podRequestedRuntimeReady && cond.Status == v1.ConditionTrue {
-			klog.V(5).Infof("Found ready node runtime condition for pod [%s], condition [%v]", pod.Name, cond)
-			return true, nil, nil
-		}
-	}
-
-	return false, []PredicateFailureReason{ErrNodeRuntimeNotReady}, nil
 }
 
 // CheckNodeConditionPredicate checks if a pod can be scheduled on a node reporting

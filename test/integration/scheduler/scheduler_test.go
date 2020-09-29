@@ -112,7 +112,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				]
 			}`,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"PredicateOne",
 				"PredicateTwo",
@@ -128,7 +127,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"apiVersion" : "v1"
 			}`,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
 				"CheckNodeMemoryPressure",
@@ -142,7 +140,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"MaxGCEPDVolumeCount",
 				"NoDiskConflict",
 				"NoVolumeZoneConflict",
-				"PodToleratesNodeTaints",
 			),
 			expectedPrioritizers: sets.NewString(
 				"BalancedResourceAllocation",
@@ -163,7 +160,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"priorities" : []
 			}`,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 			),
 			expectedPrioritizers: sets.NewString(),
@@ -181,7 +177,6 @@ priorities:
   weight: 5
 `,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"PredicateOne",
 				"PredicateTwo",
@@ -196,7 +191,6 @@ priorities:
 kind: Policy
 `,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
 				"CheckNodeMemoryPressure",
@@ -210,7 +204,6 @@ kind: Policy
 				"MaxGCEPDVolumeCount",
 				"NoDiskConflict",
 				"NoVolumeZoneConflict",
-				"PodToleratesNodeTaints",
 			),
 			expectedPrioritizers: sets.NewString(
 				"BalancedResourceAllocation",
@@ -230,7 +223,6 @@ predicates: []
 priorities: []
 `,
 			expectedPredicates: sets.NewString(
-				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 			),
 			expectedPrioritizers: sets.NewString(),
