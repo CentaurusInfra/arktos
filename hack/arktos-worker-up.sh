@@ -21,6 +21,10 @@ if [[ ! -n "${KUBELET_IP}" ]]; then
     die "KUBELET_IP env var not set"
 fi
 
+# install cni plugin related packages
+KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+source ${KUBE_ROOT}/hack/arktos-cni.rc
+
 mkdir -p /tmp/arktos
 
 SECRET_FOLDER=${SECRET_FOLDER:-"/tmp/arktos"}

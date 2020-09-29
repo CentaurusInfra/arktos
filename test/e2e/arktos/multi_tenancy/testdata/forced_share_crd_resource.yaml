@@ -1,0 +1,4 @@
+apiVersion: learning.wisdom.com/v1
+kind: MustShareKnowledge
+metadata:
+  name: pythagorean-theorem

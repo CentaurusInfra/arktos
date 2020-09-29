@@ -1,0 +1,77 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl taint Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl taint".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl taint"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl taint\" ..."
+    Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+# make sure the pod is running
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq .status.phase
+    OutputShouldBe: "\"Running\"\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+  - Command: ${kubectl} taint node ${master_node} aaa=bbb:NoExecute
+    OutputShouldBe: "node/${master_node} tainted\n"
+
+  - Command: ${kubectl} get node ${master_node} -o json | jq -r '.spec.taints[0] | [.effect, .key, .value] | @tsv'
+    OutputShouldBe: "NoExecute	aaa	bbb\n"
+
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): pods \"sample-nginx-pod\" not found\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+  - Command: ${kubectl} taint node ${master_node} aaa=bbb:NoExecute-
+    OutputShouldBe: "node/${master_node} untainted\n"
+
+  - Command: ${kubectl} get node ${master_node} -o json | jq .spec.taints[0].effect
+    OutputShouldNotContain: 
+    - NoExecute
+
+  - Command: ${kubectl} get node ${master_node}
+    OutputShouldNotContain:
+    - SchedulingDisabled
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq .status.phase
+    OutputShouldBe: "\"Running\"\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

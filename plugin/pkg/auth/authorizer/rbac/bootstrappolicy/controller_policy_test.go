@@ -36,6 +36,7 @@ var rolesWithAllowStar = sets.NewString(
 	saRolePrefix+"clusterrole-aggregation-controller",
 	saRolePrefix+"disruption-controller",
 	saRolePrefix+"tenant-controller",
+	saRolePrefix+"mizar-service-controller",
 )
 
 // TestNoStarsForControllers confirms that no controller role has star verbs, groups,

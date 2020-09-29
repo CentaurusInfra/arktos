@@ -1,12 +1,13 @@
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tenant Initialization & Delete Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tenant Initialization & Delete Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 # This test suite verifies that 
-# 1. some resources are automatically created when a tenant is created, including
-# 2. tenant deleter deletes all the resources under the tenant
+# 1. system tenant is created automatically and undeletable
+# 2. tenant controller automatically created resources when a tenant is created.
+# 3. multienancy namespaces deleter and tenant deleter
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-######################################################
+###########################################################################################################
 # Configure the test variables for this test suite
-######################################################
+###########################################################################################################
 Variables:
   test_ns: random_5
   test_tenant: random_8
@@ -15,14 +16,15 @@ Variables:
 # check the system tenant is created automatically and cannot be deleted
 ############################################################################################################
 Tests:
-  - Command: ${kubectl} create tenant system
+  - BeforeTestMessage: Verifying the system tenant is created automatically and cannot be deleted ...
+    Command: ${kubectl} create tenant system
     ShouldFail: true
     OutputShouldContain: 
-    - "Error from server (AlreadyExists): tenants \"system\" already exists"
+    - "Error from server (AlreadyExists): tenants \"system\" already exists\n"
     
   - Command: ${kubectl} get tenants -o json | jq -r '.items[] | [.metadata.name, .status.phase] | @tsv'
     OutputShouldContain: 
-    - "system\tActive"
+    - "system	Active\n"
     OutputShouldNotContain: 
     - ${test_tenant}
 
@@ -31,46 +33,79 @@ Tests:
     OutputShouldBe: "Error from server (Forbidden): tenants \"system\" is forbidden: this tenant may not be deleted\n"
 
 ###########################################################################################################
-# create the test tenant and configure the context (with test on kubectl config included)
+# tenant creation
 ###########################################################################################################
-  - Command: ${kubectl} create tenant ${test_tenant}
+  - BeforeTestMessage: Verifying tenant creation ...
+    Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
-    - tenant/${test_tenant} created
+    - "tenant/${test_tenant} created\n"
 
-  - Command: ${kubectl} get tenants -o json | jq -r '.items[] | [.metadata.name, .status.phase] | @tsv'
-    OutputShouldContain: 
-    - "system\tActive"
-    - "${test_tenant}\tActive"
+  - Command: ${kubectl} get tenants ${test_tenant} -o json | jq -r '[.metadata.name, .status.phase] | @tsv'
+    OutputShouldBe: "${test_tenant}	Active\n"
 
 ############################################################################################################
 # check the tenant controller creates the default resources
 ############################################################################################################
-  - Command: ${kubectl} get namespaces --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.tenant, .metadata.name, .status.phase] | @tsv'
+  - BeforeTestMessage: Verifying the tenant controller creates the default namespaces ...
+    Command: "${kubectl} get namespaces --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.tenant, .metadata.name, .metadata.selfLink, .status.phase] | @tsv'"
     OutputShouldContain: 
-    - "${test_tenant}\tdefault\tActive"
-    - "${test_tenant}\tkube-system\tActive"
-    - "${test_tenant}\tkube-public\tActive"
+    - "${test_tenant}	default	/api/v1/tenants/${test_tenant}/namespaces/default	Active\n"
+    - "${test_tenant}	kube-system	/api/v1/tenants/${test_tenant}/namespaces/kube-system	Active"
+    - "${test_tenant}	kube-public	/api/v1/tenants/${test_tenant}/namespaces/kube-public	Active"
 
-###################################################################################################################
+  - BeforeTestMessage: Verifying the tenant controller creates the admin clusterrole ...
+    Command: "${kubectl} get clusterroles --tenant ${test_tenant} -o json
+             | jq -r '.items[] | [.metadata.tenant, .metadata.name, .metadata.selfLink] | @tsv'"
+    OutputShouldBe: "${test_tenant}	admin-role	/apis/rbac.authorization.k8s.io/v1/tenants/${test_tenant}/clusterroles/admin-role\n"
+
+  - BeforeTestMessage: Verifying the tenant controller creates the admin clusterrolebinding ...
+    Command: "${kubectl} get clusterrolebindings --tenant ${test_tenant} -o json 
+             | jq -r '.items[] | [.metadata.tenant, .metadata.name, .metadata.selfLink] | @tsv'"
+    OutputShouldBe: "${test_tenant}	admin-role-binding	/apis/rbac.authorization.k8s.io/v1/tenants/${test_tenant}/clusterrolebindings/admin-role-binding\n"
+
+############################################################################################################
 # namespaces created by tenant controller cannot be deleted
 ###################################################################################################################
-  - Command: ${kubectl} delete ns default --tenant ${test_tenant}
+  - BeforeTestMessage: Verifying namespaces created by tenant controller cannot be deleted ...
+    Command: ${kubectl} delete ns default --tenant ${test_tenant}
     ShouldFail: true
     OutputShouldBe: "Error from server (Forbidden): namespaces \"${test_tenant}/default\" is forbidden: this namespace may not be deleted\n"
 
   - Command: ${kubectl} delete ns kube-system --tenant ${test_tenant}
     ShouldFail: true
     OutputShouldBe: "Error from server (Forbidden): namespaces \"${test_tenant}/kube-system\" is forbidden: this namespace may not be deleted\n"
-###################################################################################################################
-# creating a namespace under the tenant
-###################################################################################################################
-  - Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
+
+######################################################################################################
+# test namespace deleter
+######################################################################################################
+  - BeforeTestMessage: Verifying multi-tenancy namespace deleter ...
+    Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
     OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command: ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+  - Command: " ${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} -o json
+              | jq -r '[.metadata.tenant, .metadata.namespace, .metadata.name, .metadata.selfLink] | @tsv'"
+    OutputShouldBe: "${test_tenant}	${test_ns}	sample-nginx-deployment	/apis/extensions/v1beta1/tenants/${test_tenant}/namespaces/${test_ns}/deployments/sample-nginx-deployment\n"
+
+  - Command: ${kubectl} delete ns ${test_ns} --tenant  ${test_tenant}
+    OutputShouldBe: "namespace \"${test_ns}\" deleted\n"
+    TimeOut: 60
+
+  - Command: ${kubectl} get ns ${test_ns} --tenant  ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): namespaces \"${test_ns}\" not found\n"
+
+  - Command: ${kubectl} get deployments -n ${test_ns} --tenant  ${test_tenant}
+    OutputShouldBe: "No resources found.\n"
 
 ######################################################################################################
 # test tenant deleter
 ######################################################################################################
-  - Command: ${kubectl} delete tenant ${test_tenant}
+  - BeforeTestMessage: Verifying tenant deleter ...
+    Command: ${kubectl} delete tenant  ${test_tenant}
     OutputShouldBe: "tenant \"${test_tenant}\" deleted\n"
     TimeOut: 60
 
@@ -80,4 +115,7 @@ Tests:
 
 # all the default namespaces should be gone
   - Command: ${kubectl} get namespaces --tenant ${test_tenant}
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: ${kubectl} get pods --tenant ${test_tenant}
     OutputShouldBe: "No resources found.\n"

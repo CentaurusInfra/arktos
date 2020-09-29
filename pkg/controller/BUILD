@@ -123,6 +123,7 @@ filegroup(
         "//pkg/controller/garbagecollector:all-srcs",
         "//pkg/controller/history:all-srcs",
         "//pkg/controller/job:all-srcs",
+        "//pkg/controller/mizar:all-srcs",
         "//pkg/controller/namespace:all-srcs",
         "//pkg/controller/network:all-srcs",
         "//pkg/controller/nodeipam:all-srcs",

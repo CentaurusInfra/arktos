@@ -56,6 +56,8 @@ func TestGetAPIServerConfigUpdateChGrp(t *testing.T) {
 }
 
 func TestSetAPIServerConfig(t *testing.T) {
+	apiServerMap = nil
+
 	t.Log("1. Test update argument later won't affect APIServerConfig in global")
 	ssMap1 := make(map[string]v1.EndpointSubset)
 	ssMap1[serviceGroupId1] = v1.EndpointSubset{
@@ -63,7 +65,8 @@ func TestSetAPIServerConfig(t *testing.T) {
 		ServiceGroupId: serviceGroupId1,
 	}
 
-	SetAPIServerConfig(ssMap1)
+	isUpdated := SetAPIServerConfig(ssMap1)
+	assert.True(t, isUpdated)
 
 	ssMap1[serviceGroupId1].Addresses[0].Hostname = "123"
 	ssMap2 := GetAPIServerConfig()
@@ -74,7 +77,41 @@ func TestSetAPIServerConfig(t *testing.T) {
 	assert.Equal(t, serviceGroupId1, ss2.ServiceGroupId)
 	assert.Equal(t, 1, len(ss2.Addresses))
 	assert.Equal(t, masterIP1, ss2.Addresses[0].IP)
+	// check it is clone but not same object
 	assert.Equal(t, "", ss2.Addresses[0].Hostname)
+
+	t.Log("2. Test update with same value, different address will not update APIServerConfig")
+	// 2.1. single endpoint
+	ssMap1Copy := make(map[string]v1.EndpointSubset)
+	ssMap1Copy[serviceGroupId1] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: masterIP1}},
+		ServiceGroupId: serviceGroupId1,
+	}
+	isUpdated = SetAPIServerConfig(ssMap1Copy)
+	assert.False(t, isUpdated)
+
+	// 2.2. 2 endpoints
+	ssMap1[serviceGroupId1] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: masterIP1}},
+		ServiceGroupId: serviceGroupId1,
+	}
+	ssMap1[serviceGroupId2] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: masterIP2}},
+		ServiceGroupId: serviceGroupId2,
+	}
+	isUpdated = SetAPIServerConfig(ssMap1)
+	assert.True(t, isUpdated)
+
+	ssMap1Copy[serviceGroupId1] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: masterIP1}},
+		ServiceGroupId: serviceGroupId1,
+	}
+	ssMap1Copy[serviceGroupId2] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: masterIP2}},
+		ServiceGroupId: serviceGroupId2,
+	}
+	isUpdated = SetAPIServerConfig(ssMap1Copy)
+	assert.False(t, isUpdated)
 }
 
 func setAndReadAPIServerConfig(wg *sync.WaitGroup, epMap map[string]v1.EndpointSubset) {
@@ -154,7 +191,10 @@ func TestClientSetWatcherNotification(t *testing.T) {
 
 		csWatcher.StartWaitingForComplete()
 		for i := 0; i < watcherCount; i++ {
-			go csWatcher.NotifyDone()
+			go func() {
+				GetAPIServerConfig()
+				csWatcher.NotifyDone()
+			}()
 		}
 
 		tick := time.NewTicker(1 * time.Second)

@@ -47,6 +47,8 @@ WORKLOADCONTROLLER_EXTRA_NUM=${WORKLOADCONTROLLER_EXTRA_NUM:-0}
 ETCD_EXTRA_NUM=${ETCD_EXTRA_NUM:-0}
 #switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
 ENABLE_KCM_LEADER_ELECT=${ENABLE_KCM_LEADER_ELECT:-true}
+#switch to enable/disable kube-scheduler leader-elect: --leader-elect=true/false
+ENABLE_SCHEDULER_LEADER_ELECT=${ENABLE_SCHEDULER_LEADER_ELECT:-true}
 SHARE_PARTITIONSERVER=${SHARE_PARTITIONSERVER:-false}
 PARTITIONSERVER_SIZE=${PARTITIONSERVER_SIZE:-${MASTER_SIZE}}
 PARTITIONSERVER_MIN_CPU_ARCHITECTURE=${PARTITIONSERVER_MIN_CPU_ARCHITECTURE:-${MASTER_MIN_CPU_ARCHITECTURE:-}} # To allow choosing better architectures.
@@ -494,6 +496,7 @@ ENABLE_POD_PRIORITY="${ENABLE_POD_PRIORITY:-}"
 if [[ "${ENABLE_POD_PRIORITY}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
+FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true"
 
 # Optional: enable certificate rotation of the kubelet certificates.
 ROTATE_CERTIFICATES="${ROTATE_CERTIFICATES:-}"

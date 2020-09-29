@@ -43,6 +43,10 @@ import (
 	utilpointer "k8s.io/utils/pointer"
 )
 
+var (
+	testTenant = "test-te"
+)
+
 type describeClientWithMultiTenancy struct {
 	T         *testing.T
 	Tenant    string
@@ -60,7 +64,7 @@ func TestDescribePodWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:                       "bar",
 			Namespace:                  "foo",
-			Tenant:                     "test-te",
+			Tenant:                     testTenant,
 			DeletionTimestamp:          &deletionTimestamp,
 			DeletionGracePeriodSeconds: &gracePeriod,
 		},
@@ -83,9 +87,9 @@ func TestDescribePodWithMultiTenancy(t *testing.T) {
 			},
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -102,7 +106,7 @@ func TestDescribePodNodeWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: corev1.PodSpec{
 			NodeName: "all-in-one",
@@ -112,9 +116,9 @@ func TestDescribePodNodeWithMultiTenancy(t *testing.T) {
 			NominatedNodeName: "nodeA",
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -131,7 +135,7 @@ func TestDescribePodTolerationsWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: corev1.PodSpec{
 			Tolerations: []corev1.Toleration{
@@ -143,9 +147,9 @@ func TestDescribePodTolerationsWithMultiTenancy(t *testing.T) {
 			},
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -164,16 +168,16 @@ func TestDescribeSecretWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Data: map[string][]byte{
 			"username": []byte("YWRtaW4="),
 			"password": []byte("MWYyZDFlMmU2N2Rm"),
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := SecretDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -189,12 +193,12 @@ func TestDescribeNamespaceWithMultiTenancy(t *testing.T) {
 	fake := fake.NewSimpleClientset(&corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "myns",
-			Tenant: "test-te",
+			Tenant: testTenant,
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "", Interface: fake}
 	d := NamespaceDescriber{c}
-	out, err := d.Describe("test-te", "", "myns", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "", "myns", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -208,16 +212,16 @@ func TestDescribePodPriorityWithMultiTenancy(t *testing.T) {
 	fake := fake.NewSimpleClientset(&corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "bar",
-			Tenant: "test-te",
+			Tenant: testTenant,
 		},
 		Spec: corev1.PodSpec{
 			PriorityClassName: "high-priority",
 			Priority:          &priority,
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "", Interface: fake}
 	d := PodDescriber{c}
-	out, err := d.Describe("test-te", "", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -231,16 +235,16 @@ func TestDescribeConfigMapWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mycm",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Data: map[string]string{
 			"key1": "value1",
 			"key2": "value2",
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := ConfigMapDescriber{c}
-	out, err := d.Describe("test-te", "foo", "mycm", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "mycm", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -254,7 +258,7 @@ func TestDescribeLimitRangeWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "mylr",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: corev1.LimitRangeSpec{
 			Limits: []corev1.LimitRangeItem{
@@ -280,9 +284,9 @@ func TestDescribeLimitRangeWithMultiTenancy(t *testing.T) {
 			},
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := LimitRangeDescriber{c}
-	out, err := d.Describe("test-te", "foo", "mylr", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "mylr", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -307,7 +311,7 @@ func TestDescribeServiceWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -346,7 +350,7 @@ func TestDescribeServiceWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Spec: corev1.ServiceSpec{
 					Type: corev1.ServiceTypeLoadBalancer,
@@ -383,9 +387,9 @@ func TestDescribeServiceWithMultiTenancy(t *testing.T) {
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			fake := fake.NewSimpleClientset(testCase.service)
-			c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+			c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 			d := ServiceDescriber{c}
-			out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("unexpected error: %v", err)
 			}
@@ -432,13 +436,13 @@ func TestPodDescribeResultsSortedWithMultiTenancy(t *testing.T) {
 				},
 			},
 		},
-		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"}},
+		&corev1.Pod{ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"}},
 	)
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := PodDescriber{c}
 
 	// Act
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 
 	// Assert
 	if err != nil {
@@ -917,7 +921,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test0",
 			plugin: "hostpath",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						HostPath: &corev1.HostPathVolumeSource{Type: new(corev1.HostPathType)},
@@ -930,7 +934,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test1",
 			plugin: "gce",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						GCEPersistentDisk: &corev1.GCEPersistentDiskVolumeSource{},
@@ -944,7 +948,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test2",
 			plugin: "ebs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						AWSElasticBlockStore: &corev1.AWSElasticBlockStoreVolumeSource{},
@@ -957,7 +961,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test3",
 			plugin: "nfs",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						NFS: &corev1.NFSVolumeSource{},
@@ -970,7 +974,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test4",
 			plugin: "iscsi",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						ISCSI: &corev1.ISCSIPersistentVolumeSource{},
@@ -984,7 +988,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test5",
 			plugin: "gluster",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Glusterfs: &corev1.GlusterfsPersistentVolumeSource{},
@@ -997,7 +1001,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test6",
 			plugin: "rbd",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						RBD: &corev1.RBDPersistentVolumeSource{},
@@ -1010,7 +1014,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test7",
 			plugin: "quobyte",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Quobyte: &corev1.QuobyteVolumeSource{},
@@ -1023,7 +1027,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test8",
 			plugin: "cinder",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Cinder: &corev1.CinderPersistentVolumeSource{},
@@ -1036,7 +1040,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test9",
 			plugin: "fc",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						FC: &corev1.FCVolumeSource{},
@@ -1050,7 +1054,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test10",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1064,7 +1068,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test11",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1079,7 +1083,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test12",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1096,7 +1100,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test13",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1121,7 +1125,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			name:   "test14",
 			plugin: "local",
 			pv: &corev1.PersistentVolume{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Name: "bar"},
 				Spec: corev1.PersistentVolumeSpec{
 					PersistentVolumeSource: corev1.PersistentVolumeSource{
 						Local: &corev1.LocalVolumeSource{},
@@ -1157,7 +1161,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "bar",
-					Tenant:            "test-te",
+					Tenant:            testTenant,
 					DeletionTimestamp: &deletionTimestamp,
 				},
 				Spec: corev1.PersistentVolumeSpec{
@@ -1174,7 +1178,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
-					Tenant:                     "test-te",
+					Tenant:                     testTenant,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1218,7 +1222,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 			pv: &corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:                       "bar",
-					Tenant:                     "test-te",
+					Tenant:                     testTenant,
 					GenerateName:               "test-GenerateName",
 					UID:                        "test-UID",
 					CreationTimestamp:          metav1.Time{Time: time.Now()},
@@ -1250,7 +1254,7 @@ func TestPersistentVolumeDescriberWithMultiTenancy(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := fake.NewSimpleClientset(test.pv)
 			c := PersistentVolumeDescriber{fake}
-			str, err := c.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := c.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.plugin, err)
 			}
@@ -1286,7 +1290,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "default",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume1",
 					StorageClassName: &goldClassName,
@@ -1300,7 +1304,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "filesystem",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume2",
 					StorageClassName: &goldClassName,
@@ -1315,7 +1319,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "block",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume3",
 					StorageClassName: &goldClassName,
@@ -1331,7 +1335,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-type",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume4",
 					StorageClassName: &goldClassName,
@@ -1347,7 +1351,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-status",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume5",
 					StorageClassName: &goldClassName,
@@ -1363,7 +1367,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-last-probe-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume6",
 					StorageClassName: &goldClassName,
@@ -1379,7 +1383,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-last-transition-time",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume7",
 					StorageClassName: &goldClassName,
@@ -1395,7 +1399,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-reason",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume8",
 					StorageClassName: &goldClassName,
@@ -1411,7 +1415,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		{
 			name: "condition-message",
 			pvc: &corev1.PersistentVolumeClaim{
-				ObjectMeta: metav1.ObjectMeta{Tenant: "test-te", Namespace: "foo", Name: "bar"},
+				ObjectMeta: metav1.ObjectMeta{Tenant: testTenant, Namespace: "foo", Name: "bar"},
 				Spec: corev1.PersistentVolumeClaimSpec{
 					VolumeName:       "volume9",
 					StorageClassName: &goldClassName,
@@ -1428,7 +1432,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 			name: "deletion-timestamp",
 			pvc: &corev1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant:            "test-te",
+					Tenant:            testTenant,
 					Namespace:         "foo",
 					Name:              "bar",
 					DeletionTimestamp: &deletionTimestamp,
@@ -1447,7 +1451,7 @@ func TestPersistentVolumeClaimDescriberWithMultiTenancy(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			fake := fake.NewSimpleClientset(test.pvc)
 			c := PersistentVolumeClaimDescriber{fake}
-			str, err := c.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := c.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -1473,7 +1477,7 @@ func TestDescribeDeploymentWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: utilpointer.Int32Ptr(1),
@@ -1488,7 +1492,7 @@ func TestDescribeDeploymentWithMultiTenancy(t *testing.T) {
 		},
 	})
 	d := DeploymentDescriber{fakeClient}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -1503,6 +1507,7 @@ func TestDescribeStorageClassWithMultiTenancy(t *testing.T) {
 	f := fake.NewSimpleClientset(&storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          testTenant,
 			ResourceVersion: "4",
 			Annotations: map[string]string{
 				"name": "foo",
@@ -1543,7 +1548,7 @@ func TestDescribeStorageClassWithMultiTenancy(t *testing.T) {
 		},
 	})
 	s := StorageClassDescriber{f}
-	out, err := s.Describe("test-te", "", "foo", describe.DescriberSettings{ShowEvents: true})
+	out, err := s.Describe(testTenant, "", "foo", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -1569,7 +1574,7 @@ func TestDescribePodDisruptionBudgetWithMultiTenancy(t *testing.T) {
 	minAvailable := intstr.FromInt(22)
 	f := fake.NewSimpleClientset(&policyv1beta1.PodDisruptionBudget{
 		ObjectMeta: metav1.ObjectMeta{
-			Tenant:            "test-te",
+			Tenant:            testTenant,
 			Namespace:         "ns1",
 			Name:              "pdb1",
 			CreationTimestamp: metav1.Time{Time: time.Now().Add(1.9e9)},
@@ -1582,7 +1587,7 @@ func TestDescribePodDisruptionBudgetWithMultiTenancy(t *testing.T) {
 		},
 	})
 	s := PodDisruptionBudgetDescriber{f}
-	out, err := s.Describe("test-te", "ns1", "pdb1", describe.DescriberSettings{ShowEvents: true})
+	out, err := s.Describe(testTenant, "ns1", "pdb1", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2249,11 +2254,11 @@ func TestDescribeHorizontalPodAutoscalerWithMultiTenancy(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    "test-te",
+				Tenant:    testTenant,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
-			str, err := desc.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := desc.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -2345,11 +2350,11 @@ func TestDescribeHorizontalPodAutoscalerWithMultiTenancy(t *testing.T) {
 			test.hpa.ObjectMeta = metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    "test-te",
+				Tenant:    testTenant,
 			}
 			fake := fake.NewSimpleClientset(&test.hpa)
 			desc := HorizontalPodAutoscalerDescriber{fake}
-			str, err := desc.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			str, err := desc.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("Unexpected error for test %s: %v", test.name, err)
 			}
@@ -2368,7 +2373,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 			{
 				ObjectMeta: metav1.ObjectMeta{
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Source:         corev1.EventSource{Component: "kubelet"},
 				Message:        "Item 1",
@@ -2386,7 +2391,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 			}, events),
 		},
@@ -2395,7 +2400,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Spec: appsv1.DeploymentSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2408,7 +2413,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 			}, events),
 		},
@@ -2427,7 +2432,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 			fake.NewSimpleClientset(&corev1.PersistentVolume{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:     "bar",
-					Tenant:   "test-te",
+					Tenant:   testTenant,
 					SelfLink: "url/url/url/url",
 				},
 			}, events),
@@ -2437,7 +2442,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 					SelfLink:  "url/url/url/url",
 				},
 			}, events),
@@ -2447,7 +2452,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Spec: appsv1.ReplicaSetSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2459,7 +2464,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 				Spec: corev1.ReplicationControllerSpec{
 					Replicas: utilpointer.Int32Ptr(1),
@@ -2471,14 +2476,15 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 			}, events),
 		},
 		"StorageClass": &StorageClassDescriber{
 			fake.NewSimpleClientset(&storagev1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "bar",
+					Name:   "bar",
+					Tenant: testTenant,
 				},
 			}, events),
 		},
@@ -2487,7 +2493,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 			}, events),
 		},
@@ -2496,7 +2502,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "bar",
 					Namespace: "foo",
-					Tenant:    "test-te",
+					Tenant:    testTenant,
 				},
 			}, events),
 		},
@@ -2504,7 +2510,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 
 	for name, d := range m {
 		t.Run(name, func(t *testing.T) {
-			out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+			out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 			if err != nil {
 				t.Errorf("unexpected error for %q: %v", name, err)
 			}
@@ -2515,7 +2521,7 @@ func TestDescribeEventsWithMultiTenancy(t *testing.T) {
 				t.Errorf("events not found for %q when ShowEvents=true: %s", name, out)
 			}
 
-			out, err = d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: false})
+			out, err = d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
 			if err != nil {
 				t.Errorf("unexpected error for %q: %s", name, err)
 			}
@@ -2694,7 +2700,7 @@ func TestDescribePodSecurityPolicyWithMultiTenancy(t *testing.T) {
 	fake := fake.NewSimpleClientset(&policyv1beta1.PodSecurityPolicy{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:   "mypsp",
-			Tenant: "test-te",
+			Tenant: testTenant,
 		},
 		Spec: policyv1beta1.PodSecurityPolicySpec{
 			AllowedUnsafeSysctls: []string{"kernel.*", "net.ipv4.ip_local_port_range"},
@@ -2714,9 +2720,9 @@ func TestDescribePodSecurityPolicyWithMultiTenancy(t *testing.T) {
 		},
 	})
 
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "", Interface: fake}
 	d := PodSecurityPolicyDescriber{c}
-	out, err := d.Describe("test-te", "", "mypsp", describe.DescriberSettings{})
+	out, err := d.Describe(testTenant, "", "mypsp", describe.DescriberSettings{})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -2733,7 +2739,7 @@ func TestDescribeResourceQuotaWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Status: corev1.ResourceQuotaStatus{
 			Hard: corev1.ResourceList{
@@ -2754,9 +2760,9 @@ func TestDescribeResourceQuotaWithMultiTenancy(t *testing.T) {
 			},
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := ResourceQuotaDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2830,7 +2836,7 @@ Spec:
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              "network-policy-1",
 			Namespace:         "default",
-			Tenant:            "test-te",
+			Tenant:            testTenant,
 			CreationTimestamp: metav1.NewTime(expectedTime),
 		},
 		Spec: networkingv1.NetworkPolicySpec{
@@ -2964,7 +2970,7 @@ Spec:
 		},
 	})
 	d := NetworkPolicyDescriber{versionedFake}
-	out, err := d.Describe("test-te", "", "network-policy-1", describe.DescriberSettings{})
+	out, err := d.Describe(testTenant, "", "network-policy-1", describe.DescriberSettings{})
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	}
@@ -2978,7 +2984,7 @@ func TestDescribeServiceAccountWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Secrets: []corev1.ObjectReference{
 			{
@@ -2991,9 +2997,9 @@ func TestDescribeServiceAccountWithMultiTenancy(t *testing.T) {
 			},
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := ServiceAccountDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3017,15 +3023,15 @@ func TestDescribeNodeWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: corev1.NodeSpec{
 			Unschedulable: true,
 		},
 	})
-	c := &describeClientWithMultiTenancy{T: t, Tenant: "test-te", Namespace: "foo", Interface: fake}
+	c := &describeClientWithMultiTenancy{T: t, Tenant: testTenant, Namespace: "foo", Interface: fake}
 	d := NodeDescriber{c}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3046,7 +3052,7 @@ func TestDescribeStatefulSetWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "bar",
 			Namespace: "foo",
-			Tenant:    "test-te",
+			Tenant:    testTenant,
 		},
 		Spec: appsv1.StatefulSetSpec{
 			Replicas: &replicas,
@@ -3067,7 +3073,7 @@ func TestDescribeStatefulSetWithMultiTenancy(t *testing.T) {
 		},
 	})
 	d := StatefulSetDescriber{fake}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: true})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: true})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3089,7 +3095,7 @@ func TestControllerRefWithMultiTenancy(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "bar",
 				Namespace: "foo",
-				Tenant:    "test-te",
+				Tenant:    testTenant,
 				UID:       "123456",
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3111,7 +3117,7 @@ func TestControllerRefWithMultiTenancy(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "barpod",
 				Namespace:       "foo",
-				Tenant:          "test-te",
+				Tenant:          testTenant,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "bar", UID: "123456", Controller: utilpointer.BoolPtr(true)}},
 			},
@@ -3131,7 +3137,7 @@ func TestControllerRefWithMultiTenancy(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "orphan",
 				Namespace: "foo",
-				Tenant:    "test-te",
+				Tenant:    testTenant,
 				Labels:    map[string]string{"abc": "xyz"},
 			},
 			TypeMeta: metav1.TypeMeta{
@@ -3150,7 +3156,7 @@ func TestControllerRefWithMultiTenancy(t *testing.T) {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "buzpod",
 				Namespace:       "foo",
-				Tenant:          "test-te",
+				Tenant:          testTenant,
 				Labels:          map[string]string{"abc": "xyz"},
 				OwnerReferences: []metav1.OwnerReference{{Name: "buz", UID: "654321", Controller: utilpointer.BoolPtr(true)}},
 			},
@@ -3167,7 +3173,7 @@ func TestControllerRefWithMultiTenancy(t *testing.T) {
 			},
 		})
 	d := ReplicationControllerDescriber{f}
-	out, err := d.Describe("test-te", "foo", "bar", describe.DescriberSettings{ShowEvents: false})
+	out, err := d.Describe(testTenant, "foo", "bar", describe.DescriberSettings{ShowEvents: false})
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}

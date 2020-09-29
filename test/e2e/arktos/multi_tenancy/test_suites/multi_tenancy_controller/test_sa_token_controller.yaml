@@ -1,10 +1,11 @@
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ServiceAccount & Token Controller Tests ~~~~~~~~~~~~~~~~~~~~~~
 # This test suite verifies the multi-tenancy ServiceAccount & Token controller. 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-######################################################
+
+###########################################################################################################
 # test variables
-######################################################
+###########################################################################################################
 Variables:
   test_ns: random_8
   test_tenant: random_8
@@ -13,17 +14,19 @@ Variables:
 # test setup
 ###########################################################################################################
 Tests:
-  - Command: ${kubectl} create tenant ${test_tenant}
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
     OutputShouldContain: 
     - "\ntenant/${test_tenant} created\n"
 
 ########################################################################################
 # Testing deployment controller & replicaset controller
 ########################################################################################
-# ------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # default serviceaccount and secret are created when a namespace is created
-# ------------------------------------------------------------
-  - Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
+# -----------------------------------------------------------------------------------
+  - BeforeTestMessage: Verifying default serviceaccount and secret are created when a namespace is created ...
+    Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant}
     OutputShouldBe: "namespace/${test_ns} created\n"
 
   - Command: ${kubectl} get serviceaccounts --namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'
@@ -32,10 +35,11 @@ Tests:
   - Command: ${kubectl} get secrets --namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.name[0:14], .metadata.namespace, .metadata.tenant] | @tsv'
     OutputShouldBe: "default-token-	${test_ns}	${test_tenant}\n"
     
-# ------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # default serviceaccount and secret will be recreated if the serviceaccount deleted
-# ------------------------------------------------------------
-  - Command: ${kubectl} delete serviceaccount default --namespace ${test_ns} --tenant ${test_tenant}
+# -----------------------------------------------------------------------------------
+  - BeforeTestMessage: Verifying default serviceaccount and secret will be recreated if the serviceaccount deleted ...
+    Command: ${kubectl} delete serviceaccount default --namespace ${test_ns} --tenant ${test_tenant}
     OutputShouldBe: "serviceaccount \"default\" deleted\n"
 
   - Command: ${kubectl} get serviceaccounts --namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'
@@ -44,10 +48,11 @@ Tests:
   - Command: ${kubectl} get secrets --namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.name[0:14], .metadata.namespace, .metadata.tenant] | @tsv'
     OutputShouldBe: "default-token-	${test_ns}	${test_tenant}\n"
 
-# ------------------------------------------------------------
+# -----------------------------------------------------------------------------------
 # default serviceaccount and secret will be recreated if the secret deleted
-# ------------------------------------------------------------
-  - Command: ${kubectl} delete secrets --all --namespace ${test_ns} --tenant ${test_tenant}
+# -----------------------------------------------------------------------------------
+  - BeforeTestMessage: Verifying default serviceaccount and secret will be recreated if the secret deleted ...
+    Command: ${kubectl} delete secrets --all --namespace ${test_ns} --tenant ${test_tenant}
     OutputShouldContain:
     - "secret \"default-token-"
     - deleted
@@ -58,11 +63,11 @@ Tests:
   - Command: ${kubectl} get secrets --namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '.items[] | [.metadata.name[0:14], .metadata.namespace, .metadata.tenant] | @tsv'
     OutputShouldBe: "default-token-	${test_ns}	${test_tenant}\n"
 
-  # ------------------------------------------------------------
-# default serviceaccount and secret are deleted when the namespace is created
-# ------------------------------------------------------------
-
-  - Command: ${kubectl} delete ns ${test_ns} --tenant ${test_tenant}
+# -----------------------------------------------------------------------------------
+# default serviceaccount and secret are deleted when the namespace is deleted
+# -----------------------------------------------------------------------------------
+  - BeforeTestMessage: Verifying default serviceaccount and secret are deleted when the namespace is deleted ...
+    Command: ${kubectl} delete ns ${test_ns} --tenant ${test_tenant}
     OutputShouldBe: "namespace \"${test_ns}\" deleted\n"
     TimeOut: 20
 
@@ -81,9 +86,8 @@ Tests:
     OutputShouldNotContain: 
     - ${test_ns}
 
-######################################################################################################
+###########################################################################################################
 # cleanup
 ######################################################################################################
-  - Command: ${kubectl} delete tenant ${test_tenant}
-    OutputShouldBe: "tenant \"${test_tenant}\" deleted\n"
-    TimeOut: 60
+  - BeforeTestMessage: Clean up...
+    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &

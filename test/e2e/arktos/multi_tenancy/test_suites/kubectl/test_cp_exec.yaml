@@ -1,0 +1,67 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl cp & kubectl exec Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl cp" and "kubectl exec"
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command: ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+###########################################################################################################
+# test "kubectl cp" & "kubectl exec"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl cp\" and \"kubectl exec\"..."
+    Command: ${kubectl} create -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.phase] | @tsv'"
+    OutputShouldBe: "sample-nginx-pod	${test_ns}	${test_tenant}	Running\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+# cp destination is given by "--tenant [tenant_name] [namespace_name]/[pod_name]:[path]" 
+  - Command: ${kubectl} cp ${test_data_dir}/sample-deployment.yaml --tenant ${test_tenant} ${test_ns}/sample-nginx-pod:/tmp/
+
+  - Command: ${kubectl} exec sample-nginx-pod --namespace ${test_ns} --tenant ${test_tenant} -- ls /tmp
+    OutputShouldBe: "sample-deployment.yaml\n"
+
+# cp destination is given by "[tenant_name]/[namespace_name]/[pod_name]:[path]"
+  - Command: ${kubectl} cp ${test_data_dir}/sample-pod.yaml ${test_tenant}/${test_ns}/sample-nginx-pod:/tmp/
+
+  - Command: ${kubectl} exec sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -- ls /tmp
+    OutputShouldContain: 
+    - "sample-deployment.yaml\n"
+    - "sample-pod.yaml\n"
+
+  - Command: ${kubectl} exec sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -- wrong_command
+    OutputShouldContain:
+    - "error executing command in container"
+    - "executable file not found in $PATH"
+    ShouldFail: true
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

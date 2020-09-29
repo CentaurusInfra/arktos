@@ -6,23 +6,36 @@ This doc, as at the moment written, does not mandate which cni plugin to be used
 
 Assuming you have got the Arktos repo downloaded to your local disk and the current folder is at the root of the repo,
 
+0. Make sure the following directories are empty. If not, clean them up.
+```
+/opt/cni/bin/
+/etc/cni/net.d/
+```
+
 1. bootstrap the cluster by starting the master node (no CNI plgin at first)
 ```bash
 export ARKTOS_NO_CNI_PREINSTALLED=y
 ./hack/arktos-up.sh
 ```
 
-2. install CNI plugin
+Note: arktos-up.sh should be stuck in "Waiting for node ready at api server" messages. Don't worry, the apiserver is already up at this point, just the master node status is not "Ready" as we have not installed the network plugin yet. 
+
+2. Open another terminal to the master node to install CNI plugin
 ```bash
 ./cluster/kubectl.sh apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 ```
 
-3. on the GCP instance to be added as worker node, ensure following worker secret files copied from the master node:
+After that, "arktos-up.sh" should get rid of "Waiting for node ready at api server" messages and be successfully started.
+
+3. In the lab machine to be added as a worker node, ensure following worker secret files copied from the master node:
+If the worker node is a GCP instance  
 ```bash
 mkdir -p /tmp/arktos
 gcloud compute scp <master-node-instance>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/
 gcloud compute scp <master-node-instance>:/var/run/kubernetes/client-ca.crt /tmp/arktos/
 ```
+
+If the worker node is an AWS EC2, you can download files /var/run/kubernetes/kubelet.kubeconfig and /var/run/kubernetes/client-ca.crt from the master node, and then upload to /tmp/arktos/ in the worker node.
 
 At the moment this doc is written, kube-proxy does not support multi-tenancy yet, and it won't be deployed in the cluster. After kube-proxy issue has been fixed (we will allocate resource to cope with it soon), probably we will also need to copy over kube-proxy related secret and artifacts.
 
@@ -31,15 +44,26 @@ As a temporary measure to accommodate Flannel pods to access api server through 
 sudo iptables -t nat -A OUTPUT -p tcp -d 10.0.0.1 --dport 443 -j DNAT --to-destination 10.138.0.19:6443
 ```
 
+NOTE: you need to re-run the above command once you restart the machine.
+
 Please be advised that this is a temporary quirk only; after we have the full service support by proper kube-proxy or other means, we don't need it any more.
 
 4. start the worker node and register into cluster
 
-at worker node, run following commands:
+First Make sure the following directories in the worker node are empty. If not, clean them up.
+```
+/opt/cni/bin/
+/etc/cni/net.d/
+```
+
+Then at worker node, run following commands:
 ```bash
+export ARKTOS_NO_CNI_PREINSTALLED=y
 export KUBELET_IP=<worker-ip>
 ./hack/arktos-worker-up.sh
 ```
+
+After the script returns, go to master node terminal and run command "[arktos_repo]/cluster/kubectl.sh get nodes", you should see the work node is displayed and its status should be "Ready".
 
 5. label worker node as vm runtime capable (optional)
 

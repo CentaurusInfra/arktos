@@ -1,0 +1,92 @@
+syntax = "proto3";
+package mizar;
+
+// May need to return a code in the event of a temporary failure for retry.
+service BuiltinsService {
+
+    // For Services/Service Endpoints, network controller may want to annotate the Endpoints.
+    // If Endpoints are not annotated, there will be many updates from unwanted endpoints.
+    rpc CreateService(BuiltinsServiceMessage) returns (ReturnCode) {}
+    rpc UpdateService(BuiltinsServiceMessage) returns (ReturnCode) {}
+    rpc ResumeService(BuiltinsServiceMessage) returns (ReturnCode) {}
+    rpc DeleteService(BuiltinsServiceMessage) returns (ReturnCode) {}
+
+    rpc UpdateServiceEndpoint(BuiltinsServiceEndpointMessage) returns (ReturnCode) {}
+    rpc ResumeServiceEndpoint(BuiltinsServiceEndpointMessage) returns (ReturnCode) {}
+    rpc CreateServiceEndpoint(BuiltinsServiceEndpointMessage) returns (ReturnCode) {}
+
+    rpc ResumePod(BuiltinsPodMessage) returns (ReturnCode) {}
+    rpc UpdatePod(BuiltinsPodMessage) returns (ReturnCode) {}
+    rpc CreatePod(BuiltinsPodMessage) returns (ReturnCode) {}
+    rpc DeletePod(BuiltinsPodMessage) returns (ReturnCode) {}
+
+    rpc CreateNode(BuiltinsNodeMessage) returns (ReturnCode) {}
+    rpc ResumeNode(BuiltinsNodeMessage) returns (ReturnCode) {}
+    rpc UpdateNode(BuiltinsNodeMessage) returns (ReturnCode) {}
+    rpc DeleteNode(BuiltinsNodeMessage) returns (ReturnCode) {}
+
+    rpc CreateArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
+    rpc ResumeArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
+    rpc UpdateArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
+}
+
+message BuiltinsNodeMessage {
+  string name = 1;
+  string ip = 2;
+}
+
+message BuiltinsPodMessage {
+  string name = 1;
+  string host_ip = 2;
+  string namespace = 3;
+  string tenant = 4;
+  string arktos_network = 5;
+  string phase = 6;
+  repeated InterfacesMessage interfaces = 7;
+}
+
+message BuiltinsServiceMessage {
+  string name = 1;
+  string arktos_network = 2;
+  string namespace = 3;
+  string tenant = 4;
+  string ip = 5;
+}
+
+message BuiltinsServiceEndpointMessage {
+  string name = 1;
+  string namespace = 2;
+  string tenant = 3;
+  repeated string backend_ips = 4;
+  repeated PortsMessage ports = 5;
+  string backend_ips_json = 6;
+  string ports_json = 7;
+}
+
+message BuiltinsArktosMessage {
+  string name = 1;
+  string vpc = 2;
+}
+
+message PortsMessage {
+  string frontend_port = 1;
+  string backend_port = 2;
+  string protocol = 3;
+}
+
+message InterfacesMessage {
+  string name = 1;
+  string ip = 2;
+  string subnet = 3;
+}
+
+message ReturnCode {
+  CodeType code = 1;
+  string message = 2;
+}
+
+enum CodeType{
+    OK = 0;
+    TEMP_ERROR = 1;
+    PERM_ERROR = 2;
+}

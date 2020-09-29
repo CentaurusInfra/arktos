@@ -34,6 +34,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -211,9 +212,20 @@ func run(config *hollowNodeConfig) {
 			WithTraceDisabled: true,
 		}
 
+		arktosExtClientConfig := *clientConfigs
+		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {
+			cfg.ContentType = "application/json"
+			cfg.AcceptContentTypes = "application/json"
+		}
+		arktosExtClient, err := arktos.NewForConfig(&arktosExtClientConfig)
+		if err != nil {
+			klog.Fatalf("Failed to create an arktos ClientSet: %v. Exiting.", err)
+		}
+
 		hollowKubelet := kubemark.NewHollowKubelet(
 			f, c,
 			client,
+			arktosExtClient,
 			heartbeatClient,
 			cadvisorInterface,
 			fakeDockerClientConfig,

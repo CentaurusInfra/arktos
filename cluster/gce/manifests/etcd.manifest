@@ -30,7 +30,7 @@
         "value": "{{ pillar.get('storage_backend', 'etcd3') }}"
       },
       { "name": "TARGET_VERSION",
-        "value": "{{ pillar.get('etcd_version', '3.4.4-arktos.1-1) }}"
+        "value": "{{ pillar.get('etcd_version', '3.4.4-arktos.1-1') }}"
       },
       { "name": "DATA_DIRECTORY",
         "value": "/var/etcd/data{{ suffix }}"

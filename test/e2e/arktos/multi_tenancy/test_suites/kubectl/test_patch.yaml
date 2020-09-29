@@ -1,0 +1,49 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Patch Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl patch".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+###########################################################################################################
+# test "kubectl patch"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl patch\" ..."
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq .spec.containers[0].image
+    OutputShouldBe: "\"nginx:1.7.9\"\n"
+
+  - Command: ${kubectl} patch pod sample-nginx-pod -p '{"spec":{"containers":[{"name":"nginx","image":"redis"}]}}' -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "pod/sample-nginx-pod patched\n"
+    OutputShouldNotContain: 
+    - (no change)
+
+  - Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq -r .spec.containers[0].image
+    OutputShouldBe: "redis\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

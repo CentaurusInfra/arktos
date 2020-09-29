@@ -92,8 +92,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 When a pod is attached to a certain network, it needs to set its "network" using labels:
 
@@ -108,8 +106,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 
 
@@ -128,8 +124,6 @@ spec:
   containers:
   - name: nginx
     image: nginx
-    ports:
-      - containerPort: 443
 ```
 
 Here annotation arktos.futurewei.com/nic is for user to provide optional information about pod nic. The recognized keys of element include:
@@ -145,6 +139,21 @@ If these settings are set on a pod attached to a flat network, the settings will
 (**TBD: for a flat network, can we automatically limit its communication scope to that network?**)
 
 (**TBD: do we plan to support multiple network providers? How would it impact the type definition?**)
+
+#### Network Status
+The network resource could have status.phase explicitly indicating its current phase in the whole life cycle. Arktos network controller is responsible to update this field, based on appropriate conditions.
+
+|status.phase|explanation|
+|---:|:---|
+|Pending|network is created; waiting for external network provider to finish provisioning|
+|Failed|network is in faulty state|
+|Unknown|network is in unknown state|
+|Ready|network is well provisioned and can be used to serve workloads. For external IPAM typed networks, it checks for presence of DNS service IP assignment (status.dnsServiceIP) as the signal of provision success|
+|Terminating|network is being decommissioned, waiting for resource cleanup|
+
+After all the associated resources have been cleaned up, the terminating network would be physically purged from API server.
+
+Arktos network controller registers the finalizer "arktos.futurewei.com/network" for ready network objects.
 
 ### Network Controller
 
@@ -248,9 +257,9 @@ Network object specifies service IPAM as *external*:
     metadata:
       name: default
     spec:
-      type: flat
+      type: mizar
       service:
-        ipam: external
+        ipam: External
 
 (**TBD: consider support for user can provide hints about service IP address**)
 
@@ -272,9 +281,13 @@ They are in default namespace, named as kubernetes-{network}, for the kubernetes
 
 Query for default-ns scoped kubernetes-{network} shall get back the proper content based on the cluster kubernetes endpoints object. System does not duplicate such endpoints; instead it derives content based on the cluster kubernetes endpoints. This would incurs quite some code change to kube-apiserver.
 
+For now, get verb with this kind of EP is supported; however, list/watch verb won't include per-network kubernetes EP. For a controller that needs to use these EPs, one workaround is deriving from the cluster scoped EP, besides using get verb in this special case.
+
 Updates originated from regular tenants are disallowed.
 
 Alternative is to duplicate in every network, when network is being provisioned. It is burdensome to keep all synced to the root one (which is maintained by api-server). 
+
+(**TBD: consider to implement list/watch verb with per-network kubernetes EPs**)
 
 * kube-dns related EPs
 

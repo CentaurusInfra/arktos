@@ -1,0 +1,165 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Per-Tenant CRD Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies the per-tenant CRD works in Arktos
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+######################################################
+# test variables
+######################################################
+Variables:
+  first_tenant: random_8
+  second_tenant: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${first_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${first_tenant} created\n"
+
+  - Command: ${setup_client_script} ${first_tenant} admin
+
+  - Command: ${kubectl} create tenant ${second_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${second_tenant} created\n"
+
+  - Command: ${setup_client_script} ${second_tenant} admin
+
+############################################
+# Verifying different tenants can create their CRDs independently...
+############################################
+  - BeforeTestMessage: Verifying different tenants can create their CRDs independently...
+    Command: ${kubectl} get crds --context ${first_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: ${kubectl} apply -f ${test_data_dir}/regular_crd.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "customresourcedefinition.apiextensions.k8s.io/neversharingsweetdreams.fantasy.wonderland.com created\n"
+
+  - Command: ${kubectl} get crds --context ${first_tenant}-admin-context
+    OutputShouldContain:
+    - "neversharingsweetdreams.fantasy.wonderland.com"
+
+  - Command: ${kubectl} api-resources --context ${first_tenant}-admin-context
+    OutputShouldContain:
+    - "neversharingsweetdreams"
+    - "NeverSharingSweetDream"
+    - "fantasy.wonderland.com"
+
+  - Command: ${kubectl} api-versions --context ${first_tenant}-admin-context
+    OutputShouldContain:
+    - "fantasy.wonderland.com/v1\n"
+
+  - Command: ${kubectl} get crds --context ${second_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: ${kubectl} api-resources --context ${second_tenant}-admin-context
+    OutputShouldNotContain:
+    - "neversharingsweetdreams"
+    - "NeverSharingSweetDream"
+    - "fantasy.wonderland.com"
+
+  - Command: ${kubectl} api-versions --context ${second_tenant}-admin-context
+    OutputShouldNotContain:
+    - "fantasy.wonderland.com"
+
+  - Command: "cat ${test_data_dir}/regular_crd.yaml | sed 's/version: v1/version: v1/g' |
+              ${kubectl} apply --context ${second_tenant}-admin-context -f -"
+    OutputShouldBe: "customresourcedefinition.apiextensions.k8s.io/neversharingsweetdreams.fantasy.wonderland.com created\n"
+
+  - Command: ${kubectl} get crds --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "neversharingsweetdreams.fantasy.wonderland.com"
+
+  - Command: ${kubectl} api-resources --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "neversharingsweetdreams"
+    - "NeverSharingSweetDream"
+    - "fantasy.wonderland.com"
+
+  - Command: ${kubectl} api-versions --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "fantasy.wonderland.com/v1\n"
+
+  - Command: ${kubectl} api-versions --context ${first_tenant}-admin-context
+    OutputShouldContain:
+    - "fantasy.wonderland.com/v1\n"
+
+  - Command: "${kubectl} get crds --all-tenants -o json 
+            | jq -r '.items[] | [.metadata.name, .metadata.tenant] | @tsv'"
+    OutputShouldContain:
+    - "neversharingsweetdreams.fantasy.wonderland.com	${first_tenant}\n"
+    - "neversharingsweetdreams.fantasy.wonderland.com	${second_tenant}\n"
+
+
+######################################################################################################
+# Verifying different tenants can create their custom resources independently...
+######################################################################################################
+
+  - BeforeTestMessage: Verifying different tenants can create their custom resources  independently...
+    Command: ${kubectl} apply -f ${test_data_dir}/regular_crd_resource.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com/wild-wild-west created\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${first_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name '
+    OutputShouldBe: "wild-wild-west\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: "cat ${test_data_dir}/regular_crd_resource.yaml | sed 's/wild-wild-west/alice-in-wonderland/g' |
+              ${kubectl} apply --context ${second_tenant}-admin-context -f -"
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com/alice-in-wonderland created\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams wild-wild-west --context ${first_tenant}-admin-context -o json | jq -r .metadata.name
+    OutputShouldBe: "wild-wild-west\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams alice-in-wonderland --context ${second_tenant}-admin-context -o json | jq -r .metadata.name
+    OutputShouldBe: "alice-in-wonderland\n"
+
+######################################################################################################
+# Verifying different tenants can delete their custom resources independently...
+######################################################################################################
+
+  - BeforeTestMessage: Verifying different tenants can delete their custom resources  independently...
+    Command: ${kubectl} delete -f ${test_data_dir}/regular_crd_resource.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "neversharingsweetdream.fantasy.wonderland.com \"wild-wild-west\" deleted\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name '
+    OutputShouldBe: "alice-in-wonderland\n"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${first_tenant}-admin-context
+    OutputShouldBe: "No resources found.\n"
+
+######################################################################################################
+# Verifying different tenants can delete their CRDs independently...
+######################################################################################################
+
+  - BeforeTestMessage: Verifying different tenants can delete their CRDs independently...
+    Command: ${kubectl} delete -f ${test_data_dir}/regular_crd.yaml --context ${first_tenant}-admin-context
+    OutputShouldBe: "customresourcedefinition.apiextensions.k8s.io \"neversharingsweetdreams.fantasy.wonderland.com\" deleted\n"
+    TimeOut: 60
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${first_tenant}-admin-context
+    ShouldFail: true
+    OutputShouldContain:
+    - "the server could not find the requested resource"
+
+  - Command: ${kubectl} get crds --context ${second_tenant}-admin-context
+    OutputShouldContain:
+    - "neversharingsweetdreams.fantasy.wonderland.com"
+
+  - Command: ${kubectl} get neversharingsweetdreams --context ${second_tenant}-admin-context -o json | jq -r '.items[] | .metadata.name'
+    OutputShouldBe: "alice-in-wonderland\n"
+
+######################################################################################################
+# cleanup
+######################################################################################################
+  - BeforeTestMessage: clean up ...
+    Command: ${kubectl} delete tenant ${first_tenant} > /dev/null 2>&1 &
+
+  - Command: ${kubectl} delete tenant ${second_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${first_tenant} admin
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${second_tenant} admin
+

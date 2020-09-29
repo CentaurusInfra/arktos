@@ -1,0 +1,37 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl cluster-info Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl cluster-info".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+###########################################################################################################
+# test "kubectl cluster-info"
+###########################################################################################################
+# more test content to add after multi-tenancy networking is done
+  - BeforeTestMessage: "Verifying \"kubectl cluster-info\" ..."
+    Command: ${kubectl} cluster-info --tenant ${test_tenant}
+    OutputShouldContain: 
+    - "Kubernetes master"
+    - "is running at "
+    
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

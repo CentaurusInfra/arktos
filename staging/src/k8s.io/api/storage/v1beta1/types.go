@@ -24,7 +24,6 @@ import (
 
 // +genclient
 // +genclient:nonNamespaced
-// +genclient:nonTenanted
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // StorageClass describes the parameters for a class of storage for

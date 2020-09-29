@@ -42,6 +42,7 @@ type StorageClassInformer interface {
 type storageClassInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
+	tenant           string
 }
 
 // NewStorageClassInformer constructs a new informer for StorageClass type.
@@ -51,23 +52,31 @@ func NewStorageClassInformer(client kubernetes.Interface, resyncPeriod time.Dura
 	return NewFilteredStorageClassInformer(client, resyncPeriod, indexers, nil)
 }
 
+func NewStorageClassInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
+	return NewFilteredStorageClassInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
+}
+
 // NewFilteredStorageClassInformer constructs a new informer for StorageClass type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredStorageClassInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
+	return NewFilteredStorageClassInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "system")
+}
+
+func NewFilteredStorageClassInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().StorageClasses().List(options)
+				return client.StorageV1().StorageClassesWithMultiTenancy(tenant).List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.StorageV1().StorageClasses().Watch(options)
+				return client.StorageV1().StorageClassesWithMultiTenancy(tenant).Watch(options)
 			},
 		},
 		&storagev1.StorageClass{},
@@ -77,7 +86,7 @@ func NewFilteredStorageClassInformer(client kubernetes.Interface, resyncPeriod t
 }
 
 func (f *storageClassInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredStorageClassInformer(client, resyncPeriod, cache.Indexers{}, f.tweakListOptions)
+	return NewFilteredStorageClassInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
 }
 
 func (f *storageClassInformer) Informer() cache.SharedIndexInformer {

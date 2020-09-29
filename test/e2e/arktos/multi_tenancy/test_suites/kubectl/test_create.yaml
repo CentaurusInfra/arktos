@@ -1,0 +1,202 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Create Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl create".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+  secret_name: test-secret
+  clusterrole_name: test-clusterrole
+  clusterrolebinding_name: test-clusterrolebinding
+  role_name: test-role
+  rolebinding_name: test-rolebinding
+  job_name: test-job
+  job_image: busybox
+  cronjob_name: test-cronjob
+  cronjob_schedule: "*/1 * * * *"
+  user_name: fake-user
+  configmap_name: test-configmap
+  deployment_name: test-deploy
+  pdb_name: test-pdb
+  resourcequota_name: test-rq
+  service_name: test-svc
+  serviceaccount_name: test-sa
+
+
+###########################################################################################################
+# test "kubectl create tenant"
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} get tenant ${test_tenant} -o json | jq -r '[.metadata.name, .status.phase] | @tsv'
+    OutputShouldBe: "${test_tenant}	Active\n"  
+
+###########################################################################################################
+# test "kubectl create namespace"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create namespace\" ..."
+    Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command: ${kubectl} get namespace ${test_ns} --tenant ${test_tenant} -o json | jq -r '[.metadata.name, .metadata.tenant, .status.phase] | @tsv'
+    OutputShouldBe: "${test_ns}	${test_tenant}	Active\n"  
+
+###########################################################################################################
+# test "kubectl create job"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create job\" ..."
+    Command: ${kubectl} create job ${job_name} --image=${job_image} -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "job.batch/${job_name} created\n"
+
+  - Command: "${kubectl} get job ${job_name} -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'"
+    OutputShouldBe: "${job_name}	${test_ns}	${test_tenant}\n"
+
+###########################################################################################################
+# test "kubectl create cronjob"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create cronjob\" ..."
+    Command: "${kubectl} create cronjob ${cronjob_name} --image=${job_image} --schedule=\"${cronjob_schedule}\"
+             -n ${test_ns} --tenant ${test_tenant}"
+    OutputShouldBe: "cronjob.batch/${cronjob_name} created\n"
+
+  - Command: "${kubectl} get cronjob ${cronjob_name} -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .spec.schedule] | @tsv'"
+    OutputShouldBe: "${cronjob_name}	${test_ns}	${test_tenant}	${cronjob_schedule}\n"
+
+###########################################################################################################
+# test "kubectl create clusterrole"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create clusterrole\" ..."
+    Command: ${kubectl} create clusterrole ${clusterrole_name} --verb=get --resource=pods --tenant ${test_tenant} 
+    OutputShouldBe: "clusterrole.rbac.authorization.k8s.io/${clusterrole_name} created\n"
+
+  - Command: "${kubectl} get clusterrole ${clusterrole_name} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.tenant, .rules[0].resources[0], .rules[0].verbs[0]] | @tsv'"
+    OutputShouldBe: "${clusterrole_name}	${test_tenant}	pods	get\n"
+
+###########################################################################################################
+# test "kubectl create clusterrolebinding"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create clusterrolebinding\" ..."
+    Command: "${kubectl} create clusterrolebinding ${clusterrolebinding_name} --clusterrole ${clusterrole_name}
+             --user ${user_name} --tenant ${test_tenant}"
+    OutputShouldBe: "clusterrolebinding.rbac.authorization.k8s.io/${clusterrolebinding_name} created\n"
+
+  - Command: "${kubectl} get clusterrolebinding ${clusterrolebinding_name} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.tenant, .roleRef.kind, .roleRef.name, .subjects[0].kind, .subjects[0].name] | @tsv'"
+    OutputShouldBe: "${clusterrolebinding_name}	${test_tenant}	ClusterRole	${clusterrole_name}	User	${user_name}\n"
+
+###########################################################################################################
+# test "kubectl create configmap"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create configmap\" ..."
+    Command: ${kubectl} create configmap ${configmap_name} --from-literal=key1=val1  -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "configmap/${configmap_name} created\n"
+
+  - Command: "${kubectl} get configmap ${configmap_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .data.key1] | @tsv'"
+    OutputShouldBe: "${configmap_name}	${test_ns}	${test_tenant}	val1\n"
+
+###########################################################################################################
+# test "kubectl create deployment"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create deployment\" ..."
+    Command: ${kubectl} create deployment ${deployment_name} --image=nginx  -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/${deployment_name} created\n"
+
+  - Command: "${kubectl} get deployment ${deployment_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+ 		        | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .status.replicas] | @tsv'"
+    OutputShouldBe: "${deployment_name}	${test_ns}	${test_tenant}	1\n"
+###########################################################################################################
+# test "kubectl create poddisruptionbudget"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create poddisruptionbudget\" ..."
+    Command: ${kubectl} create poddisruptionbudget ${pdb_name} --selector key1=val1 --min-available=50  -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "poddisruptionbudget.policy/${pdb_name} created\n"
+
+  - Command: "${kubectl} get poddisruptionbudget ${pdb_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+ 		        | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .spec.minAvailable, .spec.selector.matchLabels.key1] | @tsv'"
+    OutputShouldBe: "${pdb_name}	${test_ns}	${test_tenant}	50	val1\n"
+
+###########################################################################################################
+# test "kubectl create resourcequota"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create resourcequota\" ..."
+    Command: ${kubectl} create resourcequota ${resourcequota_name} -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "resourcequota/${resourcequota_name} created\n"
+
+  - Command: "${kubectl} get resourcequota ${resourcequota_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'"
+    OutputShouldBe: "${resourcequota_name}	${test_ns}	${test_tenant}\n"
+
+###########################################################################################################
+# test "kubectl create role"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create role\" ..."
+    Command: ${kubectl} create role ${role_name} --verb=get --resource=pods --tenant ${test_tenant} 
+    OutputShouldBe: "role.rbac.authorization.k8s.io/${role_name} created\n"
+
+  - Command: "${kubectl} get role ${role_name} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.tenant, .rules[0].resources[0], .rules[0].verbs[0]] | @tsv'"
+    OutputShouldBe: "${role_name}	${test_tenant}	pods	get\n"
+
+###########################################################################################################
+# test "kubectl create rolebinding"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create rolebinding\" ..."
+    Command: "${kubectl} create rolebinding ${rolebinding_name} --role ${role_name}
+             --user ${user_name} --tenant ${test_tenant}"
+    OutputShouldBe: "rolebinding.rbac.authorization.k8s.io/${rolebinding_name} created\n"
+
+  - Command: "${kubectl} get rolebinding ${rolebinding_name} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.tenant, .roleRef.kind, .roleRef.name, .subjects[0].kind, .subjects[0].name] | @tsv'"
+    OutputShouldBe: "${rolebinding_name}	${test_tenant}	Role	${role_name}	User	${user_name}\n"
+
+###########################################################################################################
+# test "kubectl create secret"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create secret\" ..."
+    Command: ${kubectl} create secret generic ${secret_name} --from-literal=key1=supersecret  -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "secret/${secret_name} created\n"
+
+  - Command: "${kubectl} get secret ${secret_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .data.key1] | @tsv'"
+    OutputShouldBe: "${secret_name}	${test_ns}	${test_tenant}	c3VwZXJzZWNyZXQ=\n"
+
+###########################################################################################################
+# test "kubectl create service"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create service\" ..."
+    Command: ${kubectl} create service clusterip ${service_name} --tcp=80:8080  -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "service/${service_name} created\n"
+
+  - Command: "${kubectl} get service ${service_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .spec.type, .spec.ports[0].port, .spec.ports[0].targetPort] | @tsv'"
+    OutputShouldBe: "${service_name}	${test_ns}	${test_tenant}	ClusterIP	80	8080\n"
+
+###########################################################################################################
+# test "kubectl create serviceaccount"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl create serviceaccount\" ..."
+    Command: ${kubectl} create serviceaccount ${serviceaccount_name} -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "serviceaccount/${serviceaccount_name} created\n"
+
+  - Command: "${kubectl} get serviceaccount ${serviceaccount_name}  -n ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant] | @tsv'"
+    OutputShouldBe: "${serviceaccount_name}	${test_ns}	${test_tenant}\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

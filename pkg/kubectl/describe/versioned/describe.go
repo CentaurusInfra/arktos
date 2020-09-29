@@ -3764,7 +3764,7 @@ type StorageClassDescriber struct {
 }
 
 func (s *StorageClassDescriber) Describe(tenant, namespace, name string, describerSettings describe.DescriberSettings) (string, error) {
-	sc, err := s.StorageV1().StorageClasses().Get(name, metav1.GetOptions{})
+	sc, err := s.StorageV1().StorageClassesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil {
 		return "", err
 	}
