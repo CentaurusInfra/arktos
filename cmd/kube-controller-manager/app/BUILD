@@ -46,7 +46,6 @@ go_library(
         "//pkg/controller/podgc:go_default_library",
         "//pkg/controller/replicaset:go_default_library",
         "//pkg/controller/route:go_default_library",
-        "//pkg/controller/service:go_default_library",
         "//pkg/controller/serviceaccount:go_default_library",
         "//pkg/controller/tenant:go_default_library",
         "//pkg/controller/vmpod:go_default_library",

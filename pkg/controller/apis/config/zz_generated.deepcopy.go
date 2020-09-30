@@ -119,7 +119,6 @@ func (in *KubeControllerManagerConfiguration) DeepCopyInto(out *KubeControllerMa
 	out.PodGCController = in.PodGCController
 	out.ReplicaSetController = in.ReplicaSetController
 	out.SAController = in.SAController
-	out.ServiceController = in.ServiceController
 	out.TenantController = in.TenantController
 	return
 }

@@ -36,7 +36,6 @@ import (
 	namespaceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/namespace/config/v1alpha1"
 	podgcconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/podgc/config/v1alpha1"
 	replicasetconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1"
-	serviceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/service/config/v1alpha1"
 	serviceaccountconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/serviceaccount/config/v1alpha1"
 	tenantconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/tenant/config/v1alpha1"
 	attachdetachconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config/v1alpha1"
@@ -314,9 +313,6 @@ func autoConvert_v1alpha1_KubeControllerManagerConfiguration_To_config_KubeContr
 	if err := serviceaccountconfigv1alpha1.Convert_v1alpha1_SAControllerConfiguration_To_config_SAControllerConfiguration(&in.SAController, &out.SAController, s); err != nil {
 		return err
 	}
-	if err := serviceconfigv1alpha1.Convert_v1alpha1_ServiceControllerConfiguration_To_config_ServiceControllerConfiguration(&in.ServiceController, &out.ServiceController, s); err != nil {
-		return err
-	}
 	if err := tenantconfigv1alpha1.Convert_v1alpha1_TenantControllerConfiguration_To_config_TenantControllerConfiguration(&in.TenantController, &out.TenantController, s); err != nil {
 		return err
 	}
@@ -363,9 +359,6 @@ func autoConvert_config_KubeControllerManagerConfiguration_To_v1alpha1_KubeContr
 		return err
 	}
 	if err := serviceaccountconfigv1alpha1.Convert_config_SAControllerConfiguration_To_v1alpha1_SAControllerConfiguration(&in.SAController, &out.SAController, s); err != nil {
-		return err
-	}
-	if err := serviceconfigv1alpha1.Convert_config_ServiceControllerConfiguration_To_v1alpha1_ServiceControllerConfiguration(&in.ServiceController, &out.ServiceController, s); err != nil {
 		return err
 	}
 	if err := tenantconfigv1alpha1.Convert_config_TenantControllerConfiguration_To_v1alpha1_TenantControllerConfiguration(&in.TenantController, &out.TenantController, s); err != nil {

@@ -41,7 +41,6 @@ go_library(
         "//pkg/apis/storage/v1/util:go_default_library",
         "//pkg/client/conditions:go_default_library",
         "//pkg/controller:go_default_library",
-        "//pkg/controller/service:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/kubelet/apis/config:go_default_library",
         "//pkg/kubelet/apis/stats/v1alpha1:go_default_library",

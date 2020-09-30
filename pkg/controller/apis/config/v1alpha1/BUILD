@@ -21,7 +21,6 @@ go_library(
         "//pkg/controller/namespace/config/v1alpha1:go_default_library",
         "//pkg/controller/podgc/config/v1alpha1:go_default_library",
         "//pkg/controller/replicaset/config/v1alpha1:go_default_library",
-        "//pkg/controller/service/config/v1alpha1:go_default_library",
         "//pkg/controller/serviceaccount/config/v1alpha1:go_default_library",
         "//pkg/controller/tenant/config/v1alpha1:go_default_library",
         "//pkg/controller/volume/attachdetach/config/v1alpha1:go_default_library",

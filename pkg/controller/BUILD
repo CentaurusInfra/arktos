@@ -120,7 +120,6 @@ filegroup(
         "//pkg/controller/podgc:all-srcs",
         "//pkg/controller/replicaset:all-srcs",
         "//pkg/controller/route:all-srcs",
-        "//pkg/controller/service:all-srcs",
         "//pkg/controller/serviceaccount:all-srcs",
         "//pkg/controller/tenant:all-srcs",
         "//pkg/controller/testutil:all-srcs",
