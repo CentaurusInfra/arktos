@@ -45,7 +45,6 @@ import (
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	routecontroller "k8s.io/kubernetes/pkg/controller/route"
-	servicecontroller "k8s.io/kubernetes/pkg/controller/service"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
@@ -57,24 +56,6 @@ import (
 	// quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
 	// "k8s.io/kubernetes/pkg/util/metrics"
 )
-
-func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
-	serviceController, err := servicecontroller.New(
-		ctx.Cloud,
-		ctx.ClientBuilder.ClientOrDie("service-controller"),
-		ctx.InformerFactory.Core().V1().Services(),
-		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ComponentConfig.KubeCloudShared.ClusterName,
-	)
-	if err != nil {
-		// This error shouldn't fail. It lives like this as a legacy.
-		klog.Errorf("Failed to start service controller: %v", err)
-		return nil, false, nil
-	}
-	go serviceController.Run(ctx.Stop, int(ctx.ComponentConfig.ServiceController.ConcurrentServiceSyncs))
-	return nil, true, nil
-}
 
 func startCloudNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
 	cloudNodeLifecycleController, err := cloudcontroller.NewCloudNodeLifecycleController(

@@ -38,7 +38,6 @@ import (
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
-	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
@@ -67,7 +66,6 @@ func TestAddFlags(t *testing.T) {
 		"--concurrent-gc-syncs=30",
 		"--concurrent-namespace-syncs=20",
 		"--concurrent-replicaset-syncs=10",
-		"--concurrent-service-syncs=2",
 		"--concurrent-serviceaccount-token-syncs=10",
 		"--configure-cloud-routes=false",
 		"--contention-profiling=true",
@@ -160,11 +158,6 @@ func TestAddFlags(t *testing.T) {
 					Name:            "gce",
 					CloudConfigFile: "/cloud-config",
 				},
-			},
-		},
-		ServiceController: &cmoptions.ServiceControllerOptions{
-			ServiceControllerConfiguration: &serviceconfig.ServiceControllerConfiguration{
-				ConcurrentServiceSyncs: 2,
 			},
 		},
 		AttachDetachController: &AttachDetachControllerOptions{

@@ -26,7 +26,6 @@ import (
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
-	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
 	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
@@ -74,9 +73,6 @@ type KubeControllerManagerConfiguration struct {
 	// SAControllerConfiguration holds configuration for ServiceAccountController
 	// related features.
 	SAController serviceaccountconfig.SAControllerConfiguration
-	// ServiceControllerConfiguration holds configuration for ServiceController
-	// related features.
-	ServiceController serviceconfig.ServiceControllerConfiguration
 	// TenantControllerConfiguration holds configuration for TenantController
 	// related features.
 	TenantController tenantconfig.TenantControllerConfiguration

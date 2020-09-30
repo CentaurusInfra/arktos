@@ -120,9 +120,6 @@ type KubeControllerManagerConfiguration struct {
 	// SAControllerConfiguration holds configuration for ServiceAccountController
 	// related features.
 	SAController SAControllerConfiguration
-	// ServiceControllerConfiguration holds configuration for ServiceController
-	// related features.
-	ServiceController ServiceControllerConfiguration
 	// TenantControllerConfiguration holds configuration for TenantController
 	// related features.
 	TenantController TenantControllerConfiguration `json:"tenantController,omitempty"`
@@ -304,14 +301,6 @@ type SAControllerConfiguration struct {
 	// rootCAFile is the root certificate authority will be included in service
 	// account's token secret. This must be a valid PEM-encoded CA bundle.
 	RootCAFile string
-}
-
-// ServiceControllerConfiguration contains elements describing ServiceController.
-type ServiceControllerConfiguration struct {
-	// concurrentServiceSyncs is the number of services that are
-	// allowed to sync concurrently. Larger number = more responsive service
-	// management, but more CPU (and network) load.
-	ConcurrentServiceSyncs int32
 }
 
 // TenantControllerConfiguration contains elements describing TenantController.
