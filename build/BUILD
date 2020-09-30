@@ -38,10 +38,6 @@ DOCKERIZED_BINARIES = {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-controller-manager:kube-controller-manager",
     },
-    "workload-controller-manager": {
-        "base": "@debian-base-{ARCH}//image",
-        "target": "//cmd/workload-controller-manager:kube-controller-manager",
-    },
     "kube-scheduler": {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-scheduler:kube-scheduler",
