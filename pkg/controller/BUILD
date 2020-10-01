@@ -119,7 +119,6 @@ filegroup(
         "//pkg/controller/namespace:all-srcs",
         "//pkg/controller/podgc:all-srcs",
         "//pkg/controller/replicaset:all-srcs",
-        "//pkg/controller/route:all-srcs",
         "//pkg/controller/serviceaccount:all-srcs",
         "//pkg/controller/tenant:all-srcs",
         "//pkg/controller/testutil:all-srcs",
