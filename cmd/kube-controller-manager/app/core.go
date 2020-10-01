@@ -39,7 +39,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	// "k8s.io/kubernetes/pkg/controller"
-	cloudcontroller "k8s.io/kubernetes/pkg/controller/cloud"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	"k8s.io/kubernetes/pkg/controller/podgc"
@@ -54,25 +53,6 @@ import (
 	// quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
 	// "k8s.io/kubernetes/pkg/util/metrics"
 )
-
-func startCloudNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
-	cloudNodeLifecycleController, err := cloudcontroller.NewCloudNodeLifecycleController(
-		ctx.InformerFactory.Core().V1().Nodes(),
-		// cloud node lifecycle controller uses existing cluster role from node-controller
-		ctx.ClientBuilder.ClientOrDie("node-controller"),
-		ctx.Cloud,
-		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,
-	)
-	if err != nil {
-		// the controller manager should continue to run if the "Instances" interface is not
-		// supported, though it's unlikely for a cloud provider to not support it
-		klog.Errorf("failed to start cloud node lifecycle controller: %v", err)
-		return nil, false, nil
-	}
-
-	go cloudNodeLifecycleController.Run(ctx.Stop)
-	return nil, true, nil
-}
 
 func startPersistentVolumeBinderController(ctx ControllerContext) (http.Handler, bool, error) {
 	params := persistentvolumecontroller.ControllerParameters{

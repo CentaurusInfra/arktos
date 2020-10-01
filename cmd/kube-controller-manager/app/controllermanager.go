@@ -392,7 +392,6 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["csrapproving"] = startCSRApprovingController
 	controllers["csrcleaner"] = startCSRCleanerController
 	if loopMode == IncludeCloudLoops {
-		controllers["cloud-node-lifecycle"] = startCloudNodeLifecycleController
 		// TODO: volume controller into the IncludeCloudLoops only set.
 	}
 	controllers["persistentvolume-binder"] = startPersistentVolumeBinderController
