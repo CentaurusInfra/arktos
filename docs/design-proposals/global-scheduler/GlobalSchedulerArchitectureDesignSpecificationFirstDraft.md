@@ -39,12 +39,13 @@
 
 **Revision Records**
 
-|    Date    | Revision Version |              Change Description                                   |      Author      |
-|:----------:|:----------------:|:-----------------------------------------------------------------:|:----------------:|
-| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc                      | Cathy Hong Zhang |
-| 2020-09-03 |        1.1       | Add Key System Flow Design Sections                               | Cathy Hong Zhang |
-| 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus            | Cathy Hong Zhang |
-| 2020-0923  |        1.3       | CLean up unused design options and update some design diagrams    | Cathy Hong Zhang |
+|    Date    | Revision Version |              Change Description                                                          |      Author      |
+|:----------:|:----------------:|:----------------------------------------------------------------------------------------:|:----------------:|
+| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc                                             | Cathy Hong Zhang |
+| 2020-09-03 |        1.1       | Add Key System Flow Design Sections                                                      | Cathy Hong Zhang |
+| 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus                                   | Cathy Hong Zhang |
+| 2020-0923  |        1.3       | CLean up unused design options and update some design diagrams                           | Cathy Hong Zhang |
+| 2020-0923  |        1.4       | Incorporate Dr. Xiong's input to add a higher level architecture diagram and description | Cathy Hong Zhang |
 
 # 1. Introduction
 
@@ -187,7 +188,12 @@ In summary, this design eliminates the issues associated with existing Two-Level
 
 On the southbound, it integrates with different types of clusters via a flexible plugin design.
 
-Figure.1 is an illustration of the high-level architecture.
+Figure.1.1 is an illustration of the high-level architecture. It is composed of three functional parts and each part can be deployed independently. The API Server part (blue part) is responsible for handling the VM/Container creation and deletion requests
+and persist those request information into the ETCD DB. The Distributed Schedulers part (yellow part) consists of multiple concurrently running schedulers that make the scheduling decision and send the decision to the selected cluster.
+The Resource Collector part (green part) is responsible for collecting the resource information needed by the schedulers from all the clusters and saving them to the ETCD DB Cache. 
+![image.png](/images/2.3.1.png)
+
+Figure.1.2 is an illustration of the detail acrhitecture design. 
 ![image.png](/images/2.3.png)
 
 In the future, we may explore whether this two-level architecture may flatten into a one-level architecture.
@@ -345,9 +351,10 @@ All the clusters need to be filtered according to the VM/Container's specific re
 
 Validating a VM/Container's specification of hardware/software/policy constraints, affinity, anti-affinity, and geolocation/AZ locality against a cluster is straightforward. But checking whether a cluster can meet the VM/Container's resource requirements of vCPU, memory, EIPs, and disk volume is tricky. Let's call the latter type of check "_quantity check_".
 
-Our scheduler does the scheduling/placement of a VM/Container to the granularity of a cluster. To avoid a huge DB, we should not store every node's allocable capacity information in the global DB. But if we only store each cluster's accumulated allocable capacity, "_quantity check_" cannot be done properly. This is because even a cluster's accumulated allocable capacity is larger than a VM/Container's quantity requirement, the cluster may have no single node which has enough resource to host/run the VM/Container. An "average per node allocable capacity" is a better way. But "_quantity check_" against the "average per node allocable capacity" is not good enough either. As shown in Figure 2, the new VM requires 128M memory and Cluster1's "average per node available memory resource" is 110M memory. Although Node 3 in Cluster 1 has 256M, which meets the VM's memory requirement, the "_quantity check_" against Cluster 1 will fail and Cluster 1 will be incorrectly filtered out of the candidate list.
+Our scheduler does the scheduling/placement of a VM/Container to the granularity of a cluster. To avoid a huge DB, we should not store every node's allocable capacity information in the global DB. But if we only store each cluster's accumulated allocable capacity, "_quantity check_" cannot be done properly. This is because even a cluster's accumulated allocable capacity is larger than a VM/Container's quantity requirement, the cluster may have no single node which has enough resource to host/run the VM/Container. An "average per node allocable capacity" is a better way. But "_quantity check_" against the "average per node allocable capacity" is not good enough either. As shown in Figure 3, the new VM requires 128M memory and Cluster1's "average per node available memory resource" is 110M memory. Although Node 3 in Cluster 1 has 256M, which meets the VM's memory requirement, the "_quantity check_" against Cluster 1 will fail and Cluster 1 will be incorrectly filtered out of the candidate list.
 
 Therefore, instead of doing "_quantity check_" against a cluster's "average per-node allocable capacity", we should do "_quantity check_" against a cluster's "largest available node's resource". But checking against only the largest available node of a cluster is not enough. This is because a VM/Container's resource requirement spans more than one resource type. A node having the largest available vCPU may have little available memory. So, we need to collect the resource information of several largest available nodes from each cluster (a few with the largest CPU, a few with the largest memory, etc.). Let's call these nodes "potentially feasible nodes". Resource information of each cluster's "potentially feasible nodes" should be saved in the global resource database. "_quantity check_" should be done against a cluster's "potential feasible nodes" to see whether there is one node that has enough vCPU, memory, EIPs, disk volume to host/run the VM/Container. If so, the cluster is added to the candidate list.
+
 ![image.png](/images/2.5.2.png)
 
 After the scheduling algorithm finds the candidate list of clusters for a VM/Container, it goes to the second phase---scoring phase.  In the scoring phase, the scheduling algorithm runs a set of functions to score each cluster in the candidate list and picks a cluster with the highest score.
@@ -364,7 +371,7 @@ The score of each factor is normalized into the range of 0-1. 0 is the lowest sc
 
 #### 2.5.2.1 Average Per Node Allocable capacity
 
-A cluster node's resource spans multiple types, e.g. memory, vCPU, disk, network interfaces. Suppose there are n types of resources. We represent each node's allocable capacity as a point in a n-dimension Euclidean space. We then calculate the centroid of these points since the concept of centroid is the multivariate equivalent of the mean. In other words, the centroid is the mean position of all the points in all the coordinate directions. The centroid is a good representation of the average per node allocable capacity of the cluster. Figure 3 is an illustration of the centroid concept in a 3-dimensional space.
+A cluster node's resource spans multiple types, e.g. memory, vCPU, disk, network interfaces. Suppose there are n types of resources. We represent each node's allocable capacity as a point in a n-dimension Euclidean space. We then calculate the centroid of these points since the concept of centroid is the multivariate equivalent of the mean. In other words, the centroid is the mean position of all the points in all the coordinate directions. The centroid is a good representation of the average per node allocable capacity of the cluster. Figure 4 is an illustration of the centroid concept in a 3-dimensional space.
 ![image.png](/images/2.5.2.1.png)
 
 Then we calculate the score for a cluster based on the VM/Container's requested capacity to the cluster's centroid capacity ratio. The following equation illustrates how to get the score for a cluster.
