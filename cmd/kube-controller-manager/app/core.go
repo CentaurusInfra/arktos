@@ -23,7 +23,6 @@ package app
 
 import (
 	"fmt"
-	"net"
 	"net/http"
 	"time"
 
@@ -44,7 +43,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	"k8s.io/kubernetes/pkg/controller/podgc"
-	routecontroller "k8s.io/kubernetes/pkg/controller/route"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
@@ -73,29 +71,6 @@ func startCloudNodeLifecycleController(ctx ControllerContext) (http.Handler, boo
 	}
 
 	go cloudNodeLifecycleController.Run(ctx.Stop)
-	return nil, true, nil
-}
-
-func startRouteController(ctx ControllerContext) (http.Handler, bool, error) {
-	if !ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs || !ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes {
-		klog.Infof("Will not configure cloud provider routes for allocate-node-cidrs: %v, configure-cloud-routes: %v.", ctx.ComponentConfig.KubeCloudShared.AllocateNodeCIDRs, ctx.ComponentConfig.KubeCloudShared.ConfigureCloudRoutes)
-		return nil, false, nil
-	}
-	if ctx.Cloud == nil {
-		klog.Warning("configure-cloud-routes is set, but no cloud provider specified. Will not configure cloud provider routes.")
-		return nil, false, nil
-	}
-	routes, ok := ctx.Cloud.Routes()
-	if !ok {
-		klog.Warning("configure-cloud-routes is set, but cloud provider does not support routes. Will not configure cloud provider routes.")
-		return nil, false, nil
-	}
-	_, clusterCIDR, err := net.ParseCIDR(ctx.ComponentConfig.KubeCloudShared.ClusterCIDR)
-	if err != nil {
-		klog.Warningf("Unsuccessful parsing of cluster CIDR %v: %v", ctx.ComponentConfig.KubeCloudShared.ClusterCIDR, err)
-	}
-	routeController := routecontroller.New(routes, ctx.ClientBuilder.ClientOrDie("route-controller"), ctx.InformerFactory.Core().V1().Nodes(), ctx.ComponentConfig.KubeCloudShared.ClusterName, clusterCIDR)
-	go routeController.Run(ctx.Stop, ctx.ComponentConfig.KubeCloudShared.RouteReconciliationPeriod.Duration)
 	return nil, true, nil
 }
 
