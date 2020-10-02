@@ -36,32 +36,59 @@ const (
 	mizarNodeControllerWorkerCount = 2
 )
 
-func TestCreate(t *testing.T) {
+func TestMizarNodeController_Create(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mizarNodeController, _, nodeInformer := getNewMizarNodeController()
+	mizarNodeController, _, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
 	mizarNodeController.listerSynced = alwaysReady
 	go mizarNodeController.Run(mizarNodeControllerWorkerCount, ctx.Done())
 
-	list := nodeInformer.Informer().GetStore().List()
 	go nodeInformer.Informer().Run(ctx.Done())
-	print(list)
-	time.Sleep(time.Second * 2) // TODO don't use sleep
-	// TODO use fake grpc-adaptor
+	waitForMockDataReadyWithTimeout(t, grpcAdaptorMock)
+
+	testCheckEqual(t, node, grpcAdaptorMock.node)
 }
 
-func TestUpdate(t *testing.T) {
+func TestMizarNodeController_Update(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	mizarNodeController, kubeClient, nodeInformer := getNewMizarNodeController()
+	mizarNodeController, kubeClient, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
 	mizarNodeController.listerSynced = alwaysReady
 	go mizarNodeController.Run(mizarNodeControllerWorkerCount, ctx.Done())
 
 	syncNodeStore(nodeInformer, kubeClient)
 	go nodeInformer.Informer().Run(ctx.Done())
-	list := nodeInformer.Informer().GetStore().List()
-	print(list)
-	time.Sleep(time.Second * 2) // TODO don't use sleep
+
+	waitForMockDataReadyWithTimeout(t, grpcAdaptorMock)
+	testCheckEqual(t, node, grpcAdaptorMock.node)
+}
+
+func TestMizarNodeController_Retry(t *testing.T) {
+	retryCount := 10
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	mizarNodeController, _, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
+	mizarNodeController.listerSynced = alwaysReady
+	grpcAdaptorMock.returnCodeFunc = func(grpcAdaptorMock *GrpcAdaptorMock) *ReturnCode {
+		if grpcAdaptorMock.retryCount < retryCount {
+			grpcAdaptorMock.retryCount++
+			return &ReturnCode{
+				Code: CodeType_TEMP_ERROR,
+			}
+		} else {
+			return &ReturnCode{
+				Code: CodeType_OK,
+			}
+		}
+	}
+	go mizarNodeController.Run(mizarNodeControllerWorkerCount, ctx.Done())
+
+	go nodeInformer.Informer().Run(ctx.Done())
+	waitForMockDataReadyWithTimeout(t, grpcAdaptorMock)
+
+	testCheckEqual(t, node, grpcAdaptorMock.node)
+	testCheckEqual(t, retryCount, grpcAdaptorMock.retryCount)
 }
 
 func syncNodeStore(nodeInformer coreinformers.NodeInformer, kubeClient *testutil.FakeNodeHandler) error {
@@ -79,32 +106,31 @@ func syncNodeStore(nodeInformer coreinformers.NodeInformer, kubeClient *testutil
 	return nodeInformer.Informer().GetStore().Replace(newElems, "newRV")
 }
 
-func getNewMizarNodeController() (*MizarNodeController, *testutil.FakeNodeHandler, coreinformers.NodeInformer) {
-	kubeClient :=
-		&testutil.FakeNodeHandler{
-			Existing: []*v1.Node{
+func getNewMizarNodeController() (*MizarNodeController, *testutil.FakeNodeHandler, coreinformers.NodeInformer, *GrpcAdaptorMock, *v1.Node) {
+	node := &v1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:              "node0",
+			CreationTimestamp: metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
+			Labels: map[string]string{
+				v1.LabelZoneRegion:        "region1",
+				v1.LabelZoneFailureDomain: "zone1",
+			},
+			ResourceVersion: "test version",
+		},
+		Status: v1.NodeStatus{
+			Conditions: []v1.NodeCondition{
 				{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:              "node0",
-						CreationTimestamp: metav1.Date(2012, 1, 1, 0, 0, 0, 0, time.UTC),
-						Labels: map[string]string{
-							v1.LabelZoneRegion:        "region1",
-							v1.LabelZoneFailureDomain: "zone1",
-						},
-						ResourceVersion: "test version",
-					},
-					Status: v1.NodeStatus{
-						Conditions: []v1.NodeCondition{
-							{
-								Type:               v1.NodeReady,
-								Status:             v1.ConditionTrue,
-								LastHeartbeatTime:  metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
-								LastTransitionTime: metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
-							},
-						},
-					},
+					Type:               v1.NodeReady,
+					Status:             v1.ConditionTrue,
+					LastHeartbeatTime:  metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
+					LastTransitionTime: metav1.Date(2015, 1, 1, 12, 0, 0, 0, time.UTC),
 				},
 			},
+		},
+	}
+	kubeClient :=
+		&testutil.FakeNodeHandler{
+			Existing:     []*v1.Node{node},
 			DeletedNodes: []*v1.Node{},
 			Clientset:    fake.NewSimpleClientset(),
 		}
@@ -112,5 +138,7 @@ func getNewMizarNodeController() (*MizarNodeController, *testutil.FakeNodeHandle
 	nodeInformer := factory.Core().V1().Nodes()
 
 	kubeClient.CreateHook = func(c *testutil.FakeNodeHandler, n *v1.Node) bool { return true }
-	return NewMizarNodeController(nodeInformer, kubeClient, testGrpcHost), kubeClient, nodeInformer
+
+	grpcAdaptor := NewGrpcAdaptorMock()
+	return NewMizarNodeController(nodeInformer, kubeClient, testGrpcHost, grpcAdaptor), kubeClient, nodeInformer, grpcAdaptor, node
 }

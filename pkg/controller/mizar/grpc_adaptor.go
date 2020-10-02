@@ -23,11 +23,29 @@ import (
 )
 
 const (
-	port = "50052"
+	GrpcPort = "50052"
 )
 
-// GrpcCreateArktosNetwork is to invoking grpc func of CreateArktosNetwork
-func GrpcCreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *ReturnCode {
+type IGrpcAdaptor interface {
+	CreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *ReturnCode
+	CreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
+	UpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
+	DeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
+	UpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode
+	CreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode
+	UpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode
+	CreatePod(grpcHost string, pod *v1.Pod) *ReturnCode
+	DeletePod(grpcHost string, pod *v1.Pod) *ReturnCode
+	CreateNode(grpcHost string, node *v1.Node) *ReturnCode
+	UpdateNode(grpcHost string, node *v1.Node) *ReturnCode
+	DeleteNode(grpcHost string, node *v1.Node) *ReturnCode
+}
+
+type GrpcAdaptor struct {
+}
+
+// CreateArktosNetwork is to invoking grpc func of CreateArktosNetwork
+func (grpcAdaptor *GrpcAdaptor) CreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -41,8 +59,8 @@ func GrpcCreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *Retur
 	return returnCode
 }
 
-// GrpcCreateService is to invoking grpc func of CreateService
-func GrpcCreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
+// CreateService is to invoking grpc func of CreateService
+func (grpcAdaptor *GrpcAdaptor) CreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -56,8 +74,8 @@ func GrpcCreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
 	return returnCode
 }
 
-// GrpcUpdateService is to invoking grpc func of UpdateService
-func GrpcUpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
+// UpdateService is to invoking grpc func of UpdateService
+func (grpcAdaptor *GrpcAdaptor) UpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -71,23 +89,8 @@ func GrpcUpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
 	return returnCode
 }
 
-// GrpcResumeService is to invoking grpc func of ResumeService
-func GrpcResumeService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
-	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	defer conn.Close()
-	defer cancel()
-	returnCode, err := client.ResumeService(ctx, msg)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	return returnCode
-}
-
-// GrpcDeleteService is to invoking grpc func of DeleteService
-func GrpcDeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
+// DeleteService is to invoking grpc func of DeleteService
+func (grpcAdaptor *GrpcAdaptor) DeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -101,8 +104,8 @@ func GrpcDeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode
 	return returnCode
 }
 
-// GrpcUpdateServiceEndpoint is to invoking grpc func of UpdateServiceEndpoint
-func GrpcUpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
+// UpdateServiceEndpoint is to invoking grpc func of UpdateServiceEndpoint
+func (grpcAdaptor *GrpcAdaptor) UpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -116,23 +119,8 @@ func GrpcUpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMess
 	return returnCode
 }
 
-// GrpcResumeServiceEndpoint is to invoking grpc func of ResumeServiceEndpoint
-func GrpcResumeServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
-	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	defer conn.Close()
-	defer cancel()
-	returnCode, err := client.ResumeServiceEndpoint(ctx, msg)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	return returnCode
-}
-
-// GrpcCreateServiceEndpoint is to invoking grpc func of CreateServiceEndpoint
-func GrpcCreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
+// CreateServiceEndpoint is to invoking grpc func of CreateServiceEndpoint
+func (grpcAdaptor *GrpcAdaptor) CreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -146,23 +134,8 @@ func GrpcCreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMess
 	return returnCode
 }
 
-// GrpcResumePod is to invoking grpc func of ResumePod
-func GrpcResumePod(grpcHost string, pod *v1.Pod) *ReturnCode {
-	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	defer conn.Close()
-	defer cancel()
-	returnCode, err := client.ResumePod(ctx, ConvertToPodContract(pod))
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	return returnCode
-}
-
-// GrpcUpdatePod is to invoking grpc func of UpdatePod
-func GrpcUpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
+// UpdatePod is to invoking grpc func of UpdatePod
+func (grpcAdaptor *GrpcAdaptor) UpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -176,8 +149,8 @@ func GrpcUpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	return returnCode
 }
 
-// GrpcCreatePod is to invoking grpc func of CreatePod
-func GrpcCreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
+// CreatePod is to invoking grpc func of CreatePod
+func (grpcAdaptor *GrpcAdaptor) CreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -191,8 +164,8 @@ func GrpcCreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	return returnCode
 }
 
-// GrpcDeletePod is to invoking grpc func of DeletePod
-func GrpcDeletePod(grpcHost string, pod *v1.Pod) *ReturnCode {
+// DeletePod is to invoking grpc func of DeletePod
+func (grpcAdaptor *GrpcAdaptor) DeletePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -206,8 +179,8 @@ func GrpcDeletePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	return returnCode
 }
 
-// GrpcCreateNode is to invoking grpc func of CreateNode
-func GrpcCreateNode(grpcHost string, node *v1.Node) *ReturnCode {
+// CreateNode is to invoking grpc func of CreateNode
+func (grpcAdaptor *GrpcAdaptor) CreateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -221,23 +194,8 @@ func GrpcCreateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	return returnCode
 }
 
-// GrpcResumeNode is to invoking grpc func of ResumeNode
-func GrpcResumeNode(grpcHost string, node *v1.Node) *ReturnCode {
-	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	defer conn.Close()
-	defer cancel()
-	returnCode, err := client.ResumeNode(ctx, ConvertToNodeContract(node))
-	if err != nil {
-		return getReturnCodeFromError(&err)
-	}
-	return returnCode
-}
-
-// GrpcUpdateNode is to invoking grpc func of UpdateNode
-func GrpcUpdateNode(grpcHost string, node *v1.Node) *ReturnCode {
+// UpdateNode is to invoking grpc func of UpdateNode
+func (grpcAdaptor *GrpcAdaptor) UpdateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -251,8 +209,8 @@ func GrpcUpdateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	return returnCode
 }
 
-// GrpcDeleteNode is to invoking grpc func of DeleteNode
-func GrpcDeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
+// DeleteNode is to invoking grpc func of DeleteNode
+func (grpcAdaptor *GrpcAdaptor) DeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
 	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
 	if err != nil {
 		return getReturnCodeFromError(&err)
@@ -274,7 +232,7 @@ func getReturnCodeFromError(err *error) *ReturnCode {
 }
 
 func getGrpcClient(grpcHost string) (BuiltinsServiceClient, context.Context, *grpc.ClientConn, context.CancelFunc, error) {
-	address := fmt.Sprintf("%s:%s", grpcHost, port)
+	address := fmt.Sprintf("%s:%s", grpcHost, GrpcPort)
 	conn, err := grpc.Dial(address, grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		return nil, nil, conn, nil, err

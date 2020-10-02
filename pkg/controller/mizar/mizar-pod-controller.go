@@ -53,10 +53,12 @@ type MizarPodController struct {
 	queue workqueue.RateLimitingInterface
 
 	grpcHost string
+
+	grpcAdaptor IGrpcAdaptor
 }
 
 // NewMizarPodController creates and configures a new controller instance
-func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string) *MizarPodController {
+func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarPodController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -67,6 +69,7 @@ func NewMizarPodController(informer coreinformers.PodInformer, kubeClient client
 		listerSynced: informer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
 		grpcHost:     grpcHost,
+		grpcAdaptor:  grpcAdaptor,
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -184,11 +187,11 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 	switch eventType {
 	case EventType_Create:
-		processPodGrpcReturnCode(c, GrpcCreatePod(c.grpcHost, obj), keyWithEventType)
+		processPodGrpcReturnCode(c, c.grpcAdaptor.CreatePod(c.grpcHost, obj), keyWithEventType)
 	case EventType_Update:
-		processPodGrpcReturnCode(c, GrpcUpdatePod(c.grpcHost, obj), keyWithEventType)
+		processPodGrpcReturnCode(c, c.grpcAdaptor.UpdatePod(c.grpcHost, obj), keyWithEventType)
 	case EventType_Delete:
-		processPodGrpcReturnCode(c, GrpcDeletePod(c.grpcHost, obj), keyWithEventType)
+		processPodGrpcReturnCode(c, c.grpcAdaptor.DeletePod(c.grpcHost, obj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}

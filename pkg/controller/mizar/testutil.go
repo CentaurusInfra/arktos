@@ -16,6 +16,7 @@ package mizar
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 func testCheckEqual(t *testing.T, expected interface{}, actual interface{}) {
@@ -32,3 +33,30 @@ func jsonMarshal(v interface{}) string {
 }
 
 func alwaysReady() bool { return true }
+
+func waitForMockDataReadyWithTimeout(t *testing.T, grpcAdaptorMock *GrpcAdaptorMock) {
+	if grpcAdaptorMock.grpcHost != "" {
+		return
+	}
+
+	ch := make(chan bool, 1)
+	go func() {
+		for {
+			time.Sleep(time.Millisecond * 100)
+			if grpcAdaptorMock.grpcHost != "" {
+				ch <- true
+				break
+			}
+		}
+	}()
+
+	for {
+		select {
+		case <-ch:
+			return
+		case <-time.After(time.Second * 3):
+			t.Fatal("time out while grpcAdaptorMock unchanged, which means change didn't go through controller or handled properly.")
+			return
+		}
+	}
+}
