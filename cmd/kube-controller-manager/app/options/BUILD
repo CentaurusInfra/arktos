@@ -11,7 +11,6 @@ go_library(
     srcs = [
         "attachdetachcontroller.go",
         "csrsigningcontroller.go",
-        "deploymentcontroller.go",
         "deprecatedcontroller.go",
         "garbagecollectorcontroller.go",
         "namespacecontroller.go",
@@ -29,7 +28,6 @@ go_library(
         "//pkg/controller/apis/config:go_default_library",
         "//pkg/controller/apis/config/scheme:go_default_library",
         "//pkg/controller/certificates/signer/config:go_default_library",
-        "//pkg/controller/deployment/config:go_default_library",
         "//pkg/controller/garbagecollector:go_default_library",
         "//pkg/controller/garbagecollector/config:go_default_library",
         "//pkg/controller/namespace/config:go_default_library",
@@ -80,7 +78,6 @@ go_test(
         "//cmd/controller-manager/app/options:go_default_library",
         "//pkg/controller/apis/config:go_default_library",
         "//pkg/controller/certificates/signer/config:go_default_library",
-        "//pkg/controller/deployment/config:go_default_library",
         "//pkg/controller/garbagecollector/config:go_default_library",
         "//pkg/controller/namespace/config:go_default_library",
         "//pkg/controller/podgc/config:go_default_library",

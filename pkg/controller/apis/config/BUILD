@@ -12,7 +12,6 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//pkg/controller/certificates/signer/config:go_default_library",
-        "//pkg/controller/deployment/config:go_default_library",
         "//pkg/controller/garbagecollector/config:go_default_library",
         "//pkg/controller/namespace/config:go_default_library",
         "//pkg/controller/podgc/config:go_default_library",

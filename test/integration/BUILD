@@ -43,7 +43,6 @@ filegroup(
         "//test/integration/cloudfabriccontrollers:all-srcs",
         "//test/integration/configmap:all-srcs",
         "//test/integration/defaulttolerationseconds:all-srcs",
-        "//test/integration/deployment:all-srcs",
         "//test/integration/dryrun:all-srcs",
         "//test/integration/etcd:all-srcs",
         "//test/integration/events:all-srcs",

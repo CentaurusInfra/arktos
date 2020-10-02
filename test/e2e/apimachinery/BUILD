@@ -79,7 +79,6 @@ go_library(
         "//staging/src/k8s.io/kube-aggregator/pkg/client/clientset_generated/clientset:go_default_library",
         "//staging/src/k8s.io/sample-apiserver/pkg/apis/wardle/v1alpha1:go_default_library",
         "//test/e2e/framework:go_default_library",
-        "//test/e2e/framework/deployment:go_default_library",
         "//test/e2e/framework/log:go_default_library",
         "//test/e2e/framework/metrics:go_default_library",
         "//test/e2e/framework/pod:go_default_library",

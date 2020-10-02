@@ -39,8 +39,6 @@ go_library(
         "//pkg/controller/certificates/cleaner:go_default_library",
         "//pkg/controller/certificates/rootcacertpublisher:go_default_library",
         "//pkg/controller/certificates/signer:go_default_library",
-        "//pkg/controller/cloud:go_default_library",
-        "//pkg/controller/deployment:go_default_library",
         "//pkg/controller/garbagecollector:go_default_library",
         "//pkg/controller/namespace:go_default_library",
         "//pkg/controller/podgc:go_default_library",

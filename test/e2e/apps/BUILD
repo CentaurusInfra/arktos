@@ -9,7 +9,6 @@ go_library(
     name = "go_default_library",
     srcs = [
         "daemon_restart.go",
-        "deployment.go",
         "disruption.go",
         "framework.go",
         "job.go",
@@ -19,14 +18,11 @@ go_library(
     ],
     importpath = "k8s.io/kubernetes/test/e2e/apps",
     deps = [
-        "//pkg/apis/apps:go_default_library",
         "//pkg/apis/batch:go_default_library",
-        "//pkg/controller/deployment/util:go_default_library",
         "//pkg/controller/replicaset:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
-        "//staging/src/k8s.io/api/extensions/v1beta1:go_default_library",
         "//staging/src/k8s.io/api/policy/v1beta1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/resource:go_default_library",
@@ -45,7 +41,6 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/watch:go_default_library",
         "//staging/src/k8s.io/client-go/util/retry:go_default_library",
         "//test/e2e/framework:go_default_library",
-        "//test/e2e/framework/deployment:go_default_library",
         "//test/e2e/framework/job:go_default_library",
         "//test/e2e/framework/log:go_default_library",
         "//test/e2e/framework/pod:go_default_library",
@@ -53,10 +48,8 @@ go_library(
         "//test/e2e/framework/ssh:go_default_library",
         "//test/utils:go_default_library",
         "//test/utils/image:go_default_library",
-        "//vendor/github.com/davecgh/go-spew/spew:go_default_library",
         "//vendor/github.com/onsi/ginkgo:go_default_library",
         "//vendor/github.com/onsi/gomega:go_default_library",
-        "//vendor/k8s.io/utils/pointer:go_default_library",
     ],
 )
 

@@ -16,7 +16,6 @@ go_library(
     deps = [
         "//pkg/controller/apis/config:go_default_library",
         "//pkg/controller/certificates/signer/config/v1alpha1:go_default_library",
-        "//pkg/controller/deployment/config/v1alpha1:go_default_library",
         "//pkg/controller/garbagecollector/config/v1alpha1:go_default_library",
         "//pkg/controller/namespace/config/v1alpha1:go_default_library",
         "//pkg/controller/podgc/config/v1alpha1:go_default_library",
