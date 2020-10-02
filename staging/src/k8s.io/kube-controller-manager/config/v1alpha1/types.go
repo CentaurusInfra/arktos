@@ -97,9 +97,6 @@ type KubeControllerManagerConfiguration struct {
 	// CSRSigningControllerConfiguration holds configuration for
 	// CSRSigningController related features.
 	CSRSigningController CSRSigningControllerConfiguration
-	// DeploymentControllerConfiguration holds configuration for
-	// DeploymentController related features.
-	DeploymentController DeploymentControllerConfiguration
 	// DeprecatedControllerConfiguration holds configuration for some deprecated
 	// features.
 	DeprecatedController DeprecatedControllerConfiguration
@@ -216,16 +213,6 @@ type CSRSigningControllerConfiguration struct {
 	// clusterSigningDuration is the length of duration signed certificates
 	// will be given.
 	ClusterSigningDuration metav1.Duration
-}
-
-// DeploymentControllerConfiguration contains elements describing DeploymentController.
-type DeploymentControllerConfiguration struct {
-	// concurrentDeploymentSyncs is the number of deployment objects that are
-	// allowed to sync concurrently. Larger number = more responsive deployments,
-	// but more CPU (and network) load.
-	ConcurrentDeploymentSyncs int32
-	// deploymentControllerSyncPeriod is the period for syncing the deployments.
-	DeploymentControllerSyncPeriod metav1.Duration
 }
 
 // DeprecatedControllerConfiguration contains elements be deprecated.

@@ -25,11 +25,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2edeploy "k8s.io/kubernetes/test/e2e/framework/deployment"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/storage/testsuites"
 	"k8s.io/kubernetes/test/e2e/storage/utils"
@@ -144,11 +142,6 @@ var _ = utils.SIGDescribe("Mounted flexvolume expand[Slow]", func() {
 		framework.ExpectNoError(err, "Failed waiting for PVC to be bound %v", err)
 		gomega.Expect(len(pvs)).To(gomega.Equal(1))
 
-		ginkgo.By("Creating a deployment with the provisioned volume")
-		deployment, err := e2edeploy.CreateDeployment(c, int32(1), map[string]string{"test": "app"}, nodeKeyValueLabel, ns, pvcClaims, "")
-		framework.ExpectNoError(err, "Failed creating deployment %v", err)
-		defer c.AppsV1().Deployments(ns).Delete(deployment.Name, &metav1.DeleteOptions{})
-
 		ginkgo.By("Expanding current pvc")
 		newSize := resource.MustParse("6Gi")
 		pvc, err = expandPVCSize(pvc, newSize, c)
@@ -163,25 +156,5 @@ var _ = utils.SIGDescribe("Mounted flexvolume expand[Slow]", func() {
 		ginkgo.By("Waiting for cloudprovider resize to finish")
 		err = waitForControllerVolumeResize(pvc, c, totalResizeWaitPeriod)
 		framework.ExpectNoError(err, "While waiting for pvc resize to finish")
-
-		ginkgo.By("Getting a pod from deployment")
-		podList, err := e2edeploy.GetPodsForDeployment(c, deployment)
-		gomega.Expect(podList.Items).NotTo(gomega.BeEmpty())
-		pod := podList.Items[0]
-
-		ginkgo.By("Deleting the pod from deployment")
-		err = framework.DeletePodWithWait(f, c, &pod)
-		framework.ExpectNoError(err, "while deleting pod for resizing")
-
-		ginkgo.By("Waiting for deployment to create new pod")
-		pod, err = waitForDeploymentToRecreatePod(c, deployment)
-		framework.ExpectNoError(err, "While waiting for pod to be recreated")
-
-		ginkgo.By("Waiting for file system resize to finish")
-		pvc, err = waitForFSResize(pvc, c)
-		framework.ExpectNoError(err, "while waiting for fs resize to finish")
-
-		pvcConditions := pvc.Status.Conditions
-		gomega.Expect(len(pvcConditions)).To(gomega.Equal(0), "pvc should not have conditions")
 	})
 })

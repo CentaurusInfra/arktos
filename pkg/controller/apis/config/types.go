@@ -21,7 +21,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
-	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
@@ -50,9 +49,6 @@ type KubeControllerManagerConfiguration struct {
 	// CSRSigningControllerConfiguration holds configuration for
 	// CSRSigningController related features.
 	CSRSigningController csrsigningconfig.CSRSigningControllerConfiguration
-	// DeploymentControllerConfiguration holds configuration for
-	// DeploymentController related features.
-	DeploymentController deploymentconfig.DeploymentControllerConfiguration
 	// DeprecatedControllerConfiguration holds configuration for some deprecated
 	// features.
 	DeprecatedController DeprecatedControllerConfiguration

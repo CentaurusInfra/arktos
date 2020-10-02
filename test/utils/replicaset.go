@@ -29,6 +29,7 @@ import (
 )
 
 type UpdateReplicaSetFunc func(d *apps.ReplicaSet)
+type LogfFn func(format string, args ...interface{})
 
 func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate UpdateReplicaSetFunc, logf LogfFn, pollInterval, pollTimeout time.Duration) (*apps.ReplicaSet, error) {
 	return UpdateReplicaSetWithRetriesWithMultiTenancy(c, metav1.TenantSystem, namespace, name, applyUpdate, logf, pollInterval, pollTimeout)

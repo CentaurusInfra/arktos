@@ -33,7 +33,6 @@ import (
 	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
-	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
@@ -62,7 +61,6 @@ func TestAddFlags(t *testing.T) {
 		"--cluster-name=k8s",
 		"--cluster-signing-cert-file=/cluster-signing-cert",
 		"--cluster-signing-key-file=/cluster-signing-key",
-		"--concurrent-deployment-syncs=10",
 		"--concurrent-gc-syncs=30",
 		"--concurrent-namespace-syncs=20",
 		"--concurrent-replicaset-syncs=10",
@@ -71,7 +69,6 @@ func TestAddFlags(t *testing.T) {
 		"--contention-profiling=true",
 		"--controller-start-interval=2m",
 		"--controllers=foo,bar",
-		"--deployment-controller-sync-period=45s",
 		"--disable-attach-detach-reconcile-sync=true",
 		"--enable-dynamic-provisioning=false",
 		"--enable-garbage-collector=false",
@@ -171,12 +168,6 @@ func TestAddFlags(t *testing.T) {
 				ClusterSigningCertFile: "/cluster-signing-cert",
 				ClusterSigningKeyFile:  "/cluster-signing-key",
 				ClusterSigningDuration: metav1.Duration{Duration: 10 * time.Hour},
-			},
-		},
-		DeploymentController: &DeploymentControllerOptions{
-			&deploymentconfig.DeploymentControllerConfiguration{
-				ConcurrentDeploymentSyncs:      10,
-				DeploymentControllerSyncPeriod: metav1.Duration{Duration: 45 * time.Second},
 			},
 		},
 		DeprecatedFlags: &DeprecatedControllerOptions{

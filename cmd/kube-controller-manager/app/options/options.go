@@ -62,7 +62,6 @@ type KubeControllerManagerOptions struct {
 
 	AttachDetachController           *AttachDetachControllerOptions
 	CSRSigningController             *CSRSigningControllerOptions
-	DeploymentController             *DeploymentControllerOptions
 	DeprecatedFlags                  *DeprecatedControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	NamespaceController              *NamespaceControllerOptions
@@ -97,9 +96,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		CSRSigningController: &CSRSigningControllerOptions{
 			&componentConfig.CSRSigningController,
-		},
-		DeploymentController: &DeploymentControllerOptions{
-			&componentConfig.DeploymentController,
 		},
 		DeprecatedFlags: &DeprecatedControllerOptions{
 			&componentConfig.DeprecatedController,
@@ -180,7 +176,6 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 
 	s.AttachDetachController.AddFlags(fss.FlagSet("attachdetach controller"))
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
-	s.DeploymentController.AddFlags(fss.FlagSet("deployment controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
@@ -210,9 +205,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.CSRSigningController.ApplyTo(&c.ComponentConfig.CSRSigningController); err != nil {
-		return err
-	}
-	if err := s.DeploymentController.ApplyTo(&c.ComponentConfig.DeploymentController); err != nil {
 		return err
 	}
 	if err := s.DeprecatedFlags.ApplyTo(&c.ComponentConfig.DeprecatedController); err != nil {
@@ -270,7 +262,6 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.KubeCloudShared.Validate()...)
 	errs = append(errs, s.AttachDetachController.Validate()...)
 	errs = append(errs, s.CSRSigningController.Validate()...)
-	errs = append(errs, s.DeploymentController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
