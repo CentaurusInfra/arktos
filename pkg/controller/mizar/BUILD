@@ -1,25 +1,21 @@
 package(default_visibility = ["//visibility:public"])
 
-load(
-    "@io_bazel_rules_go//go:def.bzl",
-    "go_library",
-)
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "builtins.pb.go",
-        "grpc-adaptor.go",
+        "grpc_adaptor.go",
+        "grpc_adaptor_mock.go",
         "mizar-arktos-network-controller.go",
         "mizar-endpoints-controller.go",
         "mizar-node-controller.go",
-        "mizar_node_controller_test.go",
         "mizar-pod-controller.go",
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
         "testutil.go",
         "util.go",
-        "util_test.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/mizar",
     deps = [
@@ -60,4 +56,23 @@ filegroup(
     name = "all-srcs",
     srcs = [":package-srcs"],
     tags = ["automanaged"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = [
+        "mizar_node_controller_test.go",
+        "util_test.go",
+    ],
+    embed = [":go_default_library"],
+    deps = [
+        "//pkg/controller:go_default_library",
+        "//pkg/controller/testutil:go_default_library",
+        "//staging/src/k8s.io/api/core/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/util/intstr:go_default_library",
+        "//staging/src/k8s.io/client-go/informers:go_default_library",
+        "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
+        "//staging/src/k8s.io/client-go/kubernetes/fake:go_default_library",
+    ],
 )
