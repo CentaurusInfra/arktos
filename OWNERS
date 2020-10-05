@@ -1,22 +1,13 @@
 
-# This file lists the code owners of different areas of the project. 
-# These owners are the default code reviewers and approvers for PRs of the corresponding area.
+approvers:
+- XiaoningDing 
+- dingyin
+- panda98004
+- zmn223
+reviewers:
+- vinaykul
+- Sindica
+- h-w-chen
+- yb01
+- pdgetrf
 
-
-Overall:
-  @panda98004, @XiaoningDing
-
-Controllers:
-  @dingyin, @Sindica, @vinaykul, @jshaofuturewei
-
-Node agent:
-  @XiaoningDing, @h-w-chen, @yb01, @pdgetrf, @vinaykul
-
-Scalability:
-  @haibinxie, @Sindica, @jeffzhu503, @sonyafenge
-
-Multi-tenancy:
-  @chenqianfzh, @XiaoningDing
-
-Documents:
-  @panda98004, @deepak-vij, @XiaoningDing, @zmn223
