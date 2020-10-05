@@ -39,8 +39,6 @@ import (
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
-	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
-	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
 )
 
 func TestAddFlags(t *testing.T) {
@@ -53,7 +51,6 @@ func TestAddFlags(t *testing.T) {
 	args := []string{
 		"--address=192.168.4.10",
 		"--allocate-node-cidrs=true",
-		"--attach-detach-reconcile-sync-period=30s",
 		"--cidr-allocator-type=CloudAllocator",
 		"--cloud-config=/cloud-config",
 		"--cloud-provider=gce",
@@ -69,12 +66,8 @@ func TestAddFlags(t *testing.T) {
 		"--contention-profiling=true",
 		"--controller-start-interval=2m",
 		"--controllers=foo,bar",
-		"--disable-attach-detach-reconcile-sync=true",
-		"--enable-dynamic-provisioning=false",
 		"--enable-garbage-collector=false",
-		"--enable-hostpath-provisioner=true",
 		"--experimental-cluster-signing-duration=10h",
-		"--flex-volume-plugin-dir=/flex-volume-plugin",
 		"--http2-max-streams-per-connection=47",
 		"--kube-api-burst=100",
 		"--kube-api-content-type=application/json",
@@ -91,11 +84,6 @@ func TestAddFlags(t *testing.T) {
 		"--node-monitor-period=10s",
 		"--port=10000",
 		"--profiling=false",
-		"--pv-recycler-increment-timeout-nfs=45",
-		"--pv-recycler-minimum-timeout-hostpath=45",
-		"--pv-recycler-minimum-timeout-nfs=200",
-		"--pv-recycler-timeout-increment-hostpath=45",
-		"--pvclaimbinder-sync-period=30s",
 		"--route-reconciliation-period=30s",
 		"--service-account-private-key-file=/service-account-private-key",
 		"--terminated-pod-gc-threshold=12000",
@@ -157,12 +145,6 @@ func TestAddFlags(t *testing.T) {
 				},
 			},
 		},
-		AttachDetachController: &AttachDetachControllerOptions{
-			&attachdetachconfig.AttachDetachControllerConfiguration{
-				ReconcilerSyncLoopPeriod:          metav1.Duration{Duration: 30 * time.Second},
-				DisableAttachDetachReconcilerSync: true,
-			},
-		},
 		CSRSigningController: &CSRSigningControllerOptions{
 			&csrsigningconfig.CSRSigningControllerConfiguration{
 				ClusterSigningCertFile: "/cluster-signing-cert",
@@ -189,23 +171,6 @@ func TestAddFlags(t *testing.T) {
 			&namespaceconfig.NamespaceControllerConfiguration{
 				NamespaceSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
 				ConcurrentNamespaceSyncs: 20,
-			},
-		},
-		PersistentVolumeBinderController: &PersistentVolumeBinderControllerOptions{
-			&persistentvolumeconfig.PersistentVolumeBinderControllerConfiguration{
-				PVClaimBinderSyncPeriod: metav1.Duration{Duration: 30 * time.Second},
-				VolumeConfiguration: persistentvolumeconfig.VolumeConfiguration{
-					EnableDynamicProvisioning:  false,
-					EnableHostPathProvisioning: true,
-					FlexVolumePluginDir:        "/flex-volume-plugin",
-					PersistentVolumeRecyclerConfiguration: persistentvolumeconfig.PersistentVolumeRecyclerConfiguration{
-						MaximumRetry:             3,
-						MinimumTimeoutNFS:        200,
-						IncrementTimeoutNFS:      45,
-						MinimumTimeoutHostPath:   45,
-						IncrementTimeoutHostPath: 45,
-					},
-				},
 			},
 		},
 		PodGCController: &PodGCControllerOptions{

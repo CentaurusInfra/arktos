@@ -27,8 +27,6 @@ import (
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
-	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
-	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -43,9 +41,6 @@ type KubeControllerManagerConfiguration struct {
 	// both in cloud controller manager and kube-controller manager.
 	KubeCloudShared KubeCloudSharedConfiguration
 
-	// AttachDetachControllerConfiguration holds configuration for
-	// AttachDetachController related features.
-	AttachDetachController attachdetachconfig.AttachDetachControllerConfiguration
 	// CSRSigningControllerConfiguration holds configuration for
 	// CSRSigningController related features.
 	CSRSigningController csrsigningconfig.CSRSigningControllerConfiguration
@@ -58,9 +53,6 @@ type KubeControllerManagerConfiguration struct {
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController namespaceconfig.NamespaceControllerConfiguration
-	// PersistentVolumeBinderControllerConfiguration holds configuration for
-	// PersistentVolumeBinderController related features.
-	PersistentVolumeBinderController persistentvolumeconfig.PersistentVolumeBinderControllerConfiguration
 	// PodGCControllerConfiguration holds configuration for PodGCController
 	// related features.
 	PodGCController podgcconfig.PodGCControllerConfiguration

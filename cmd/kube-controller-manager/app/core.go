@@ -29,97 +29,19 @@ import (
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/discovery"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	// "k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	"k8s.io/kubernetes/pkg/controller/podgc"
 	serviceaccountcontroller "k8s.io/kubernetes/pkg/controller/serviceaccount"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
-	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
-	"k8s.io/kubernetes/pkg/controller/volume/expand"
-	persistentvolumecontroller "k8s.io/kubernetes/pkg/controller/volume/persistentvolume"
-	"k8s.io/kubernetes/pkg/features"
-	// "k8s.io/kubernetes/pkg/quota/v1/generic"
-	// quotainstall "k8s.io/kubernetes/pkg/quota/v1/install"
-	// "k8s.io/kubernetes/pkg/util/metrics"
 )
-
-func startPersistentVolumeBinderController(ctx ControllerContext) (http.Handler, bool, error) {
-	params := persistentvolumecontroller.ControllerParameters{
-		KubeClient:                ctx.ClientBuilder.ClientOrDie("persistent-volume-binder"),
-		SyncPeriod:                ctx.ComponentConfig.PersistentVolumeBinderController.PVClaimBinderSyncPeriod.Duration,
-		VolumePlugins:             ProbeControllerVolumePlugins(ctx.Cloud, ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration),
-		Cloud:                     ctx.Cloud,
-		ClusterName:               ctx.ComponentConfig.KubeCloudShared.ClusterName,
-		VolumeInformer:            ctx.InformerFactory.Core().V1().PersistentVolumes(),
-		ClaimInformer:             ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
-		ClassInformer:             ctx.InformerFactory.Storage().V1().StorageClasses(),
-		PodInformer:               ctx.InformerFactory.Core().V1().Pods(),
-		NodeInformer:              ctx.InformerFactory.Core().V1().Nodes(),
-		EnableDynamicProvisioning: ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration.EnableDynamicProvisioning,
-	}
-	volumeController, volumeControllerErr := persistentvolumecontroller.NewController(params)
-	if volumeControllerErr != nil {
-		return nil, true, fmt.Errorf("failed to construct persistentvolume controller: %v", volumeControllerErr)
-	}
-	go volumeController.Run(ctx.Stop)
-	return nil, true, nil
-}
-
-func startAttachDetachController(ctx ControllerContext) (http.Handler, bool, error) {
-	if ctx.ComponentConfig.AttachDetachController.ReconcilerSyncLoopPeriod.Duration < time.Second {
-		return nil, true, fmt.Errorf("duration time must be greater than one second as set via command line option reconcile-sync-loop-period")
-	}
-
-	attachDetachController, attachDetachControllerErr :=
-		attachdetach.NewAttachDetachController(
-			ctx.ClientBuilder.ClientOrDie("attachdetach-controller"),
-			ctx.InformerFactory.Core().V1().Pods(),
-			ctx.InformerFactory.Core().V1().Nodes(),
-			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
-			ctx.InformerFactory.Core().V1().PersistentVolumes(),
-			ctx.InformerFactory.Storage().V1beta1().CSINodes(),
-			ctx.InformerFactory.Storage().V1beta1().CSIDrivers(),
-			ctx.Cloud,
-			ProbeAttachableVolumePlugins(),
-			GetDynamicPluginProber(ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration),
-			ctx.ComponentConfig.AttachDetachController.DisableAttachDetachReconcilerSync,
-			ctx.ComponentConfig.AttachDetachController.ReconcilerSyncLoopPeriod.Duration,
-			attachdetach.DefaultTimerConfig,
-		)
-	if attachDetachControllerErr != nil {
-		return nil, true, fmt.Errorf("failed to start attach/detach controller: %v", attachDetachControllerErr)
-	}
-	go attachDetachController.Run(ctx.Stop)
-	return nil, true, nil
-}
-
-func startVolumeExpandController(ctx ControllerContext) (http.Handler, bool, error) {
-	if utilfeature.DefaultFeatureGate.Enabled(features.ExpandPersistentVolumes) {
-		expandController, expandControllerErr := expand.NewExpandController(
-			ctx.ClientBuilder.ClientOrDie("expand-controller"),
-			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
-			ctx.InformerFactory.Core().V1().PersistentVolumes(),
-			ctx.InformerFactory.Storage().V1().StorageClasses(),
-			ctx.Cloud,
-			ProbeExpandableVolumePlugins(ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration))
-
-		if expandControllerErr != nil {
-			return nil, true, fmt.Errorf("failed to start volume expand controller : %v", expandControllerErr)
-		}
-		go expandController.Run(ctx.Stop)
-		return nil, true, nil
-	}
-	return nil, false, nil
-}
 
 func startPodGCController(ctx ControllerContext) (http.Handler, bool, error) {
 	go podgc.NewPodGC(

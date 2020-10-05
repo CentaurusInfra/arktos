@@ -640,9 +640,7 @@ function start_controller_manager {
       --root-ca-file="${ROOT_CA_FILE}" \
       --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
       --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
       ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
       --feature-gates="${FEATURE_GATES}" \
       "${cloud_config_arg[@]}" \
       --kubeconfig "${CERT_DIR}"/controller.kubeconfig \

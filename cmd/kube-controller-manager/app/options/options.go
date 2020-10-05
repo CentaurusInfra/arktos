@@ -60,12 +60,10 @@ type KubeControllerManagerOptions struct {
 	Generic         *cmoptions.GenericControllerManagerConfigurationOptions
 	KubeCloudShared *cmoptions.KubeCloudSharedOptions
 
-	AttachDetachController           *AttachDetachControllerOptions
 	CSRSigningController             *CSRSigningControllerOptions
 	DeprecatedFlags                  *DeprecatedControllerOptions
 	GarbageCollectorController       *GarbageCollectorControllerOptions
 	NamespaceController              *NamespaceControllerOptions
-	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
 	PodGCController                  *PodGCControllerOptions
 	ReplicaSetController             *ReplicaSetControllerOptions
 	SAController                     *SAControllerOptions
@@ -91,9 +89,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 	s := KubeControllerManagerOptions{
 		Generic:         cmoptions.NewGenericControllerManagerConfigurationOptions(&componentConfig.Generic),
 		KubeCloudShared: cmoptions.NewKubeCloudSharedOptions(&componentConfig.KubeCloudShared),
-		AttachDetachController: &AttachDetachControllerOptions{
-			&componentConfig.AttachDetachController,
-		},
 		CSRSigningController: &CSRSigningControllerOptions{
 			&componentConfig.CSRSigningController,
 		},
@@ -105,9 +100,6 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
-		},
-		PersistentVolumeBinderController: &PersistentVolumeBinderControllerOptions{
-			&componentConfig.PersistentVolumeBinderController,
 		},
 		PodGCController: &PodGCControllerOptions{
 			&componentConfig.PodGCController,
@@ -174,12 +166,10 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.Authentication.AddFlags(fss.FlagSet("authentication"))
 	s.Authorization.AddFlags(fss.FlagSet("authorization"))
 
-	s.AttachDetachController.AddFlags(fss.FlagSet("attachdetach controller"))
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
-	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
 	s.ReplicaSetController.AddFlags(fss.FlagSet("replicaset controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
@@ -201,9 +191,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.KubeCloudShared.ApplyTo(&c.ComponentConfig.KubeCloudShared); err != nil {
 		return err
 	}
-	if err := s.AttachDetachController.ApplyTo(&c.ComponentConfig.AttachDetachController); err != nil {
-		return err
-	}
 	if err := s.CSRSigningController.ApplyTo(&c.ComponentConfig.CSRSigningController); err != nil {
 		return err
 	}
@@ -214,9 +201,6 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
-		return err
-	}
-	if err := s.PersistentVolumeBinderController.ApplyTo(&c.ComponentConfig.PersistentVolumeBinderController); err != nil {
 		return err
 	}
 	if err := s.PodGCController.ApplyTo(&c.ComponentConfig.PodGCController); err != nil {
@@ -260,12 +244,10 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 
 	errs = append(errs, s.Generic.Validate(allControllers, disabledByDefaultControllers)...)
 	errs = append(errs, s.KubeCloudShared.Validate()...)
-	errs = append(errs, s.AttachDetachController.Validate()...)
 	errs = append(errs, s.CSRSigningController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
-	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)
 	errs = append(errs, s.ReplicaSetController.Validate()...)
 	errs = append(errs, s.SAController.Validate()...)

@@ -31,8 +31,6 @@ import (
 	replicasetconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1"
 	serviceaccountconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/serviceaccount/config/v1alpha1"
 	tenantconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/tenant/config/v1alpha1"
-	attachdetachconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config/v1alpha1"
-	persistentvolumeconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config/v1alpha1"
 	utilpointer "k8s.io/utils/pointer"
 )
 
@@ -56,8 +54,6 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 
 	// Use the default RecommendedDefaultGenericControllerManagerConfiguration options
 	RecommendedDefaultGenericControllerManagerConfiguration(&obj.Generic)
-	// Use the default RecommendedDefaultHPAControllerConfiguration options
-	attachdetachconfigv1alpha1.RecommendedDefaultAttachDetachControllerConfiguration(&obj.AttachDetachController)
 	// Use the default RecommendedDefaultCSRSigningControllerConfiguration options
 	csrsigningconfigv1alpha1.RecommendedDefaultCSRSigningControllerConfiguration(&obj.CSRSigningController)
 	// Use the default RecommendedDefaultGenericControllerManagerConfiguration options
@@ -72,8 +68,6 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 	serviceaccountconfigv1alpha1.RecommendedDefaultSAControllerConfiguration(&obj.SAController)
 	// Use the default RecommendedDefaultTenantControllerConfiguration options
 	tenantconfigv1alpha1.RecommendedDefaultTenantControllerConfiguration(&obj.TenantController)
-	// Use the default RecommendedDefaultPersistentVolumeBinderControllerConfiguration options
-	persistentvolumeconfigv1alpha1.RecommendedDefaultPersistentVolumeBinderControllerConfiguration(&obj.PersistentVolumeBinderController)
 }
 
 func RecommendedDefaultGenericControllerManagerConfiguration(obj *kubectrlmgrconfigv1alpha1.GenericControllerManagerConfiguration) {

@@ -386,14 +386,10 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["tenant"] = startTenantController
 	controllers["serviceaccount"] = startServiceAccountController
 	controllers["garbagecollector"] = startGarbageCollectorController
-	//controllers["deployment"] = startDeploymentController
 	//controllers["replicaset"] = startReplicaSetController
 	controllers["csrsigning"] = startCSRSigningController
 	controllers["csrapproving"] = startCSRApprovingController
 	controllers["csrcleaner"] = startCSRCleanerController
-	controllers["persistentvolume-binder"] = startPersistentVolumeBinderController
-	controllers["attachdetach"] = startAttachDetachController
-	controllers["persistentvolume-expander"] = startVolumeExpandController
 	controllers["root-ca-cert-publisher"] = startRootCACertPublisher
 
 	return controllers
