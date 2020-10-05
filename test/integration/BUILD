@@ -65,7 +65,6 @@ filegroup(
         "//test/integration/tenantcontroller:all-srcs",
         "//test/integration/tls:all-srcs",
         "//test/integration/util:all-srcs",
-        "//test/integration/volume:all-srcs",
         "//test/integration/workloadcontrollermanager:all-srcs",
     ],
     tags = ["automanaged"],

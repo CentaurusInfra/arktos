@@ -60,14 +60,14 @@ type KubeControllerManagerOptions struct {
 	Generic         *cmoptions.GenericControllerManagerConfigurationOptions
 	KubeCloudShared *cmoptions.KubeCloudSharedOptions
 
-	CSRSigningController             *CSRSigningControllerOptions
-	DeprecatedFlags                  *DeprecatedControllerOptions
-	GarbageCollectorController       *GarbageCollectorControllerOptions
-	NamespaceController              *NamespaceControllerOptions
-	PodGCController                  *PodGCControllerOptions
-	ReplicaSetController             *ReplicaSetControllerOptions
-	SAController                     *SAControllerOptions
-	TenantController                 *TenantControllerOptions
+	CSRSigningController       *CSRSigningControllerOptions
+	DeprecatedFlags            *DeprecatedControllerOptions
+	GarbageCollectorController *GarbageCollectorControllerOptions
+	NamespaceController        *NamespaceControllerOptions
+	PodGCController            *PodGCControllerOptions
+	ReplicaSetController       *ReplicaSetControllerOptions
+	SAController               *SAControllerOptions
+	TenantController           *TenantControllerOptions
 
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
 	// TODO: remove insecure serving mode

@@ -42,7 +42,6 @@ func Funcs(codecs runtimeserializer.CodecFactory) []interface{} {
 			}
 			obj.CSRSigningController.ClusterSigningCertFile = fmt.Sprintf("/%s", c.RandString())
 			obj.CSRSigningController.ClusterSigningKeyFile = fmt.Sprintf("/%s", c.RandString())
-			obj.PersistentVolumeBinderController.VolumeConfiguration.FlexVolumePluginDir = fmt.Sprintf("/%s", c.RandString())
 		},
 	}
 }
