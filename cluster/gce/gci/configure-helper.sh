@@ -149,9 +149,14 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
+  if [[ "${ENABLE_PPROF_DEBUG:-false}" == "true" ]]; then
+  start-collect-pprof &  #### start collect profiling files
+  fi
   if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
     start-prometheus &  #####start prometheus
   fi 
+  ulimit -c unlimited
+
   echo "Done for the configuration for kubernetes"
 }
 

@@ -1405,6 +1405,110 @@ EOF
 
 }
 
+
+function collecting-pprof {
+  local ports=$1
+  local name=$2
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/profile -o ${name}-profile-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/profile -o ${name}-profile-${CURRENTTIME}.pprof
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/heap -o ${name}-heap-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/heap -o ${name}-heap-${CURRENTTIME}.pprof
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/goroutine -o ${name}-goroutine-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/goroutine -o ${name}-goroutine-${CURRENTTIME}.pprof
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/mutex -o ${name}-mutex-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/mutex -o ${name}-mutex-${CURRENTTIME}.pprof
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/block -o ${name}-block-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/block -o ${name}-block-${CURRENTTIME}.pprof
+  echo "curl http://127.0.0.1:${ports}/debug/pprof/threadcreate -o ${name}-threadcreate-${CURRENTTIME}.pprof"
+  curl http://127.0.0.1:${ports}/debug/pprof/threadcreate -o ${name}-threadcreate-${CURRENTTIME}.pprof
+}
+
+# Starts collecting profiling files.
+function start-collect-pprof {
+  echo "Start to collect profiling files"
+  mkdir -p /var/log/pprof
+  while true; do
+    cd /var/log/pprof
+    CURRENTTIME=`date +"%Y-%m-%d-%T"`
+    mkdir "${CURRENTTIME}"
+    cd "${CURRENTTIME}"
+
+    COMPONENTS_PORTS="8080"
+    COMPONENTS_NAME="kube-apiserver"
+    echo "Collecting kube-apiserver pprof at ${CURRENTTIME}"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+
+    COMPONENTS_PORTS="2379"
+    COMPONENTS_NAME="etcd"
+    echo "Collecting etcd pprof at ${CURRENTTIME}"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+
+    COMPONENTS_PORTS="10251"
+    COMPONENTS_NAME="kube-scheduler"
+    echo "Collecting kube-scheduler pprof at ${CURRENTTIME}"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    
+    COMPONENTS_PORTS="10252"
+    COMPONENTS_NAME="kube-controller-manager"
+    echo "Collecting kube-controller-manager pprof"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+
+    COMPONENTS_PORTS="10250"
+    COMPONENTS_NAME="kubelet"
+    echo "Collecting kubelet pprof"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    sleep 1800
+  done &
+}
+
+
+# Starts collecting profiling files.
+function start-collect-partitionserver-pprof {
+  echo "Start to collect profiling files"
+  mkdir -p /var/log/pprof
+  while true; do
+    cd /var/log/pprof
+    CURRENTTIME=`date +"%Y-%m-%d-%T"`
+    mkdir "${CURRENTTIME}"
+    cd "${CURRENTTIME}"
+
+    COMPONENTS_PORTS="10250"
+    COMPONENTS_NAME="kubelet"
+    echo "Collecting kubelet pprof"
+    collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+
+    if [[ "${ENABLE_APISERVER}" == "true" ]]; then
+      COMPONENTS_PORTS="8080"
+      COMPONENTS_NAME="kube-apiserver"
+      echo "Collecting kube-apiserver pprof at ${CURRENTTIME}"
+      collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    fi
+
+    if [[ "${ENABLE_ETCD}" == "true" ]]; then
+      COMPONENTS_PORTS="2379"
+      COMPONENTS_NAME="etcd"
+      echo "Collecting etcd pprof at ${CURRENTTIME}"
+      collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    fi
+
+    if [[ "${ENABLE_KUBESCHEDULER}" == "true" ]]; then
+      COMPONENTS_PORTS="10251"
+      COMPONENTS_NAME="kube-scheduler"
+      echo "Collecting kube-scheduler pprof at ${CURRENTTIME}"
+      collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    fi
+    
+    if [[ "${ENABLE_KUBECONTROLLER}" == "true" ]]; then
+      COMPONENTS_PORTS="10252"
+      COMPONENTS_NAME="kube-controller-manager"
+      echo "Collecting kube-controller-manager pprof"
+      collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
+    fi
+
+    sleep 1800
+  done &
+}
+
 # Replaces the variables in the etcd manifest file with the real values, and then
 # copy the file to the manifest dir
 # $1: value for variable 'suffix'
