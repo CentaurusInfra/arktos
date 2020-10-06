@@ -185,6 +185,9 @@ ENABLE_PROMETHEUS_MONITORING="${KUBE_ENABLE_PROMETHEUS_MONITORING:-false}"
 # Optional: Enable manully deployed prometheus server for debug purpose
 ENABLE_PROMETHEUS_DEBUG="${KUBE_ENABLE_PROMETHEUS_DEBUG:-false}"
 
+# Optional: Enable manully collect pprof data for debug purpose
+ENABLE_PPROF_DEBUG="${KUBE_ENABLE_PPROF_DEBUG:-false}"
+
 # Optional: Enable Metrics Server. Metrics Server should be enable everywhere,
 # since it's a critical component, but in the first release we need a way to disable
 # this in case of stability issues.
