@@ -259,7 +259,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 	// to be served from cache and potentially be delayed relative to
 	// etcd contents. Reflector framework will catch up via Watch() eventually.
 	// When ResourceVersion is empty, list will get from api server cache
-	options := metav1.ListOptions{ResourceVersion: r.listFromResourceVersion}
+	options := metav1.ListOptions{ResourceVersion: "0"}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
