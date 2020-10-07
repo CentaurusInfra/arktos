@@ -99,8 +99,6 @@ const (
 	MaxCSIVolumeCountPred = "MaxCSIVolumeCountPred"
 	// NoVolumeZoneConflictPred defines the name of predicate NoVolumeZoneConflict.
 	NoVolumeZoneConflictPred = "NoVolumeZoneConflict"
-	// CheckNodeMemoryPressurePred defines the name of predicate CheckNodeMemoryPressure.
-	CheckNodeMemoryPressurePred = "CheckNodeMemoryPressure"
 	// CheckNodeDiskPressurePred defines the name of predicate CheckNodeDiskPressure.
 	CheckNodeDiskPressurePred = "CheckNodeDiskPressure"
 	// CheckNodePIDPressurePred defines the name of predicate CheckNodePIDPressure.
@@ -149,7 +147,7 @@ var (
 		PodToleratesNodeTaintsPred, PodToleratesNodeNoExecuteTaintsPred, CheckNodeLabelPresencePred,
 		CheckServiceAffinityPred, MaxEBSVolumeCountPred, MaxGCEPDVolumeCountPred, MaxCSIVolumeCountPred,
 		MaxAzureDiskVolumeCountPred, MaxCinderVolumeCountPred, CheckVolumeBindingPred, NoVolumeZoneConflictPred,
-		CheckNodeMemoryPressurePred, CheckNodePIDPressurePred, CheckNodeDiskPressurePred, MatchInterPodAffinityPred}
+		CheckNodePIDPressurePred, CheckNodeDiskPressurePred, MatchInterPodAffinityPred}
 )
 
 // FitPredicate is a function that indicates if a pod fits into an existing node.
@@ -1564,28 +1562,6 @@ func podToleratesNodeTaints(pod *v1.Pod, nodeInfo *schedulernodeinfo.NodeInfo, f
 // isPodBestEffort checks if pod is scheduled with best-effort QoS
 func isPodBestEffort(pod *v1.Pod) bool {
 	return v1qos.GetPodQOS(pod) == v1.PodQOSBestEffort
-}
-
-// CheckNodeMemoryPressurePredicate checks if a pod can be scheduled on a node
-// reporting memory pressure condition.
-func CheckNodeMemoryPressurePredicate(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
-	var podBestEffort bool
-	if predicateMeta, ok := meta.(*predicateMetadata); ok {
-		podBestEffort = predicateMeta.podBestEffort
-	} else {
-		// We couldn't parse metadata - fallback to computing it.
-		podBestEffort = isPodBestEffort(pod)
-	}
-	// pod is not BestEffort pod
-	if !podBestEffort {
-		return true, nil, nil
-	}
-
-	// check if node is under memory pressure
-	if nodeInfo.MemoryPressureCondition() == v1.ConditionTrue {
-		return false, []PredicateFailureReason{ErrNodeUnderMemoryPressure}, nil
-	}
-	return true, nil, nil
 }
 
 // CheckNodeDiskPressurePredicate checks if a pod can be scheduled on a node

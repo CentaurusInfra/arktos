@@ -107,9 +107,6 @@ func init() {
 	// (e.g. kubelet and all schedulers)
 	factory.RegisterFitPredicate(predicates.GeneralPred, predicates.GeneralPredicates)
 
-	// Fit is determined by node memory pressure condition.
-	factory.RegisterFitPredicate(predicates.CheckNodeMemoryPressurePred, predicates.CheckNodeMemoryPressurePredicate)
-
 	// Fit is determined by node disk pressure condition.
 	factory.RegisterFitPredicate(predicates.CheckNodeDiskPressurePred, predicates.CheckNodeDiskPressurePredicate)
 
