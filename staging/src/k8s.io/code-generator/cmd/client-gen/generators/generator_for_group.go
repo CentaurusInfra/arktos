@@ -20,11 +20,10 @@ package generators
 import (
 	"fmt"
 	"io"
-	"path/filepath"
-
 	"k8s.io/gengo/generator"
 	"k8s.io/gengo/namer"
 	"k8s.io/gengo/types"
+	"path/filepath"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
@@ -99,6 +98,7 @@ func (g *genGroup) GenerateType(c *generator.Context, t *types.Type, w io.Writer
 		"Version":                        namer.IC(g.version),
 		"types":                          g.types,
 		"apiPath":                        apiPath(g.group),
+		"klogInfo":                       c.Universe.Function(types.Name{Package: "k8s.io/klog", Name: "Infof"}),
 		"klogFatal":                      c.Universe.Function(types.Name{Package: "k8s.io/klog", Name: "Fatalf"}),
 		"ranSeed":                        c.Universe.Function(types.Name{Package: "math/rand", Name: "Seed"}),
 		"ranIntn":                        c.Universe.Function(types.Name{Package: "math/rand", Name: "Intn"}),
@@ -169,6 +169,7 @@ var groupClientTemplate = `
 type $.GroupGoName$$.Version$Client struct {
 	restClients []$.restRESTClientInterface|raw$
 	configs *$.restConfig|raw$
+	mux sync.RWMutex
 }
 `
 
@@ -246,6 +247,8 @@ func (c *$.GroupGoName$$.Version$Client) RESTClient() $.restRESTClientInterface|
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -267,7 +270,6 @@ func (c *$.GroupGoName$$.Version$Client) RESTClients() []$.restRESTClientInterfa
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 `
@@ -342,7 +344,10 @@ func (c *$.GroupGoName$$.Version$Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			$.klogInfo|raw$("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

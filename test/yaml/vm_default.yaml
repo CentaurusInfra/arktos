@@ -2,6 +2,9 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: vmdefault
+  # use host-model or other cpul model that supports numa for memory hotplug/unplug feature in libvirt
+  annotations:
+    VirtletCPUModel: "host-model"
 spec:
   virtualMachine:
     keyPairName: "foobar"

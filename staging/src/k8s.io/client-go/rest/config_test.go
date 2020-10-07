@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"k8s.io/client-go/apiserverupdate"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -153,6 +154,100 @@ func TestRESTClientRequires(t *testing.T) {
 	}
 	if _, err := RESTClientFor(&KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{GroupVersion: &v1.SchemeGroupVersion, NegotiatedSerializer: scheme.Codecs}}); err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestUpdateConfig(t *testing.T) {
+	kubeConfig := &KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{NegotiatedSerializer: scheme.Codecs}}
+	aggConfig := NewAggregatedConfig(kubeConfig)
+
+	// 1. update existing api server
+	apiServerMap := make(map[string]v1.EndpointSubset)
+	serviceGroupId1 := "1"
+	apiServerMap[serviceGroupId1] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: "1.2.3.4"}},
+		Ports:          []v1.EndpointPort{{Name: "https", Port: 8080}},
+		ServiceGroupId: serviceGroupId1,
+	}
+
+	apiserverupdate.SetAPIServerConfig(apiServerMap)
+	aggConfig.updateConfig()
+
+	// check config values
+	count := len(aggConfig.GetAllConfigs())
+	assert.Equal(t, 1, count)
+	for i := 0; i < count; i++ {
+		cfg := aggConfig.GetConfigInPlace(i)
+		assert.NotNil(t, cfg)
+	}
+	expectedHost := fmt.Sprintf("%s://%s:%d/",
+		apiServerMap[serviceGroupId1].Ports[0].Name,
+		apiServerMap[serviceGroupId1].Addresses[0].IP,
+		apiServerMap[serviceGroupId1].Ports[0].Port)
+	assert.Equal(t, expectedHost, aggConfig.GetConfigInPlace(0).Host)
+
+	// 2. add additional api server group
+	serviceGroupId2 := "2"
+	apiServerMap[serviceGroupId2] = v1.EndpointSubset{
+		Addresses:      []v1.EndpointAddress{{IP: "2.2.3.4"}},
+		Ports:          []v1.EndpointPort{{Name: "https", Port: 8443}},
+		ServiceGroupId: serviceGroupId2,
+	}
+	apiserverupdate.SetAPIServerConfig(apiServerMap)
+	aggConfig.updateConfig()
+
+	// check config value
+	count = len(aggConfig.GetAllConfigs())
+	assert.Equal(t, 2, count)
+	for i := 0; i < count; i++ {
+		cfg := aggConfig.GetConfigInPlace(i)
+		assert.NotNil(t, cfg)
+	}
+	expectedHost2 := fmt.Sprintf("%s://%s:%d/",
+		apiServerMap[serviceGroupId2].Ports[0].Name,
+		apiServerMap[serviceGroupId2].Addresses[0].IP,
+		apiServerMap[serviceGroupId2].Ports[0].Port)
+
+	assert.True(t, expectedHost == aggConfig.GetConfigInPlace(0).Host && expectedHost2 == aggConfig.GetConfigInPlace(1).Host ||
+		expectedHost == aggConfig.GetConfigInPlace(1).Host && expectedHost2 == aggConfig.GetConfigInPlace(0).Host)
+
+	// 3. remove api server group
+	delete(apiServerMap, serviceGroupId1)
+	apiserverupdate.SetAPIServerConfig(apiServerMap)
+	aggConfig.updateConfig()
+
+	// check config value
+	count = len(aggConfig.GetAllConfigs())
+	assert.Equal(t, 1, count)
+	for i := 0; i < count; i++ {
+		cfg := aggConfig.GetConfigInPlace(i)
+		assert.NotNil(t, cfg)
+	}
+	assert.Equal(t, expectedHost2, aggConfig.GetConfigInPlace(0).Host)
+}
+
+func TestAddUserAgent(t *testing.T) {
+	kubeConfig := &KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{NegotiatedSerializer: scheme.Codecs}}
+	aggConfig := NewAggregatedConfig(kubeConfig)
+
+	userAgent := "testUser"
+	expectedAgent := DefaultKubernetesUserAgent() + "/" + userAgent
+	AddUserAgent(aggConfig, userAgent)
+	assert.Equal(t, 1, len(aggConfig.GetAllConfigs()))
+	for _, kubeConfig := range aggConfig.GetAllConfigs() {
+		assert.Equal(t, expectedAgent, kubeConfig.UserAgent)
+	}
+}
+
+func TestSetBearerToken(t *testing.T) {
+	kubeConfig := &KubeConfig{Host: "127.0.0.1", ContentConfig: ContentConfig{NegotiatedSerializer: scheme.Codecs}}
+	aggConfig := NewAggregatedConfig(kubeConfig)
+
+	token := "testToken123"
+	SetBearerToken(aggConfig, token)
+	assert.Equal(t, 1, len(aggConfig.GetAllConfigs()))
+	for _, kubeConfig := range aggConfig.GetAllConfigs() {
+		assert.Equal(t, token, kubeConfig.BearerToken)
 	}
 }
 

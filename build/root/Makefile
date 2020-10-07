@@ -629,7 +629,7 @@ else
 # //hack:verify-all is a manual target.
 # Some things in vendor don't build due to empty target lists for cross-platform rules.
 bazel-test:
-	bazel test --config=unit -- \
+	bazel test --config=unit --test_output=errors -- \
 	  //... \
 	  //hack:verify-all \
 	  -//vendor/...

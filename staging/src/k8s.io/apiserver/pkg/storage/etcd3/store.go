@@ -141,13 +141,15 @@ func newStoreWithPartitionConfig(c *clientv3.Client, pagingEnabled bool, codec r
 }
 
 func (s *store) AddDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if isOK {
 		err := errors.New(fmt.Sprintf("Trying to add client for existed storage cluster id %d, endpoints [%+v]. Skipping", clusterId, existingClient.Endpoints()))
 		return err
 	}
 
-	s.mux.Lock()
 	s.dataClusterClients[clusterId] = c
 	s.dataClusterDestroyFunc[clusterId] = destroyFunc
 
@@ -160,22 +162,24 @@ func (s *store) AddDataClient(c *clientv3.Client, clusterId uint8, destroyFunc f
 	s.dataClientAddCh <- clusterId
 
 	klog.V(3).Infof("Added new data client with cluster id %d, endpoints [%+v]", clusterId, c.Endpoints())
-	s.mux.Unlock()
 	return nil
 }
 
 func (s *store) UpdateDataClient(c *clientv3.Client, clusterId uint8, destroyFunc func()) error {
+	s.mux.Lock()
+
 	existingClient, isOK := s.dataClusterClients[clusterId]
 	if !isOK {
+		s.mux.Unlock()
 		klog.Warningf("Expected cluster %d not found in data client map. Adding data client %v", clusterId, c.Endpoints())
 		return s.AddDataClient(c, clusterId, destroyFunc)
 	}
 	if reflect.DeepEqual(existingClient.Endpoints(), c.Endpoints()) {
+		s.mux.Unlock()
 		klog.Infof("Cluster %d does not have endpoints update. Skip updating. Endpoint %v", clusterId, c.Endpoints())
 		return nil
 	}
 
-	s.mux.Lock()
 	// stop old client
 	existingDestroyFunc, isOK := s.dataClusterDestroyFunc[clusterId]
 	if isOK {
@@ -193,6 +197,8 @@ func (s *store) UpdateDataClient(c *clientv3.Client, clusterId uint8, destroyFun
 
 func (s *store) DeleteDataClient(clusterId uint8) {
 	s.mux.Lock()
+	defer s.mux.Unlock()
+
 	client, isOK := s.dataClusterClients[clusterId]
 	if isOK {
 		existingDestroyFunc, isOK := s.dataClusterDestroyFunc[clusterId]
@@ -203,11 +209,11 @@ func (s *store) DeleteDataClient(clusterId uint8) {
 		}
 
 		delete(s.dataClusterClients, clusterId)
+		delete(s.dataClusterDestroyFunc, clusterId)
 		klog.V(3).Infof("Deleted data client for cluster id %d, endpoints [%+v]", clusterId, client.Endpoints())
 	} else {
 		klog.V(3).Infof("Cluster id %d does not have data client. Skip deleting.", clusterId)
 	}
-	s.mux.Unlock()
 }
 
 // Versioner implements storage.Interface.Versioner.

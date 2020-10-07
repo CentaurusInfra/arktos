@@ -1,0 +1,78 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Cross Tenant Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies that:
+# 1. Regular Tenants can NOT visit cross-tenant resources
+# 2. System Tenant can visit resources of regular tenants
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  first_tenant: random_8
+  second_tenant: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${first_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${first_tenant} created\n"
+
+  - Command: ${setup_client_script} ${first_tenant} admin
+
+  - Command: ${kubectl} create tenant ${second_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${second_tenant} created\n"
+
+  - Command: ${setup_client_script} system admin
+
+###########################################################################################################
+# Verifying test cross-tenant access is not allowed for reuglar tenants
+###########################################################################################################
+  - BeforeTestMessage: Verifying test cross-tenant access is not allowed for reuglar tenants ...
+    Command: ${kubectl} get ns --tenant ${second_tenant} --context ${first_tenant}-admin-context
+    ShouldFail: true
+    OutputShouldContain: 
+    - "Error from server (Forbidden): namespaces is forbidden"
+    - "cannot list resource \"namespaces\" in API group \"\" in the tenant \"${second_tenant}\"\n"
+
+# This test makes sure bug 393 is fixed
+  - Command: ${kubectl} get ns --tenant system --context ${first_tenant}-admin-context
+    ShouldFail: true
+    OutputShouldContain: 
+    - "Error from server (Forbidden): namespaces is forbidden"
+    - "cannot list resource \"namespaces\" in API group \"\" in the tenant \"system\"\n"
+
+###########################################################################################################
+# Verifying system Tenant can visit resources of any tenant
+###########################################################################################################
+  - BeforeTestMessage: Verifying system Tenant can visit resources of any tenant ...
+    Command: "${kubectl} get ns --tenant ${second_tenant} --context system-admin-context -o json 
+             | jq -r '.items[] | [.metadata.name] | @tsv'"
+    OutputShouldContain: 
+    - "default\n"
+    - "kube-system\n"
+
+
+  - Command: "${kubectl} get ns --tenant system --context system-admin-context -o json 
+             | jq -r '.items[] | [.metadata.name] | @tsv'"
+    OutputShouldContain: 
+    - "default\n"
+    - "kube-system\n"
+    - "kube-node-lease\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+  - Command: ${kubectl} delete tenant ${first_tenant} > /dev/null 2>&1 &
+
+  - Command: ${kubectl} delete tenant ${second_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${first_tenant} admin
+
+  - Command: REMOVE=TRUE ${setup_client_script} system admin
+
+

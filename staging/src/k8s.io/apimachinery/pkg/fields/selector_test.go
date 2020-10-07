@@ -19,6 +19,7 @@ package fields
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -38,11 +39,27 @@ func TestSplitTermsAndSort(t *testing.T) {
 		`a=gte:avalue,b==lte:bvalue;c==lt:cvalue,d=gt:dvalue`: {{`a=gte:avalue`, `b==lte:bvalue`}, {`c==lt:cvalue`, `d=gt:dvalue`}},
 
 		// Empty terms
-		``:     nil,
-		`a=a,`: {{``, `a=a`}},
-		`a=a;`: {nil, {`a=a`}},
-		`,a=a`: {{``, `a=a`}},
-		`;a=a`: {nil, {`a=a`}},
+		``:         nil,
+		`a=a,`:     {{``, `a=a`}},
+		`a=a;`:     {nil, {`a=a`}},
+		`,a=a`:     {{``, `a=a`}},
+		`;a=a`:     {nil, {`a=a`}},
+		`a=gt:a,`:  {{``, `a=gt:a`}},
+		`a=gt:a;`:  {nil, {`a=gt:a`}},
+		`,a=gt:a`:  {{``, `a=gt:a`}},
+		`;a=gt:a`:  {nil, {`a=gt:a`}},
+		`a=gte:a,`: {{``, `a=gte:a`}},
+		`a=gte:a;`: {nil, {`a=gte:a`}},
+		`,a=gte:a`: {{``, `a=gte:a`}},
+		`;a=gte:a`: {nil, {`a=gte:a`}},
+		`a=lt:a,`:  {{``, `a=lt:a`}},
+		`a=lt:a;`:  {nil, {`a=lt:a`}},
+		`,a=lt:a`:  {{``, `a=lt:a`}},
+		`;a=lt:a`:  {nil, {`a=lt:a`}},
+		`a=lte:a,`: {{``, `a=lte:a`}},
+		`a=lte:a;`: {nil, {`a=lte:a`}},
+		`,a=lte:a`: {{``, `a=lte:a`}},
+		`;a=lte:a`: {nil, {`a=lte:a`}},
 
 		// Escaped values
 		`k=\,,k2=v2`:   {{`k2=v2`, `k=\,`}},     // escaped comma in value
@@ -53,6 +70,45 @@ func TestSplitTermsAndSort(t *testing.T) {
 		`k=\\\;;k2=v2`: {{`k2=v2`}, {`k=\\\;`}}, // escaped backslash and comma
 		`k=\a\b\`:      {{`k=\a\b\`}},           // non-escape sequences
 		`k=\`:          {{`k=\`}},               // orphan backslash
+
+		// Great than Escaped values
+		`k=\,,k2=gt:v2`:   {{`k2=gt:v2`, `k=\,`}},     // escaped comma in value
+		`k=\\,k2=gt:v2`:   {{`k2=gt:v2`, `k=\\`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=gt:v2`: {{`k2=gt:v2`, `k=\\\,`}},   // escaped backslash and comma
+		`k=\;;k2=gt:v2`:   {{`k2=gt:v2`}, {`k=\;`}},   // escaped comma in value
+		`k=\\;k2=gt:v2`:   {{`k2=gt:v2`}, {`k=\\`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=gt:v2`: {{`k2=gt:v2`}, {`k=\\\;`}}, // escaped backslash and comma
+		`k=gt:\a\b\`:      {{`k=gt:\a\b\`}},           // non-escape sequences
+		`k=gt:\`:          {{`k=gt:\`}},               // orphan backslash
+		// Great than or equals Escaped values
+		`k=\,,k2=gte:v2`:   {{`k2=gte:v2`, `k=\,`}},     // escaped comma in value
+		`k=\\,k2=gte:v2`:   {{`k2=gte:v2`, `k=\\`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=gte:v2`: {{`k2=gte:v2`, `k=\\\,`}},   // escaped backslash and comma
+		`k=\;;k2=gte:v2`:   {{`k2=gte:v2`}, {`k=\;`}},   // escaped comma in value
+		`k=\\;k2=gte:v2`:   {{`k2=gte:v2`}, {`k=\\`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=gte:v2`: {{`k2=gte:v2`}, {`k=\\\;`}}, // escaped backslash and comma
+		`k=gte:\a\b\`:      {{`k=gte:\a\b\`}},           // non-escape sequences
+		`k=gte:\`:          {{`k=gte:\`}},               // orphan backslash
+
+		// Less than Escaped values
+		`k=\,,k2=lt:v2`:   {{`k2=lt:v2`, `k=\,`}},     // escaped comma in value
+		`k=\\,k2=lt:v2`:   {{`k2=lt:v2`, `k=\\`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=lt:v2`: {{`k2=lt:v2`, `k=\\\,`}},   // escaped backslash and comma
+		`k=\;;k2=lt:v2`:   {{`k2=lt:v2`}, {`k=\;`}},   // escaped comma in value
+		`k=\\;k2=lt:v2`:   {{`k2=lt:v2`}, {`k=\\`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=lt:v2`: {{`k2=lt:v2`}, {`k=\\\;`}}, // escaped backslash and comma
+		`k=lt:\a\b\`:      {{`k=lt:\a\b\`}},           // non-escape sequences
+		`k=lt:\`:          {{`k=lt:\`}},               // orphan backslash
+
+		// Less than or equals Escaped values
+		`k=\,,k2=lte:v2`:   {{`k2=lte:v2`, `k=\,`}},     // escaped comma in value
+		`k=\\,k2=lte:v2`:   {{`k2=lte:v2`, `k=\\`}},     // escaped backslash, unescaped comma
+		`k=\\\,,k2=lte:v2`: {{`k2=lte:v2`, `k=\\\,`}},   // escaped backslash and comma
+		`k=\;;k2=lte:v2`:   {{`k2=lte:v2`}, {`k=\;`}},   // escaped comma in value
+		`k=\\;k2=lte:v2`:   {{`k2=lte:v2`}, {`k=\\`}},   // escaped backslash, unescaped comma
+		`k=\\\;;k2=lte:v2`: {{`k2=lte:v2`}, {`k=\\\;`}}, // escaped backslash and comma
+		`k=lte:\a\b\`:      {{`k=lte:\a\b\`}},           // non-escape sequences
+		`k=lte:\`:          {{`k=lte:\`}},               // orphan backslash
 
 		// Multi-byte
 		`함=수,목=록`: {{`목=록`, `함=수`}},
@@ -92,6 +148,30 @@ func TestSplitTerm(t *testing.T) {
 		`k=\\\a\b\=\,\`: {lhs: `k`, op: `=`, rhs: `\\\a\b\=\,\`, ok: true},
 		`k=\\\a\b\=\;\`: {lhs: `k`, op: `=`, rhs: `\\\a\b\=\;\`, ok: true},
 
+		`k=gt:\,`:          {lhs: `k`, op: `=gt:`, rhs: `\,`, ok: true},
+		`k=gt:\;`:          {lhs: `k`, op: `=gt:`, rhs: `\;`, ok: true},
+		`k=gt:\=`:          {lhs: `k`, op: `=gt:`, rhs: `\=`, ok: true},
+		`k=gt:\\\a\b\=\,\`: {lhs: `k`, op: `=gt:`, rhs: `\\\a\b\=\,\`, ok: true},
+		`k=gt:\\\a\b\=\;\`: {lhs: `k`, op: `=gt:`, rhs: `\\\a\b\=\;\`, ok: true},
+
+		`k=gte:\,`:          {lhs: `k`, op: `=gte:`, rhs: `\,`, ok: true},
+		`k=gte:\;`:          {lhs: `k`, op: `=gte:`, rhs: `\;`, ok: true},
+		`k=gte:\=`:          {lhs: `k`, op: `=gte:`, rhs: `\=`, ok: true},
+		`k=gte:\\\a\b\=\,\`: {lhs: `k`, op: `=gte:`, rhs: `\\\a\b\=\,\`, ok: true},
+		`k=gte:\\\a\b\=\;\`: {lhs: `k`, op: `=gte:`, rhs: `\\\a\b\=\;\`, ok: true},
+
+		`k=lt:\,`:          {lhs: `k`, op: `=lt:`, rhs: `\,`, ok: true},
+		`k=lt:\;`:          {lhs: `k`, op: `=lt:`, rhs: `\;`, ok: true},
+		`k=lt:\=`:          {lhs: `k`, op: `=lt:`, rhs: `\=`, ok: true},
+		`k=lt:\\\a\b\=\,\`: {lhs: `k`, op: `=lt:`, rhs: `\\\a\b\=\,\`, ok: true},
+		`k=lt:\\\a\b\=\;\`: {lhs: `k`, op: `=lt:`, rhs: `\\\a\b\=\;\`, ok: true},
+
+		`k=lte:\,`:          {lhs: `k`, op: `=lte:`, rhs: `\,`, ok: true},
+		`k=lte:\;`:          {lhs: `k`, op: `=lte:`, rhs: `\;`, ok: true},
+		`k=lte:\=`:          {lhs: `k`, op: `=lte:`, rhs: `\=`, ok: true},
+		`k=lte:\\\a\b\=\,\`: {lhs: `k`, op: `=lte:`, rhs: `\\\a\b\=\,\`, ok: true},
+		`k=lte:\\\a\b\=\;\`: {lhs: `k`, op: `=lte:`, rhs: `\\\a\b\=\;\`, ok: true},
+
 		// Multi-byte
 		`함=수`: {lhs: `함`, op: `=`, rhs: `수`, ok: true},
 	}
@@ -112,14 +192,26 @@ func TestSplitTerm(t *testing.T) {
 func TestEscapeValue(t *testing.T) {
 	// map values to their normalized escaped values
 	testcases := map[string]string{
-		``:      ``,
-		`a`:     `a`,
-		`=`:     `\=`,
-		`,`:     `\,`,
-		`;`:     `\;`,
-		`\`:     `\\`,
-		`\=\,\`: `\\\=\\\,\\`,
-		`\=\;\`: `\\\=\\\;\\`,
+		``:          ``,
+		`a`:         `a`,
+		`=`:         `\=`,
+		`=gt:`:      `\=gt:`,
+		`=gte:`:     `\=gte:`,
+		`=lt:`:      `\=lt:`,
+		`=lte:`:     `\=lte:`,
+		`,`:         `\,`,
+		`;`:         `\;`,
+		`\`:         `\\`,
+		`\=\,\`:     `\\\=\\\,\\`,
+		`\=\;\`:     `\\\=\\\;\\`,
+		`\=gt:\,\`:  `\\\=gt:\\\,\\`,
+		`\=gt:\;\`:  `\\\=gt:\\\;\\`,
+		`\=gte:\,\`: `\\\=gte:\\\,\\`,
+		`\=gte:\;\`: `\\\=gte:\\\;\\`,
+		`\=lt:\,\`:  `\\\=lt:\\\,\\`,
+		`\=lt:\;\`:  `\\\=lt:\\\;\\`,
+		`\=lte:\,\`: `\\\=lte:\\\,\\`,
+		`\=lte:\;\`: `\\\=lte:\\\;\\`,
 	}
 
 	for unescapedValue, escapedValue := range testcases {
@@ -166,9 +258,23 @@ func TestSelectorParse(t *testing.T) {
 		"x=a||y=b",
 		"x==a==b",
 		"x=a,b",
+		"x=gtt:a||y=ltt:b",
+		"x=gt:a=lt:b",
+		"x=gt:a,b",
 		"x in (a)",
 		"x in (a,b,c)",
 		"x",
+	}
+	testConvertedStrings := [][]string{
+		{"x=gt:a", "x>a"},
+		{"x=gte:a", "x>=a"},
+		{"x=lt:a", "x<a"},
+		{"x=lte:a", "x<=a"},
+		{"x=lt:a,y=lte:b,z=gt:c,zz=gte:d", "x<a,y<=b,z>c,zz>=d"},
+		{"x=lt:a;y=lte:b;z=gt:c;zz=gte:d", "x<a;y<=b;z>c;zz>=d"},
+		{"x=lt:a;y=lte:b,z=gt:c;zz=gte:d", "x<a;y<=b,z>c;zz>=d"},
+		{`x=gt:a||y\=gt:b`, `x>a||y\=gt:b`},
+		{`x=lt:a\=\=b`, `x<a\=\=b`},
 	}
 	for _, test := range testGoodStrings {
 		lq, err := ParseSelector(test)
@@ -183,6 +289,16 @@ func TestSelectorParse(t *testing.T) {
 		_, err := ParseSelector(test)
 		if err == nil {
 			t.Errorf("%v: did not get expected error\n", test)
+		}
+	}
+	for _, test := range testConvertedStrings {
+		result, err := ParseSelector(test[0])
+
+		if err != nil {
+			t.Errorf("%v: did not get expected error\n", err)
+		}
+		if strings.Compare(result.String(), test[1]) != 0 {
+			t.Errorf("The result %v does not match the expected result %v\n", result, test[1])
 		}
 	}
 }
@@ -347,24 +463,40 @@ func TestRequiresExactMatch(t *testing.T) {
 		Value string
 		Found bool
 	}{
-		"empty set":                 {Set{}.AsSelector(), "test", "", false},
-		"empty hasTerm":             {&hasTerm{}, "test", "", false},
-		"skipped hasTerm":           {&hasTerm{"a", "b"}, "test", "", false},
-		"valid hasTerm":             {&hasTerm{"test", "b"}, "test", "b", true},
-		"valid hasTerm no value":    {&hasTerm{"test", ""}, "test", "", true},
-		"valid notHasTerm":          {&notHasTerm{"test", "b"}, "test", "", false},
-		"valid notHasTerm no value": {&notHasTerm{"test", ""}, "test", "", false},
-		"nil andTerm":               {andTerm(nil), "test", "", false},
-		"empty andTerm":             {andTerm{}, "test", "", false},
-		"nested andTerm":            {andTerm{andTerm{}}, "test", "", false},
-		"nested andTerm matches":    {andTerm{&hasTerm{"test", "b"}}, "test", "b", true},
-		"andTerm with non-match":    {andTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
-		"nil orTerm":                {orTerm(nil), "test", "", false},
-		"empty orTerm":              {orTerm{}, "test", "", false},
-		"nested orTerm":             {orTerm{orTerm{}}, "test", "", false},
-		"nested orTerm matches":     {orTerm{&hasTerm{"test", "b"}}, "test", "b", true},
-		"orTerm with non-match":     {orTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
-		"nested or/andTerm":         {orTerm{andTerm{}}, "test", "", false},
+		"empty set":                       {Set{}.AsSelector(), "test", "", false},
+		"empty hasTerm":                   {&hasTerm{}, "test", "", false},
+		"skipped hasTerm":                 {&hasTerm{"a", "b"}, "test", "", false},
+		"valid hasTerm":                   {&hasTerm{"test", "b"}, "test", "b", true},
+		"valid hasTerm no value":          {&hasTerm{"test", ""}, "test", "", true},
+		"valid notHasTerm":                {&notHasTerm{"test", "b"}, "test", "", false},
+		"valid notHasTerm no value":       {&notHasTerm{"test", ""}, "test", "", false},
+		"nil andTerm":                     {andTerm(nil), "test", "", false},
+		"empty andTerm":                   {andTerm{}, "test", "", false},
+		"nested andTerm":                  {andTerm{andTerm{}}, "test", "", false},
+		"nested andTerm matches":          {andTerm{&hasTerm{"test", "b"}}, "test", "b", true},
+		"andTerm with non-match":          {andTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
+		"nil orTerm":                      {orTerm(nil), "test", "", false},
+		"empty orTerm":                    {orTerm{}, "test", "", false},
+		"nested orTerm":                   {orTerm{orTerm{}}, "test", "", false},
+		"nested orTerm matches":           {orTerm{&hasTerm{"test", "b"}}, "test", "b", true},
+		"orTerm with non-match":           {orTerm{&hasTerm{}, &hasTerm{"test", "b"}}, "test", "b", true},
+		"nested or/andTerm":               {orTerm{andTerm{}}, "test", "", false},
+		"empty lessTerm":                  {&lessTerm{}, "test", "", false},
+		"skipped lessTerm":                {&lessTerm{"a", "b"}, "test", "", false},
+		"valid lessTerm":                  {&lessTerm{"test", "b"}, "test", "", false},
+		"valid lessTerm no value":         {&lessTerm{"test", ""}, "test", "", false},
+		"empty lessEqualTerm":             {&lessEqualTerm{}, "test", "", false},
+		"skipped lessEqualTerm":           {&lessEqualTerm{"a", "b"}, "test", "", false},
+		"valid lessEqualTerm":             {&lessEqualTerm{"test", "b"}, "test", "", false},
+		"valid lessEqualTerm no value":    {&lessEqualTerm{"test", ""}, "test", "", false},
+		"empty greaterTerm":               {&greaterTerm{}, "test", "", false},
+		"skipped greaterTerm":             {&greaterTerm{"a", "b"}, "test", "", false},
+		"valid greaterTerm":               {&greaterTerm{"test", "b"}, "test", "", false},
+		"valid greaterTerm no value":      {&greaterTerm{"test", ""}, "test", "", false},
+		"empty greaterEqualTerm":          {&greaterEqualTerm{}, "test", "", false},
+		"skipped greaterEqualTerm":        {&greaterEqualTerm{"a", "b"}, "test", "", false},
+		"valid greaterEqualTerm":          {&greaterEqualTerm{"test", "b"}, "test", "", false},
+		"valid greaterEqualTerm no value": {&greaterEqualTerm{"test", ""}, "test", "", false},
 	}
 	for k, v := range testCases {
 		value, found := v.S.RequiresExactMatch(v.Label)
@@ -404,6 +536,20 @@ func TestTransform(t *testing.T) {
 			selector:  "a=b;c=d",
 			transform: func(field, value string) (string, string, error) { return field, value, nil },
 			result:    "a=b;c=d",
+			isEmpty:   false,
+		},
+		{
+			name:      "no-op transform orTerm, lessTerm, and greatTerm",
+			selector:  "a=gt:b;c=lt:d",
+			transform: func(field, value string) (string, string, error) { return field, value, nil },
+			result:    "a>b;c<d",
+			isEmpty:   false,
+		},
+		{
+			name:      "no-op transform orTerm, lessEqualsTerm, and greatEqualsTerm",
+			selector:  "a=gte:b;c=lte:d",
+			transform: func(field, value string) (string, string, error) { return field, value, nil },
+			result:    "a>=b;c<=d",
 			isEmpty:   false,
 		},
 		{
@@ -482,5 +628,4 @@ func TestTransform(t *testing.T) {
 			t.Errorf("[%d] unexpected result: %s", i, result.String())
 		}
 	}
-
 }

@@ -1,0 +1,49 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Delete Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl delete".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl delete"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl delete\" ..."
+    Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+# delete operation must target at a specific object
+  - Command: ${kubectl} delete deployments --all-namespaces --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "error: resource(s) were provided, but no name, label selector, or --all flag specified\n"
+
+  - Command: ${kubectl} delete deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions \"sample-nginx-deployment\" deleted\n"
+
+  - Command: ${kubectl} get deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): deployments.extensions \"sample-nginx-deployment\" not found\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

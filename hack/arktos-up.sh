@@ -34,6 +34,7 @@ fi
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
+FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true"
 
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
@@ -59,7 +60,9 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# install cni plugin based on env var CNIPLUGIN (bridge, alktron)
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
+# If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
+# in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
@@ -517,6 +520,9 @@ if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
   create_storage_class
 fi
 
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+# refresh the resource discovery cache after the CRD is created
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
@@ -530,6 +536,8 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
+
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
 
 echo ""
 echo "Arktos Setup done."

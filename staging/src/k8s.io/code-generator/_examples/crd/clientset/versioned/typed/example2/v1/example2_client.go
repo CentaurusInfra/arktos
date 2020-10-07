@@ -21,6 +21,7 @@ package v1
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	apiserverupdate "k8s.io/client-go/apiserverupdate"
@@ -40,6 +41,7 @@ type SecondExampleV1Interface interface {
 type SecondExampleV1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *SecondExampleV1Client) TestTypes(namespace string) TestTypeInterface {
@@ -115,6 +117,8 @@ func (c *SecondExampleV1Client) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -134,7 +138,6 @@ func (c *SecondExampleV1Client) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -156,7 +159,10 @@ func (c *SecondExampleV1Client) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

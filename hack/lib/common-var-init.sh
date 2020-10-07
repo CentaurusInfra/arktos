@@ -27,7 +27,7 @@ VIRTLET_LOG_DIR=${VIRTLET_LOG_DIR:-"/var/log/virtlet"}
 VIRTLET_DEPLOYMENT_FILES_DIR=${VIRTLET_DEPLOYMENT_FILES_DIR:-"/tmp"}
 
 # Default to current arktos-vm-runtime release-0.5 branch
-VIRTLET_DEPLOYMENT_FILES_SRC=${VIRTLET_DEPLOYMENT_FILES_SRC:-"https://raw.githubusercontent.com/futurewei-cloud/arktos-vm-runtime/release-0.5/deploy"}
+VIRTLET_DEPLOYMENT_FILES_SRC=${VIRTLET_DEPLOYMENT_FILES_SRC:-"https://raw.githubusercontent.com/futurewei-cloud/arktos-vm-runtime/release-0.6/deploy"}
 OVERWRITE_DEPLOYMENT_FILES=${OVERWRITE_DEPLOYMENT_FILES:-"true"}
 
 APPARMOR_ENABLED=${APPARMOR_ENABLED:-""}
@@ -148,6 +148,10 @@ START_MODE=${START_MODE:-"all"}
 
 # A list of controllers to enable
 KUBE_CONTROLLERS="${KUBE_CONTROLLERS:-"*"}"
+
+# Kube-controller-manager paramters
+KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR=${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR:-"10.244.0.0/16"}
+KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR=${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR:-true}
 
 # Audit policy
 AUDIT_POLICY_FILE=${AUDIT_POLICY_FILE:-""}

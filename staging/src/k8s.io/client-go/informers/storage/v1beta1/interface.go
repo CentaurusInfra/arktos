@@ -64,7 +64,7 @@ func (v *version) CSINodes() CSINodeInformer {
 
 // StorageClasses returns a StorageClassInformer.
 func (v *version) StorageClasses() StorageClassInformer {
-	return &storageClassInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
+	return &storageClassInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // VolumeAttachments returns a VolumeAttachmentInformer.

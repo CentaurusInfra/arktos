@@ -1546,6 +1546,7 @@ func TestDescribeStorageClass(t *testing.T) {
 	f := fake.NewSimpleClientset(&storagev1.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "foo",
+			Tenant:          metav1.TenantSystem,
 			ResourceVersion: "4",
 			Annotations: map[string]string{
 				"name": "foo",
@@ -2521,7 +2522,8 @@ func TestDescribeEvents(t *testing.T) {
 		"StorageClass": &StorageClassDescriber{
 			fake.NewSimpleClientset(&storagev1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: "bar",
+					Name:   "bar",
+					Tenant: metav1.TenantSystem,
 				},
 			}, events),
 		},

@@ -1,0 +1,65 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl rollout Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl rollout".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl rollout"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl rollout\" ..."
+    Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} --record=true
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+  - Command:  ${kubectl} scale deployment sample-nginx-deployment --replicas=2 -n ${test_ns} --tenant ${test_tenant} --record=true
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment scaled\n"
+
+  - Command: ${kubectl} rollout history deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain:
+    - "kubectl scale deployment sample-nginx-deployment --replicas=2 --namespace=${test_ns} --tenant=${test_tenant} --record=true\n"
+    OutputShouldNotContain: 
+    - Error
+    - NotFound
+    - not found
+
+  - Command: ${kubectl} rollout status deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain:
+    - "deployment \"sample-nginx-deployment\" successfully rolled out\n"
+    OutputShouldNotContain: 
+    - Error
+    - NotFound
+    - not found
+
+  - Command: ${kubectl} rollout pause deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment paused\n"
+
+  - Command: ${kubectl} rollout resume deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment resumed\n"
+
+  - Command: ${kubectl} rollout restart deployment sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "deployment.extensions/sample-nginx-deployment restarted\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

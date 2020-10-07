@@ -254,3 +254,6 @@ echo
 echo -e "Getting apiserver data partition status:" >&2
 "${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get datapartition
 echo
+echo -e "Getting ETCD data partition status:" >&2
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get etcd
+echo

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,5 +68,5 @@ func fieldPath(pod *v1.Pod, container *v1.Container) (string, error) {
 			return fmt.Sprintf("spec.initContainers{%s}", here.Name), nil
 		}
 	}
-	return "", fmt.Errorf("container %q not found in pod %s/%s", container.Name, pod.Namespace, pod.Name)
+	return "", fmt.Errorf("container %q not found in pod %s/%s/%s", container.Name, pod.Tenant, pod.Namespace, pod.Name)
 }

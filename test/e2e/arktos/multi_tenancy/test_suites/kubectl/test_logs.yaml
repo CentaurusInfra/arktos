@@ -1,0 +1,47 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl logs Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl logs".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+###########################################################################################################
+# test "kubectl logs"
+###########################################################################################################
+
+# need to wait the pod to be ready
+  - BeforeTestMessage: "Verifying \"kubectl label\" ..."
+    BeforeTest: sleep 5
+    Command: ${kubectl} logs sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldNotContain: 
+    - Error
+    - not found
+    RetryInterval: 5
+    RetryCount: 3
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

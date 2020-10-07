@@ -21,6 +21,9 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/apiserverupdate"
+	"k8s.io/client-go/informers"
+	"k8s.io/client-go/kubernetes/fake"
+	"sync"
 	"testing"
 	"time"
 )
@@ -37,6 +40,8 @@ var callNum_SetApiServerConfigMap int
 var callNum_ExternalSetAPIServerConfig int
 var callNum_StartWaitForComplete int
 var callNum_SendUpdateMessage int
+
+var testLock sync.Mutex
 
 func newEndpoint(endpointName string, rev string, masterIP string, serviceGroupId string) *v1.Endpoints {
 	ep := &v1.Endpoints{
@@ -64,8 +69,9 @@ func mockSetApiServerConfigMap(a *APIServerConfigManager, ep *v1.Endpoints) {
 	callNum_SetApiServerConfigMap++
 }
 
-func mockExternalSetAPIServerConfig(c map[string]v1.EndpointSubset) {
+func mockExternalSetAPIServerConfig(c map[string]v1.EndpointSubset) bool {
 	callNum_ExternalSetAPIServerConfig++
+	return true
 }
 
 func mockStartWaitForComplete() {
@@ -77,6 +83,9 @@ func mockSendUpdateMessage(a *APIServerConfigManager) {
 }
 
 func TestGetAPIServerConfigManagerMock(t *testing.T) {
+	testLock.Lock()
+	defer testLock.Unlock()
+
 	if instance == nil {
 		newInstance := GetAPIServerConfigManagerMock()
 		assert.NotNil(t, newInstance)
@@ -89,9 +98,14 @@ func TestGetAPIServerConfigManagerMock(t *testing.T) {
 		assert.Nil(t, instance.kubeClient)
 		instance = nil
 	}
+
+	SyncApiServerConfigHandler = syncApiServerConfig
 }
 
 func TestUpdateEvent(t *testing.T) {
+	testLock.Lock()
+	defer testLock.Unlock()
+
 	apiServerConfigManager := GetAPIServerConfigManagerMock()
 	setApiServerConfigMapHandler = mockSetApiServerConfigMap
 	defer func() {
@@ -128,9 +142,19 @@ func TestUpdateEvent(t *testing.T) {
 	curEp = newEndpoint(KubernetesServiceName, "4", masterIP2, serviceGroupId1)
 	apiServerConfigManager.updateApiServer(oldEp, curEp)
 	assert.Equal(t, 1, callNum_SetApiServerConfigMap)
+
+	t.Logf("5. Check same endpoints update times won't be picked up")
+	curEp = newEndpoint(KubernetesServiceName, "4", masterIP2, serviceGroupId1)
+	oldEp = curEp
+	callNum_SetApiServerConfigMap = 0
+	apiServerConfigManager.updateApiServer(oldEp, curEp)
+	assert.Equal(t, 0, callNum_SetApiServerConfigMap)
 }
 
 func TestSetApiServerConfigMap(t *testing.T) {
+	testLock.Lock()
+	defer testLock.Unlock()
+
 	apiServerConfigManager := GetAPIServerConfigManagerMock()
 	setAPIServerConfigHandler = mockExternalSetAPIServerConfig
 	startWaitForCompleteHandler = mockStartWaitForComplete
@@ -143,14 +167,14 @@ func TestSetApiServerConfigMap(t *testing.T) {
 	callNum_ExternalSetAPIServerConfig = 0
 	callNum_StartWaitForComplete = 0
 
-	t.Log("1.1 Check 1st update for single config will call set server config but not call wait for complete")
+	t.Log("1.1 Check 1st update for single config will not call set server config or wait for complete")
 	apiServerConfigManager.APIServerMap = make(map[string]v1.EndpointSubset)
 	apiServerConfigManager.isApiServerConfigInitialized = false
 	apiServerConfigManager.firstUpdateTime = time.Now()
 	ep := newEndpoint(KubernetesServiceName, "10", masterIP1, serviceGroupId1)
 	setApiServerConfigMap(apiServerConfigManager, ep)
 	time.Sleep(100 * time.Millisecond) // wait for go routine to execute
-	assert.Equal(t, 1, callNum_ExternalSetAPIServerConfig)
+	assert.Equal(t, 0, callNum_ExternalSetAPIServerConfig)
 	assert.Equal(t, 0, callNum_StartWaitForComplete)
 	assert.Equal(t, true, apiServerConfigManager.isApiServerConfigInitialized)
 	assert.Equal(t, 1, len(apiServerConfigManager.APIServerMap))
@@ -211,4 +235,81 @@ func TestSetApiServerConfigMap(t *testing.T) {
 	assert.Equal(t, true, isOK)
 	assert.Equal(t, 1, len(epCheck.Addresses))
 	assert.Equal(t, masterIP2, epCheck.Addresses[0].IP)
+}
+
+func TestStartAPIServerConfigManager(t *testing.T) {
+	testLock.Lock()
+	defer testLock.Unlock()
+	instance = nil
+	SyncApiServerConfigHandler = syncApiServerConfig
+
+	client := fake.NewSimpleClientset()
+	serviceGroupId := "0"
+	ip := "1.2.3.4"
+	ep := &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{Name: KubernetesServiceName},
+		Subsets: []v1.EndpointSubset{
+			{
+				Addresses:      []v1.EndpointAddress{{IP: ip}},
+				Ports:          nil,
+				ServiceGroupId: serviceGroupId,
+			},
+		},
+	}
+
+	epCreated, err := client.CoreV1().Endpoints(Namespace_System).Create(ep)
+	assert.Nil(t, err)
+	assert.NotNil(t, epCreated)
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	informerFactory := informers.NewSharedInformerFactory(client, 0)
+	informerFactory.Start(stopCh)
+	informerFactory.WaitForCacheSync(stopCh)
+
+	result, err := StartAPIServerConfigManager(informerFactory.Core().V1().Endpoints(), client, stopCh)
+	assert.True(t, result)
+	assert.Nil(t, err)
+	assert.NotNil(t, instance)
+
+	epMap := instance.GetAPIServerConfig()
+	assert.NotNil(t, epMap)
+	assert.Equal(t, 1, len(epMap))
+	assert.Equal(t, serviceGroupId, epMap[serviceGroupId].ServiceGroupId)
+	assert.Equal(t, ip, epMap[serviceGroupId].Addresses[0].IP)
+}
+
+func TestStartAPIServerConfigManagerAndInformerFactory(t *testing.T) {
+	testLock.Lock()
+	defer testLock.Unlock()
+	instance = nil
+	SyncApiServerConfigHandler = syncApiServerConfig
+
+	client := fake.NewSimpleClientset()
+	serviceGroupId := "0"
+	ip := "1.2.3.4"
+	ep := &v1.Endpoints{
+		ObjectMeta: metav1.ObjectMeta{Name: KubernetesServiceName},
+		Subsets: []v1.EndpointSubset{
+			{
+				Addresses:      []v1.EndpointAddress{{IP: ip}},
+				Ports:          nil,
+				ServiceGroupId: serviceGroupId,
+			},
+		},
+	}
+
+	epCreated, err := client.CoreV1().Endpoints(Namespace_System).Create(ep)
+	assert.Nil(t, err)
+	assert.NotNil(t, epCreated)
+
+	stopCh := make(chan struct{})
+	defer close(stopCh)
+	StartAPIServerConfigManagerAndInformerFactory(client, stopCh)
+
+	epMap := instance.GetAPIServerConfig()
+	assert.NotNil(t, epMap)
+	assert.Equal(t, 1, len(epMap))
+	assert.Equal(t, serviceGroupId, epMap[serviceGroupId].ServiceGroupId)
+	assert.Equal(t, ip, epMap[serviceGroupId].Addresses[0].IP)
 }

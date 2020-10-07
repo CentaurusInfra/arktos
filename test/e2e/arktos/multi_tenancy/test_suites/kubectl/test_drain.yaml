@@ -1,0 +1,94 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl drain Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl drain".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl drain" and "kubectl uncordon"
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl drain\" and \"kubectl uncordon\" ..."
+    Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+# make sure the pod is running
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq .status.phase
+    OutputShouldBe: "\"Running\"\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+  - Command: ${kubectl} get node ${master_node}
+    OutputShouldContain:
+    - Ready
+    OutputShouldNotContain:
+    - SchedulingDisabled
+
+  - Command: ${kubectl} get tenants
+    OutputShouldNotContain:
+    - Terminating
+    RetryCount: 20
+    RetryInterval: 6
+
+  - Command: ${kubectl} drain ${master_node} --ignore-daemonsets --force
+    OutputShouldContain:
+    - "node/${master_node} cordoned\n"
+    - "evicting pod \"sample-nginx-pod\"\n"
+    - "pod/sample-nginx-pod evicted\n"
+    TimeOut: 60
+
+  - Command: ${kubectl} get node ${master_node} -o json | jq -r '[.spec.unschedulable, .spec.taints[0].effect] | @tsv'
+    OutputShouldBe: "true	NoSchedule\n"
+
+  - Command: ${kubectl} get node ${master_node}
+    OutputShouldContain:
+    - SchedulingDisabled
+  
+  - Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): pods \"sample-nginx-pod\" not found\n"
+
+  - Command: ${kubectl} uncordon ${master_node}
+    OutputShouldBe: "node/${master_node} uncordoned\n"
+
+  - Command: ${kubectl} get node ${master_node} -o json | jq .spec.taints[0].effect
+    OutputShouldNotContain: 
+    - NoSchedule
+
+  - Command: ${kubectl} get node ${master_node}
+    OutputShouldNotContain:
+    - SchedulingDisabled
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get pod sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} -o json | jq .status.phase
+    OutputShouldBe: "\"Running\"\n"
+    RetryCount: 3
+    RetryInterval: 5
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

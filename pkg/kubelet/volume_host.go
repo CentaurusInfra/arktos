@@ -255,7 +255,7 @@ func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name strin
 	return kvh.secretManager.GetSecret
 }
 
-func (kvh *kubeletVolumeHost) GetConfigMapFunc() func(namespace, name string) (*v1.ConfigMap, error) {
+func (kvh *kubeletVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error) {
 	return kvh.configMapManager.GetConfigMap
 }
 

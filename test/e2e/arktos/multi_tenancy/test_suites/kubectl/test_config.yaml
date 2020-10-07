@@ -1,0 +1,56 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl api-resource Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl api-resource".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+  test_context: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command:  ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+###########################################################################################################
+# verify ${setup_client_script} is working
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying ${setup_client_script} ..."
+    Command: ${setup_client_script} ${test_tenant} admin
+
+  - Command: ${kubectl} config get-clusters
+    OutputShouldContain:
+    - "${test_tenant}-admin-cluster\n"
+
+  - Command: ${kubectl} config get-contexts ${test_tenant}-admin-context
+    OutputShouldContain:
+    - ${test_tenant}-admin-cluster
+    - ${test_tenant}-admin-context
+
+###########################################################################################################
+# verify "kubectl config" able to set tenant info
+###########################################################################################################
+  - BeforeTestMessage: "Verifying \"kubectl config\" able to set tenant info ..."
+    Command: ${kubectl} config set-context ${test_context} --tenant=${test_tenant}
+    OutputShouldBe: "Context \"${test_context}\" created.\n"
+
+  - Command: ${kubectl} config get-contexts ${test_context} --no-headers | tr -d ' '
+    OutputShouldBe: "${test_context}${test_tenant}\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${test_tenant} admin

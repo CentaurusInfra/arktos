@@ -21,6 +21,7 @@ package internalversion
 
 import (
 	rand "math/rand"
+	"sync"
 	"time"
 
 	"k8s.io/apiextensions-apiserver/pkg/client/clientset/internalclientset/scheme"
@@ -39,6 +40,7 @@ type ApiextensionsInterface interface {
 type ApiextensionsClient struct {
 	restClients []rest.Interface
 	configs     *rest.Config
+	mux         sync.RWMutex
 }
 
 func (c *ApiextensionsClient) CustomResourceDefinitions() CustomResourceDefinitionInterface {
@@ -121,6 +123,8 @@ func (c *ApiextensionsClient) RESTClient() rest.Interface {
 		return nil
 	}
 
+	c.mux.RLock()
+	defer c.mux.RUnlock()
 	max := len(c.restClients)
 	if max == 0 {
 		return nil
@@ -140,7 +144,6 @@ func (c *ApiextensionsClient) RESTClients() []rest.Interface {
 	if c == nil {
 		return nil
 	}
-
 	return c.restClients
 }
 
@@ -162,7 +165,10 @@ func (c *ApiextensionsClient) run() {
 				}
 				clients[i] = client
 			}
+			c.mux.Lock()
+			klog.Infof("Reset restClients. length %v -> %v", len(c.restClients), len(clients))
 			c.restClients = clients
+			c.mux.Unlock()
 			watcherForUpdateComplete.NotifyDone()
 		}
 	}(c)

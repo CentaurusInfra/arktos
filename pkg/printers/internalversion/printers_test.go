@@ -566,8 +566,9 @@ func TestPrinters(t *testing.T) {
 		"nonEmptyPodList": &v1.PodList{Items: []v1.Pod{{}}},
 		"endpoints": &v1.Endpoints{
 			Subsets: []v1.EndpointSubset{{
-				Addresses: []v1.EndpointAddress{{IP: "127.0.0.1"}, {IP: "localhost"}},
-				Ports:     []v1.EndpointPort{{Port: 8080}},
+				Addresses:      []v1.EndpointAddress{{IP: "127.0.0.1"}, {IP: "localhost"}},
+				Ports:          []v1.EndpointPort{{Port: 8080}},
+				ServiceGroupId: "0",
 			}}},
 	}
 	// map of printer name to set of objects it should fail on.
@@ -1343,8 +1344,22 @@ func TestPrintHumanReadableWithNamespace(t *testing.T) {
 				Subsets: []api.EndpointSubset{{
 					Addresses: []api.EndpointAddress{{IP: "127.0.0.1"}, {IP: "localhost"}},
 					Ports:     []api.EndpointPort{{Port: 8080}},
-				},
-				},
+				}},
+			},
+			isNamespaced: true,
+		},
+		{
+			obj: &api.Endpoints{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
+				Subsets: []api.EndpointSubset{{
+					Addresses: []api.EndpointAddress{{IP: "127.0.0.1"}, {IP: "localhost"}},
+				}},
+			},
+			isNamespaced: true,
+		},
+		{
+			obj: &api.Endpoints{
+				ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespaceName},
 			},
 			isNamespaced: true,
 		},
@@ -3729,6 +3744,7 @@ func TestPrintLease(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		verifyTable(t, table)
 		printer := printers.NewTablePrinter(printers.PrintOptions{NoHeaders: true})
 		if err := printer.PrintObj(table, buf); err != nil {
 			t.Fatal(err)

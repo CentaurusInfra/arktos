@@ -1,0 +1,147 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Deployment & ReplicaSet Controller Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies the multi-tenancy deployment & replicaset controller. 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_ns: random_8
+  test_tenant: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Test setup ....
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create ns ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "namespace/${test_ns} created\n"
+    AfterTestMessage: End of test setup.
+
+###########################################################################################################
+# Testing deployment controller & replicaset controller
+###########################################################################################################
+
+# ------------------------------------------------------------
+# replicasets and pods are created when a deployment is created
+# ------------------------------------------------------------
+  - BeforeTestMessage: Verifying replicasets and pods are created when a deployment is created
+    Command: ${kubectl} get deployments --all-namespaces --tenant ${test_tenant} 
+    OutputShouldBe: "No resources found.\n"
+
+  # creating the deployment
+  - Command: ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+  # wait a few secs and allow retry as the controller needs some time to make the deployment running
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get deployment sample-nginx-deployment --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldBe: "sample-nginx-deployment	${test_ns}	${test_tenant}	1	1\n"
+    RetryCount: 3
+    RetryInterval: 3
+
+  - Command: "${kubectl} get replicasets --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldContain: 
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	1	1\n"
+
+  - Command: "${kubectl} get pods --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.phase] | @tsv'"
+    OutputShouldContain:
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	Running\n"
+
+# ------------------------------------------------------------
+# pods will be recreated if deleted
+# ------------------------------------------------------------
+  - BeforeTestMessage: Verifying pods will be recreated if deleted
+    Command: ${kubectl} delete pods --all --namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain:
+    - "pod \"sample-nginx-deployment-"
+    - "deleted\n"
+    TimeOut: 30
+
+  # wait a few secs and allow retry as the controller needs some time to reconcile
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get deployment sample-nginx-deployment --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldBe: "sample-nginx-deployment	${test_ns}	${test_tenant}	1	1\n"
+    RetryCount: 3
+    RetryInterval: 3
+
+  - Command: "${kubectl} get replicasets --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldContain: 
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	1	1\n"
+
+  - Command: "${kubectl} get pods --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.phase] | @tsv'"
+    OutputShouldContain:
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	Running\n"
+
+# ------------------------------------------------------------
+# replicasets will be recreated if deleted
+# ------------------------------------------------------------
+  - BeforeTestMessage: Verifying replicasets will be recreated if deleted
+    Command: ${kubectl} delete replicasets --all --namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain:
+    - "replicaset.extensions \"sample-nginx-deployment-"
+    - deleted
+    TimeOut: 30
+
+  # wait a few secs and allow retry as the controller needs some time to reconcile
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get deployment sample-nginx-deployment --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '[.metadata.name, .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldBe: "sample-nginx-deployment	${test_ns}	${test_tenant}	1	1\n"
+    RetryCount: 3
+    RetryInterval: 3
+
+  - Command: "${kubectl} get replicasets --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldContain: 
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	1	1\n"
+
+  - Command: "${kubectl} get pods --namespace ${test_ns} --tenant ${test_tenant} -o json 
+            | jq -r '.items[] | [.metadata.name[0:24], .metadata.namespace, .metadata.tenant, .status.phase] | @tsv'"
+    OutputShouldContain:
+    - "sample-nginx-deployment-"
+    - "	${test_ns}	${test_tenant}	Running\n"
+
+# ------------------------------------------------------------
+# replicasets and pods are deleted when a deployment is deleted
+# ------------------------------------------------------------
+  - BeforeTestMessage: Verifying replicasets and pods are deleted when a deployment is deleted
+    Command: ${kubectl} delete -f ${test_data_dir}/sample-deployment.yaml --namespace ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps \"sample-nginx-deployment\" deleted\n"
+
+  - BeforeTest: sleep 5
+    Command: ${kubectl} get deployments sample-nginx-deployment --namespace ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldBe: "Error from server (NotFound): deployments.extensions \"sample-nginx-deployment\" not found\n"
+    RetryCount: 3
+    RetryInterval: 3
+
+  - Command: ${kubectl} get replicasets --namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "No resources found.\n"
+
+  - Command: ${kubectl} get pods --namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "No resources found.\n" 
+    RetryCount: 3
+    RetryInterval: 3
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+  - BeforeTestMessage: Clean up...
+    Command: ${kubectl} delete tenant ${test_tenant} > dev/null 2>&1 &

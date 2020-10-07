@@ -1,0 +1,56 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl attach Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl attach".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+###########################################################################################################
+# test "kubectl attach"
+###########################################################################################################
+
+# As the command "kubectl attach" does not return, we force it to return by prepending "timeout 2". 
+# As a result, we will have a non-zero exit code.
+# However, we can verify by checking the command output.
+
+  - BeforeTestMessage: "Verifying \"kubectl attach\" ..."
+    # need to wait the pod to be ready
+    BeforeTest: sleep 5
+    Command: timeout 2 ${kubectl} attach sample-nginx-pod -n ${test_ns} --tenant ${test_tenant} 
+    ShouldFail: true
+    OutputShouldContain:
+    - If you don't see a command prompt, try pressing enter.
+    OutputShouldNotContain: 
+    - Error
+    - not found
+    # Set the timeout=0 so the testrunner tool will not prepend "timeout #" to the command in test
+    TimeOut: 0
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${test_tenant} admin
+

@@ -26,13 +26,17 @@ import (
 	"k8s.io/kubernetes/pkg/apis/storage"
 )
 
+const (
+	testTenant = "test-tenant"
+)
+
 func TestStorageClassStrategy(t *testing.T) {
 	ctx := genericapirequest.NewDefaultContext()
 	if Strategy.NamespaceScoped() {
 		t.Errorf("StorageClass must not be namespace scoped")
 	}
-	if Strategy.TenantScoped() {
-		t.Errorf("StorageClass must not be tenant scoped")
+	if !Strategy.TenantScoped() {
+		t.Errorf("StorageClass must be tenant scoped")
 	}
 	if Strategy.AllowCreateOnUpdate() {
 		t.Errorf("StorageClass should not allow create on update")
@@ -42,7 +46,8 @@ func TestStorageClassStrategy(t *testing.T) {
 	bindingMode := storage.VolumeBindingWaitForFirstConsumer
 	storageClass := &storage.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "valid-class",
+			Name:   "valid-class",
+			Tenant: testTenant,
 		},
 		Provisioner: "kubernetes.io/aws-ebs",
 		Parameters: map[string]string{
@@ -62,6 +67,7 @@ func TestStorageClassStrategy(t *testing.T) {
 	newStorageClass := &storage.StorageClass{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            "valid-class-2",
+			Tenant:          testTenant,
 			ResourceVersion: "4",
 		},
 		Provisioner: "kubernetes.io/aws-ebs",

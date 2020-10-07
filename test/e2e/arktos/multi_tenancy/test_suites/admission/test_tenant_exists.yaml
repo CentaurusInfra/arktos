@@ -1,0 +1,47 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Tenant Admission Controller Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies that resources in a tenant space cannot be created before the tenant is created 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################################################################################
+# Configure the test variables for this test suite
+###########################################################################################################
+Variables:
+  test_ns: random_8
+  test_tenant: random_8
+
+############################################################################################################
+# Verifies that resources in a tenant space cannot be created before the tenant is created 
+############################################################################################################
+Tests:
+  - BeforeTestMessage: Verifies that resources in a tenant space cannot be created before the tenant is created
+    Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    ShouldFail: true
+    OutputShouldContain:
+    - "Error from server (NotFound):"
+    - "tenants \"${test_tenant}\" not found\n"
+
+  - Command: ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant} 
+    ShouldFail: true
+    OutputShouldContain:
+    - "Error from server (NotFound):"
+    - "tenants \"${test_tenant}\" not found\n"
+    
+############################################################################################################
+# Verifies that resources in a tenant space cab be created after the tenant is created 
+############################################################################################################
+  - BeforeTestMessage: Verifies that resources in a tenant space cab be created after the tenant is created
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command: ${kubectl} apply -f ${test_data_dir}/sample-pod.yaml -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "pod/sample-nginx-pod created\n"
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

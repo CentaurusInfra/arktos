@@ -23,6 +23,10 @@ package v1
 // StorageClassLister.
 type StorageClassListerExpansion interface{}
 
+// StorageClassTenantListerExpansion allows custom methods to be added to
+// StorageClassTenantLister.
+type StorageClassTenantListerExpansion interface{}
+
 // VolumeAttachmentListerExpansion allows custom methods to be added to
 // VolumeAttachmentLister.
 type VolumeAttachmentListerExpansion interface{}

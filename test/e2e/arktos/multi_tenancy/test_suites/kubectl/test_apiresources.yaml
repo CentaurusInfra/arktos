@@ -1,0 +1,49 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl api-resource Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl api-resource".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command:  ${setup_client_script} ${test_tenant} admin
+
+###########################################################################################################
+# test "kubectl api-resources"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl api-resources\" ..."
+    Command: ${kubectl} api-resources --context ${test_tenant}-admin-context
+    OutputShouldContain:
+    - persistentvolumeclaims
+    - namespaces
+    OutputShouldNotContain:
+    - nodes
+    - tenants
+
+  - Command: ${kubectl} api-resources
+    OutputShouldContain:
+    - persistentvolumeclaims
+    - namespaces
+    - nodes
+    - tenants
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &
+
+  - Command: REMOVE=TRUE ${setup_client_script} ${test_tenant} admin

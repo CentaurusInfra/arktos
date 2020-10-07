@@ -40,6 +40,7 @@ import (
 // A group's client should implement this interface.
 type StorageClassesGetter interface {
 	StorageClasses() StorageClassInterface
+	StorageClassesWithMultiTenancy(tenant string) StorageClassInterface
 }
 
 // StorageClassInterface has methods to work with StorageClass resources.
@@ -59,13 +60,19 @@ type StorageClassInterface interface {
 type storageClasses struct {
 	client  rest.Interface
 	clients []rest.Interface
+	te      string
 }
 
 // newStorageClasses returns a StorageClasses
 func newStorageClasses(c *StorageV1Client) *storageClasses {
+	return newStorageClassesWithMultiTenancy(c, "system")
+}
+
+func newStorageClassesWithMultiTenancy(c *StorageV1Client, tenant string) *storageClasses {
 	return &storageClasses{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
+		te:      tenant,
 	}
 }
 
@@ -73,6 +80,7 @@ func newStorageClasses(c *StorageV1Client) *storageClasses {
 func (c *storageClasses) Get(name string, options metav1.GetOptions) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("storageclasses").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -108,6 +116,7 @@ func (c *storageClasses) List(opts metav1.ListOptions) (result *v1.StorageClassL
 			go func(c *storageClasses, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.StorageClassList, errMap map[int]error) {
 				r := &v1.StorageClassList{}
 				err := ci.Get().
+					Tenant(c.te).
 					Resource("storageclasses").
 					VersionedParams(&opts, scheme.ParameterCodec).
 					Timeout(timeout).
@@ -169,6 +178,7 @@ func (c *storageClasses) List(opts metav1.ListOptions) (result *v1.StorageClassL
 	// list of data if no permission issue. The list needs to done sequential to avoid increasing
 	// system load.
 	err = c.client.Get().
+		Tenant(c.te).
 		Resource("storageclasses").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -189,6 +199,7 @@ func (c *storageClasses) List(opts metav1.ListOptions) (result *v1.StorageClassL
 		}
 
 		err = client.Get().
+			Tenant(c.te).
 			Resource("storageclasses").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -220,6 +231,7 @@ func (c *storageClasses) Watch(opts metav1.ListOptions) watch.AggregatedWatchInt
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
+			Tenant(c.te).
 			Resource("storageclasses").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -238,7 +250,13 @@ func (c *storageClasses) Watch(opts metav1.ListOptions) watch.AggregatedWatchInt
 func (c *storageClasses) Create(storageClass *v1.StorageClass) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
 
+	objectTenant := storageClass.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Post().
+		Tenant(objectTenant).
 		Resource("storageclasses").
 		Body(storageClass).
 		Do().
@@ -251,7 +269,13 @@ func (c *storageClasses) Create(storageClass *v1.StorageClass) (result *v1.Stora
 func (c *storageClasses) Update(storageClass *v1.StorageClass) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
 
+	objectTenant := storageClass.ObjectMeta.Tenant
+	if objectTenant == "" {
+		objectTenant = c.te
+	}
+
 	err = c.client.Put().
+		Tenant(objectTenant).
 		Resource("storageclasses").
 		Name(storageClass.Name).
 		Body(storageClass).
@@ -264,6 +288,7 @@ func (c *storageClasses) Update(storageClass *v1.StorageClass) (result *v1.Stora
 // Delete takes name of the storageClass and deletes it. Returns an error if one occurs.
 func (c *storageClasses) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("storageclasses").
 		Name(name).
 		Body(options).
@@ -278,6 +303,7 @@ func (c *storageClasses) DeleteCollection(options *metav1.DeleteOptions, listOpt
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
+		Tenant(c.te).
 		Resource("storageclasses").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -290,6 +316,7 @@ func (c *storageClasses) DeleteCollection(options *metav1.DeleteOptions, listOpt
 func (c *storageClasses) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StorageClass, err error) {
 	result = &v1.StorageClass{}
 	err = c.client.Patch(pt).
+		Tenant(c.te).
 		Resource("storageclasses").
 		SubResource(subresources...).
 		Name(name).

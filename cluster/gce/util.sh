@@ -1406,6 +1406,7 @@ MASTER_ADVERTISE_ADDRESS: $(yaml-quote ${MASTER_ADVERTISE_ADDRESS:-})
 APISERVER_SERVICEGROUPID: $(yaml-quote ${APISERVER_SERVICEGROUPID})
 APISERVER_ADVERTISE_ADDRESS: $(yaml-quote ${APISERVER_ADVERTISE_ADDRESS})
 ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
+ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
@@ -1498,6 +1499,11 @@ EOF
     if [ -n "${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-}" ]; then
       cat >>$file <<EOF
 CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${CONTROLLER_MANAGER_TEST_LOG_LEVEL})
+EOF
+    fi
+    if [ -n "${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
@@ -2388,8 +2394,7 @@ function create-network() {
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-ranges "10.0.0.0/8" \
-      --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" \
-      --target-tags "${MASTER_TAG}"&
+      --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" &
   fi
 
   if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${CLUSTER_NAME}-default-internal-node" &>/dev/null; then
@@ -2696,7 +2701,6 @@ function create-master() {
   gcloud compute firewall-rules create "${MASTER_NAME}-https" \
     --project "${NETWORK_PROJECT}" \
     --network "${NETWORK}" \
-    --target-tags "${MASTER_TAG}" \
     --allow tcp:443 &
 
   # We have to make sure the disk is created before creating the master VM, so
@@ -2713,8 +2717,7 @@ function create-master() {
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-tags "${MASTER_TAG}" \
-      --allow "tcp:2380,tcp:2381" \
-      --target-tags "${MASTER_TAG}" &
+      --allow "tcp:2380,tcp:2381" &
   fi
 
   # Generate a bearer token for this cluster. We push this separately
@@ -2751,8 +2754,8 @@ function create-master() {
   declare -a PARTITIONSERVER_NAME
 
   declare -a APISERVER_CREATED
-  declare -a WORLOADSERVER_CREATED
-  
+  declare -a WORKLOADSERVER_CREATED
+  declare -a ETCDSERVER_CREATED
 
   TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
   ENABLE_APISERVER=${ENABLE_APISERVER:-false}
@@ -2788,7 +2791,11 @@ function create-master() {
 function set-partitionserver {
   local partitionserver_name=""
   local is_create=${1:-false}
-  TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
+  TOTALSERVER_EXTRA_NUM=0
+  unset PARTITIONSERVER_NAME
+  unset APISERVER_CREATED
+  unset WORKLOADSERVER_CREATED
+  unset ETCDSERVER_CREATED
   if [[ "${APISERVERS_EXTRA_NUM:-0}" -gt "0" ]]; then
     for num in $(seq ${APISERVERS_EXTRA_NUM:-0}); do
       partitionserver_name="-api${num}"
@@ -2800,6 +2807,12 @@ function set-partitionserver {
           WORKLOADSERVER_CREATED[$num]=false
         fi
         
+        if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" && "${ETCD_EXTRA_NUM:-0}" -ge "$num" && "${ETCDSERVER_CREATED[$num]:-false}" != "true" ]]; then
+          partitionserver_name+="-etcd${num}"
+          ETCDSERVER_CREATED[$num]=true
+        else
+          ETCDSERVER_CREATED[$num]=false
+        fi
       fi
       
       TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
@@ -2818,6 +2831,38 @@ function set-partitionserver {
       fi  
     done
   fi
+
+  if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" ]]; then
+    for num in $(seq ${ETCD_EXTRA_NUM:-0}); do
+      partitionserver_name=""
+      if [[ "${ETCDSERVER_CREATED[$num]:-false}" != "true" ]]; then
+        if [[ "${SHARE_PARTITIONSERVER:-false}" == "true" ]]; then
+          if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" && "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -ge "$num" && "${WORKLOADSERVER_CREATED[$num]:-false}" != "true" ]]; then
+            partitionserver_name+="-workload${num}"
+            WORKLOADSERVER_CREATED[$num]=true
+          else
+            WORKLOADSERVER_CREATED[$num]=false
+          fi
+        fi
+        partitionserver_name+="-etcd${num}"
+        ETCDSERVER_CREATED[$num]=true
+        TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
+        PARTITIONSERVER_NAME[$TOTALSERVER_EXTRA_NUM]="${partitionserver_name}"
+        if [[ "${is_create}" == "true" ]]; then
+          create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
+          PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
+              --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+          echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
+          CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
+          create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
+          PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-internalip" \
+          --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+          CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]}"
+        fi
+      fi
+    done
+  fi
+
   if [[ "${WORKLOADCONTROLLER_EXTRA_NUM:-0}" -gt "0" ]]; then
     for num in $(seq ${WORKLOADCONTROLLER_EXTRA_NUM:-0}); do
       partitionserver_name=""
@@ -2846,6 +2891,14 @@ function create-partitionserver {
       else
         ENABLE_APISERVER=false
       fi
+      if [[ "${PARTITIONSERVER_NAME[$num]:-}" == *"etcd"* ]]; then
+        ENABLE_ETCD=true
+        ETCD_CLUSTERID=$num
+        echo "ETCD_CLUSTERID: ${ETCD_CLUSTERID}"
+        INITIAL_ETCD_CLUSTER="${partitionserver_name}"
+      else
+        ENABLE_ETCD=false
+      fi
       if [[ "${PARTITIONSERVER_NAME[$num]:-}" == *"workload"* ]]; then
         ENABLE_WORKLOADCONTROLLER=true
       else
@@ -2858,7 +2911,6 @@ function create-partitionserver {
 
 }
 
-
 #config server
 function config-partitionserver() {
   local server_name=""
@@ -2870,7 +2922,6 @@ function config-partitionserver() {
   gcloud compute firewall-rules create "${server_name}-https" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
-      --target-tags "${server_name}" \
       --allow tcp:443 &
 
 # We have to make sure the disk is created before creating the server, so
@@ -2889,8 +2940,7 @@ function config-partitionserver() {
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-tags "${server_name}" \
-      --allow "tcp:2380,tcp:2381" \
-      --target-tags "${server_name}" &
+      --allow "tcp:2380,tcp:2381" &
   fi
 
 }
@@ -2924,7 +2974,7 @@ function set-apiserver-datapartition() {
 
 function create-apiserver-datapartition-yml {
   local service_groupid=${1:-0}
-  cat <<EOF >${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml
+  cat <<EOF >${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml
 apiVersion: v1
 kind: DataPartitionConfig
 serviceGroupId: "${service_groupid}"
@@ -2939,12 +2989,52 @@ EOF
 
 function config-apiserver-datapartition {
   local service_groupid=${1:-0}
-  if [[ -f "${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml" ]]; then
+  if [[ -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml" ]]; then
     sleep 5
-    ${KUBE_ROOT}/cluster/kubectl.sh apply -f "${KUBE_ROOT}/apiserverdatapartition/apidatapartition${service_groupid}.yaml"
+    ${KUBE_ROOT}/cluster/kubectl.sh apply -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml"
   else 
     echo "failed to config apiserver datapartition, cannot find required yaml file"
     exit 1
+  fi
+}
+
+function create-etcd-storagecluster-yml {
+  local cluster_id=${1:-0}
+  local service_address=${2:-"127.0.0.1"}
+  cat <<EOF >${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml
+apiVersion: v1
+kind: StorageCluster
+storageClusterId: "${cluster_id}"
+serviceAddress: "${service_address}:2379"
+metadata:
+  name: "c${cluster_id}"
+EOF
+}
+
+function config-etcd-datapartition {
+  local cluster_id=${1:-0}
+  if [[ -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml" ]]; then
+    sleep 5
+    kubectl apply -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml"
+  else 
+    echo "failed to config etcd data partition, cannot find required yaml file"
+  fi
+}
+
+function config-etcd-storagecluster {
+  local partitionserver_name=${CLUSTER_NAME}
+  set-partitionserver
+  if [[ "${TOTALSERVER_EXTRA_NUM:-0}" -gt "0" ]]; then
+    for num in $(seq ${TOTALSERVER_EXTRA_NUM:-0}); do
+      partitionserver_name="${CLUSTER_NAME}${PARTITIONSERVER_NAME[$num]:-}"
+      if [[ "${PARTITIONSERVER_NAME[$num]:-}" == *"etcd"* ]]; then
+        PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${partitionserver_name}-internalip" \
+        --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+        create-etcd-storagecluster-yml $num ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]}
+        config-etcd-datapartition $num
+      fi
+      
+    done
   fi
 }
 

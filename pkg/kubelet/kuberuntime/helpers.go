@@ -306,7 +306,7 @@ func getRuntimeServiceNameFromPodSpec(pod *v1.Pod) *string {
 func (m *kubeGenericRuntimeManager) GetRuntimeServiceByPodID(podId types.UID) (internalapi.RuntimeService, error) {
 	klog.V(4).Infof("Retrieve runtime service for podID %v", podId)
 	// firstly check the pod-runtimeService cache
-	if runtimeService, found := m.podRuntimeServiceMap[string(podId)]; found {
+	if runtimeService := m.getPodRuntimeService(string(podId)); runtimeService != nil {
 		klog.V(4).Infof("Got runtime service [%v] for podID %v", runtimeService, podId)
 		return runtimeService, nil
 	}

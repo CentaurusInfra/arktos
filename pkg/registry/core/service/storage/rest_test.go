@@ -70,36 +70,6 @@ type serviceStorage struct {
 	Err                error
 }
 
-type dummyNetworkGetter struct {
-	ipamType string
-	cidr     string
-	err      error
-}
-
-func (n dummyNetworkGetter) Get(_ context.Context, _ string, options *metav1.GetOptions) (runtime.Object, error) {
-	if n.err == nil {
-		return &unstructured.Unstructured{
-			Object: map[string]interface{}{
-				"apiVersion": "arktos.futurewei.com/v1",
-				"kind":       "Network",
-				"metadata": map[string]interface{}{
-					"tenant": "test-te",
-					"name":   "test-network",
-				},
-				"spec": map[string]interface{}{
-					"type": "mizar",
-					"service": map[string]interface{}{
-						"ipam":  n.ipamType,
-						"cidrs": []interface{}{n.cidr},
-					},
-				},
-			},
-		}, nil
-	}
-
-	return nil, n.err
-}
-
 func (s *serviceStorage) NamespaceScoped() bool {
 	return true
 }
@@ -260,8 +230,22 @@ func NewTestRESTWithPods(t *testing.T, endpoints *api.EndpointsList, pods *api.P
 	rest, _ := NewREST(serviceStorage, endpointStorage, podStorage.Pod, r, portAllocator, nil)
 	rest.SetBackendStorageConfig(etcdStorage)
 
-	testNetworkStorage := dummyNetworkGetter{}
-	rest.networks = &testNetworkStorage
+	rest.fnGetNetwork = func(ctx context.Context, tenant, name string) (object runtime.Object, err error) {
+		return &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "arktos.futurewei.com/v1",
+				"kind":       "Network",
+				"metadata": map[string]interface{}{
+					"tenant": "test-te",
+					"name":   "test-network",
+				},
+				"spec": map[string]interface{}{
+					"type": "flat",
+				},
+			},
+		}, nil
+	}
+
 	return rest, serviceStorage, server
 }
 
@@ -2374,7 +2358,25 @@ func TestUpdateNodePorts(t *testing.T) {
 
 func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 	storage, registry, server := NewTestREST(t, nil)
-	storage.networks = &dummyNetworkGetter{ipamType: "External"}
+	storage.fnGetNetwork = func(ctx context.Context, tenant, name string) (object runtime.Object, err error) {
+		return &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "arktos.futurewei.com/v1",
+				"kind":       "Network",
+				"metadata": map[string]interface{}{
+					"tenant": "test-te",
+					"name":   "test-network",
+				},
+				"spec": map[string]interface{}{
+					"type": "mizar",
+					"service": map[string]interface{}{
+						"ipam": "External",
+					},
+				},
+			},
+		}, nil
+	}
+
 	defer server.Terminate(t)
 
 	svc := &api.Service{
@@ -2420,7 +2422,10 @@ func TestServiceRegistryCreateWithNetworkOfExternalIPAM(t *testing.T) {
 
 func TestServiceRegistryCreateWithoutExistingNetwork(t *testing.T) {
 	storage, _, server := NewTestREST(t, nil)
-	storage.networks = &dummyNetworkGetter{err: fmt.Errorf("network not found")}
+	storage.fnGetNetwork = func(ctx context.Context, tenant, name string) (object runtime.Object, err error) {
+		return nil, fmt.Errorf("network not found")
+	}
+
 	defer server.Terminate(t)
 
 	svc := &api.Service{
@@ -2457,7 +2462,26 @@ func TestServiceRegistryCreateWithNetworkOfArktosIPAM(t *testing.T) {
 	}()
 
 	storage, registry, server := NewTestREST(t, nil)
-	storage.networks = &dummyNetworkGetter{ipamType: "Arktos", cidr: "3.4.5.0/24"}
+	storage.fnGetNetwork = func(ctx context.Context, tenant, name string) (object runtime.Object, err error) {
+		return &unstructured.Unstructured{
+			Object: map[string]interface{}{
+				"apiVersion": "arktos.futurewei.com/v1",
+				"kind":       "Network",
+				"metadata": map[string]interface{}{
+					"tenant": "test-te",
+					"name":   "test-network",
+				},
+				"spec": map[string]interface{}{
+					"type": "mizar",
+					"service": map[string]interface{}{
+						"ipam":  "Arktos",
+						"cidrs": []interface{}{"3.4.5.0/24"},
+					},
+				},
+			},
+		}, nil
+	}
+
 	_, ipRange, _ := net.ParseCIDR("3.4.5.0/24")
 	defer server.Terminate(t)
 

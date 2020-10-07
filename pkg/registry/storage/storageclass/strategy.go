@@ -45,7 +45,7 @@ func (storageClassStrategy) NamespaceScoped() bool {
 
 //TenantScoped is false as it is cluster-scoped
 func (storageClassStrategy) TenantScoped() bool {
-	return false
+	return true
 }
 
 // ResetBeforeCreate clears the Status field which is not allowed to be set by end users on creation.

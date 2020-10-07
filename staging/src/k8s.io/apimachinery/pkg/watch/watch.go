@@ -132,6 +132,12 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 		stopCh := a.stopChGrp.Join()
 
 		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+			defer func() {
+				if r := recover(); r != nil {
+					klog.Warningf("Recovered in AggregatedWatch. error [%v]", r)
+				}
+			}()
+
 			for {
 				select {
 				case <-stopCh.Read:
@@ -201,18 +207,23 @@ func (a *AggregatedWatcher) ResultChan() <-chan Event {
 }
 
 func (a *AggregatedWatcher) GetErrors() error {
-	aggErr := []error{}
+	a.mapLock.RLock()
+	aggErr := make([]error, 0, len(a.errs))
 	for _, err := range a.errs {
 		if err != nil {
 			aggErr = append(aggErr, err)
 		}
 	}
 
+	a.mapLock.RUnlock()
 	return utilerrors.NewAggregate(aggErr)
 }
 
 func (a *AggregatedWatcher) GetWatchersCount() int {
-	return len(a.watchers)
+	a.mapLock.RLock()
+	count := len(a.watchers)
+	a.mapLock.RUnlock()
+	return count
 }
 
 // EventType defines the possible types of events.

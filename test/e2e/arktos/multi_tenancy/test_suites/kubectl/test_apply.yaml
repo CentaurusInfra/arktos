@@ -1,0 +1,87 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl Apply Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl apply".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  another_test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+###########################################################################################################
+# test "kubectl apply"
+###########################################################################################################
+# create the deployment under the default namespace
+  - BeforeTestMessage: "Verifying \"kubectl annotate\" ..."
+    Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+# re-applying the same yaml is OK
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment unchanged\n"
+
+# it is also OK to specify the tenant in the yaml file
+  - Command: "cat ${test_data_dir}/sample-deployment.yaml | sed -e '/  name: sample-nginx-deployment/ a \\ \\ tenant: ${test_tenant}'
+            | ${kubectl} apply -f -"
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment unchanged\n"
+
+# the command should fail if the commandline tenant is different from resource tenant in the yaml file
+  - Command: "cat ${test_data_dir}/sample-deployment.yaml | sed '/  name: sample-nginx-deployment/ a \\ \\ tenant: ${another_test_tenant}'
+            | ${kubectl} apply --tenant ${test_tenant} -f -"
+    ShouldFail: true
+    OutputShouldBe: "error: the tenant from the provided object \"${another_test_tenant}\" does not match the tenant \"${test_tenant}\". 
+                     You must pass '--tenant=${another_test_tenant}' to perform this operation.\n"
+
+# creating the deployment under the default namespace
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+
+  - BeforeTest: sleep 5
+    Command: "${kubectl} get deployments --all-namespaces --tenant ${test_tenant} -o json
+              | jq -r '.items[] | [.metadata.name, .metadata.namespace, .metadata.tenant, .status.readyReplicas, .status.replicas] | @tsv'"
+    OutputShouldContain:
+    - "sample-nginx-deployment	${test_ns}	${test_tenant}	1	1"
+    - "sample-nginx-deployment	default	${test_tenant}	1	1"
+    RetryCount: 3
+    RetryInterval: 5    
+
+###########################################################################################################
+# test "kubectl apply set-last-applied" & "kubectl apply edit-last-applied"
+###########################################################################################################
+
+  - BeforeTestMessage: "Verifying \"kubectl apply set-last-applied\" and \"kubectl apply edit-last-applied\" ..."
+    Command: "${kubectl} apply set-last-applied -f ${test_data_dir}/sample-deployment.yaml 
+              -n ${test_ns} --tenant ${test_tenant} --create-annotation"
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment configured\n"
+
+
+# "kubectl apply edit-last-applied" does not return, instead it opens the vi editor after locating the target resource.
+# so this test sends "ESC" and ":q!" to the vi editor
+  - Command: echo -e '\033:q!' | ${kubectl} apply edit-last-applied -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant}
+    OutputShouldContain: 
+    - "Edit cancelled, no changes made.\n"
+    OutputShouldNotContain: 
+    - Error
+    - NotFound
+    - not found
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

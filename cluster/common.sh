@@ -393,7 +393,8 @@ function generate-etcd-cert() {
                 "usages": [
                     "signing",
                     "key encipherment",
-                    "server auth"
+                    "server auth",
+                    "client auth"
                 ]
             },
             "client": {
@@ -456,8 +457,9 @@ EOF
       ;;
     server)
       echo "Generate server certificates..."
-      echo '{"CN":"'${member_ip}'","hosts":[""],"key":{"algo":"ecdsa","size":256}}' \
-       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server -hostname="${member_ip},127.0.0.1" - \
+      san=${member_ip// /,}
+      echo '{"CN":"server","hosts":["'${member_ip}'"],"key":{"algo":"ecdsa","size":256}}' \
+       | ${CFSSL_BIN} gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server -hostname="${san},127.0.0.1" - \
        | ${CFSSLJSON_BIN} -bare "${prefix}"
       ;;
     peer)
@@ -886,6 +888,11 @@ EOF
     if [ -n "${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-}" ]; then
       cat >>$file <<EOF
 CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${CONTROLLER_MANAGER_TEST_LOG_LEVEL})
+EOF
+    fi
+    if [ -n "${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then

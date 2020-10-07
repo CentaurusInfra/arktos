@@ -1,0 +1,48 @@
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Kubectl edit Tests ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# This test suite verifies command "kubectl edit".
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+###########################################################################################################
+# test variables
+###########################################################################################################
+Variables:
+  test_tenant: random_8
+  test_ns: random_8
+
+###########################################################################################################
+# test setup
+###########################################################################################################
+Tests:
+  - BeforeTestMessage: Starting test setup ...
+    Command: ${kubectl} create tenant ${test_tenant}
+    OutputShouldContain: 
+    - "\ntenant/${test_tenant} created\n"
+
+  - Command: ${kubectl} create namespace ${test_ns} --tenant ${test_tenant}
+    OutputShouldBe: "namespace/${test_ns} created\n"
+
+  - Command:  ${kubectl} apply -f ${test_data_dir}/sample-deployment.yaml -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldBe: "deployment.apps/sample-nginx-deployment created\n"
+###########################################################################################################
+# test "kubectl edit"
+###########################################################################################################
+
+# "kubectl edit" does not return, instead it opens the vi editor after locating the target resource.
+# so this test sends "ESC" and ":q!" to the vi editor
+  - BeforeTestMessage: "Verifying \"kubectl edit\" ..."
+    BeforeTest: sleep 5
+    Command: echo  -e '\033:q!' |  ${kubectl} edit deployment/sample-nginx-deployment -n ${test_ns} --tenant ${test_tenant} 
+    OutputShouldContain: 
+    - "Edit cancelled, no changes made.\n"
+    OutputShouldNotContain: 
+    - Error
+    - NotFound
+    - not found
+
+###########################################################################################################
+# cleanup
+###########################################################################################################
+
+  - BeforeTestMessage: Clean up ...
+    Command: ${kubectl} delete tenant ${test_tenant} > /dev/null 2>&1 &

@@ -20,6 +20,7 @@ import (
 	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/klog"
+	"reflect"
 	"sync"
 )
 
@@ -46,7 +47,7 @@ var apiServerConfigUpdateChGrp *bcast.Group
 var muxCreateApiServerConfigUpdateChGrp sync.Mutex
 
 var apiServerMap map[string]v1.EndpointSubset
-var muxUpdateServerMap sync.Mutex
+var muxUpdateServerMap sync.RWMutex
 
 func GetAPIServerConfigUpdateChGrp() *bcast.Group {
 	if apiServerConfigUpdateChGrp != nil {
@@ -66,18 +67,39 @@ func GetAPIServerConfigUpdateChGrp() *bcast.Group {
 }
 
 func GetAPIServerConfig() map[string]v1.EndpointSubset {
-	return apiServerMap
+	muxUpdateServerMap.RLock()
+	copyApiServerMap := make(map[string]v1.EndpointSubset, len(apiServerMap))
+	for k, v := range apiServerMap {
+		copyApiServerMap[k] = *v.DeepCopy()
+	}
+
+	muxUpdateServerMap.RUnlock()
+	return copyApiServerMap
 }
 
-func SetAPIServerConfig(c map[string]v1.EndpointSubset) {
-	klog.V(3).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
+func SetAPIServerConfig(c map[string]v1.EndpointSubset) bool {
+	muxUpdateServerMap.RLock()
+	klog.V(2).Infof("Update APIServer Config from [%+v] to [%+v]", apiServerMap, c)
+
+	if reflect.DeepEqual(apiServerMap, c) {
+		klog.V(2).Infof("Skip updating API server config as it is the same")
+		muxUpdateServerMap.RUnlock()
+		return false
+	}
+
+	muxUpdateServerMap.RUnlock()
 	muxUpdateServerMap.Lock()
+	klog.V(2).Info("muxUpdateServerMap locked")
+
 	// map is passing as reference. Needs to copy manually
 	apiServerMap = make(map[string]v1.EndpointSubset)
 	for k, v := range c {
 		apiServerMap[k] = *v.DeepCopy()
 	}
 	muxUpdateServerMap.Unlock()
+	klog.V(2).Info("muxUpdateServerMap unlocked")
+
+	return true
 }
 
 var clientsetUpdateChGrp *bcast.Group
@@ -131,13 +153,13 @@ type ClientSetsWatcher struct {
 func (w *ClientSetsWatcher) AddWatcher() {
 	w.mux.Lock()
 	w.watcherCount++
-	klog.V(6).Infof("ClientSetsWatcher: Current watcher for clientset updates %v", w.watcherCount)
+	klog.V(4).Infof("ClientSetsWatcher: Current watcher for clientset updates %v", w.watcherCount)
 	w.mux.Unlock()
 }
 
 func (w *ClientSetsWatcher) StartWaitingForComplete() {
 	w.muxStartWaiting.Lock()
-	muxUpdateServerMap.Lock()
+	muxUpdateServerMap.RLock()
 	klog.Infof("ClientSetsWatcher: Started waiting for clientset update complete. current watcher %d. muxStartWaiting and muxUpdateServerMap are locked", w.watcherCount)
 	w.waitingCount = w.watcherCount
 }
@@ -148,13 +170,13 @@ func (w *ClientSetsWatcher) NotifyDone() {
 	if w.waitingCount == 1 {
 		w.waitingCount--
 		// waiting done
-		muxUpdateServerMap.Unlock()
+		muxUpdateServerMap.RUnlock()
 		w.muxStartWaiting.Unlock()
 		clientsetUpdateChGrp.Send("all clientset update done")
-		klog.V(3).Info("ClientSetsWatcher: Sent complete message after all clientset update was done. muxStartWaiting and muxUpdateServerMap are unlocked")
+		klog.Info("ClientSetsWatcher: Sent complete message after all clientset update was done. muxStartWaiting and muxUpdateServerMap are unlocked")
 		return
 	}
 
 	w.waitingCount--
-	klog.V(6).Infof("ClientSetsWatcher: current waitingCount %v", w.waitingCount)
+	klog.V(4).Infof("ClientSetsWatcher: current waitingCount %v", w.waitingCount)
 }
