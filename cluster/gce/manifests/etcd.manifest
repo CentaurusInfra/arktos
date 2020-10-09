@@ -45,7 +45,7 @@
         "value": "{{ etcd_protocol }}://{{ hostname }}:{{ server_port }}"
       },
       { "name": "ETCD_SNAPSHOT_COUNT",
-        "value": "10000"
+        "value": "100000"
       }
         ],
     "livenessProbe": {
