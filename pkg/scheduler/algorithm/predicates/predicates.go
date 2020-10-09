@@ -1145,7 +1145,7 @@ func noncriticalPredicates(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedu
 	return len(predicateFails) == 0, predicateFails, nil
 }
 
-// EssentialPredicates are the predicates that all pods, including critical pods, need
+// EssentialPredicates are the predicates that all pods, including critical pods, need. The global scheduler may need PodMatchClusterSelector
 func EssentialPredicates(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []PredicateFailureReason, error) {
 	var predicateFails []PredicateFailureReason
 	fit, reasons, err := PodFitsHost(pod, meta, nodeInfo)
