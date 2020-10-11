@@ -116,7 +116,6 @@ func defaultPriorities() sets.String {
 		priorities.NodePreferAvoidPodsPriority,
 		priorities.NodeAffinityPriority,
 		priorities.TaintTolerationPriority,
-		priorities.ImageLocalityPriority,
 	)
 }
 

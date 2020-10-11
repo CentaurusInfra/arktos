@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,9 +47,6 @@ const (
 	// TaintTolerationPriority defines the name of prioritizer function that prioritizes nodes that marked
 	// with taint which pod can tolerate.
 	TaintTolerationPriority = "TaintTolerationPriority"
-	// ImageLocalityPriority defines the name of prioritizer function that prioritizes nodes that have images
-	// requested by the pod present.
-	ImageLocalityPriority = "ImageLocalityPriority"
 	// ResourceLimitsPriority defines the nodes of prioritizer function ResourceLimitsPriority.
 	ResourceLimitsPriority = "ResourceLimitsPriority"
 )

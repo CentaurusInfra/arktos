@@ -23,7 +23,7 @@ import (
 	"reflect"
 	"testing"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -147,7 +147,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -172,7 +171,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -206,7 +204,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
+			{"name": "Priority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -235,7 +233,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -271,7 +268,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -303,7 +299,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
+					{Name: "Priority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -340,7 +336,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -382,7 +377,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -431,7 +425,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -474,7 +467,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -524,7 +516,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -568,7 +559,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -620,7 +610,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -667,7 +656,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -720,7 +708,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -778,7 +765,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -843,7 +829,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -902,7 +887,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},
@@ -967,7 +951,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "ImageLocalityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "SelectorSpreadPriority",   "weight": 2},
@@ -1028,7 +1011,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "ImageLocalityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "SelectorSpreadPriority", Weight: 2},

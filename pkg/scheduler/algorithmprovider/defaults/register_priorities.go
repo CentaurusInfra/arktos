@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -91,7 +92,4 @@ func init() {
 
 	// Prioritizes nodes that marked with taint which pod can tolerate.
 	factory.RegisterPriorityFunction2(priorities.TaintTolerationPriority, priorities.ComputeTaintTolerationPriorityMap, priorities.ComputeTaintTolerationPriorityReduce, 1)
-
-	// ImageLocalityPriority prioritizes nodes that have images requested by the pod present.
-	factory.RegisterPriorityFunction2(priorities.ImageLocalityPriority, priorities.ImageLocalityPriorityMap, nil, 1)
 }
