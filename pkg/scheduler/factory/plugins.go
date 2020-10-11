@@ -312,18 +312,7 @@ func RegisterCustomPriorityFunction(policy schedulerapi.PriorityPolicy) string {
 
 	// generate the priority function, if a custom priority is requested
 	if policy.Argument != nil {
-		if policy.Argument.ServiceAntiAffinity != nil {
-			pcf = &PriorityConfigFactory{
-				MapReduceFunction: func(args PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
-					return priorities.NewServiceAntiAffinityPriority(
-						args.PodLister,
-						args.ServiceLister,
-						policy.Argument.ServiceAntiAffinity.Label,
-					)
-				},
-				Weight: policy.Weight,
-			}
-		} else if policy.Argument.LabelPreference != nil {
+		if policy.Argument.LabelPreference != nil {
 			pcf = &PriorityConfigFactory{
 				MapReduceFunction: func(args PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
 					return priorities.NewNodeLabelPriority(

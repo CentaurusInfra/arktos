@@ -24,11 +24,6 @@ const (
 	MostRequestedPriority = "MostRequestedPriority"
 	// RequestedToCapacityRatioPriority defines the name of RequestedToCapacityRatioPriority.
 	RequestedToCapacityRatioPriority = "RequestedToCapacityRatioPriority"
-	// SelectorSpreadPriority defines the name of prioritizer function that spreads pods by minimizing
-	// the number of pods (belonging to the same service or replication controller) on the same node.
-	SelectorSpreadPriority = "SelectorSpreadPriority"
-	// ServiceSpreadingPriority is largely replaced by "SelectorSpreadPriority".
-	ServiceSpreadingPriority = "ServiceSpreadingPriority"
 	// InterPodAffinityPriority defines the name of prioritizer function that decides which pods should or
 	// should not be placed in the same topological domain as some other pods.
 	InterPodAffinityPriority = "InterPodAffinityPriority"

@@ -109,7 +109,6 @@ func registerAlgorithmProvider(predSet, priSet sets.String) {
 
 func defaultPriorities() sets.String {
 	return sets.NewString(
-		priorities.SelectorSpreadPriority,
 		priorities.InterPodAffinityPriority,
 		priorities.LeastRequestedPriority,
 		priorities.BalancedResourceAllocation,
