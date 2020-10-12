@@ -142,7 +142,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "TestServiceAntiAffinity",  "weight": 3, "argument": {"serviceAntiAffinity": {"label": "zone"}}},
@@ -165,7 +164,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "TestServiceAntiAffinity", Weight: 3, Argument: &schedulerapi.PriorityArgument{ServiceAntiAffinity: &schedulerapi.ServiceAntiAffinity{Label: "zone"}}},
@@ -201,7 +199,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "Priority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -226,7 +223,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 				},
 			},
 		},
@@ -258,7 +254,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ]
 		}`,
@@ -286,7 +281,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "Priority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 			},
@@ -318,7 +312,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -355,7 +348,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -399,7 +391,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -437,7 +428,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -482,7 +472,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -521,7 +510,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -568,7 +556,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -610,7 +597,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -658,7 +644,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -711,7 +696,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",
@@ -771,7 +755,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -825,7 +808,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",
@@ -885,7 +867,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "NodeAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -941,7 +922,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "NodeAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",

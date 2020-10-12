@@ -30,9 +30,6 @@ const (
 	// BalancedResourceAllocation defines the name of prioritizer function that prioritizes nodes
 	// to help achieve balanced resource usage.
 	BalancedResourceAllocation = "BalancedResourceAllocation"
-	// NodeAffinityPriority defines the name of prioritizer function that prioritizes nodes which have labels
-	// matching NodeAffinity.
-	NodeAffinityPriority = "NodeAffinityPriority"
 	// ResourceLimitsPriority defines the nodes of prioritizer function ResourceLimitsPriority.
 	ResourceLimitsPriority = "ResourceLimitsPriority"
 )

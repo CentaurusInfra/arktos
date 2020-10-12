@@ -147,7 +147,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 			expectedPrioritizers: sets.NewString(
 				"BalancedResourceAllocation",
 				"LeastRequestedPriority",
-				"NodeAffinityPriority",
 			),
 		},
 		{
@@ -210,7 +209,6 @@ kind: Policy
 			expectedPrioritizers: sets.NewString(
 				"BalancedResourceAllocation",
 				"LeastRequestedPriority",
-				"NodeAffinityPriority",
 			),
 		},
 		{

@@ -13,7 +13,6 @@ go_library(
         "least_requested.go",
         "metadata.go",
         "most_requested.go",
-        "node_affinity.go",
         "node_label.go",
         "priorities.go",
         "reduce.go",
@@ -25,7 +24,6 @@ go_library(
     ],
     importpath = "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities",
     deps = [
-        "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/scheduler/algorithm:go_default_library",
         "//pkg/scheduler/algorithm/priorities/util:go_default_library",
@@ -47,7 +45,6 @@ go_test(
         "least_requested_test.go",
         "metadata_test.go",
         "most_requested_test.go",
-        "node_affinity_test.go",
         "node_label_test.go",
         "requested_to_capacity_ratio_test.go",
         "resource_limits_test.go",

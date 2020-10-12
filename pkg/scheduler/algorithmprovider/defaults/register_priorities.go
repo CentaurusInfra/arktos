@@ -47,7 +47,4 @@ func init() {
 
 	// Prioritizes nodes to help achieve balanced resource usage
 	factory.RegisterPriorityFunction2(priorities.BalancedResourceAllocation, priorities.BalancedResourceAllocationMap, nil, 1)
-
-	// Prioritizes nodes that have labels matching NodeAffinity
-	factory.RegisterPriorityFunction2(priorities.NodeAffinityPriority, priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1)
 }
