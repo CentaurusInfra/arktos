@@ -202,7 +202,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "LeastRequestedPriority",   "weight": 2},
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2}
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -228,7 +227,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 				},
 			},
 		},
@@ -262,7 +260,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ]
 		}`,
@@ -292,7 +289,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 			},
@@ -326,7 +322,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -365,7 +360,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -411,7 +405,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -451,7 +444,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -498,7 +490,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -539,7 +530,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -588,7 +578,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
@@ -632,7 +621,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 				},
 				ExtenderConfigs: []schedulerapi.ExtenderConfig{{
@@ -682,7 +670,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -737,7 +724,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",
@@ -799,7 +785,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -855,7 +840,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",
@@ -917,7 +901,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "BalancedResourceAllocation",   "weight": 2},
 			{"name": "NodePreferAvoidPodsPriority",   "weight": 2},
 			{"name": "NodeAffinityPriority",   "weight": 2},
-			{"name": "InterPodAffinityPriority",   "weight": 2},
 			{"name": "MostRequestedPriority",   "weight": 2},
 			{
 				"name": "RequestedToCapacityRatioPriority",
@@ -975,7 +958,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "BalancedResourceAllocation", Weight: 2},
 					{Name: "NodePreferAvoidPodsPriority", Weight: 2},
 					{Name: "NodeAffinityPriority", Weight: 2},
-					{Name: "InterPodAffinityPriority", Weight: 2},
 					{Name: "MostRequestedPriority", Weight: 2},
 					{
 						Name:   "RequestedToCapacityRatioPriority",

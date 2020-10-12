@@ -24,9 +24,6 @@ const (
 	MostRequestedPriority = "MostRequestedPriority"
 	// RequestedToCapacityRatioPriority defines the name of RequestedToCapacityRatioPriority.
 	RequestedToCapacityRatioPriority = "RequestedToCapacityRatioPriority"
-	// InterPodAffinityPriority defines the name of prioritizer function that decides which pods should or
-	// should not be placed in the same topological domain as some other pods.
-	InterPodAffinityPriority = "InterPodAffinityPriority"
 	// LeastRequestedPriority defines the name of prioritizer function that prioritize nodes by least
 	// requested utilization.
 	LeastRequestedPriority = "LeastRequestedPriority"

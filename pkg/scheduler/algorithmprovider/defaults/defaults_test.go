@@ -55,7 +55,6 @@ func TestCopyAndReplace(t *testing.T) {
 
 func TestDefaultPriorities(t *testing.T) {
 	result := sets.NewString(
-		priorities.InterPodAffinityPriority,
 		priorities.LeastRequestedPriority,
 		priorities.BalancedResourceAllocation,
 		priorities.NodePreferAvoidPodsPriority,

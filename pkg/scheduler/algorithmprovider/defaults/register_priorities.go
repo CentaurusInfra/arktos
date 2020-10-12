@@ -42,18 +42,6 @@ func init() {
 		nil,
 		1)
 
-	// pods should be placed in the same topological domain (e.g. same node, same rack, same zone, same power domain, etc.)
-	// as some other pods, or, conversely, should not be placed in the same topological domain as some other pods.
-	factory.RegisterPriorityConfigFactory(
-		priorities.InterPodAffinityPriority,
-		factory.PriorityConfigFactory{
-			Function: func(args factory.PluginFactoryArgs) priorities.PriorityFunction {
-				return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister, args.HardPodAffinitySymmetricWeight)
-			},
-			Weight: 1,
-		},
-	)
-
 	// Prioritize nodes by least requested utilization.
 	factory.RegisterPriorityFunction2(priorities.LeastRequestedPriority, priorities.LeastRequestedPriorityMap, nil, 1)
 
