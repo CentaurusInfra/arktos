@@ -39,12 +39,13 @@
 
 **Revision Records**
 
-|    Date    | Revision Version |              Change Description                                   |      Author      |
-|:----------:|:----------------:|:-----------------------------------------------------------------:|:----------------:|
-| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc                      | Cathy Hong Zhang |
-| 2020-09-03 |        1.1       | Add Key System Flow Design Sections                               | Cathy Hong Zhang |
-| 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus            | Cathy Hong Zhang |
-| 2020-0923  |        1.3       | CLean up unused design options and update some design diagrams    | Cathy Hong Zhang |
+|    Date    | Revision Version |              Change Description                                                          |      Author      |
+|:----------:|:----------------:|:----------------------------------------------------------------------------------------:|:----------------:|
+| 2020-08-25 |        1.0       | First version of Global Scheduler Design Doc                                             | Cathy Hong Zhang |
+| 2020-09-03 |        1.1       | Add Key System Flow Design Sections                                                      | Cathy Hong Zhang |
+| 2020-09-16 |        1.2       | Incorporate comments and open source meeting consensus                                   | Cathy Hong Zhang |
+| 2020-09-23 |        1.3       | CLean up unused design options and update some design diagrams                           | Cathy Hong Zhang |
+| 2020-10-01 |        1.4       | Incorporate Dr. Xiong's input to add a higher level architecture diagram and description | Cathy Hong Zhang |
 
 # 1. Introduction
 
@@ -187,7 +188,12 @@ In summary, this design eliminates the issues associated with existing Two-Level
 
 On the southbound, it integrates with different types of clusters via a flexible plugin design.
 
-Figure.1 is an illustration of the high-level architecture.
+Figure.1.1 is an illustration of the high-level architecture. It is composed of three functional parts and each part can be deployed independently. The API Server part (blue part) is responsible for handling the VM/Container creation and deletion requests
+and persist those request information into the ETCD DB. The Distributed Schedulers part (yellow part) consists of multiple concurrently running schedulers that make the scheduling decision and send the decision to the selected cluster.
+The Resource Collector part (green part) is responsible for collecting the resource information needed by the schedulers from all the clusters and saving them to the ETCD DB Cache. 
+![image.png](/images/2.3.1.png)
+
+Figure.1.2 is an illustration of the detail acrhitecture design. 
 ![image.png](/images/2.3.png)
 
 In the future, we may explore whether this two-level architecture may flatten into a one-level architecture.
