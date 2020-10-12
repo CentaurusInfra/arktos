@@ -131,7 +131,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
-				"CheckNodeMemoryPressure",
 				"CheckNodePIDPressure",
 				"CheckVolumeBinding",
 				"GeneralPredicates",
@@ -199,7 +198,6 @@ kind: Policy
 				"CheckNodeRuntimeReadiness",
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
-				"CheckNodeMemoryPressure",
 				"CheckNodePIDPressure",
 				"CheckVolumeBinding",
 				"GeneralPredicates",

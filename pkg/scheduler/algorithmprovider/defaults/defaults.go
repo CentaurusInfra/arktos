@@ -48,7 +48,6 @@ func defaultPredicates() sets.String {
 		predicates.MatchInterPodAffinityPred,
 		predicates.NoDiskConflictPred,
 		predicates.GeneralPred,
-		predicates.CheckNodeMemoryPressurePred,
 		predicates.CheckNodeDiskPressurePred,
 		predicates.CheckNodePIDPressurePred,
 		predicates.CheckNodeConditionPred,
@@ -61,18 +60,16 @@ func defaultPredicates() sets.String {
 // ApplyFeatureGates applies algorithm by feature gates.
 func ApplyFeatureGates() {
 	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
-		// Remove "CheckNodeCondition", "CheckNodeMemoryPressure", "CheckNodePIDPressure"
+		// Remove "CheckNodeCondition", CheckNodePIDPressure"
 		// and "CheckNodeDiskPressure" predicates
 		factory.RemoveFitPredicate(predicates.CheckNodeConditionPred)
-		factory.RemoveFitPredicate(predicates.CheckNodeMemoryPressurePred)
 		factory.RemoveFitPredicate(predicates.CheckNodeDiskPressurePred)
 		factory.RemoveFitPredicate(predicates.CheckNodePIDPressurePred)
-		// Remove key "CheckNodeCondition", "CheckNodeMemoryPressure", "CheckNodePIDPressure" and "CheckNodeDiskPressure"
+		// Remove key "CheckNodeCondition", CheckNodePIDPressure" and "CheckNodeDiskPressure"
 		// from ALL algorithm provider
 		// The key will be removed from all providers which in algorithmProviderMap[]
 		// if you just want remove specific provider, call func RemovePredicateKeyFromAlgoProvider()
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeConditionPred)
-		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeMemoryPressurePred)
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeDiskPressurePred)
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodePIDPressurePred)
 
