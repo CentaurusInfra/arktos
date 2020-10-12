@@ -48,10 +48,6 @@ func init() {
 	// Prioritizes nodes to help achieve balanced resource usage
 	factory.RegisterPriorityFunction2(priorities.BalancedResourceAllocation, priorities.BalancedResourceAllocationMap, nil, 1)
 
-	// Set this weight large enough to override all other priority functions.
-	// TODO: Figure out a better way to do this, maybe at same time as fixing #24720.
-	factory.RegisterPriorityFunction2(priorities.NodePreferAvoidPodsPriority, priorities.CalculateNodePreferAvoidPodsPriorityMap, nil, 10000)
-
 	// Prioritizes nodes that have labels matching NodeAffinity
 	factory.RegisterPriorityFunction2(priorities.NodeAffinityPriority, priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1)
 }

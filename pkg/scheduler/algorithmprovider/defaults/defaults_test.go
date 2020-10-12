@@ -57,7 +57,6 @@ func TestDefaultPriorities(t *testing.T) {
 	result := sets.NewString(
 		priorities.LeastRequestedPriority,
 		priorities.BalancedResourceAllocation,
-		priorities.NodePreferAvoidPodsPriority,
 		priorities.NodeAffinityPriority,
 	)
 	if expected := defaultPriorities(); !result.Equal(expected) {

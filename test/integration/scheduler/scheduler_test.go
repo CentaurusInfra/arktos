@@ -148,7 +148,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"BalancedResourceAllocation",
 				"LeastRequestedPriority",
 				"NodeAffinityPriority",
-				"NodePreferAvoidPodsPriority",
 			),
 		},
 		{
@@ -212,7 +211,6 @@ kind: Policy
 				"BalancedResourceAllocation",
 				"LeastRequestedPriority",
 				"NodeAffinityPriority",
-				"NodePreferAvoidPodsPriority",
 			),
 		},
 		{

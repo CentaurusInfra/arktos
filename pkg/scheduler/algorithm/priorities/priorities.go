@@ -30,9 +30,6 @@ const (
 	// BalancedResourceAllocation defines the name of prioritizer function that prioritizes nodes
 	// to help achieve balanced resource usage.
 	BalancedResourceAllocation = "BalancedResourceAllocation"
-	// NodePreferAvoidPodsPriority defines the name of prioritizer function that priorities nodes according to
-	// the node annotation "scheduler.alpha.kubernetes.io/preferAvoidPods".
-	NodePreferAvoidPodsPriority = "NodePreferAvoidPodsPriority"
 	// NodeAffinityPriority defines the name of prioritizer function that prioritizes nodes which have labels
 	// matching NodeAffinity.
 	NodeAffinityPriority = "NodeAffinityPriority"

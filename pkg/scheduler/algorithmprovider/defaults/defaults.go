@@ -111,7 +111,6 @@ func defaultPriorities() sets.String {
 	return sets.NewString(
 		priorities.LeastRequestedPriority,
 		priorities.BalancedResourceAllocation,
-		priorities.NodePreferAvoidPodsPriority,
 		priorities.NodeAffinityPriority,
 	)
 }
