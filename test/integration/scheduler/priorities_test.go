@@ -29,63 +29,6 @@ import (
 
 // This file tests the scheduler priority functions.
 
-// TestNodeAffinity verifies that scheduler's node affinity priority function
-// works correctly.
-func TestNodeAffinity(t *testing.T) {
-	context := initTest(t, "node-affinity")
-	defer cleanupTest(t, context)
-	// Add a few nodes.
-	nodes, err := createNodes(context.clientSet, "testnode", nil, 5)
-	if err != nil {
-		t.Fatalf("Cannot create nodes: %v", err)
-	}
-	// Add a label to one of the nodes.
-	labeledNode := nodes[1]
-	labelKey := "kubernetes.io/node-topologyKey"
-	labelValue := "topologyvalue"
-	labels := map[string]string{
-		labelKey: labelValue,
-	}
-	if err = testutils.AddLabelsToNode(context.clientSet, labeledNode.Name, labels); err != nil {
-		t.Fatalf("Cannot add labels to node: %v", err)
-	}
-	if err = waitForNodeLabels(context.clientSet, labeledNode.Name, labels); err != nil {
-		t.Fatalf("Adding labels to node didn't succeed: %v", err)
-	}
-	// Create a pod with node affinity.
-	podName := "pod-with-node-affinity"
-	pod, err := runPausePod(context.clientSet, initPausePod(context.clientSet, &pausePodConfig{
-		Name:      podName,
-		Namespace: context.ns.Name,
-		Affinity: &v1.Affinity{
-			NodeAffinity: &v1.NodeAffinity{
-				PreferredDuringSchedulingIgnoredDuringExecution: []v1.PreferredSchedulingTerm{
-					{
-						Preference: v1.NodeSelectorTerm{
-							MatchExpressions: []v1.NodeSelectorRequirement{
-								{
-									Key:      labelKey,
-									Operator: v1.NodeSelectorOpIn,
-									Values:   []string{labelValue},
-								},
-							},
-						},
-						Weight: 20,
-					},
-				},
-			},
-		},
-	}))
-	if err != nil {
-		t.Fatalf("Error running pause pod: %v", err)
-	}
-	if pod.Spec.NodeName != labeledNode.Name {
-		t.Errorf("Pod %v got scheduled on an unexpected node: %v. Expected node: %v.", podName, pod.Spec.NodeName, labeledNode.Name)
-	} else {
-		t.Logf("Pod %v got successfully scheduled on node %v.", podName, pod.Spec.NodeName)
-	}
-}
-
 // TestPodAffinity verifies that scheduler's pod affinity priority function
 // works correctly.
 func TestPodAffinity(t *testing.T) {

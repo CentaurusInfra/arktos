@@ -313,17 +313,7 @@ func RegisterCustomPriorityFunction(policy schedulerapi.PriorityPolicy) string {
 
 	// generate the priority function, if a custom priority is requested
 	if policy.Argument != nil {
-		if policy.Argument.LabelPreference != nil {
-			pcf = &PriorityConfigFactory{
-				MapReduceFunction: func(args PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
-					return priorities.NewNodeLabelPriority(
-						policy.Argument.LabelPreference.Label,
-						policy.Argument.LabelPreference.Presence,
-					)
-				},
-				Weight: policy.Weight,
-			}
-		} else if policy.Argument.RequestedToCapacityRatioArguments != nil {
+		if policy.Argument.RequestedToCapacityRatioArguments != nil {
 			pcf = &PriorityConfigFactory{
 				MapReduceFunction: func(args PluginFactoryArgs) (priorities.PriorityMapFunction, priorities.PriorityReduceFunction) {
 					scoringFunctionShape := buildScoringFunctionShapeFromRequestedToCapacityRatioArguments(policy.Argument.RequestedToCapacityRatioArguments)
