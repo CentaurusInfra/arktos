@@ -48,21 +48,19 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		// A failure indicates backwards compatibility with the specified release was broken.
 		"1.0": {
 			JSON: `{
-  "kind": "Policy",
-  "apiVersion": "v1",
-  "predicates": [
-    {"name": "MatchNodeSelector"},
-    {"name": "PodFitsResources"},
-    {"name": "PodFitsPorts"},
-    {"name": "NoDiskConflict"},
-    {"name": "TestServiceAffinity", "argument": {"serviceAffinity" : {"labels" : ["region"]}}},
-    {"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
-  ],"priorities": [
-    {"name": "LeastRequestedPriority",   "weight": 1},
-    {"name": "TestServiceAntiAffinity",  "weight": 3, "argument": {"serviceAntiAffinity": {"label": "zone"}}},
-    {"name": "TestLabelPreference",      "weight": 4, "argument": {"labelPreference": {"label": "bar", "presence":true}}}
-  ]
-}`,
+			"kind": "Policy",
+			"apiVersion": "v1",
+			"predicates": [
+				{"name": "MatchNodeSelector"},
+				{"name": "PodFitsResources"},
+				{"name": "PodFitsPorts"},
+				{"name": "NoDiskConflict"},
+				{"name": "TestServiceAffinity", "argument": {"serviceAffinity" : {"labels" : ["region"]}}},
+				{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
+			],"priorities": [
+				{"name": "LeastRequestedPriority",   "weight": 1}
+			]
+			}`,
 			ExpectedPolicy: schedulerapi.Policy{
 				Predicates: []schedulerapi.PredicatePolicy{
 					{Name: "MatchNodeSelector"},
@@ -74,8 +72,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "LeastRequestedPriority", Weight: 1},
-					{Name: "TestServiceAntiAffinity", Weight: 3, Argument: &schedulerapi.PriorityArgument{ServiceAntiAffinity: &schedulerapi.ServiceAntiAffinity{Label: "zone"}}},
-					{Name: "TestLabelPreference", Weight: 4, Argument: &schedulerapi.PriorityArgument{LabelPreference: &schedulerapi.LabelPreference{Label: "bar", Presence: true}}},
 				},
 			},
 		},
@@ -97,9 +93,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "TestServiceAntiAffinity",  "weight": 3, "argument": {"serviceAntiAffinity": {"label": "zone"}}},
-			{"name": "TestLabelPreference",      "weight": 4, "argument": {"labelPreference": {"label": "bar", "presence":true}}}
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -116,8 +110,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "TestServiceAntiAffinity", Weight: 3, Argument: &schedulerapi.PriorityArgument{ServiceAntiAffinity: &schedulerapi.ServiceAntiAffinity{Label: "zone"}}},
-					{Name: "TestLabelPreference", Weight: 4, Argument: &schedulerapi.PriorityArgument{LabelPreference: &schedulerapi.LabelPreference{Label: "bar", Presence: true}}},
 				},
 			},
 		},
@@ -143,9 +135,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
-			{"name": "TestServiceAntiAffinity",  "weight": 3, "argument": {"serviceAntiAffinity": {"label": "zone"}}},
-			{"name": "TestLabelPreference",      "weight": 4, "argument": {"labelPreference": {"label": "bar", "presence":true}}}
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -166,8 +156,6 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "EqualPriority", Weight: 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
-					{Name: "TestServiceAntiAffinity", Weight: 3, Argument: &schedulerapi.PriorityArgument{ServiceAntiAffinity: &schedulerapi.ServiceAntiAffinity{Label: "zone"}}},
-					{Name: "TestLabelPreference", Weight: 4, Argument: &schedulerapi.PriorityArgument{LabelPreference: &schedulerapi.LabelPreference{Label: "bar", Presence: true}}},
 				},
 			},
 		},
@@ -196,9 +184,8 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			{"name": "TestLabelsPresence",  "argument": {"labelsPresence"  : {"labels" : ["foo"], "presence":true}}}
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
-			{"name": "Priority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -221,6 +208,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 				},
 				Priorities: []schedulerapi.PriorityPolicy{
 					{Name: "EqualPriority", Weight: 2},
+					{"name": "Priority", "weight": 2},
 					{Name: "LeastRequestedPriority", Weight: 2},
 					{Name: "BalancedResourceAllocation", Weight: 2},
 				},
@@ -253,7 +241,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ]
 		}`,
 			ExpectedPolicy: schedulerapi.Policy{
@@ -309,7 +297,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
 			"filterVerb":       "filter",
@@ -386,7 +374,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
 			"filterVerb":       "filter",
@@ -465,7 +453,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
 			"filterVerb":       "filter",
@@ -547,7 +535,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 		  ],"priorities": [
 			{"name": "EqualPriority",   "weight": 2},
 			{"name": "LeastRequestedPriority",   "weight": 2},
-			{"name": "BalancedResourceAllocation",   "weight": 2},
+			{"name": "BalancedResourceAllocation",   "weight": 2}
 		  ],"extenders": [{
 			"urlPrefix":        "/prefix",
 			"filterVerb":       "filter",

@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
@@ -87,7 +87,6 @@ func TestCreateFromConfig(t *testing.T) {
 			{"name" : "PredicateTwo"}
 		],
 		"priorities" : [
-			{"name" : "RackSpread", "weight" : 3, "argument" : {"serviceAntiAffinity" : {"label" : "rack"}}},
 			{"name" : "PriorityOne", "weight" : 2},
 			{"name" : "PriorityTwo", "weight" : 1}		]
 	}`)
@@ -127,7 +126,6 @@ func TestCreateFromConfigWithHardPodAffinitySymmetricWeight(t *testing.T) {
 			{"name" : "PredicateTwo"}
 		],
 		"priorities" : [
-			{"name" : "RackSpread", "weight" : 3, "argument" : {"serviceAntiAffinity" : {"label" : "rack"}}},
 			{"name" : "PriorityOne", "weight" : 2},
 			{"name" : "PriorityTwo", "weight" : 1}
 		],
