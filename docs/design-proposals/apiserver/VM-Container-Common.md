@@ -510,7 +510,6 @@ Other components:
 |pkg/scheduler/algorithm/predicates/predicates_test.go|15|
 |pkg/scheduler/algorithm/priorities/resource_limits_test.go|4|
 |pkg/scheduler/algorithm/priorities/balanced_resource_allocation_test.go|7|
-|pkg/scheduler/algorithm/priorities/most_requested_test.go|4|
 |pkg/scheduler/algorithm/priorities/requested_to_capacity_ratio_test.go|1|
 |pkg/scheduler/algorithm/priorities/least_requested_test.go|3|
 |pkg/scheduler/algorithm/priorities/image_locality_test.go|3|

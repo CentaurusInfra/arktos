@@ -104,7 +104,7 @@ func registerAlgorithmProvider(predSet, priSet sets.String) {
 	factory.RegisterAlgorithmProvider(factory.DefaultProvider, predSet, priSet)
 	// Cluster autoscaler friendly scheduling algorithm.
 	factory.RegisterAlgorithmProvider(ClusterAutoscalerProvider, predSet,
-		copyAndReplace(priSet, priorities.LeastRequestedPriority, priorities.MostRequestedPriority))
+		copyAndReplace(priSet, priorities.LeastRequestedPriority, priorities.LeastRequestedPriority))
 }
 
 func defaultPriorities() sets.String {

@@ -20,8 +20,6 @@ package priorities
 const (
 	// EqualPriority defines the name of prioritizer function that gives an equal weight of one to all nodes.
 	EqualPriority = "EqualPriority"
-	// MostRequestedPriority defines the name of prioritizer function that gives used nodes higher priority.
-	MostRequestedPriority = "MostRequestedPriority"
 	// RequestedToCapacityRatioPriority defines the name of RequestedToCapacityRatioPriority.
 	RequestedToCapacityRatioPriority = "RequestedToCapacityRatioPriority"
 	// LeastRequestedPriority defines the name of prioritizer function that prioritize nodes by least

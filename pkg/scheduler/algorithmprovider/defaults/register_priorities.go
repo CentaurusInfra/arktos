@@ -35,7 +35,6 @@ func init() {
 	// but do not include it as part of the default priorities
 	factory.RegisterPriorityFunction2(priorities.EqualPriority, core.EqualPriorityMap, nil, 1)
 	// Optional, cluster-autoscaler friendly priority function - give used nodes higher priority.
-	factory.RegisterPriorityFunction2(priorities.MostRequestedPriority, priorities.MostRequestedPriorityMap, nil, 1)
 	factory.RegisterPriorityFunction2(
 		priorities.RequestedToCapacityRatioPriority,
 		priorities.RequestedToCapacityRatioResourceAllocationPriorityDefault().PriorityMap,
