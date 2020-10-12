@@ -39,9 +39,6 @@ const (
 	// NodeAffinityPriority defines the name of prioritizer function that prioritizes nodes which have labels
 	// matching NodeAffinity.
 	NodeAffinityPriority = "NodeAffinityPriority"
-	// TaintTolerationPriority defines the name of prioritizer function that prioritizes nodes that marked
-	// with taint which pod can tolerate.
-	TaintTolerationPriority = "TaintTolerationPriority"
 	// ResourceLimitsPriority defines the nodes of prioritizer function ResourceLimitsPriority.
 	ResourceLimitsPriority = "ResourceLimitsPriority"
 )

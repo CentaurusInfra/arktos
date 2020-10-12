@@ -150,7 +150,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 				"LeastRequestedPriority",
 				"NodeAffinityPriority",
 				"NodePreferAvoidPodsPriority",
-				"TaintTolerationPriority",
 			),
 		},
 		{
@@ -216,7 +215,6 @@ kind: Policy
 				"LeastRequestedPriority",
 				"NodeAffinityPriority",
 				"NodePreferAvoidPodsPriority",
-				"TaintTolerationPriority",
 			),
 		},
 		{

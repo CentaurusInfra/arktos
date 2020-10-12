@@ -66,7 +66,4 @@ func init() {
 
 	// Prioritizes nodes that have labels matching NodeAffinity
 	factory.RegisterPriorityFunction2(priorities.NodeAffinityPriority, priorities.CalculateNodeAffinityPriorityMap, priorities.CalculateNodeAffinityPriorityReduce, 1)
-
-	// Prioritizes nodes that marked with taint which pod can tolerate.
-	factory.RegisterPriorityFunction2(priorities.TaintTolerationPriority, priorities.ComputeTaintTolerationPriorityMap, priorities.ComputeTaintTolerationPriorityReduce, 1)
 }

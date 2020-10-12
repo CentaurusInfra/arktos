@@ -114,7 +114,6 @@ func defaultPriorities() sets.String {
 		priorities.BalancedResourceAllocation,
 		priorities.NodePreferAvoidPodsPriority,
 		priorities.NodeAffinityPriority,
-		priorities.TaintTolerationPriority,
 	)
 }
 

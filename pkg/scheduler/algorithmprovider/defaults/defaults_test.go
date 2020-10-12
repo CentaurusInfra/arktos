@@ -60,7 +60,6 @@ func TestDefaultPriorities(t *testing.T) {
 		priorities.BalancedResourceAllocation,
 		priorities.NodePreferAvoidPodsPriority,
 		priorities.NodeAffinityPriority,
-		priorities.TaintTolerationPriority,
 	)
 	if expected := defaultPriorities(); !result.Equal(expected) {
 		t.Errorf("expected %v got %v", expected, result)
