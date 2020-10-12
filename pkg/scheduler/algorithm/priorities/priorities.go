@@ -28,6 +28,4 @@ const (
 	// BalancedResourceAllocation defines the name of prioritizer function that prioritizes nodes
 	// to help achieve balanced resource usage.
 	BalancedResourceAllocation = "BalancedResourceAllocation"
-	// ResourceLimitsPriority defines the nodes of prioritizer function ResourceLimitsPriority.
-	ResourceLimitsPriority = "ResourceLimitsPriority"
 )

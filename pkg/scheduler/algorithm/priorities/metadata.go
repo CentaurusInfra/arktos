@@ -64,7 +64,6 @@ func (pmf *PriorityMetadataFactory) PriorityMetadata(pod *v1.Pod, nodeNameToInfo
 	}
 	return &priorityMetadata{
 		nonZeroRequest:          getNonZeroRequests(pod),
-		podLimits:               getResourceLimits(pod),
 		affinity:                pod.Spec.Affinity,
 		podSelectors:            getSelectors(pod, pmf.serviceLister, pmf.controllerLister, pmf.replicaSetLister, pmf.statefulSetLister),
 		controllerRef:           metav1.GetControllerOf(pod),
