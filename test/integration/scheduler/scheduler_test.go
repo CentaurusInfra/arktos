@@ -129,7 +129,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 			expectedPredicates: sets.NewString(
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
-				"CheckNodeMemoryPressure",
 				"CheckNodePIDPressure",
 				"CheckVolumeBinding",
 				"GeneralPredicates",
@@ -193,7 +192,6 @@ kind: Policy
 			expectedPredicates: sets.NewString(
 				"CheckNodeCondition", // mandatory predicate
 				"CheckNodeDiskPressure",
-				"CheckNodeMemoryPressure",
 				"CheckNodePIDPressure",
 				"CheckVolumeBinding",
 				"GeneralPredicates",
