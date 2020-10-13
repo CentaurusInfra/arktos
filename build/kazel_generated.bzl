@@ -1,4 +1,5 @@
 # Copyright The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -34,7 +35,6 @@ tags_values_pkgs = {"openapi-gen": {
         "staging/src/k8s.io/apiserver/pkg/apis/example2/v1",
     ],
     "true": [
-        "cmd/cloud-controller-manager/app/apis/config/v1alpha1",
         "pkg/apis/abac/v0",
         "pkg/apis/abac/v1beta1",
         "pkg/apis/auditregistration",
@@ -106,7 +106,6 @@ tags_values_pkgs = {"openapi-gen": {
 
 # tags_pkgs_values is a dictionary mapping {k8s build tag: {pkg: [tag values in pkg]}}
 tags_pkgs_values = {"openapi-gen": {
-    "cmd/cloud-controller-manager/app/apis/config/v1alpha1": ["true"],
     "pkg/apis/abac/v0": ["true"],
     "pkg/apis/abac/v1beta1": ["true"],
     "pkg/apis/auditregistration": ["true"],

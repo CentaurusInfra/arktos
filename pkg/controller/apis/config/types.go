@@ -21,25 +21,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
-	daemonconfig "k8s.io/kubernetes/pkg/controller/daemon/config"
-	deploymentconfig "k8s.io/kubernetes/pkg/controller/deployment/config"
 	endpointconfig "k8s.io/kubernetes/pkg/controller/endpoint/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
-	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
-	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
-	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
-	poautosclerconfig "k8s.io/kubernetes/pkg/controller/podautoscaler/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
 	replicasetconfig "k8s.io/kubernetes/pkg/controller/replicaset/config"
-	replicationconfig "k8s.io/kubernetes/pkg/controller/replication/config"
-	resourcequotaconfig "k8s.io/kubernetes/pkg/controller/resourcequota/config"
-	serviceconfig "k8s.io/kubernetes/pkg/controller/service/config"
 	serviceaccountconfig "k8s.io/kubernetes/pkg/controller/serviceaccount/config"
 	tenantconfig "k8s.io/kubernetes/pkg/controller/tenant/config"
-	ttlafterfinishedconfig "k8s.io/kubernetes/pkg/controller/ttlafterfinished/config"
-	attachdetachconfig "k8s.io/kubernetes/pkg/controller/volume/attachdetach/config"
-	persistentvolumeconfig "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/config"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -54,18 +42,9 @@ type KubeControllerManagerConfiguration struct {
 	// both in cloud controller manager and kube-controller manager.
 	KubeCloudShared KubeCloudSharedConfiguration
 
-	// AttachDetachControllerConfiguration holds configuration for
-	// AttachDetachController related features.
-	AttachDetachController attachdetachconfig.AttachDetachControllerConfiguration
 	// CSRSigningControllerConfiguration holds configuration for
 	// CSRSigningController related features.
 	CSRSigningController csrsigningconfig.CSRSigningControllerConfiguration
-	// DaemonSetControllerConfiguration holds configuration for DaemonSetController
-	// related features.
-	DaemonSetController daemonconfig.DaemonSetControllerConfiguration
-	// DeploymentControllerConfiguration holds configuration for
-	// DeploymentController related features.
-	DeploymentController deploymentconfig.DeploymentControllerConfiguration
 	// DeprecatedControllerConfiguration holds configuration for some deprecated
 	// features.
 	DeprecatedController DeprecatedControllerConfiguration
@@ -75,45 +54,20 @@ type KubeControllerManagerConfiguration struct {
 	// GarbageCollectorControllerConfiguration holds configuration for
 	// GarbageCollectorController related features.
 	GarbageCollectorController garbagecollectorconfig.GarbageCollectorControllerConfiguration
-	// HPAControllerConfiguration holds configuration for HPAController related features.
-	HPAController poautosclerconfig.HPAControllerConfiguration
-	// JobControllerConfiguration holds configuration for JobController related features.
-	JobController jobconfig.JobControllerConfiguration
 	// NamespaceControllerConfiguration holds configuration for NamespaceController
 	// related features.
 	NamespaceController namespaceconfig.NamespaceControllerConfiguration
-	// NodeIPAMControllerConfiguration holds configuration for NodeIPAMController
-	// related features.
-	NodeIPAMController nodeipamconfig.NodeIPAMControllerConfiguration
-	// NodeLifecycleControllerConfiguration holds configuration for
-	// NodeLifecycleController related features.
-	NodeLifecycleController nodelifecycleconfig.NodeLifecycleControllerConfiguration
-	// PersistentVolumeBinderControllerConfiguration holds configuration for
-	// PersistentVolumeBinderController related features.
-	PersistentVolumeBinderController persistentvolumeconfig.PersistentVolumeBinderControllerConfiguration
 	// PodGCControllerConfiguration holds configuration for PodGCController
 	// related features.
 	PodGCController podgcconfig.PodGCControllerConfiguration
 	// ReplicaSetControllerConfiguration holds configuration for ReplicaSet related features.
 	ReplicaSetController replicasetconfig.ReplicaSetControllerConfiguration
-	// ReplicationControllerConfiguration holds configuration for
-	// ReplicationController related features.
-	ReplicationController replicationconfig.ReplicationControllerConfiguration
-	// ResourceQuotaControllerConfiguration holds configuration for
-	// ResourceQuotaController related features.
-	ResourceQuotaController resourcequotaconfig.ResourceQuotaControllerConfiguration
 	// SAControllerConfiguration holds configuration for ServiceAccountController
 	// related features.
 	SAController serviceaccountconfig.SAControllerConfiguration
-	// ServiceControllerConfiguration holds configuration for ServiceController
-	// related features.
-	ServiceController serviceconfig.ServiceControllerConfiguration
 	// TenantControllerConfiguration holds configuration for TenantController
 	// related features.
 	TenantController tenantconfig.TenantControllerConfiguration
-	// TTLAfterFinishedControllerConfiguration holds configuration for
-	// TTLAfterFinishedController related features.
-	TTLAfterFinishedController ttlafterfinishedconfig.TTLAfterFinishedControllerConfiguration
 }
 
 // GenericControllerManagerConfiguration holds configuration for a generic controller-manager

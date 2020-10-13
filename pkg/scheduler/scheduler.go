@@ -346,42 +346,6 @@ func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, e
 	return nodeName, err
 }
 
-// assumeVolumes will update the volume cache with the chosen bindings
-//
-// This function modifies assumed if volume binding is required.
-func (sched *Scheduler) assumeVolumes(assumed *v1.Pod, host string) (allBound bool, err error) {
-	allBound, err = sched.config.VolumeBinder.Binder.AssumePodVolumes(assumed, host)
-	if err != nil {
-		sched.recordSchedulingFailure(assumed, err, SchedulerError,
-			fmt.Sprintf("AssumePodVolumes failed: %v", err))
-	}
-	return
-}
-
-// bindVolumes will make the API update with the assumed bindings and wait until
-// the PV controller has completely finished the binding operation.
-//
-// If binding errors, times out or gets undone, then an error will be returned to
-// retry scheduling.
-func (sched *Scheduler) bindVolumes(assumed *v1.Pod) error {
-	klog.V(5).Infof("Trying to bind volumes for pod \"%v/%v/%v\"", assumed.Tenant, assumed.Namespace, assumed.Name)
-	err := sched.config.VolumeBinder.Binder.BindPodVolumes(assumed)
-	if err != nil {
-		klog.V(1).Infof("Failed to bind volumes for pod \"%v/%v/%v\": %v", assumed.Tenant, assumed.Namespace, assumed.Name, err)
-
-		// Unassume the Pod and retry scheduling
-		if forgetErr := sched.config.SchedulerCache.ForgetPod(assumed); forgetErr != nil {
-			klog.Errorf("scheduler cache ForgetPod failed: %v", forgetErr)
-		}
-
-		sched.recordSchedulingFailure(assumed, err, "VolumeBindingFailed", err.Error())
-		return err
-	}
-
-	klog.V(5).Infof("Success binding volumes for pod \"%v/%v/%v\"", assumed.Tenant, assumed.Namespace, assumed.Name)
-	return nil
-}
-
 // assume signals to the cache that a pod is already in the cache, so that binding can be asynchronous.
 // assume modifies `assumed`.
 func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
@@ -494,20 +458,6 @@ func (sched *Scheduler) scheduleOne() {
 	// This allows us to keep scheduling without waiting on binding to occur.
 	assumedPod := pod.DeepCopy()
 
-	// Assume volumes first before assuming the pod.
-	//
-	// If all volumes are completely bound, then allBound is true and binding will be skipped.
-	//
-	// Otherwise, binding of volumes is started after the pod is assumed, but before pod binding.
-	//
-	// This function modifies 'assumedPod' if volume binding is required.
-	allBound, err := sched.assumeVolumes(assumedPod, scheduleResult.SuggestedHost)
-	if err != nil {
-		klog.Errorf("error assuming volumes: %v", err)
-		metrics.PodScheduleErrors.Inc()
-		return
-	}
-
 	// Run "reserve" plugins.
 	if sts := fwk.RunReservePlugins(pluginContext, assumedPod, scheduleResult.SuggestedHost); !sts.IsSuccess() {
 		sched.recordSchedulingFailure(assumedPod, sts.AsError(), SchedulerError, sts.Message())
@@ -520,24 +470,12 @@ func (sched *Scheduler) scheduleOne() {
 	if err != nil {
 		klog.Errorf("error assuming pod: %v", err)
 		metrics.PodScheduleErrors.Inc()
-		// trigger un-reserve plugins to clean up state associated with the reserved Pod
+		// trigger un-reserve plugins to clean up state associated with the reserved Pods
 		fwk.RunUnreservePlugins(pluginContext, assumedPod, scheduleResult.SuggestedHost)
 		return
 	}
 	// bind the pod to its host asynchronously (we can do this b/c of the assumption step above).
 	go func() {
-		// Bind volumes first before Pod
-		if !allBound {
-			err := sched.bindVolumes(assumedPod)
-			if err != nil {
-				klog.Errorf("error binding volumes: %v", err)
-				metrics.PodScheduleErrors.Inc()
-				// trigger un-reserve plugins to clean up state associated with the reserved Pod
-				fwk.RunUnreservePlugins(pluginContext, assumedPod, scheduleResult.SuggestedHost)
-				return
-			}
-		}
-
 		// Run "permit" plugins.
 		permitStatus := fwk.RunPermitPlugins(pluginContext, assumedPod, scheduleResult.SuggestedHost)
 		if !permitStatus.IsSuccess() {

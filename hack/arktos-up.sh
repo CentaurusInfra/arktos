@@ -104,7 +104,7 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
+    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
 else
     echo "skipped the build."
 fi
@@ -251,36 +251,6 @@ function start_etcd {
     echo "Starting etcd"
     export ETCD_LOGFILE=${LOG_DIR}/etcd.log
     kube::etcd::start
-}
-
-function start_cloud_controller_manager {
-    if [ -z "${CLOUD_CONFIG}" ]; then
-      echo "CLOUD_CONFIG cannot be empty!"
-      exit 1
-    fi
-    if [ ! -f "${CLOUD_CONFIG}" ]; then
-      echo "Cloud config ${CLOUD_CONFIG} doesn't exist"
-      exit 1
-    fi
-
-    node_cidr_args=()
-    if [[ "${NET_PLUGIN}" == "kubenet" ]]; then
-      node_cidr_args=("--allocate-node-cidrs=true" "--cluster-cidr=10.1.0.0/16")
-    fi
-
-    CLOUD_CTLRMGR_LOG=${LOG_DIR}/cloud-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${EXTERNAL_CLOUD_PROVIDER_BINARY:-"${GO_OUT}/hyperkube" cloud-controller-manager}" \
-      --v="${LOG_LEVEL}" \
-      --vmodule="${LOG_SPEC}" \
-      "${node_cidr_args[@]:-}" \
-      --feature-gates="${FEATURE_GATES}" \
-      --cloud-provider="${CLOUD_PROVIDER}" \
-      --cloud-config="${CLOUD_CONFIG}" \
-      --kubeconfig "${CERT_DIR}"/controller.kubeconfig \
-      --use-service-account-credentials \
-      --leader-elect=false \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
-    export CLOUD_CTLRMGR_PID=$!
 }
 
 function start_kubedns {
@@ -477,10 +447,6 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
   kube::common::start_controller_manager
-  kube::common::start_workload_controller_manager
-  if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
-    start_cloud_controller_manager
-  fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
     kube::common::start_kubeproxy
   fi

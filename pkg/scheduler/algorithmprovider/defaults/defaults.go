@@ -51,9 +51,7 @@ func defaultPredicates() sets.String {
 		predicates.CheckNodeDiskPressurePred,
 		predicates.CheckNodePIDPressurePred,
 		predicates.CheckNodeConditionPred,
-		predicates.PodToleratesNodeTaintsPred,
 		predicates.CheckVolumeBindingPred,
-		predicates.CheckNodeRuntimeReadinessPred,
 	)
 }
 
@@ -73,14 +71,11 @@ func ApplyFeatureGates() {
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeDiskPressurePred)
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodePIDPressurePred)
 
-		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		factory.RegisterMandatoryFitPredicate(predicates.PodToleratesNodeTaintsPred, predicates.PodToleratesNodeTaints)
 		// Fit is determined based on whether a pod can tolerate unschedulable of node
 		factory.RegisterMandatoryFitPredicate(predicates.CheckNodeUnschedulablePred, predicates.CheckNodeUnschedulablePredicate)
-		// Insert Key "PodToleratesNodeTaints" and "CheckNodeUnschedulable" To All Algorithm Provider
+		// Insert Key "CheckNodeUnschedulable" To All Algorithm Provider
 		// The key will insert to all providers which in algorithmProviderMap[]
 		// if you just want insert to specific provider, call func InsertPredicateKeyToAlgoProvider()
-		factory.InsertPredicateKeyToAlgorithmProviderMap(predicates.PodToleratesNodeTaintsPred)
 		factory.InsertPredicateKeyToAlgorithmProviderMap(predicates.CheckNodeUnschedulablePred)
 
 		klog.Infof("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")

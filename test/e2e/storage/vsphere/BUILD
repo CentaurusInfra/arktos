@@ -29,7 +29,6 @@ go_library(
         "vsphere_volume_fstype.go",
         "vsphere_volume_master_restart.go",
         "vsphere_volume_node_delete.go",
-        "vsphere_volume_node_poweroff.go",
         "vsphere_volume_ops_storm.go",
         "vsphere_volume_perf.go",
         "vsphere_volume_placement.go",
@@ -40,7 +39,6 @@ go_library(
     importpath = "k8s.io/kubernetes/test/e2e/storage/vsphere",
     deps = [
         "//pkg/volume/util:go_default_library",
-        "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/api/storage/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
@@ -52,7 +50,6 @@ go_library(
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//test/e2e/framework:go_default_library",
-        "//test/e2e/framework/deployment:go_default_library",
         "//test/e2e/framework/log:go_default_library",
         "//test/e2e/framework/pod:go_default_library",
         "//test/e2e/framework/ssh:go_default_library",

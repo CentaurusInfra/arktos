@@ -26,7 +26,6 @@ import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apiserver/pkg/storage/etcd3"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1"
@@ -73,28 +72,6 @@ type SchedulerVolumeBinder interface {
 	//
 	// This function is called by the volume binding scheduler predicate and can be called in parallel
 	FindPodVolumes(pod *v1.Pod, node *v1.Node) (unboundVolumesSatisified, boundVolumesSatisfied bool, err error)
-
-	// AssumePodVolumes will:
-	// 1. Take the PV matches for unbound PVCs and update the PV cache assuming
-	// that the PV is prebound to the PVC.
-	// 2. Take the PVCs that need provisioning and update the PVC cache with related
-	// annotations set.
-	//
-	// It returns true if all volumes are fully bound
-	//
-	// This function will modify assumedPod with the node name.
-	// This function is called serially.
-	AssumePodVolumes(assumedPod *v1.Pod, nodeName string) (allFullyBound bool, err error)
-
-	// BindPodVolumes will:
-	// 1. Initiate the volume binding by making the API call to prebind the PV
-	// to its matching PVC.
-	// 2. Trigger the volume provisioning by making the API call to set related
-	// annotations on the PVC
-	// 3. Wait for PVCs to be completely bound by the PV controller
-	//
-	// This function can be called in parallel.
-	BindPodVolumes(assumedPod *v1.Pod) error
 
 	// GetBindingsCache returns the cache used (if any) to store volume binding decisions.
 	GetBindingsCache() PodBindingCache
@@ -245,114 +222,6 @@ func (b *volumeBinder) FindPodVolumes(pod *v1.Pod, node *v1.Node) (unboundVolume
 	}
 
 	return unboundVolumesSatisfied, boundVolumesSatisfied, nil
-}
-
-// AssumePodVolumes will take the cached matching PVs and PVCs to provision
-// in podBindingCache for the chosen node, and:
-// 1. Update the pvCache with the new prebound PV.
-// 2. Update the pvcCache with the new PVCs with annotations set
-// 3. Update podBindingCache again with cached API updates for PVs and PVCs.
-func (b *volumeBinder) AssumePodVolumes(assumedPod *v1.Pod, nodeName string) (allFullyBound bool, err error) {
-	podName := getPodName(assumedPod)
-
-	klog.V(4).Infof("AssumePodVolumes for pod %q, node %q", podName, nodeName)
-	start := time.Now()
-	defer func() {
-		VolumeSchedulingStageLatency.WithLabelValues("assume").Observe(time.Since(start).Seconds())
-		if err != nil {
-			VolumeSchedulingStageFailed.WithLabelValues("assume").Inc()
-		}
-	}()
-
-	if allBound := b.arePodVolumesBound(assumedPod); allBound {
-		klog.V(4).Infof("AssumePodVolumes for pod %q, node %q: all PVCs bound and nothing to do", podName, nodeName)
-		return true, nil
-	}
-
-	assumedPod.Spec.NodeName = nodeName
-
-	claimsToBind := b.podBindingCache.GetBindings(assumedPod, nodeName)
-	claimsToProvision := b.podBindingCache.GetProvisionedPVCs(assumedPod, nodeName)
-
-	// Assume PV
-	newBindings := []*bindingInfo{}
-	for _, binding := range claimsToBind {
-		newPV, dirty, err := pvutil.GetBindVolumeToClaim(binding.pv, binding.pvc)
-		klog.V(5).Infof("AssumePodVolumes: GetBindVolumeToClaim for pod %q, PV %q, PVC %q.  newPV %p, dirty %v, err: %v",
-			podName,
-			binding.pv.Name,
-			binding.pvc.Name,
-			newPV,
-			dirty,
-			err)
-		if err != nil {
-			b.revertAssumedPVs(newBindings)
-			return false, err
-		}
-		// TODO: can we assume everytime?
-		if dirty {
-			err = b.pvCache.Assume(newPV)
-			if err != nil {
-				b.revertAssumedPVs(newBindings)
-				return false, err
-			}
-		}
-		newBindings = append(newBindings, &bindingInfo{pv: newPV, pvc: binding.pvc})
-	}
-
-	// Assume PVCs
-	newProvisionedPVCs := []*v1.PersistentVolumeClaim{}
-	for _, claim := range claimsToProvision {
-		// The claims from method args can be pointing to watcher cache. We must not
-		// modify these, therefore create a copy.
-		claimClone := claim.DeepCopy()
-		metav1.SetMetaDataAnnotation(&claimClone.ObjectMeta, pvutil.AnnSelectedNode, nodeName)
-		err = b.pvcCache.Assume(claimClone)
-		if err != nil {
-			b.revertAssumedPVs(newBindings)
-			b.revertAssumedPVCs(newProvisionedPVCs)
-			return
-		}
-
-		newProvisionedPVCs = append(newProvisionedPVCs, claimClone)
-	}
-
-	// Update cache with the assumed pvcs and pvs
-	// Even if length is zero, update the cache with an empty slice to indicate that no
-	// operations are needed
-	b.podBindingCache.UpdateBindings(assumedPod, nodeName, newBindings, newProvisionedPVCs)
-
-	return
-}
-
-// BindPodVolumes gets the cached bindings and PVCs to provision in podBindingCache,
-// makes the API update for those PVs/PVCs, and waits for the PVCs to be completely bound
-// by the PV controller.
-func (b *volumeBinder) BindPodVolumes(assumedPod *v1.Pod) (err error) {
-	podName := getPodName(assumedPod)
-	klog.V(4).Infof("BindPodVolumes for pod %q, node %q", podName, assumedPod.Spec.NodeName)
-
-	start := time.Now()
-	defer func() {
-		VolumeSchedulingStageLatency.WithLabelValues("bind").Observe(time.Since(start).Seconds())
-		if err != nil {
-			VolumeSchedulingStageFailed.WithLabelValues("bind").Inc()
-		}
-	}()
-
-	bindings := b.podBindingCache.GetBindings(assumedPod, assumedPod.Spec.NodeName)
-	claimsToProvision := b.podBindingCache.GetProvisionedPVCs(assumedPod, assumedPod.Spec.NodeName)
-
-	// Start API operations
-	err = b.bindAPIUpdate(podName, bindings, claimsToProvision)
-	if err != nil {
-		return err
-	}
-
-	return wait.Poll(time.Second, b.bindTimeout, func() (bool, error) {
-		b, err := b.checkBindings(assumedPod, bindings, claimsToProvision)
-		return b, err
-	})
 }
 
 func getPodName(pod *v1.Pod) string {

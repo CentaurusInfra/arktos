@@ -23,7 +23,6 @@ import (
 	"strings"
 	"time"
 
-	apps "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	apiextensionsv1beta1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1"
 	apiextensionclientset "k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset"
@@ -37,7 +36,6 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/framework/auth"
-	e2edeploy "k8s.io/kubernetes/test/e2e/framework/deployment"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/utils"
 	imageutils "k8s.io/kubernetes/test/utils/image"
@@ -194,133 +192,6 @@ var _ = SIGDescribe("Advanced Audit [DisabledForLargeClusters][Flaky]", func() {
 				Code:              200,
 				User:              auditTestUser,
 				Resource:          "pods",
-				Namespace:         namespace,
-				RequestObject:     true,
-				ResponseObject:    true,
-				AuthorizeDecision: "allow",
-			},
-		})
-	})
-
-	ginkgo.It("should audit API calls to create, get, update, patch, delete, list, watch deployments.", func() {
-		podLabels := map[string]string{"name": "audit-deployment-pod"}
-		d := e2edeploy.NewDeployment("audit-deployment", int32(1), podLabels, "redis", imageutils.GetE2EImage(imageutils.Redis), apps.RecreateDeploymentStrategyType)
-
-		_, err := f.ClientSet.AppsV1().Deployments(namespace).Create(d)
-		framework.ExpectNoError(err, "failed to create audit-deployment")
-
-		_, err = f.ClientSet.AppsV1().Deployments(namespace).Get(d.Name, metav1.GetOptions{})
-		framework.ExpectNoError(err, "failed to get audit-deployment")
-
-		deploymentChan := f.ClientSet.AppsV1().Deployments(namespace).Watch(watchOptions)
-		framework.ExpectNoError(deploymentChan.GetErrors(), "failed to create watch for deployments")
-		deploymentChan.Stop()
-
-		_, err = f.ClientSet.AppsV1().Deployments(namespace).Update(d)
-		framework.ExpectNoError(err, "failed to update audit-deployment")
-
-		_, err = f.ClientSet.AppsV1().Deployments(namespace).Patch(d.Name, types.JSONPatchType, patch)
-		framework.ExpectNoError(err, "failed to patch deployment")
-
-		_, err = f.ClientSet.AppsV1().Deployments(namespace).List(metav1.ListOptions{})
-		framework.ExpectNoError(err, "failed to create list deployments")
-
-		err = f.ClientSet.AppsV1().Deployments(namespace).Delete("audit-deployment", &metav1.DeleteOptions{})
-		framework.ExpectNoError(err, "failed to delete deployments")
-
-		expectEvents(f, []utils.AuditEvent{
-			{
-				Level:             auditinternal.LevelRequestResponse,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments", namespace),
-				Verb:              "create",
-				Code:              201,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     true,
-				ResponseObject:    true,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequest,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/audit-deployment", namespace),
-				Verb:              "get",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     false,
-				ResponseObject:    false,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequest,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments", namespace),
-				Verb:              "list",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     false,
-				ResponseObject:    false,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequest,
-				Stage:             auditinternal.StageResponseStarted,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
-				Verb:              "watch",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     false,
-				ResponseObject:    false,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequest,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments?timeout=%ds&timeoutSeconds=%d&watch=true", namespace, watchTestTimeout, watchTestTimeout),
-				Verb:              "watch",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     false,
-				ResponseObject:    false,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequestResponse,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/audit-deployment", namespace),
-				Verb:              "update",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     true,
-				ResponseObject:    true,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequestResponse,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/audit-deployment", namespace),
-				Verb:              "patch",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
-				Namespace:         namespace,
-				RequestObject:     true,
-				ResponseObject:    true,
-				AuthorizeDecision: "allow",
-			}, {
-				Level:             auditinternal.LevelRequestResponse,
-				Stage:             auditinternal.StageResponseComplete,
-				RequestURI:        fmt.Sprintf("/apis/apps/v1/namespaces/%s/deployments/audit-deployment", namespace),
-				Verb:              "delete",
-				Code:              200,
-				User:              auditTestUser,
-				Resource:          "deployments",
 				Namespace:         namespace,
 				RequestObject:     true,
 				ResponseObject:    true,
