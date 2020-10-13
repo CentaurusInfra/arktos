@@ -33,6 +33,7 @@ import (
 	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
+	endpointconfig "k8s.io/kubernetes/pkg/controller/endpoint/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
@@ -58,6 +59,7 @@ func TestAddFlags(t *testing.T) {
 		"--cluster-name=k8s",
 		"--cluster-signing-cert-file=/cluster-signing-cert",
 		"--cluster-signing-key-file=/cluster-signing-key",
+		"--concurrent-endpoint-syncs=10",
 		"--concurrent-gc-syncs=30",
 		"--concurrent-namespace-syncs=20",
 		"--concurrent-replicaset-syncs=10",
@@ -156,6 +158,11 @@ func TestAddFlags(t *testing.T) {
 			&kubectrlmgrconfig.DeprecatedControllerConfiguration{
 				DeletingPodsQPS:    0.1,
 				RegisterRetryCount: 10,
+			},
+		},
+		EndpointController: &EndpointControllerOptions{
+			&endpointconfig.EndpointControllerConfiguration{
+				ConcurrentEndpointSyncs: 10,
 			},
 		},
 		GarbageCollectorController: &GarbageCollectorControllerOptions{

@@ -111,6 +111,7 @@ func (in *KubeControllerManagerConfiguration) DeepCopyInto(out *KubeControllerMa
 	out.KubeCloudShared = in.KubeCloudShared
 	out.CSRSigningController = in.CSRSigningController
 	out.DeprecatedController = in.DeprecatedController
+	out.EndpointController = in.EndpointController
 	in.GarbageCollectorController.DeepCopyInto(&out.GarbageCollectorController)
 	out.NamespaceController = in.NamespaceController
 	out.PodGCController = in.PodGCController

@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
+	endpointcontroller "k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/pkg/controller/garbagecollector"
 	namespacecontroller "k8s.io/kubernetes/pkg/controller/namespace"
 	"k8s.io/kubernetes/pkg/controller/podgc"
@@ -42,6 +43,16 @@ import (
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
 )
+
+func startEndpointController(ctx ControllerContext) (http.Handler, bool, error) {
+	go endpointcontroller.NewEndpointController(
+		ctx.InformerFactory.Core().V1().Pods(),
+		ctx.InformerFactory.Core().V1().Services(),
+		ctx.InformerFactory.Core().V1().Endpoints(),
+		ctx.ClientBuilder.ClientOrDie("endpoint-controller"),
+	).Run(int(ctx.ComponentConfig.EndpointController.ConcurrentEndpointSyncs), ctx.Stop)
+	return nil, true, nil
+}
 
 func startPodGCController(ctx ControllerContext) (http.Handler, bool, error) {
 	go podgc.NewPodGC(

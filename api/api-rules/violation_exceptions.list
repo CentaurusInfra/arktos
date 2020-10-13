@@ -67,6 +67,7 @@ API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,C
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,DeprecatedControllerConfiguration,DeletingPodsBurst
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,DeprecatedControllerConfiguration,DeletingPodsQPS
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,DeprecatedControllerConfiguration,RegisterRetryCount
+API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,EndpointControllerConfiguration,ConcurrentEndpointSyncs
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,GarbageCollectorControllerConfiguration,ConcurrentGCSyncs
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,GarbageCollectorControllerConfiguration,EnableGarbageCollector
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,GarbageCollectorControllerConfiguration,GCIgnoredResources
@@ -94,6 +95,7 @@ API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,K
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeCloudSharedConfiguration,UseServiceAccountCredentials
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,CSRSigningController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,DeprecatedController
+API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,EndpointController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,GarbageCollectorController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,Generic
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,KubeCloudShared
