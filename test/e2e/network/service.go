@@ -37,6 +37,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	cloudprovider "k8s.io/cloud-provider"
+	"k8s.io/kubernetes/pkg/controller/endpoint"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2eendpoints "k8s.io/kubernetes/test/e2e/framework/endpoints"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -1279,8 +1280,9 @@ var _ = SIGDescribe("Services", func() {
 
 		service := &v1.Service{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      t.ServiceName,
-				Namespace: t.Namespace,
+				Name:        t.ServiceName,
+				Namespace:   t.Namespace,
+				Annotations: map[string]string{endpoint.TolerateUnreadyEndpointsAnnotation: "true"},
 			},
 			Spec: v1.ServiceSpec{
 				Selector: t.Labels,
@@ -1345,6 +1347,12 @@ var _ = SIGDescribe("Services", func() {
 		ginkgo.By("Scaling down replication controller to zero")
 		framework.ScaleRC(f.ClientSet, f.ScalesGetter, t.Namespace, rcSpec.Name, 0, false)
 
+		ginkgo.By("Update service to not tolerate unready services")
+		_, err = framework.UpdateService(f.ClientSet, t.Namespace, t.ServiceName, func(s *v1.Service) {
+			s.ObjectMeta.Annotations[endpoint.TolerateUnreadyEndpointsAnnotation] = "false"
+		})
+		framework.ExpectNoError(err)
+
 		ginkgo.By("Check if pod is unreachable")
 		cmd = fmt.Sprintf("wget -qO- -T 2 http://%s:%d/; test \"$?\" -eq \"1\"", svcName, port)
 		if pollErr := wait.PollImmediate(framework.Poll, framework.KubeProxyLagTimeout, func() (bool, error) {
@@ -1358,6 +1366,12 @@ var _ = SIGDescribe("Services", func() {
 		}); pollErr != nil {
 			framework.Failf("expected un-ready endpoint for Service %v within %v, stdout: %v", t.Name, framework.KubeProxyLagTimeout, stdout)
 		}
+
+		ginkgo.By("Update service to tolerate unready services again")
+		_, err = framework.UpdateService(f.ClientSet, t.Namespace, t.ServiceName, func(s *v1.Service) {
+			s.ObjectMeta.Annotations[endpoint.TolerateUnreadyEndpointsAnnotation] = "true"
+		})
+		framework.ExpectNoError(err)
 
 		ginkgo.By("Check if terminating pod is available through service")
 		cmd = fmt.Sprintf("wget -qO- http://%s:%d/", svcName, port)

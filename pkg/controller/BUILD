@@ -112,6 +112,7 @@ filegroup(
         ":package-srcs",
         "//pkg/controller/apis/config:all-srcs",
         "//pkg/controller/certificates:all-srcs",
+        "//pkg/controller/endpoint:all-srcs",
         "//pkg/controller/garbagecollector:all-srcs",
         "//pkg/controller/history:all-srcs",
         "//pkg/controller/namespace:all-srcs",
