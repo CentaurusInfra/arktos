@@ -20,6 +20,7 @@ limitations under the License.
 // +k8s:conversion-gen=k8s.io/component-base/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/certificates/signer/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/garbagecollector/config/v1alpha1
+// +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/endpoint/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/namespace/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/podgc/config/v1alpha1
 // +k8s:conversion-gen=k8s.io/kubernetes/pkg/controller/replicaset/config/v1alpha1
