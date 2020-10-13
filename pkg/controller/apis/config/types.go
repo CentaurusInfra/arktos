@@ -21,6 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	componentbaseconfig "k8s.io/component-base/config"
 	csrsigningconfig "k8s.io/kubernetes/pkg/controller/certificates/signer/config"
+	endpointconfig "k8s.io/kubernetes/pkg/controller/endpoint/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	podgcconfig "k8s.io/kubernetes/pkg/controller/podgc/config"
@@ -47,6 +48,9 @@ type KubeControllerManagerConfiguration struct {
 	// DeprecatedControllerConfiguration holds configuration for some deprecated
 	// features.
 	DeprecatedController DeprecatedControllerConfiguration
+	// EndpointControllerConfiguration holds configuration for EndpointController
+	// related features.
+	EndpointController endpointconfig.EndpointControllerConfiguration
 	// GarbageCollectorControllerConfiguration holds configuration for
 	// GarbageCollectorController related features.
 	GarbageCollectorController garbagecollectorconfig.GarbageCollectorControllerConfiguration

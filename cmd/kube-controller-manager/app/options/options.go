@@ -62,6 +62,7 @@ type KubeControllerManagerOptions struct {
 
 	CSRSigningController       *CSRSigningControllerOptions
 	DeprecatedFlags            *DeprecatedControllerOptions
+	EndpointController         *EndpointControllerOptions
 	GarbageCollectorController *GarbageCollectorControllerOptions
 	NamespaceController        *NamespaceControllerOptions
 	PodGCController            *PodGCControllerOptions
@@ -94,6 +95,9 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		},
 		DeprecatedFlags: &DeprecatedControllerOptions{
 			&componentConfig.DeprecatedController,
+		},
+		EndpointController: &EndpointControllerOptions{
+			&componentConfig.EndpointController,
 		},
 		GarbageCollectorController: &GarbageCollectorControllerOptions{
 			&componentConfig.GarbageCollectorController,
@@ -168,6 +172,7 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
+	s.EndpointController.AddFlags(fss.FlagSet("endpoint controller"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
@@ -195,6 +200,9 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		return err
 	}
 	if err := s.DeprecatedFlags.ApplyTo(&c.ComponentConfig.DeprecatedController); err != nil {
+		return err
+	}
+	if err := s.EndpointController.ApplyTo(&c.ComponentConfig.EndpointController); err != nil {
 		return err
 	}
 	if err := s.GarbageCollectorController.ApplyTo(&c.ComponentConfig.GarbageCollectorController); err != nil {
@@ -246,6 +254,7 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.KubeCloudShared.Validate()...)
 	errs = append(errs, s.CSRSigningController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
+	errs = append(errs, s.EndpointController.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)
