@@ -397,8 +397,6 @@ EOF
         ${KUBECTL} config set-cluster local-up-cluster --kubeconfig="${CERT_DIR}/admin-kube-aggregator$1.kubeconfig" --server="https://${API_HOST_IP}:31090"
         echo "use 'kubectl --kubeconfig=${CERT_DIR}/admin-kube-aggregator$1.kubeconfig' to use the aggregated API server"
 
-        # Copy workload controller manager config to run path
-        ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
         ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
     fi
 }
@@ -422,22 +420,6 @@ function kube::common::test_apiserver_off {
         echo "ERROR starting API SERVER, exiting. Some process on ${API_HOST} is serving already on ${API_SECURE_PORT}"
         exit 1
     fi
-}
-
-function kube::common::start_workload_controller_manager {
-    CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    controller_config_arg=("--controllerconfig=${WORKLOAD_CONTROLLER_CONFIG_PATH}")
-    kubeconfigfilepaths="${CERT_DIR}/workload-controller.kubeconfig"
-    if [[ $# -gt 1 ]] ; then
-       kubeconfigfilepaths=$@
-    fi
-    echo "The kubeconfig has been set ${kubeconfigfilepaths}"
-    WORKLOAD_CONTROLLER_LOG=${LOG_DIR}/workload-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/workload-controller-manager" \
-      --v="${LOG_LEVEL}" \
-      --kubeconfig "${kubeconfigfilepaths}" \
-      "${controller_config_arg[@]}" >"${WORKLOAD_CONTROLLER_LOG}" 2>&1 &
-    WORKLOAD_CTLRMGR_PID=$!
 }
 
 function kube::common::start_controller_manager {
@@ -466,9 +448,7 @@ function kube::common::start_controller_manager {
       --root-ca-file="${ROOT_CA_FILE}" \
       --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
       --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
       ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
       --feature-gates="${FEATURE_GATES}" \
       "${cloud_config_arg[@]}" \
       --kubeconfig "${kubeconfigfilepaths}" \

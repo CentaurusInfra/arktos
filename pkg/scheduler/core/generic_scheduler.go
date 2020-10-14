@@ -67,7 +67,6 @@ var unresolvablePredicateFailureErrors = map[predicates.PredicateFailureReason]s
 	predicates.ErrNodeSelectorNotMatch:      {},
 	predicates.ErrPodAffinityRulesNotMatch:  {},
 	predicates.ErrPodNotMatchHostName:       {},
-	predicates.ErrTaintsTolerationsNotMatch: {},
 	predicates.ErrNodeLabelPresenceViolated: {},
 	// Node conditions won't change when scheduler simulates removal of preemption victims.
 	// So, it is pointless to try nodes that have not been able to host the pod due to node

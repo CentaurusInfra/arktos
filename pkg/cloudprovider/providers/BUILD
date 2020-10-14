@@ -7,7 +7,6 @@ go_library(
     srcs = ["providers.go"],
     importpath = "k8s.io/kubernetes/pkg/cloudprovider/providers",
     visibility = [
-        "//cmd/cloud-controller-manager:__pkg__",
         "//cmd/kube-apiserver/app/options:__pkg__",
         "//cmd/kube-controller-manager/app:__pkg__",
         "//cmd/kubelet/app:__pkg__",

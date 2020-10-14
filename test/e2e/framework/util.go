@@ -81,11 +81,8 @@ import (
 	extensionsinternal "k8s.io/kubernetes/pkg/apis/extensions"
 	"k8s.io/kubernetes/pkg/client/conditions"
 	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/kubernetes/pkg/controller/service"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/master/ports"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm/predicates"
-	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	"k8s.io/kubernetes/pkg/util/system"
 	taintutils "k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/kubernetes/test/e2e/framework/ginkgowrapper"
@@ -1920,36 +1917,6 @@ func isNodeSchedulable(node *v1.Node) bool {
 	return !node.Spec.Unschedulable && nodeReady && networkReady
 }
 
-// Test whether a fake pod can be scheduled on "node", given its current taints.
-func isNodeUntainted(node *v1.Node) bool {
-	fakePod := &v1.Pod{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Pod",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "fake-not-scheduled",
-			Namespace: "fake-not-scheduled",
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{
-				{
-					Name:  "fake-not-scheduled",
-					Image: "fake-not-scheduled",
-				},
-			},
-		},
-	}
-	nodeInfo := schedulernodeinfo.NewNodeInfo()
-	nodeInfo.SetNode(node)
-	fit, _, err := predicates.PodToleratesNodeTaints(fakePod, nil, nodeInfo)
-	if err != nil {
-		Failf("Can't test predicates for node %s: %v", node.Name, err)
-		return false
-	}
-	return fit
-}
-
 // GetReadySchedulableNodesOrDie addresses the common use case of getting nodes you can do work on.
 // 1) Needs to be schedulable.
 // 2) Needs to be ready.
@@ -1959,7 +1926,7 @@ func GetReadySchedulableNodesOrDie(c clientset.Interface) (nodes *v1.NodeList) {
 	// previous tests may have cause failures of some nodes. Let's skip
 	// 'Not Ready' nodes, just in case (there is no need to fail the test).
 	e2enode.Filter(nodes, func(node v1.Node) bool {
-		return isNodeSchedulable(&node) && isNodeUntainted(&node)
+		return isNodeSchedulable(&node)
 	})
 	return nodes
 }
@@ -2000,13 +1967,7 @@ func WaitForAllNodesSchedulable(c clientset.Interface, timeout time.Duration) er
 		}
 		for i := range nodes.Items {
 			node := &nodes.Items[i]
-			if _, hasMasterRoleLabel := node.ObjectMeta.Labels[service.LabelNodeRoleMaster]; hasMasterRoleLabel {
-				// Kops clusters have masters with spec.unscheduable = false and
-				// node-role.kubernetes.io/master NoSchedule taint.
-				// Don't wait for them.
-				continue
-			}
-			if !isNodeSchedulable(node) || !isNodeUntainted(node) {
+			if !isNodeSchedulable(node) {
 				notSchedulable = append(notSchedulable, node)
 			}
 		}
@@ -3149,7 +3110,7 @@ func GetMasterAndWorkerNodesOrDie(c clientset.Interface) (sets.String, *v1.NodeL
 	for _, n := range all.Items {
 		if system.IsMasterNode(n.Name) {
 			masters.Insert(n.Name)
-		} else if isNodeSchedulable(&n) && isNodeUntainted(&n) {
+		} else if isNodeSchedulable(&n) {
 			nodes.Items = append(nodes.Items, n)
 		}
 	}

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -32,7 +33,6 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/test/e2e/framework"
-	e2edeploy "k8s.io/kubernetes/test/e2e/framework/deployment"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	"k8s.io/kubernetes/test/e2e/framework/replicaset"
 	testutils "k8s.io/kubernetes/test/utils"
@@ -473,12 +473,6 @@ func runServiceAndWorkloadForResourceConsumer(c clientset.Interface, ns, name st
 	switch kind {
 	case KindRC:
 		framework.ExpectNoError(framework.RunRC(rcConfig))
-		break
-	case KindDeployment:
-		dpConfig := testutils.DeploymentConfig{
-			RCConfig: rcConfig,
-		}
-		framework.ExpectNoError(e2edeploy.RunDeployment(dpConfig))
 		break
 	case KindReplicaSet:
 		rsConfig := testutils.ReplicaSetConfig{

@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +35,6 @@ import (
 
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
-	cloudcontrollermanager "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	kubeapiserver "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	kubecontrollermanager "k8s.io/kubernetes/cmd/kube-controller-manager/app"
 	kubeproxy "k8s.io/kubernetes/cmd/kube-proxy/app"
@@ -92,7 +92,6 @@ func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 	scheduler := func() *cobra.Command { return kubescheduler.NewSchedulerCommand() }
 	kubectlCmd := func() *cobra.Command { return kubectl.NewDefaultKubectlCommand() }
 	kubelet := func() *cobra.Command { return kubelet.NewKubeletCommand() }
-	cloudController := func() *cobra.Command { return cloudcontrollermanager.NewCloudControllerManagerCommand() }
 
 	commandFns := []func() *cobra.Command{
 		apiserver,
@@ -101,7 +100,6 @@ func NewHyperKubeCommand() (*cobra.Command, []func() *cobra.Command) {
 		scheduler,
 		kubectlCmd,
 		kubelet,
-		cloudController,
 	}
 
 	makeSymlinksFlag := false

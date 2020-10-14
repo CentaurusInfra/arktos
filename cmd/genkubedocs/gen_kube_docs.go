@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +23,6 @@ import (
 
 	"github.com/spf13/cobra/doc"
 	"github.com/spf13/pflag"
-	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	"k8s.io/kubernetes/cmd/genutils"
 	apiservapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
@@ -59,10 +59,6 @@ func main() {
 		// generate docs for kube-controller-manager
 		controllermanager := cmapp.NewControllerManagerCommand()
 		doc.GenMarkdownTree(controllermanager, outDir)
-	case "cloud-controller-manager":
-		// generate docs for cloud-controller-manager
-		cloudcontrollermanager := ccmapp.NewCloudControllerManagerCommand()
-		doc.GenMarkdownTree(cloudcontrollermanager, outDir)
 	case "kube-proxy":
 		// generate docs for kube-proxy
 		proxy := proxyapp.NewProxyCommand()

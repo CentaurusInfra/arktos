@@ -1262,16 +1262,6 @@ func TestNodesWherePreemptionMightHelp(t *testing.T) {
 		expected      map[string]bool // set of expected node names. Value is ignored.
 	}{
 		{
-			name: "No node should be attempted",
-			failedPredMap: FailedPredicateMap{
-				"machine1": []algorithmpredicates.PredicateFailureReason{algorithmpredicates.ErrNodeSelectorNotMatch},
-				"machine2": []algorithmpredicates.PredicateFailureReason{algorithmpredicates.ErrPodNotMatchHostName},
-				"machine3": []algorithmpredicates.PredicateFailureReason{algorithmpredicates.ErrTaintsTolerationsNotMatch},
-				"machine4": []algorithmpredicates.PredicateFailureReason{algorithmpredicates.ErrNodeLabelPresenceViolated},
-			},
-			expected: map[string]bool{},
-		},
-		{
 			name: "ErrPodAffinityNotMatch should be tried as it indicates that the pod is unschedulable due to inter-pod affinity or anti-affinity",
 			failedPredMap: FailedPredicateMap{
 				"machine1": []algorithmpredicates.PredicateFailureReason{algorithmpredicates.ErrPodAffinityNotMatch},

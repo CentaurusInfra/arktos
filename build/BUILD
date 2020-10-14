@@ -30,10 +30,6 @@ filegroup(
 # This list should roughly match kube::build::get_docker_wrapped_binaries()
 # in build/common.sh.
 DOCKERIZED_BINARIES = {
-    "cloud-controller-manager": {
-        "base": "@debian-base-{ARCH}//image",
-        "target": "//cmd/cloud-controller-manager:cloud-controller-manager",
-    },
     "kube-apiserver": {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-apiserver:kube-apiserver",
@@ -41,10 +37,6 @@ DOCKERIZED_BINARIES = {
     "kube-controller-manager": {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-controller-manager:kube-controller-manager",
-    },
-    "workload-controller-manager": {
-        "base": "@debian-base-{ARCH}//image",
-        "target": "//cmd/workload-controller-manager:kube-controller-manager",
     },
     "kube-scheduler": {
         "base": "@debian-base-{ARCH}//image",
@@ -151,7 +143,6 @@ release_filegroup(
     name = "server-targets",
     conditioned_srcs = for_platforms(for_server = [
         "//cluster/gce/gci/mounter",
-        "//cmd/cloud-controller-manager",
         "//cmd/hyperkube",
         "//cmd/kube-apiserver",
         "//cmd/kube-controller-manager",

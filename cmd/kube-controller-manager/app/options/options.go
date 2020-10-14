@@ -57,30 +57,18 @@ const (
 
 // KubeControllerManagerOptions is the main context object for the kube-controller manager.
 type KubeControllerManagerOptions struct {
-	Generic           *cmoptions.GenericControllerManagerConfigurationOptions
-	KubeCloudShared   *cmoptions.KubeCloudSharedOptions
-	ServiceController *cmoptions.ServiceControllerOptions
+	Generic         *cmoptions.GenericControllerManagerConfigurationOptions
+	KubeCloudShared *cmoptions.KubeCloudSharedOptions
 
-	AttachDetachController           *AttachDetachControllerOptions
-	CSRSigningController             *CSRSigningControllerOptions
-	DaemonSetController              *DaemonSetControllerOptions
-	DeploymentController             *DeploymentControllerOptions
-	DeprecatedFlags                  *DeprecatedControllerOptions
-	EndpointController               *EndpointControllerOptions
-	GarbageCollectorController       *GarbageCollectorControllerOptions
-	HPAController                    *HPAControllerOptions
-	JobController                    *JobControllerOptions
-	NamespaceController              *NamespaceControllerOptions
-	NodeIPAMController               *NodeIPAMControllerOptions
-	NodeLifecycleController          *NodeLifecycleControllerOptions
-	PersistentVolumeBinderController *PersistentVolumeBinderControllerOptions
-	PodGCController                  *PodGCControllerOptions
-	ReplicaSetController             *ReplicaSetControllerOptions
-	ReplicationController            *ReplicationControllerOptions
-	ResourceQuotaController          *ResourceQuotaControllerOptions
-	SAController                     *SAControllerOptions
-	TenantController                 *TenantControllerOptions
-	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
+	CSRSigningController       *CSRSigningControllerOptions
+	DeprecatedFlags            *DeprecatedControllerOptions
+	EndpointController         *EndpointControllerOptions
+	GarbageCollectorController *GarbageCollectorControllerOptions
+	NamespaceController        *NamespaceControllerOptions
+	PodGCController            *PodGCControllerOptions
+	ReplicaSetController       *ReplicaSetControllerOptions
+	SAController               *SAControllerOptions
+	TenantController           *TenantControllerOptions
 
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
 	// TODO: remove insecure serving mode
@@ -102,20 +90,8 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 	s := KubeControllerManagerOptions{
 		Generic:         cmoptions.NewGenericControllerManagerConfigurationOptions(&componentConfig.Generic),
 		KubeCloudShared: cmoptions.NewKubeCloudSharedOptions(&componentConfig.KubeCloudShared),
-		ServiceController: &cmoptions.ServiceControllerOptions{
-			ServiceControllerConfiguration: &componentConfig.ServiceController,
-		},
-		AttachDetachController: &AttachDetachControllerOptions{
-			&componentConfig.AttachDetachController,
-		},
 		CSRSigningController: &CSRSigningControllerOptions{
 			&componentConfig.CSRSigningController,
-		},
-		DaemonSetController: &DaemonSetControllerOptions{
-			&componentConfig.DaemonSetController,
-		},
-		DeploymentController: &DeploymentControllerOptions{
-			&componentConfig.DeploymentController,
 		},
 		DeprecatedFlags: &DeprecatedControllerOptions{
 			&componentConfig.DeprecatedController,
@@ -126,23 +102,8 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		GarbageCollectorController: &GarbageCollectorControllerOptions{
 			&componentConfig.GarbageCollectorController,
 		},
-		HPAController: &HPAControllerOptions{
-			&componentConfig.HPAController,
-		},
-		JobController: &JobControllerOptions{
-			&componentConfig.JobController,
-		},
 		NamespaceController: &NamespaceControllerOptions{
 			&componentConfig.NamespaceController,
-		},
-		NodeIPAMController: &NodeIPAMControllerOptions{
-			&componentConfig.NodeIPAMController,
-		},
-		NodeLifecycleController: &NodeLifecycleControllerOptions{
-			&componentConfig.NodeLifecycleController,
-		},
-		PersistentVolumeBinderController: &PersistentVolumeBinderControllerOptions{
-			&componentConfig.PersistentVolumeBinderController,
 		},
 		PodGCController: &PodGCControllerOptions{
 			&componentConfig.PodGCController,
@@ -150,20 +111,11 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		ReplicaSetController: &ReplicaSetControllerOptions{
 			&componentConfig.ReplicaSetController,
 		},
-		ReplicationController: &ReplicationControllerOptions{
-			&componentConfig.ReplicationController,
-		},
-		ResourceQuotaController: &ResourceQuotaControllerOptions{
-			&componentConfig.ResourceQuotaController,
-		},
 		SAController: &SAControllerOptions{
 			&componentConfig.SAController,
 		},
 		TenantController: &TenantControllerOptions{
 			&componentConfig.TenantController,
-		},
-		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
-			&componentConfig.TTLAfterFinishedController,
 		},
 		SecureServing: apiserveroptions.NewSecureServingOptions().WithLoopback(),
 		InsecureServing: (&apiserveroptions.DeprecatedInsecureServingOptions{
@@ -212,33 +164,21 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	fss := cliflag.NamedFlagSets{}
 	s.Generic.AddFlags(&fss, allControllers, disabledByDefaultControllers)
 	s.KubeCloudShared.AddFlags(fss.FlagSet("generic"))
-	s.ServiceController.AddFlags(fss.FlagSet("service controller"))
 
 	s.SecureServing.AddFlags(fss.FlagSet("secure serving"))
 	s.InsecureServing.AddUnqualifiedFlags(fss.FlagSet("insecure serving"))
 	s.Authentication.AddFlags(fss.FlagSet("authentication"))
 	s.Authorization.AddFlags(fss.FlagSet("authorization"))
 
-	s.AttachDetachController.AddFlags(fss.FlagSet("attachdetach controller"))
 	s.CSRSigningController.AddFlags(fss.FlagSet("csrsigning controller"))
-	s.DeploymentController.AddFlags(fss.FlagSet("deployment controller"))
-	s.DaemonSetController.AddFlags(fss.FlagSet("daemonset controller"))
 	s.DeprecatedFlags.AddFlags(fss.FlagSet("deprecated"))
 	s.EndpointController.AddFlags(fss.FlagSet("endpoint controller"))
 	s.GarbageCollectorController.AddFlags(fss.FlagSet("garbagecollector controller"))
-	s.HPAController.AddFlags(fss.FlagSet("horizontalpodautoscaling controller"))
-	s.JobController.AddFlags(fss.FlagSet("job controller"))
 	s.NamespaceController.AddFlags(fss.FlagSet("namespace controller"))
-	s.NodeIPAMController.AddFlags(fss.FlagSet("nodeipam controller"))
-	s.NodeLifecycleController.AddFlags(fss.FlagSet("nodelifecycle controller"))
-	s.PersistentVolumeBinderController.AddFlags(fss.FlagSet("persistentvolume-binder controller"))
 	s.PodGCController.AddFlags(fss.FlagSet("podgc controller"))
 	s.ReplicaSetController.AddFlags(fss.FlagSet("replicaset controller"))
-	s.ReplicationController.AddFlags(fss.FlagSet("replicationcontroller"))
-	s.ResourceQuotaController.AddFlags(fss.FlagSet("resourcequota controller"))
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
 	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
-	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
 
 	fs := fss.FlagSet("misc")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
@@ -256,16 +196,7 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.KubeCloudShared.ApplyTo(&c.ComponentConfig.KubeCloudShared); err != nil {
 		return err
 	}
-	if err := s.AttachDetachController.ApplyTo(&c.ComponentConfig.AttachDetachController); err != nil {
-		return err
-	}
 	if err := s.CSRSigningController.ApplyTo(&c.ComponentConfig.CSRSigningController); err != nil {
-		return err
-	}
-	if err := s.DaemonSetController.ApplyTo(&c.ComponentConfig.DaemonSetController); err != nil {
-		return err
-	}
-	if err := s.DeploymentController.ApplyTo(&c.ComponentConfig.DeploymentController); err != nil {
 		return err
 	}
 	if err := s.DeprecatedFlags.ApplyTo(&c.ComponentConfig.DeprecatedController); err != nil {
@@ -277,22 +208,7 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.GarbageCollectorController.ApplyTo(&c.ComponentConfig.GarbageCollectorController); err != nil {
 		return err
 	}
-	if err := s.HPAController.ApplyTo(&c.ComponentConfig.HPAController); err != nil {
-		return err
-	}
-	if err := s.JobController.ApplyTo(&c.ComponentConfig.JobController); err != nil {
-		return err
-	}
 	if err := s.NamespaceController.ApplyTo(&c.ComponentConfig.NamespaceController); err != nil {
-		return err
-	}
-	if err := s.NodeIPAMController.ApplyTo(&c.ComponentConfig.NodeIPAMController); err != nil {
-		return err
-	}
-	if err := s.NodeLifecycleController.ApplyTo(&c.ComponentConfig.NodeLifecycleController); err != nil {
-		return err
-	}
-	if err := s.PersistentVolumeBinderController.ApplyTo(&c.ComponentConfig.PersistentVolumeBinderController); err != nil {
 		return err
 	}
 	if err := s.PodGCController.ApplyTo(&c.ComponentConfig.PodGCController); err != nil {
@@ -301,22 +217,10 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 	if err := s.ReplicaSetController.ApplyTo(&c.ComponentConfig.ReplicaSetController); err != nil {
 		return err
 	}
-	if err := s.ReplicationController.ApplyTo(&c.ComponentConfig.ReplicationController); err != nil {
-		return err
-	}
-	if err := s.ResourceQuotaController.ApplyTo(&c.ComponentConfig.ResourceQuotaController); err != nil {
-		return err
-	}
 	if err := s.SAController.ApplyTo(&c.ComponentConfig.SAController); err != nil {
 		return err
 	}
-	if err := s.ServiceController.ApplyTo(&c.ComponentConfig.ServiceController); err != nil {
-		return err
-	}
 	if err := s.TenantController.ApplyTo(&c.ComponentConfig.TenantController); err != nil {
-		return err
-	}
-	if err := s.TTLAfterFinishedController.ApplyTo(&c.ComponentConfig.TTLAfterFinishedController); err != nil {
 		return err
 	}
 	if err := s.InsecureServing.ApplyTo(&c.InsecureServing, &c.LoopbackClientConfig); err != nil {
@@ -348,27 +252,15 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 
 	errs = append(errs, s.Generic.Validate(allControllers, disabledByDefaultControllers)...)
 	errs = append(errs, s.KubeCloudShared.Validate()...)
-	errs = append(errs, s.AttachDetachController.Validate()...)
 	errs = append(errs, s.CSRSigningController.Validate()...)
-	errs = append(errs, s.DaemonSetController.Validate()...)
-	errs = append(errs, s.DeploymentController.Validate()...)
 	errs = append(errs, s.DeprecatedFlags.Validate()...)
 	errs = append(errs, s.EndpointController.Validate()...)
 	errs = append(errs, s.GarbageCollectorController.Validate()...)
-	errs = append(errs, s.HPAController.Validate()...)
-	errs = append(errs, s.JobController.Validate()...)
 	errs = append(errs, s.NamespaceController.Validate()...)
-	errs = append(errs, s.NodeIPAMController.Validate()...)
-	errs = append(errs, s.NodeLifecycleController.Validate()...)
-	errs = append(errs, s.PersistentVolumeBinderController.Validate()...)
 	errs = append(errs, s.PodGCController.Validate()...)
 	errs = append(errs, s.ReplicaSetController.Validate()...)
-	errs = append(errs, s.ReplicationController.Validate()...)
-	errs = append(errs, s.ResourceQuotaController.Validate()...)
 	errs = append(errs, s.SAController.Validate()...)
-	errs = append(errs, s.ServiceController.Validate()...)
 	errs = append(errs, s.TenantController.Validate()...)
-	errs = append(errs, s.TTLAfterFinishedController.Validate()...)
 	errs = append(errs, s.SecureServing.Validate()...)
 	errs = append(errs, s.InsecureServing.Validate()...)
 	errs = append(errs, s.Authentication.Validate()...)
