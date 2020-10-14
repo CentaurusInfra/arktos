@@ -80,14 +80,6 @@ func ApplyFeatureGates() {
 
 		klog.Infof("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")
 	}
-
-	// Prioritizes nodes that satisfy pod's resource limits
-	if utilfeature.DefaultFeatureGate.Enabled(features.ResourceLimitsPriorityFunction) {
-		klog.Infof("Registering resourcelimits priority function")
-		factory.RegisterPriorityFunction2(priorities.ResourceLimitsPriority, priorities.ResourceLimitsPriorityMap, nil, 1)
-		// Register the priority function to specific provider too.
-		factory.InsertPriorityKeyToAlgorithmProviderMap(factory.RegisterPriorityFunction2(priorities.ResourceLimitsPriority, priorities.ResourceLimitsPriorityMap, nil, 1))
-	}
 }
 
 func registerAlgorithmProvider(predSet, priSet sets.String) {
@@ -96,19 +88,13 @@ func registerAlgorithmProvider(predSet, priSet sets.String) {
 	factory.RegisterAlgorithmProvider(factory.DefaultProvider, predSet, priSet)
 	// Cluster autoscaler friendly scheduling algorithm.
 	factory.RegisterAlgorithmProvider(ClusterAutoscalerProvider, predSet,
-		copyAndReplace(priSet, priorities.LeastRequestedPriority, priorities.MostRequestedPriority))
+		copyAndReplace(priSet, priorities.LeastRequestedPriority, priorities.LeastRequestedPriority))
 }
 
 func defaultPriorities() sets.String {
 	return sets.NewString(
-		priorities.SelectorSpreadPriority,
-		priorities.InterPodAffinityPriority,
 		priorities.LeastRequestedPriority,
 		priorities.BalancedResourceAllocation,
-		priorities.NodePreferAvoidPodsPriority,
-		priorities.NodeAffinityPriority,
-		priorities.TaintTolerationPriority,
-		priorities.ImageLocalityPriority,
 	)
 }
 
