@@ -12,7 +12,6 @@ filegroup(
     srcs = [
         ":package-srcs",
         "//cmd/clicheck:all-srcs",
-        "//cmd/cloud-controller-manager:all-srcs",
         "//cmd/controller-manager/app:all-srcs",
         "//cmd/flat-network-controller:all-srcs",
         "//cmd/gendocs:all-srcs",
@@ -32,7 +31,6 @@ filegroup(
         "//cmd/kubelet:all-srcs",
         "//cmd/kubemark:all-srcs",
         "//cmd/linkcheck:all-srcs",
-        "//cmd/workload-controller-manager:all-srcs",
     ],
     tags = ["automanaged"],
 )

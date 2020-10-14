@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	nodectlr "k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
@@ -72,14 +72,6 @@ func isNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionT
 			// For NodeReady condition we need to check Taints as well
 			if cond.Type == v1.NodeReady {
 				hasNodeControllerTaints := false
-				// For NodeReady we need to check if Taints are gone as well
-				taints := node.Spec.Taints
-				for _, taint := range taints {
-					if taint.MatchTaint(nodectlr.UnreachableTaintTemplate) || taint.MatchTaint(nodectlr.NotReadyTaintTemplate) {
-						hasNodeControllerTaints = true
-						break
-					}
-				}
 				if wantTrue {
 					if (cond.Status == v1.ConditionTrue) && !hasNodeControllerTaints {
 						return true
@@ -89,8 +81,8 @@ func isNodeConditionSetAsExpected(node *v1.Node, conditionType v1.NodeConditionT
 						msg = fmt.Sprintf("Condition %s of node %s is %v instead of %t. Reason: %v, message: %v",
 							conditionType, node.Name, cond.Status == v1.ConditionTrue, wantTrue, cond.Reason, cond.Message)
 					}
-					msg = fmt.Sprintf("Condition %s of node %s is %v, but Node is tainted by NodeController with %v. Failure",
-						conditionType, node.Name, cond.Status == v1.ConditionTrue, taints)
+					msg = fmt.Sprintf("Condition %s of node %s is %v, but Node is tainted. Failure",
+						conditionType, node.Name, cond.Status == v1.ConditionTrue)
 					if !silent {
 						e2elog.Logf(msg)
 					}

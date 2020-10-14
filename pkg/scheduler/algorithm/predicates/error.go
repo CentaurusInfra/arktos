@@ -46,8 +46,6 @@ var (
 	ErrPodAntiAffinityRulesNotMatch = newPredicateFailureError("PodAntiAffinityRulesNotMatch", "node(s) didn't match pod anti-affinity rules")
 	// ErrExistingPodsAntiAffinityRulesNotMatch is used for ExistingPodsAntiAffinityRulesNotMatch predicate error.
 	ErrExistingPodsAntiAffinityRulesNotMatch = newPredicateFailureError("ExistingPodsAntiAffinityRulesNotMatch", "node(s) didn't satisfy existing pods anti-affinity rules")
-	// ErrTaintsTolerationsNotMatch is used for PodToleratesNodeTaints predicate error.
-	ErrTaintsTolerationsNotMatch = newPredicateFailureError("PodToleratesNodeTaints", "node(s) had taints that the pod didn't tolerate")
 	// ErrPodNotMatchHostName is used for HostName predicate error.
 	ErrPodNotMatchHostName = newPredicateFailureError("HostName", "node(s) didn't match the requested hostname")
 	// ErrPodNotFitsHostPorts is used for PodFitsHostPorts predicate error.

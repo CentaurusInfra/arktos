@@ -17,13 +17,11 @@ FROM BASEIMAGE
 
 # TODO(#69896): deprecate the shortened aliases in /
 RUN ln -s /hyperkube /apiserver \
- && ln -s /hyperkube /cloud-controller-manager \
  && ln -s /hyperkube /controller-manager \
  && ln -s /hyperkube /kubectl \
  && ln -s /hyperkube /kubelet \
  && ln -s /hyperkube /proxy \
  && ln -s /hyperkube /scheduler \
- && ln -s /hyperkube /usr/local/bin/cloud-controller-manager \
  && ln -s /hyperkube /usr/local/bin/kube-apiserver \
  && ln -s /hyperkube /usr/local/bin/kube-controller-manager \
  && ln -s /hyperkube /usr/local/bin/workload-controller-manager \

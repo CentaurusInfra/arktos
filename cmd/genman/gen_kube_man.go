@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +27,6 @@ import (
 	mangen "github.com/cpuguy83/go-md2man/md2man"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	ccmapp "k8s.io/kubernetes/cmd/cloud-controller-manager/app"
 	"k8s.io/kubernetes/cmd/genutils"
 	apiservapp "k8s.io/kubernetes/cmd/kube-apiserver/app"
 	cmapp "k8s.io/kubernetes/cmd/kube-controller-manager/app"
@@ -73,13 +73,6 @@ func main() {
 		genMarkdown(controllermanager, "", outDir)
 		for _, c := range controllermanager.Commands() {
 			genMarkdown(c, "kube-controller-manager", outDir)
-		}
-	case "cloud-controller-manager":
-		//generate manpage for cloud-controller-manager
-		controllermanager := ccmapp.NewCloudControllerManagerCommand()
-		genMarkdown(controllermanager, "", outDir)
-		for _, c := range controllermanager.Commands() {
-			genMarkdown(c, "cloud-controller-manager", outDir)
 		}
 	case "kube-proxy":
 		// generate manpage for kube-proxy

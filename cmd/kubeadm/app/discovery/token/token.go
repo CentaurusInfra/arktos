@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,6 @@ import (
 	"k8s.io/kubernetes/cmd/kubeadm/app/constants"
 	kubeconfigutil "k8s.io/kubernetes/cmd/kubeadm/app/util/kubeconfig"
 	"k8s.io/kubernetes/cmd/kubeadm/app/util/pubkeypin"
-	"k8s.io/kubernetes/pkg/controller/bootstrap"
 )
 
 // BootstrapUser defines bootstrap user name
@@ -94,9 +94,6 @@ func RetrieveValidatedConfigInfo(cfg *kubeadmapi.JoinConfiguration) (*clientcmda
 		detachedJWSToken, ok := insecureClusterInfo.Data[bootstrapapi.JWSSignatureKeyPrefix+token.ID]
 		if !ok || len(detachedJWSToken) == 0 {
 			return nil, errors.Errorf("token id %q is invalid for this cluster or it has expired. Use \"kubeadm token create\" on the control-plane node to create a new valid token", token.ID)
-		}
-		if !bootstrap.DetachedTokenIsValid(detachedJWSToken, insecureKubeconfigString, token.ID, token.Secret) {
-			return nil, errors.New("failed to verify JWS signature of received cluster info object, can't trust this API Server")
 		}
 		insecureKubeconfigBytes := []byte(insecureKubeconfigString)
 		insecureConfig, err := clientcmd.Load(insecureKubeconfigBytes)

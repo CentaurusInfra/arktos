@@ -48,42 +48,34 @@ func defaultPredicates() sets.String {
 		predicates.MatchInterPodAffinityPred,
 		predicates.NoDiskConflictPred,
 		predicates.GeneralPred,
-		predicates.CheckNodeMemoryPressurePred,
 		predicates.CheckNodeDiskPressurePred,
 		predicates.CheckNodePIDPressurePred,
 		predicates.CheckNodeConditionPred,
-		predicates.PodToleratesNodeTaintsPred,
 		predicates.CheckVolumeBindingPred,
-		predicates.CheckNodeRuntimeReadinessPred,
 	)
 }
 
 // ApplyFeatureGates applies algorithm by feature gates.
 func ApplyFeatureGates() {
 	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
-		// Remove "CheckNodeCondition", "CheckNodeMemoryPressure", "CheckNodePIDPressure"
+		// Remove "CheckNodeCondition", CheckNodePIDPressure"
 		// and "CheckNodeDiskPressure" predicates
 		factory.RemoveFitPredicate(predicates.CheckNodeConditionPred)
-		factory.RemoveFitPredicate(predicates.CheckNodeMemoryPressurePred)
 		factory.RemoveFitPredicate(predicates.CheckNodeDiskPressurePred)
 		factory.RemoveFitPredicate(predicates.CheckNodePIDPressurePred)
-		// Remove key "CheckNodeCondition", "CheckNodeMemoryPressure", "CheckNodePIDPressure" and "CheckNodeDiskPressure"
+		// Remove key "CheckNodeCondition", CheckNodePIDPressure" and "CheckNodeDiskPressure"
 		// from ALL algorithm provider
 		// The key will be removed from all providers which in algorithmProviderMap[]
 		// if you just want remove specific provider, call func RemovePredicateKeyFromAlgoProvider()
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeConditionPred)
-		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeMemoryPressurePred)
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodeDiskPressurePred)
 		factory.RemovePredicateKeyFromAlgorithmProviderMap(predicates.CheckNodePIDPressurePred)
 
-		// Fit is determined based on whether a pod can tolerate all of the node's taints
-		factory.RegisterMandatoryFitPredicate(predicates.PodToleratesNodeTaintsPred, predicates.PodToleratesNodeTaints)
 		// Fit is determined based on whether a pod can tolerate unschedulable of node
 		factory.RegisterMandatoryFitPredicate(predicates.CheckNodeUnschedulablePred, predicates.CheckNodeUnschedulablePredicate)
-		// Insert Key "PodToleratesNodeTaints" and "CheckNodeUnschedulable" To All Algorithm Provider
+		// Insert Key "CheckNodeUnschedulable" To All Algorithm Provider
 		// The key will insert to all providers which in algorithmProviderMap[]
 		// if you just want insert to specific provider, call func InsertPredicateKeyToAlgoProvider()
-		factory.InsertPredicateKeyToAlgorithmProviderMap(predicates.PodToleratesNodeTaintsPred)
 		factory.InsertPredicateKeyToAlgorithmProviderMap(predicates.CheckNodeUnschedulablePred)
 
 		klog.Infof("TaintNodesByCondition is enabled, PodToleratesNodeTaints predicate is mandatory")

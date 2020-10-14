@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,10 +85,6 @@ func TestApplyFeatureGates(t *testing.T) {
 			if !p.FitPredicateKeys.Has("CheckNodeCondition") {
 				t.Fatalf("Failed to find predicate: 'CheckNodeCondition'")
 			}
-
-			if !p.FitPredicateKeys.Has("PodToleratesNodeTaints") {
-				t.Fatalf("Failed to find predicate: 'PodToleratesNodeTaints'")
-			}
 		})
 	}
 
@@ -101,10 +98,6 @@ func TestApplyFeatureGates(t *testing.T) {
 			p, err := factory.GetAlgorithmProvider(pn)
 			if err != nil {
 				t.Fatalf("Error retrieving '%s' provider: %v", pn, err)
-			}
-
-			if !p.FitPredicateKeys.Has("PodToleratesNodeTaints") {
-				t.Fatalf("Failed to find predicate: 'PodToleratesNodeTaints'")
 			}
 
 			if p.FitPredicateKeys.Has("CheckNodeCondition") {

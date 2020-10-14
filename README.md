@@ -1,77 +1,79 @@
-# Arktos
-
-
+# Global Scheduler
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/futurewei-cloud/arktos)](https://goreportcard.com/report/github.com/futurewei-cloud/arktos)
 [![LICENSE](https://img.shields.io/badge/license-apache%202.0-green)](https://github.com/futurewei-cloud/arktos/blob/master/LICENSE)
 
+## What Global Scheduler is
 
-## What is Arktos
+Global Scheduler is an open source large scale cloud resource orchestration and scheduling platform.
+It breaks resource boundary, extends resource limitation, and optimizes resource utilization among cloud data centers and edge sites.
+It has a global view of all the DCs' available resource capacity and edge sites' available resource capacity, and intelligently schedules
+VMs/Containers on a DC/edge site based on traffic patterns and optimal global resource utilization. It is evolved from the open source [Kubernetes](https://github.com/kubernetes/kubernetesh) v1.15 codebase with some fundamental redesign of the scheduler.
 
-Arktos is an open source project designed for large scale cloud compute infrastructure. It is evolved from the open source project [Kubernetes](https://github.com/kubernetes/kubernetes) codebase with core design changes. 
+Global Scheduler aims to address key scheduling challenges of compute units (e.g. VM and containers) across
+a large number of DC clouds and edge clouds---large scalability, low scheduling latency, global resource sharing, high resource utilization, 
+application-performance-aware, etc.  
 
-Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
+----
 
-## Architecture
-![Architecture Diagram](https://raw.githubusercontent.com/futurewei-cloud/arktos/master/docs/design-proposals/arch/project_architecture.png)
-## Key Features
+## Key Features of Global Scheduler
+
 
 ### Large Scalability
 
-Arktos achieves a scalable architecture by partitioning and scaling out components, including API Server, storage, controllers and data plane. The eventual goal of Arktos is to support 300K nodes with a single regional control plane.
+Global Scheduler achieves a scalable architecture by partitioning system components, such as API Server, storage, scheduler, etc. 
+It achieves large scalability through an end-to-end dynamic geolocation and resource profile-based partition scheme which enables multiple schedulers running in a real concurrent mode. The eventual goal of Global Scheduler is to support 10K clusters with a single cross-AZ control plane.
 
-### Multitenancy
+### Low Scheduling Latency
 
-Arktos implements a hard multitenancy model to meet the strict isolation requirement highly desired by public cloud environment. It's based on the virtual cluster idea and all isolations are transparent to tenants. Each tenant feels it's a dedicated cluster for them. 
+Global Scheduler achieves low shceduling latency through the use of lock-free concurrent scheduling design.
+It supports full parallelism without any inter-scheduler head of line blocking.  All the Schedulers operate completely in parallel and do not have to wait for each other.
+Each scheduler has its own local cache for fast information retrieval.
 
-### Unified Container/VM Orchestration
+### Intelligent Scheduling Algorithm
 
-In addition to container orchestration, Arktos implements a built-in support for VMs. In Arktos a pod can contain either containers or a VM. They are scheduled the same way in a same resource pool. This enables cloud providers use a single converged stack to manage all cloud hosts.
+Global Scheduler implements a multi-dimension optimization model based scheduling algorithm. Its weight based scoring mechanism allows flexible scheduling policy. The scheudling algorithm design allows easy extension of more dimensions in the future
 
-### More Features
+### High Resource Utilization
 
-There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [the project introduction](https://docs.google.com/presentation/d/1PG1m27MYRh4kuq654W9HvdoZ5QDX9tWxoCMCfeOZUrE/edit#slide=id.g8a27d34398_8_0) for more information.
+Global Scheduler achieves high resource utitlization through global view of resources across all the DCs and edge sites as well as a scheduling algorithm that considers resource equivalance which avoids depletion of one type of resource while leaving other types of resources wasted. 
+
+### Application Aware Scheduling
+
+The Global Scheduler Monitors each application’s input flow characteristics and automatically scale out/in
+VMs/Containers or migrate the hosting VMs/Containers to a better geo-location to meet the application QOS requirement
 
 
-## Build Arktos
+## Build Global Scheduler
 
-Arktos requires a few dependencies to build and run, and [a bash script](https://github.com/futurewei-cloud/arktos/tree/master/hack/setup-dev-node.sh) is provided to install them.
 
-After the prerequisites are installed, you just need to clone the repo and run "make":
+To build Global Scheduler, you just need to clone the repo and run "make":
 
 ##### Note: you need to have a working [Go 1.12 environment](https://golang.org/doc/install). Go 1.13 is not supported yet.
 
 ```
 mkdir -p $GOPATH/src/github.com
 cd $GOPATH/src/github.com
-git clone https://github.com/futurewei-cloud/arktos
-cd arktos
+git clone https://github.com/futurewei-cloud/global-resource-scheduler
+cd global-resource-scheduler
 make
 ```
 
-## Run Arktos
-The easiest way to run Arktos is to bring up a single-node cluster in your local development box:
+## Run Global Scheduler
+
+To run a single-node Global Scheduler cluster in your local development box:
 
 ```
-cd $GOPATH/src/github.com/arktos
-hack/arktos-up.sh
+cd $GOPATH/src/github.com/global-resource-scheduler
+hack/global-scheduler-up.sh
 ```
-
-After the Arktos cluster is up, you can access the cluster with [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) tool just like what you do with a Kubernetes cluster. For example:
-
-```
-cd $GOPATH/src/github.com/arktos
-cluster/kubectl.sh get nodes
-```
-
-To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
 
 ## Documents and Support
 
-The [design document folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
+The [design document folder](https://github.com/futurewei-cloud/global-resource-scheduler/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-The [user guide folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/user-guide/) provides information about these features from users' perspective.
+The [user guide folder](https://github.com/futurewei-cloud/global-resource-scheduler/tree/master/docs/user-guide/) provides information about these features from users' perspective.
 
-To report a problem, please [create an issue](https://github.com/futurewei-cloud/arktos/issues) in the project repo. 
+To report a problem, please [create an issue](https://github.com/futurewei-cloud/global-resource-scheduler/issues) in the project repo. 
 
 To ask a question, here is [the invitation](https://join.slack.com/t/arktosworkspace/shared_invite/zt-cmak5gjq-rBxX4vX2TGMyNeU~jzAMLQ) to join [Arktos slack channels](http://arktosworkspace.slack.com/). You can also post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/futurewei-cloud/arktos/issues) of question type in the repo.

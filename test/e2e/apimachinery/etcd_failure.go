@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,7 +24,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/wait"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
-	"k8s.io/kubernetes/test/e2e/apps"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2essh "k8s.io/kubernetes/test/e2e/framework/ssh"
@@ -76,8 +76,6 @@ func etcdFailTest(f *framework.Framework, failCommand, fixCommand string) {
 	doEtcdFailure(failCommand, fixCommand)
 
 	checkExistingRCRecovers(f)
-
-	apps.TestReplicationControllerServeImageOrFail(f, "basic", framework.ServeHostnameImage)
 }
 
 // For this duration, etcd will be failed by executing a failCommand on the master.
