@@ -46,84 +46,84 @@ func (grpcAdaptor *GrpcAdaptorMock) MockSetupReturnCode(returnCodeFunc ReturnCod
 	grpcAdaptor.returnCodeFunc = returnCodeFunc
 }
 
-// CreateArktosNetwork is to invoking grpc func of CreateArktosNetwork
+// CreateArktosNetwork is to invoke grpc func of CreateArktosNetwork
 func (grpcAdaptor *GrpcAdaptorMock) CreateArktosNetwork(grpcHost string, msg *BuiltinsArktosMessage) *ReturnCode {
 	grpcAdaptor.arktosMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// CreateService is to invoking grpc func of CreateService
+// CreateService is to invoke grpc func of CreateService
 func (grpcAdaptor *GrpcAdaptorMock) CreateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	grpcAdaptor.serviceMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// UpdateService is to invoking grpc func of UpdateService
+// UpdateService is to invoke grpc func of UpdateService
 func (grpcAdaptor *GrpcAdaptorMock) UpdateService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	grpcAdaptor.serviceMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// DeleteService is to invoking grpc func of DeleteService
+// DeleteService is to invoke grpc func of DeleteService
 func (grpcAdaptor *GrpcAdaptorMock) DeleteService(grpcHost string, msg *BuiltinsServiceMessage) *ReturnCode {
 	grpcAdaptor.serviceMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// UpdateServiceEndpoint is to invoking grpc func of UpdateServiceEndpoint
+// UpdateServiceEndpoint is to invoke grpc func of UpdateServiceEndpoint
 func (grpcAdaptor *GrpcAdaptorMock) UpdateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	grpcAdaptor.serviceEndpointMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// CreateServiceEndpoint is to invoking grpc func of CreateServiceEndpoint
+// CreateServiceEndpoint is to invoke grpc func of CreateServiceEndpoint
 func (grpcAdaptor *GrpcAdaptorMock) CreateServiceEndpoint(grpcHost string, msg *BuiltinsServiceEndpointMessage) *ReturnCode {
 	grpcAdaptor.serviceEndpointMessage = msg
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// UpdatePod is to invoking grpc func of UpdatePod
+// UpdatePod is to invoke grpc func of UpdatePod
 func (grpcAdaptor *GrpcAdaptorMock) UpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	grpcAdaptor.pod = pod
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// CreatePod is to invoking grpc func of CreatePod
+// CreatePod is to invoke grpc func of CreatePod
 func (grpcAdaptor *GrpcAdaptorMock) CreatePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	grpcAdaptor.pod = pod
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// DeletePod is to invoking grpc func of DeletePod
+// DeletePod is to invoke grpc func of DeletePod
 func (grpcAdaptor *GrpcAdaptorMock) DeletePod(grpcHost string, pod *v1.Pod) *ReturnCode {
 	grpcAdaptor.pod = pod
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// CreateNode is to invoking grpc func of CreateNode
+// CreateNode is to invoke grpc func of CreateNode
 func (grpcAdaptor *GrpcAdaptorMock) CreateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	grpcAdaptor.node = node
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// UpdateNode is to invoking grpc func of UpdateNode
+// UpdateNode is to invoke grpc func of UpdateNode
 func (grpcAdaptor *GrpcAdaptorMock) UpdateNode(grpcHost string, node *v1.Node) *ReturnCode {
 	grpcAdaptor.node = node
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }
 
-// DeleteNode is to invoking grpc func of DeleteNode
+// DeleteNode is to invoke grpc func of DeleteNode
 func (grpcAdaptor *GrpcAdaptorMock) DeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
 	grpcAdaptor.node = node
 	grpcAdaptor.grpcHost = grpcHost

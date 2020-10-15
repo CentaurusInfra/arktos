@@ -92,8 +92,6 @@ func TestMizarNodeController_Retry(t *testing.T) {
 }
 
 func syncNodeStore(nodeInformer coreinformers.NodeInformer, kubeClient *testutil.FakeNodeHandler) error {
-	list := nodeInformer.Informer().GetStore().List()
-	print(list)
 	nodes, err := kubeClient.List(metav1.ListOptions{})
 	nodes.Items[0].ResourceVersion = "old version"
 	if err != nil {
