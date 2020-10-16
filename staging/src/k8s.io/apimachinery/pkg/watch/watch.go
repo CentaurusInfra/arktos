@@ -20,12 +20,10 @@ package watch
 import (
 	"context"
 	"fmt"
-	"github.com/grafov/bcast"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	"sync"
-
-	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // Interface can be implemented by anything that knows how to watch and report changes.
@@ -55,11 +53,11 @@ type AggregatedWatcher struct {
 	errs         map[int]error
 	watcherIndex int
 
-	aggChan   chan Event
-	stopChGrp *bcast.Group
+	aggChan chan Event
 
-	stopped  bool
-	stopLock sync.RWMutex
+	stopped   bool
+	stopLock  sync.RWMutex
+	stopChans map[int]chan int
 
 	ctx               context.Context
 	cancel            context.CancelFunc
@@ -73,10 +71,9 @@ func NewAggregatedWatcher() *AggregatedWatcher {
 		watcherIndex:      0,
 		aggChan:           make(chan Event),
 		stopped:           false,
+		stopChans:         make(map[int]chan int),
 		allowWatcherReset: false,
-		stopChGrp:         bcast.NewGroup(),
 	}
-	go a.stopChGrp.Broadcast(0)
 
 	return a
 }
@@ -104,20 +101,31 @@ func NewAggregatedWatcherWithOneWatch(watcher Interface, err error) *AggregatedW
 	return a
 }
 
-func (a *AggregatedWatcher) addWatcherAndError(watcher Interface, err error) {
+func (a *AggregatedWatcher) addWatcherAndError(watcher Interface, err error) (stopchan chan int) {
 	a.mapLock.Lock()
 	a.watchers[a.watcherIndex] = watcher
 	a.errs[a.watcherIndex] = err
+	if watcher != nil {
+		stopchan = make(chan int)
+		a.stopChans[a.watcherIndex] = stopchan
+	}
 	a.watcherIndex++
 	a.mapLock.Unlock()
+
+	return stopchan
 }
 
 func (a *AggregatedWatcher) removeWatcherAndError(watcher Interface) {
+	if watcher == nil {
+		return
+	}
 	a.mapLock.Lock()
+	watcher.Stop()
 	for k, v := range a.watchers {
 		if v == watcher {
 			delete(a.watchers, k)
 			delete(a.errs, k)
+			delete(a.stopChans, k)
 			break
 		}
 	}
@@ -125,13 +133,11 @@ func (a *AggregatedWatcher) removeWatcherAndError(watcher Interface) {
 }
 
 func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
-	a.addWatcherAndError(watcher, err)
+	stopch := a.addWatcherAndError(watcher, err)
 	//klog.Infof("Added watch channel %v into aggregated chan %#v.", watcher, a.aggChan)
 
 	if watcher != nil {
-		stopCh := a.stopChGrp.Join()
-
-		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+		go func(w Interface, a *AggregatedWatcher, stopch chan int) {
 			defer func() {
 				if r := recover(); r != nil {
 					klog.Warningf("Recovered in AggregatedWatch. error [%v]", r)
@@ -140,40 +146,40 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 
 			for {
 				select {
-				case <-stopCh.Read:
-					a.closeWatcher(w, stopCh)
+				case <-stopch:
+					a.closeWatcher(w)
 					return
 				case signal, ok := <-w.ResultChan():
 					if !ok {
 						//klog.Infof("watch channel %v closed for aggregated chan %#v.", w, a.aggChan)
-						a.closeWatcher(w, stopCh)
+						a.closeWatcher(w)
 						return
-					} else {
-						//klog.V(3).Infof("Get event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
 					}
 
 					select {
-					case <-stopCh.Read:
-						a.closeWatcher(w, stopCh)
+					case <-stopch:
+						a.closeWatcher(w)
 						return
 					case a.aggChan <- signal:
 						//klog.V(3).Infof("Sent event (chan %#v) %s.", a.aggChan, PrintEvent(signal))
 					}
 				}
 			}
-		}(watcher, a, stopCh)
+		}(watcher, a, stopch)
 	}
 }
 
-func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {
-	watcher.Stop()
-	a.stopChGrp.Leave(stopCh)
+func (a *AggregatedWatcher) closeWatcher(watcher Interface) {
 	a.removeWatcherAndError(watcher)
 
-	if !a.allowWatcherReset && a.stopChGrp.MemberCount() == 0 {
-		//klog.Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
-		a.stopChGrp.Close()
-		close(a.aggChan)
+	if !a.allowWatcherReset {
+		a.mapLock.RLock()
+		if len(a.watchers) == 0 {
+			//klog.Infof("Close watcher %v caused aggregated channel %v closed - start", watcher, a.aggChan)
+			close(a.aggChan)
+			//klog.Infof("Close watcher %v caused aggregated channel %v closed - closed", watcher, a.aggChan)
+		}
+		a.mapLock.RUnlock()
 	}
 }
 
@@ -195,9 +201,11 @@ func (a *AggregatedWatcher) Stop() {
 	if !a.stopped {
 		a.stopped = true
 		a.allowWatcherReset = false
-		go func() {
-			a.stopChGrp.Send("Stop all watch channels")
-		}()
+		for _, stopCh := range a.stopChans {
+			go func(stopCh chan int) {
+				stopCh <- 1
+			}(stopCh)
+		}
 	}
 	a.stopLock.Unlock()
 }
