@@ -50,7 +50,7 @@ type CSINodeInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.CSINode, error)
 	List(opts v1.ListOptions) (*v1beta1.CSINodeList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CSINode, err error)
 	CSINodeExpansion
 }
@@ -211,7 +211,7 @@ func (c *cSINodes) List(opts v1.ListOptions) (result *v1beta1.CSINodeList, err e
 }
 
 // Watch returns a watch.Interface that watches the requested cSINodes.
-func (c *cSINodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *cSINodes) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -231,7 +231,7 @@ func (c *cSINodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a cSINode and creates it.  Returns the server's representation of the cSINode, and an error, if there is any.

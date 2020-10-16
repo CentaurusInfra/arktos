@@ -52,7 +52,7 @@ type PodDisruptionBudgetInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.PodDisruptionBudget, error)
 	List(opts v1.ListOptions) (*v1beta1.PodDisruptionBudgetList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodDisruptionBudget, err error)
 	PodDisruptionBudgetExpansion
 }
@@ -226,7 +226,7 @@ func (c *podDisruptionBudgets) List(opts v1.ListOptions) (result *v1beta1.PodDis
 }
 
 // Watch returns a watch.Interface that watches the requested podDisruptionBudgets.
-func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -248,7 +248,7 @@ func (c *podDisruptionBudgets) Watch(opts v1.ListOptions) watch.AggregatedWatchI
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a podDisruptionBudget and creates it.  Returns the server's representation of the podDisruptionBudget, and an error, if there is any.

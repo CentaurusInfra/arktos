@@ -50,7 +50,7 @@ type MutatingWebhookConfigurationInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.MutatingWebhookConfiguration, error)
 	List(opts v1.ListOptions) (*v1beta1.MutatingWebhookConfigurationList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.MutatingWebhookConfiguration, err error)
 	MutatingWebhookConfigurationExpansion
 }
@@ -211,7 +211,7 @@ func (c *mutatingWebhookConfigurations) List(opts v1.ListOptions) (result *v1bet
 }
 
 // Watch returns a watch.Interface that watches the requested mutatingWebhookConfigurations.
-func (c *mutatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *mutatingWebhookConfigurations) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -231,7 +231,7 @@ func (c *mutatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.Aggrega
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a mutatingWebhookConfiguration and creates it.  Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.

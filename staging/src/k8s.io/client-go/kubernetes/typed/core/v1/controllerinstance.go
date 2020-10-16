@@ -49,7 +49,7 @@ type ControllerInstanceInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ControllerInstance, error)
 	List(opts metav1.ListOptions) (*v1.ControllerInstanceList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ControllerInstance, err error)
 	ControllerInstanceExpansion
 }
@@ -210,7 +210,7 @@ func (c *controllerInstances) List(opts metav1.ListOptions) (result *v1.Controll
 }
 
 // Watch returns a watch.Interface that watches the requested controllerInstances.
-func (c *controllerInstances) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *controllerInstances) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -230,7 +230,7 @@ func (c *controllerInstances) Watch(opts metav1.ListOptions) watch.AggregatedWat
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a controllerInstance and creates it.  Returns the server's representation of the controllerInstance, and an error, if there is any.

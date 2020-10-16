@@ -53,7 +53,7 @@ type StatefulSetInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.StatefulSet, error)
 	List(opts metav1.ListOptions) (*v1.StatefulSetList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.StatefulSet, err error)
 	GetScale(statefulSetName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(statefulSetName string, scale *autoscalingv1.Scale) (*autoscalingv1.Scale, error)
@@ -230,7 +230,7 @@ func (c *statefulSets) List(opts metav1.ListOptions) (result *v1.StatefulSetList
 }
 
 // Watch returns a watch.Interface that watches the requested statefulSets.
-func (c *statefulSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *statefulSets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -252,7 +252,7 @@ func (c *statefulSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.

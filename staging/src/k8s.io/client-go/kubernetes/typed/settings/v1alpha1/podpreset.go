@@ -51,7 +51,7 @@ type PodPresetInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.PodPreset, error)
 	List(opts v1.ListOptions) (*v1alpha1.PodPresetList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.PodPreset, err error)
 	PodPresetExpansion
 }
@@ -225,7 +225,7 @@ func (c *podPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetList, 
 }
 
 // Watch returns a watch.Interface that watches the requested podPresets.
-func (c *podPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *podPresets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -247,7 +247,7 @@ func (c *podPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a podPreset and creates it.  Returns the server's representation of the podPreset, and an error, if there is any.
