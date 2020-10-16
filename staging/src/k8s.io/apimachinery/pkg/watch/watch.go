@@ -20,7 +20,7 @@ package watch
 import (
 	"context"
 	"fmt"
-	"github.com/grafov/bcast"
+	"github.com/dustin/go-broadcast"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/klog"
 	"sync"
@@ -56,7 +56,7 @@ type AggregatedWatcher struct {
 	watcherIndex int
 
 	aggChan   chan Event
-	stopChGrp *bcast.Group
+	stopChGrp broadcast.Broadcaster
 
 	stopped  bool
 	stopLock sync.RWMutex
@@ -74,9 +74,8 @@ func NewAggregatedWatcher() *AggregatedWatcher {
 		aggChan:           make(chan Event),
 		stopped:           false,
 		allowWatcherReset: false,
-		stopChGrp:         bcast.NewGroup(),
+		stopChGrp:         broadcast.NewBroadcaster(1),
 	}
-	go a.stopChGrp.Broadcast(0)
 
 	return a
 }
@@ -129,9 +128,10 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 	//klog.Infof("Added watch channel %v into aggregated chan %#v.", watcher, a.aggChan)
 
 	if watcher != nil {
-		stopCh := a.stopChGrp.Join()
+		stopCh := make(chan interface{})
+		a.stopChGrp.Register(stopCh)
 
-		go func(w Interface, a *AggregatedWatcher, stopCh *bcast.Member) {
+		go func(w Interface, a *AggregatedWatcher, stopCh chan interface{}) {
 			defer func() {
 				if r := recover(); r != nil {
 					klog.Warningf("Recovered in AggregatedWatch. error [%v]", r)
@@ -140,7 +140,7 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 
 			for {
 				select {
-				case <-stopCh.Read:
+				case <-stopCh:
 					a.closeWatcher(w, stopCh)
 					return
 				case signal, ok := <-w.ResultChan():
@@ -153,7 +153,7 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 					}
 
 					select {
-					case <-stopCh.Read:
+					case <-stopCh:
 						a.closeWatcher(w, stopCh)
 						return
 					case a.aggChan <- signal:
@@ -165,15 +165,19 @@ func (a *AggregatedWatcher) AddWatchInterface(watcher Interface, err error) {
 	}
 }
 
-func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh *bcast.Member) {
+func (a *AggregatedWatcher) closeWatcher(watcher Interface, stopCh chan interface{}) {
 	watcher.Stop()
-	a.stopChGrp.Leave(stopCh)
+	a.stopChGrp.Unregister(stopCh)
 	a.removeWatcherAndError(watcher)
 
-	if !a.allowWatcherReset && a.stopChGrp.MemberCount() == 0 {
-		//klog.Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
-		a.stopChGrp.Close()
-		close(a.aggChan)
+	if !a.allowWatcherReset {
+		a.mapLock.RLock()
+		if len(a.watchers) == 0 {
+			//klog.Infof("Close watcher %v caused aggregated channel %v closed", watcher, a.aggChan)
+			a.stopChGrp.Close()
+			close(a.aggChan)
+		}
+		a.mapLock.RUnlock()
 	}
 }
 
@@ -195,9 +199,7 @@ func (a *AggregatedWatcher) Stop() {
 	if !a.stopped {
 		a.stopped = true
 		a.allowWatcherReset = false
-		go func() {
-			a.stopChGrp.Send("Stop all watch channels")
-		}()
+		a.stopChGrp.Submit("Stop all watch channels")
 	}
 	a.stopLock.Unlock()
 }
