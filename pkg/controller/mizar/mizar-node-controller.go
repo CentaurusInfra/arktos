@@ -53,10 +53,12 @@ type MizarNodeController struct {
 	queue workqueue.RateLimitingInterface
 
 	grpcHost string
+
+	grpcAdaptor IGrpcAdaptor
 }
 
 // NewMizarNodeController creates and configures a new controller instance
-func NewMizarNodeController(informer coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string) *MizarNodeController {
+func NewMizarNodeController(informer coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNodeController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -67,6 +69,7 @@ func NewMizarNodeController(informer coreinformers.NodeInformer, kubeClient clie
 		listerSynced: informer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
 		grpcHost:     grpcHost,
+		grpcAdaptor:  grpcAdaptor,
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -184,11 +187,11 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 
 	switch eventType {
 	case EventType_Create:
-		processNodeGrpcReturnCode(c, GrpcCreateNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.CreateNode(c.grpcHost, obj), keyWithEventType)
 	case EventType_Update:
-		processNodeGrpcReturnCode(c, GrpcUpdateNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.UpdateNode(c.grpcHost, obj), keyWithEventType)
 	case EventType_Delete:
-		processNodeGrpcReturnCode(c, GrpcDeleteNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.DeleteNode(c.grpcHost, obj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}

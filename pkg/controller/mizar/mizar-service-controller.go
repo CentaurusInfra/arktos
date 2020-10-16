@@ -57,10 +57,11 @@ type MizarServiceController struct {
 	queue               workqueue.RateLimitingInterface
 	recorder            record.EventRecorder
 	grpcHost            string
+	grpcAdaptor         IGrpcAdaptor
 }
 
 // NewMizarServiceController starts mizar service controller
-func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string) *MizarServiceController {
+func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarServiceController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -74,6 +75,7 @@ func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient ar
 		queue:               workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-service-controller"}),
 		grpcHost:            grpcHost,
+		grpcAdaptor:         grpcAdaptor,
 	}
 
 	serviceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -228,7 +230,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		Ip:            service.Spec.ClusterIP,
 	}
 
-	response := GrpcCreateService(c.grpcHost, msg)
+	response := c.grpcAdaptor.CreateService(c.grpcHost, msg)
 	code := response.Code
 	ip := response.Message
 	klog.Infof("Assigned ip by mizar is %v", ip)
@@ -243,7 +245,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 				return err
 			}
 			message := convertToServiceEndpointMessage(service.Name, service.Namespace, service.Tenant, endpoint, service)
-			resp := GrpcCreateServiceEndpoint(c.grpcHost, message)
+			resp := c.grpcAdaptor.CreateServiceEndpoint(c.grpcHost, message)
 			returnCode := resp.Code
 			context := resp.Message
 			switch returnCode {
@@ -306,7 +308,7 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
 	}
-	response := GrpcUpdateService(c.grpcHost, msg)
+	response := c.grpcAdaptor.UpdateService(c.grpcHost, msg)
 	code := response.Code
 
 	switch code {
@@ -339,7 +341,7 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 		Ip:            "",
 	}
 
-	response := GrpcDeleteService(c.grpcHost, msg)
+	response := c.grpcAdaptor.DeleteService(c.grpcHost, msg)
 	code := response.Code
 	switch code {
 	case CodeType_OK:
@@ -391,7 +393,7 @@ func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapi
 		Vpc:  network.Spec.VPCID,
 	}
 
-	response := GrpcCreateArktosNetwork(c.grpcHost, msg)
+	response := c.grpcAdaptor.CreateArktosNetwork(c.grpcHost, msg)
 
 	code := response.Code
 	context := response.Message

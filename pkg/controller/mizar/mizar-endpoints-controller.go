@@ -60,10 +60,12 @@ type MizarEndpointsController struct {
 	queue workqueue.RateLimitingInterface
 
 	grpcHost string
+
+	grpcAdaptor IGrpcAdaptor
 }
 
 // NewMizarEndpointsController creates and configures a new controller instance
-func NewMizarEndpointsController(endpointsInformer coreinformers.EndpointsInformer, serviceInformer coreinformers.ServiceInformer, kubeClient clientset.Interface, grpcHost string) *MizarEndpointsController {
+func NewMizarEndpointsController(endpointsInformer coreinformers.EndpointsInformer, serviceInformer coreinformers.ServiceInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarEndpointsController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -76,6 +78,7 @@ func NewMizarEndpointsController(endpointsInformer coreinformers.EndpointsInform
 		serviceListerSynced:   serviceInformer.Informer().HasSynced,
 		queue:                 workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarEndpoints),
 		grpcHost:              grpcHost,
+		grpcAdaptor:           grpcAdaptor,
 	}
 
 	endpointsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -222,9 +225,9 @@ func (c *MizarEndpointsController) handle(keyWithEventType KeyWithEventType) err
 
 	switch eventType {
 	case EventType_Create:
-		processEndpointsGrpcReturnCode(c, GrpcCreateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
+		processEndpointsGrpcReturnCode(c, c.grpcAdaptor.CreateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
 	case EventType_Update:
-		processEndpointsGrpcReturnCode(c, GrpcUpdateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
+		processEndpointsGrpcReturnCode(c, c.grpcAdaptor.UpdateServiceEndpoint(c.grpcHost, msg), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}

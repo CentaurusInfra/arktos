@@ -54,10 +54,11 @@ type MizarArktosNetworkController struct {
 	queue           workqueue.RateLimitingInterface
 	recorder        record.EventRecorder
 	grpcHost        string
+	grpcAdaptor     IGrpcAdaptor
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer, grpcHost string) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -71,6 +72,7 @@ func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClients
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:        eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
 		grpcHost:        grpcHost,
+		grpcAdaptor:     grpcAdaptor,
 	}
 
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -186,7 +188,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		Vpc:  network.Spec.VPCID,
 	}
 
-	response := GrpcCreateArktosNetwork(c.grpcHost, msg)
+	response := c.grpcAdaptor.CreateArktosNetwork(c.grpcHost, msg)
 
 	code := response.Code
 	context := response.Message
