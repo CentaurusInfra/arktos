@@ -259,6 +259,7 @@ func (ts *TenantStorageMapManager) deleteTenant(obj interface{}) {
 func (ts *TenantStorageMapManager) GetClusterIdFromTenant(tenant string) uint8 {
 	ts.mux.RLock()
 	tenantStorage, isOK := ts.tenantToClusterMap[tenant]
+	ts.mux.RUnlock()
 	clusterId := uint8(0)
 	var err error
 	if isOK {
@@ -268,7 +269,6 @@ func (ts *TenantStorageMapManager) GetClusterIdFromTenant(tenant string) uint8 {
 		}
 	}
 
-	ts.mux.RUnlock()
 	return clusterId
 }
 
