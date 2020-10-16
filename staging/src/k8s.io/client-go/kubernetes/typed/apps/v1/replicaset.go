@@ -53,7 +53,7 @@ type ReplicaSetInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ReplicaSet, error)
 	List(opts metav1.ListOptions) (*v1.ReplicaSetList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ReplicaSet, err error)
 	GetScale(replicaSetName string, options metav1.GetOptions) (*autoscalingv1.Scale, error)
 	UpdateScale(replicaSetName string, scale *autoscalingv1.Scale) (*autoscalingv1.Scale, error)
@@ -230,7 +230,7 @@ func (c *replicaSets) List(opts metav1.ListOptions) (result *v1.ReplicaSetList, 
 }
 
 // Watch returns a watch.Interface that watches the requested replicaSets.
-func (c *replicaSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *replicaSets) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -252,7 +252,7 @@ func (c *replicaSets) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterf
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a replicaSet and creates it.  Returns the server's representation of the replicaSet, and an error, if there is any.

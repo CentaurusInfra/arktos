@@ -95,12 +95,6 @@ func NewAggregatedWatcherWithReset(ctx context.Context) *AggregatedWatcher {
 	return a
 }
 
-func NewAggregatedWatcherWithOneWatch(watcher Interface, err error) *AggregatedWatcher {
-	a := NewAggregatedWatcher()
-	a.AddWatchInterface(watcher, err)
-	return a
-}
-
 func (a *AggregatedWatcher) addWatcherAndError(watcher Interface, err error) (stopchan chan int) {
 	a.mapLock.Lock()
 	a.watchers[a.watcherIndex] = watcher

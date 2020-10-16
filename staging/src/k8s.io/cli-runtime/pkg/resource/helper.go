@@ -108,7 +108,7 @@ func (m *Helper) Watch(namespace, apiVersion string, options *metav1.ListOptions
 	return aggWatch
 }
 
-func (m *Helper) WatchSingle(namespace, name, resourceVersion string) watch.AggregatedWatchInterface {
+func (m *Helper) WatchSingle(namespace, name, resourceVersion string) (watch.Interface, error) {
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range m.RESTClients {
 		aggWatch.AddWatchInterface(client.Get().
@@ -121,7 +121,7 @@ func (m *Helper) WatchSingle(namespace, name, resourceVersion string) watch.Aggr
 			}, metav1.ParameterCodec).
 			Watch())
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 func (m *Helper) Delete(namespace, name string) (runtime.Object, error) {
@@ -254,7 +254,7 @@ func (m *Helper) WatchWithMultiTenancy(tenant, namespace, apiVersion string, opt
 	return aggWatch
 }
 
-func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVersion string) watch.AggregatedWatchInterface {
+func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVersion string) (watch.Interface, error) {
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range m.RESTClients {
 		aggWatch.AddWatchInterface(client.Get().
@@ -268,7 +268,7 @@ func (m *Helper) WatchSingleWithMultiTenancy(tenant, namespace, name, resourceVe
 			}, metav1.ParameterCodec).
 			Watch())
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 func (m *Helper) DeleteWithMultiTenancy(tenant, namespace, name string) (runtime.Object, error) {

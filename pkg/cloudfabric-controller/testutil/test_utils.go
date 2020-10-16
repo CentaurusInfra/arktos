@@ -269,8 +269,8 @@ func (m *FakeNodeHandler) PatchStatus(nodeName string, data []byte) (*v1.Node, e
 }
 
 // Watch watches Nodes in a fake store.
-func (m *FakeNodeHandler) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
-	return watch.NewAggregatedWatcherWithOneWatch(watch.NewFake(), nil)
+func (m *FakeNodeHandler) Watch(opts metav1.ListOptions) (watch.Interface, error) {
+	return watch.NewFake(), nil
 }
 
 // Patch patches a Node in the fake store.

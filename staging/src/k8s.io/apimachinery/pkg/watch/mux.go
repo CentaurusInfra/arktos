@@ -113,7 +113,7 @@ func (b *Broadcaster) blockQueue(f func()) {
 // Watch adds a new watcher to the list and returns an Interface for it.
 // Note: new watchers will only receive new events. They won't get an entire history
 // of previous events.
-func (m *Broadcaster) Watch() AggregatedWatchInterface {
+func (m *Broadcaster) Watch() Interface {
 	var w *broadcasterWatcher
 	m.blockQueue(func() {
 		m.lock.Lock()
@@ -129,14 +129,14 @@ func (m *Broadcaster) Watch() AggregatedWatchInterface {
 		m.watchers[id] = w
 	})
 
-	return NewAggregatedWatcherWithOneWatch(w, nil)
+	return w
 }
 
 // WatchWithPrefix adds a new watcher to the list and returns an Interface for it. It sends
 // queuedEvents down the new watch before beginning to send ordinary events from Broadcaster.
 // The returned watch will have a queue length that is at least large enough to accommodate
 // all of the items in queuedEvents.
-func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) AggregatedWatchInterface {
+func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) Interface {
 	var w *broadcasterWatcher
 	m.blockQueue(func() {
 		m.lock.Lock()
@@ -158,7 +158,7 @@ func (m *Broadcaster) WatchWithPrefix(queuedEvents []Event) AggregatedWatchInter
 			w.result <- e
 		}
 	})
-	return NewAggregatedWatcherWithOneWatch(w, nil)
+	return w
 }
 
 // stopWatching stops the given watcher and removes it from the list.
