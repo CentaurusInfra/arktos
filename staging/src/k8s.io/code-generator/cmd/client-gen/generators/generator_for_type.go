@@ -156,7 +156,6 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
 		"PatchType":                c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
 		"watchInterface":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
-		"aggregatedWatchInterface": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "AggregatedWatchInterface"}),
 		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
 		"RESTClientInterface":      c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
 		"schemeParameterCodec":     c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
@@ -346,7 +345,7 @@ var defaultVerbTemplates = map[string]string{
 	"deleteCollection": `DeleteCollection(options *$.DeleteOptions|raw$, listOptions $.ListOptions|raw$) error`,
 	"get":              `Get(name string, options $.GetOptions|raw$) (*$.resultType|raw$, error)`,
 	"list":             `List(opts $.ListOptions|raw$) (*$.resultType|raw$List, error)`,
-	"watch":            `Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$`,
+	"watch":            `Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error)`,
 	"patch":            `Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error)`,
 }
 
@@ -843,7 +842,7 @@ func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (resu
 
 var watchTemplate = `
 // Watch returns a $.watchInterface|raw$ that watches the requested $.type|privatePlural$.
-func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
+func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error) { 
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -866,7 +865,7 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 `
 
