@@ -72,7 +72,7 @@ func NewFilteredCertificateSigningRequestInformerWithMultiTenancy(client kuberne
 				}
 				return client.CertificatesV1beta1().CertificateSigningRequestsWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

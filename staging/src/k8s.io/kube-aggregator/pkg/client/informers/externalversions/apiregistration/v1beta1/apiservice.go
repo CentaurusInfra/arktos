@@ -72,7 +72,7 @@ func NewFilteredAPIServiceInformerWithMultiTenancy(client clientset.Interface, r
 				}
 				return client.ApiregistrationV1beta1().APIServicesWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

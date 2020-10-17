@@ -62,7 +62,7 @@ func NewFilteredControllerInstanceInformer(client kubernetes.Interface, resyncPe
 				}
 				return client.CoreV1().ControllerInstances().List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
