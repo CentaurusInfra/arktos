@@ -90,7 +90,7 @@ func WaitForCertificate(ctx context.Context, client certificatesclient.Certifica
 			options.FieldSelector = fieldSelector
 			return client.List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
 			return client.Watch(options)
 		},
