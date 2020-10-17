@@ -46,7 +46,7 @@ func NewPodStore(c clientset.Interface, namespace string, label labels.Selector,
 			obj, err := c.CoreV1().Pods(namespace).List(options)
 			return runtime.Object(obj), err
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = label.String()
 			options.FieldSelector = field.String()
 			return c.CoreV1().Pods(namespace).Watch(options)
