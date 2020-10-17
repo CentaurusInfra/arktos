@@ -70,13 +70,10 @@ func (c *FakeCSINodes) List(opts v1.ListOptions) (result *v1beta1.CSINodeList, e
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested cSINodes.
-func (c *FakeCSINodes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested cSINodes.
+func (c *FakeCSINodes) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(csinodesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a cSINode and creates it.  Returns the server's representation of the cSINode, and an error, if there is any.

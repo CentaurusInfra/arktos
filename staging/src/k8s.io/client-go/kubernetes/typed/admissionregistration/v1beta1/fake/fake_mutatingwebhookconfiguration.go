@@ -70,13 +70,10 @@ func (c *FakeMutatingWebhookConfigurations) List(opts v1.ListOptions) (result *v
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested mutatingWebhookConfigurations.
-func (c *FakeMutatingWebhookConfigurations) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested mutatingWebhookConfigurations.
+func (c *FakeMutatingWebhookConfigurations) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(mutatingwebhookconfigurationsResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a mutatingWebhookConfiguration and creates it.  Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.

@@ -69,13 +69,10 @@ func (c *FakeControllerInstances) List(opts v1.ListOptions) (result *corev1.Cont
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested controllerInstances.
-func (c *FakeControllerInstances) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested controllerInstances.
+func (c *FakeControllerInstances) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(controllerinstancesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a controllerInstance and creates it.  Returns the server's representation of the controllerInstance, and an error, if there is any.

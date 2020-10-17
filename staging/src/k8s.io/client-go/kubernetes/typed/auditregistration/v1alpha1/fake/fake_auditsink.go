@@ -73,14 +73,11 @@ func (c *FakeAuditSinks) List(opts v1.ListOptions) (result *v1alpha1.AuditSinkLi
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested auditSinks.
-func (c *FakeAuditSinks) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested auditSinks.
+func (c *FakeAuditSinks) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewTenantWatchAction(auditsinksResource, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a auditSink and creates it.  Returns the server's representation of the auditSink, and an error, if there is any.

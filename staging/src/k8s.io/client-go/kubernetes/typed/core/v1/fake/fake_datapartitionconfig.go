@@ -69,13 +69,10 @@ func (c *FakeDataPartitionConfigs) List(opts v1.ListOptions) (result *corev1.Dat
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested dataPartitionConfigs.
-func (c *FakeDataPartitionConfigs) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested dataPartitionConfigs.
+func (c *FakeDataPartitionConfigs) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(datapartitionconfigsResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a dataPartitionConfig and creates it.  Returns the server's representation of the dataPartitionConfig, and an error, if there is any.

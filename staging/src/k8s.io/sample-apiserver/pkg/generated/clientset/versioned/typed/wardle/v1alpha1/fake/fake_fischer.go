@@ -70,13 +70,10 @@ func (c *FakeFischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, 
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested fischers.
-func (c *FakeFischers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested fischers.
+func (c *FakeFischers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(fischersResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a fischer and creates it.  Returns the server's representation of the fischer, and an error, if there is any.

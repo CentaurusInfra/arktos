@@ -74,14 +74,11 @@ func (c *FakeStatefulSets) List(opts v1.ListOptions) (result *v1beta2.StatefulSe
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested statefulSets.
-func (c *FakeStatefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested statefulSets.
+func (c *FakeStatefulSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(statefulsetsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.

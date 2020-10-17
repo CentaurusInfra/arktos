@@ -70,13 +70,10 @@ func (c *FakePriorityClasses) List(opts v1.ListOptions) (result *v1alpha1.Priori
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested priorityClasses.
-func (c *FakePriorityClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested priorityClasses.
+func (c *FakePriorityClasses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(priorityclassesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a priorityClass and creates it.  Returns the server's representation of the priorityClass, and an error, if there is any.
