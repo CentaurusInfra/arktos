@@ -71,7 +71,7 @@ func NewFilteredNetworkInformerWithMultiTenancy(client versioned.Interface, resy
 				}
 				return client.ArktosV1().NetworksWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

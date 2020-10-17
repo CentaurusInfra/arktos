@@ -303,13 +303,11 @@ func (d *dummyStorage) Create(_ context.Context, _ string, _, _ runtime.Object, 
 func (d *dummyStorage) Delete(_ context.Context, _ string, _ runtime.Object, _ *storage.Preconditions, _ storage.ValidateObjectFunc) error {
 	return fmt.Errorf("unimplemented")
 }
-func (d *dummyStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (d *dummyStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) (watch.Interface, error) {
 	w := newDummyWatch()
-	aggWatch := watch.NewAggregatedWatcher()
-	aggWatch.AddWatchInterface(w, nil)
-	return aggWatch
+	return w, nil
 }
-func (d *dummyStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (d *dummyStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) (watch.Interface, error) {
 	return d.Watch(c, s1, s2, p)
 }
 func (d *dummyStorage) Get(_ context.Context, _ string, _ string, _ runtime.Object, _ bool) error {
@@ -409,9 +407,9 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 	totalPods := 100
 
 	// Create watcher that will be slowing down reading.
-	aw1 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if aw1.GetErrors() != nil {
-		t.Fatalf("Failed to create watch: %v", aw1.GetErrors())
+	aw1, err := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
+	if err != nil {
+		t.Fatalf("Failed to create watch: %v", err)
 	}
 	defer aw1.Stop()
 	go func() {
@@ -431,9 +429,9 @@ func TestWatcherNotGoingBackInTime(t *testing.T) {
 	}
 
 	// Create fast watcher and ensure it will get each object exactly once.
-	aw2 := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
-	if aw2.GetErrors() != nil {
-		t.Fatalf("Failed to create watch: %v", aw2.GetErrors())
+	aw2, err := cacher.Watch(context.TODO(), "pods/ns", "999", storage.Everything)
+	if err != nil {
+		t.Fatalf("Failed to create watch: %v", err)
 	}
 	defer aw2.Stop()
 
@@ -508,9 +506,9 @@ func TestCacheWatcherStoppedOnDestroy(t *testing.T) {
 	// Wait until cacher is initialized.
 	cacher.ready.wait()
 
-	aw := cacher.Watch(context.Background(), "pods/ns", "0", storage.Everything)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Failed to create watch: %v", aw.GetErrors())
+	aw, err := cacher.Watch(context.Background(), "pods/ns", "0", storage.Everything)
+	if err != nil {
+		t.Fatalf("Failed to create watch: %v", err)
 	}
 
 	watchClosed := make(chan struct{})
@@ -590,9 +588,9 @@ func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBoo
 	pred.AllowWatchBookmarks = allowWatchBookmarks
 
 	ctx, _ := context.WithTimeout(context.Background(), 3*time.Second)
-	aw := cacher.Watch(ctx, "pods/ns", "0", pred)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Failed to create watch: %v", aw.GetErrors())
+	aw, err := cacher.Watch(ctx, "pods/ns", "0", pred)
+	if err != nil {
+		t.Fatalf("Failed to create watch: %v", err)
 	}
 
 	resourceVersion := uint64(1000)
@@ -704,9 +702,9 @@ func TestDispatchingBookmarkEventsWithConcurrentStop(t *testing.T) {
 		pred := storage.Everything
 		pred.AllowWatchBookmarks = true
 		ctx, _ := context.WithTimeout(context.Background(), time.Second)
-		aw := cacher.Watch(ctx, "pods/ns", "999", pred)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Failed to create watch: %v", aw.GetErrors())
+		aw, err := cacher.Watch(ctx, "pods/ns", "999", pred)
+		if err != nil {
+			t.Fatalf("Failed to create watch: %v", err)
 		}
 		bookmark := &watchCacheEvent{
 			Type:            watch.Bookmark,

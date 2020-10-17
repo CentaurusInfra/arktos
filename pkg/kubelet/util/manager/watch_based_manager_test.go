@@ -46,7 +46,7 @@ func listSecret(fakeClient clientset.Interface) listObjectFunc {
 }
 
 func watchSecret(fakeClient clientset.Interface) watchObjectFunc {
-	return func(tenant, namespace string, opts metav1.ListOptions) watch.AggregatedWatchInterface {
+	return func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
 		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 }

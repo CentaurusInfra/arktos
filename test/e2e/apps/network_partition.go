@@ -176,7 +176,7 @@ var _ = SIGDescribe("Network Partition [Disruptive] [Slow]", func() {
 							obj, err := f.ClientSet.CoreV1().Nodes().List(options)
 							return runtime.Object(obj), err
 						},
-						WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+						WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 							options.FieldSelector = nodeSelector.String()
 							return f.ClientSet.CoreV1().Nodes().Watch(options)
 						},
@@ -558,7 +558,7 @@ var _ = SIGDescribe("Network Partition [Disruptive] [Slow]", func() {
 							obj, err := f.ClientSet.CoreV1().Nodes().List(options)
 							return runtime.Object(obj), err
 						},
-						WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+						WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 							options.FieldSelector = nodeSelector.String()
 							return f.ClientSet.CoreV1().Nodes().Watch(options)
 						},

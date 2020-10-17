@@ -529,7 +529,7 @@ func waitForPod(podClient corev1client.PodsGetter, tenant, ns, name string, exit
 			options.FieldSelector = fieldSelector
 			return podClient.Pods(ns).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
 			return podClient.Pods(ns).Watch(options)
 		},

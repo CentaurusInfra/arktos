@@ -395,7 +395,7 @@ func (c *dynamicResourceClient) List(opts metav1.ListOptions) (*unstructured.Uns
 	return list, nil
 }
 
-func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	aggWatch := watch.NewAggregatedWatcher()
 
 	switch {
@@ -417,7 +417,7 @@ func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedW
 		panic("math broke")
 	}
 
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // TODO: opts are currently ignored.

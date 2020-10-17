@@ -261,7 +261,7 @@ func (sow *singleObjListerWatcher) List(options metav1.ListOptions) (runtime.Obj
 	return sow.lw.List(options)
 }
 
-func (sow *singleObjListerWatcher) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+func (sow *singleObjListerWatcher) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	options.FieldSelector = "metadata.name=" + sow.objectName
 	return sow.lw.Watch(options)
 }

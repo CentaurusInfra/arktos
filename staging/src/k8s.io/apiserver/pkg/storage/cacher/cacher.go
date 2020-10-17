@@ -410,13 +410,11 @@ func (c *Cacher) Delete(ctx context.Context, key string, out runtime.Object, pre
 }
 
 // Watch implements storage.Interface.
-func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) (watch.Interface, error) {
 	klog.V(6).Infof("Cacher Watch key %s, resource version %s, selection predicate [%+v]", key, resourceVersion, pred)
 	watchRV, err := c.versioner.ParseResourceVersion(resourceVersion)
-	aggWc := watch.NewAggregatedWatcher()
 	if err != nil {
-		aggWc.AddWatchInterface(nil, err)
-		return aggWc
+		return nil, err
 	}
 
 	c.ready.wait()
@@ -464,8 +462,7 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 		// To match the uncached watch implementation, once we have passed authn/authz/admission,
 		// and successfully parsed a resource version, other errors must fail with a watch event of type ERROR,
 		// rather than a directly returned error.
-		aggWc.AddWatchInterface(newErrWatcher(err), nil)
-		return aggWc
+		return newErrWatcher(err), nil
 	}
 
 	// With some events already sent, update resourceVersion so that
@@ -491,12 +488,11 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 	}()
 
 	go watcher.process(ctx, initEvents, watchRV)
-	aggWc.AddWatchInterface(watcher, nil)
-	return aggWc
+	return watcher, nil
 }
 
 // WatchList implements storage.Interface.
-func (c *Cacher) WatchList(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (c *Cacher) WatchList(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) (watch.Interface, error) {
 	return c.Watch(ctx, key, resourceVersion, pred)
 }
 
@@ -985,7 +981,7 @@ func (lw *cacherListerWatcher) List(options metav1.ListOptions) (runtime.Object,
 }
 
 // Implements cache.ListerWatcher interface.
-func (lw *cacherListerWatcher) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+func (lw *cacherListerWatcher) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return lw.storage.WatchList(context.TODO(), lw.resourcePrefix, options.ResourceVersion, storage.Everything)
 }
 

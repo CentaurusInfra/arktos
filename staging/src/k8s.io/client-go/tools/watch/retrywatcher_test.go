@@ -231,7 +231,7 @@ func TestRetryWatcher(t *testing.T) {
 					return func(options metav1.ListOptions) (watch.Interface, error) {
 						if firstRun {
 							firstRun = false
-							return watch.NewAggregatedWatcher(), nil
+							return nil, nil
 						}
 
 						aggWatcher := watch.NewAggregatedWatcher()

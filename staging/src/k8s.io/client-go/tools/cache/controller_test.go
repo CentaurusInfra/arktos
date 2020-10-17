@@ -352,10 +352,10 @@ func TestUpdate(t *testing.T) {
 	watchCh := make(chan struct{})
 	_, controller := NewInformer(
 		&testLW{
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
-				w := source.Watch(options)
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				watch, err := source.Watch(options)
 				close(watchCh)
-				return w
+				return watch, err
 			},
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				return source.List(options)

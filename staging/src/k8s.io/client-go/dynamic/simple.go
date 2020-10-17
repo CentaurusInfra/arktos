@@ -399,7 +399,7 @@ func setResult(resultMap map[int]*unstructured.UnstructuredList, errMap map[int]
 	lock.Unlock()
 }
 
-func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	internalGV := schema.GroupVersions{
 		{Group: c.resource.Group, Version: runtime.APIVersionInternal},
 		// always include the legacy group as a decoding target to handle non-error `Status` return types
@@ -429,7 +429,7 @@ func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) watch.AggregatedW
 			WatchWithSpecificDecoders(wrappedDecoderFn, unstructured.UnstructuredJSONScheme)
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 func (c *dynamicResourceClient) Patch(name string, pt types.PatchType, data []byte, opts metav1.PatchOptions, subresources ...string) (*unstructured.Unstructured, error) {

@@ -222,7 +222,7 @@ var _ = SIGDescribe("DaemonRestart [Disruptive]", func() {
 					obj, err := f.ClientSet.CoreV1().Pods(ns).List(options)
 					return runtime.Object(obj), err
 				},
-				WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					options.LabelSelector = labelSelector.String()
 					return f.ClientSet.CoreV1().Pods(ns).Watch(options)
 				},

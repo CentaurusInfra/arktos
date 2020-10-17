@@ -989,21 +989,17 @@ func (c fakeClient) Create(*certificates.CertificateSigningRequest) (*certificat
 	return &csrReply, nil
 }
 
-func (c fakeClient) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
+func (c fakeClient) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	if c.failureType == watchError {
 		if c.err != nil {
-			aggWatch.AddWatchInterface(nil, c.err)
-			return aggWatch
+			return nil, c.err
 		}
-		aggWatch.AddWatchInterface(nil, fmt.Errorf("Watch error"))
-		return aggWatch
+		return nil, fmt.Errorf("Watch error")
 	}
-	aggWatch.AddWatchInterface(&fakeWatch{
+	return &fakeWatch{
 		failureType:    c.failureType,
 		certificatePEM: c.certificatePEM,
-	}, nil)
-	return aggWatch
+	}, nil
 }
 
 type fakeWatch struct {

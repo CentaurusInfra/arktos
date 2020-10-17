@@ -203,7 +203,7 @@ func (o *RolloutStatusOptions) Run() error {
 			options.FieldSelector = fieldSelector
 			return o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).List(options)
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fieldSelector
 			return o.DynamicClient.Resource(info.Mapping.Resource).NamespaceWithMultiTenancy(info.Namespace, info.Tenant).Watch(options)
 		},
