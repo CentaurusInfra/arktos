@@ -97,9 +97,9 @@ func TestWatchRestartsIfTimeoutNotReached(t *testing.T) {
 	getWatchFunc := func(c *kubernetes.Clientset, secret *corev1.Secret) func(options metav1.ListOptions) (watch.Interface, error) {
 		return func(options metav1.ListOptions) (watch.Interface, error) {
 			options.FieldSelector = fields.OneTermEqualSelector("metadata.name", secret.Name).String()
-			res := c.CoreV1().Secrets(secret.Namespace).Watch(options)
-			if res.GetErrors() != nil {
-				t.Fatalf("Failed to create a watcher on Secrets: %v", res.GetErrors())
+			res, err := c.CoreV1().Secrets(secret.Namespace).Watch(options)
+			if err != nil {
+				t.Fatalf("Failed to create a watcher on Secrets: %v", err)
 			}
 			return res, nil
 		}
