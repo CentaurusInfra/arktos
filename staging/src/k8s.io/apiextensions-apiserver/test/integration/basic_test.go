@@ -93,10 +93,9 @@ func testSimpleCRUD(t *testing.T, ns string, noxuDefinition *apiextensionsv1beta
 	for _, v := range noxuDefinition.Spec.Versions {
 		noxuResourceClients[v.Name] = newNamespacedCustomResourceVersionedClient(ns, dynamicClient, noxuDefinition, v.Name)
 
-		noxuWatch := noxuResourceClients[v.Name].Watch(metav1.ListOptions{})
-		err := noxuWatch.GetErrors()
+		noxuWatch, err := noxuResourceClients[v.Name].Watch(metav1.ListOptions{})
 		if disabledVersions[v.Name] {
-			if err.Error() != "the server could not find the requested resource" {
+			if !errors.IsNotFound(err) {
 				t.Errorf("expected the watch operation fail with NotFound for disabled version %s, got error: %v", v.Name, err)
 			}
 		} else {
@@ -334,8 +333,7 @@ func TestInvalidCRUD(t *testing.T) {
 	for _, v := range noxuDefinition.Spec.Versions {
 		noxuResourceClients[v.Name] = newNamespacedCustomResourceVersionedClient("", dynamicClient, noxuDefinition, v.Name)
 
-		noxuWatch := noxuResourceClients[v.Name].Watch(metav1.ListOptions{})
-		err := noxuWatch.GetErrors()
+		noxuWatch, err := noxuResourceClients[v.Name].Watch(metav1.ListOptions{})
 		if disabledVersions[v.Name] {
 			if !errors.IsNotFound(err) {
 				t.Errorf("expected the watch operation fail with NotFound for disabled version %s, got error: %v", v.Name, err)
@@ -396,13 +394,12 @@ func testFieldSelector(t *testing.T, ns string, noxuDefinition *apiextensionsv1b
 	if err != nil {
 		t.Fatal(err)
 	}
-	noxuWatch := noxuResourceClient.Watch(
+	noxuWatch, err := noxuResourceClient.Watch(
 		metav1.ListOptions{
 			ResourceVersion: initialListListMeta.GetResourceVersion(),
 			FieldSelector:   "metadata.name=foo",
 		},
 	)
-	err = noxuWatch.GetErrors()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -821,8 +818,7 @@ func TestCrossNamespaceListWatch(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	noxuWatch := noxuResourceClient.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
-	err = noxuWatch.GetErrors()
+	noxuWatch, err := noxuResourceClient.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -832,15 +828,13 @@ func TestCrossNamespaceListWatch(t *testing.T) {
 	ns1 := "namespace-1"
 	noxuNamespacedResourceClient1 := newNamespacedCustomResourceClient(ns1, dynamicClient, noxuDefinition)
 	instances[ns1] = createInstanceWithNamespaceHelper(t, ns1, "foo1", noxuNamespacedResourceClient1, noxuDefinition)
-	noxuNamespacesWatch1 := noxuNamespacedResourceClient1.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
-	err = noxuWatch.GetErrors()
+	noxuNamespacesWatch1, err := noxuNamespacedResourceClient1.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
 	defer noxuNamespacesWatch1.Stop()
 
 	ns2 := "namespace-2"
 	noxuNamespacedResourceClient2 := newNamespacedCustomResourceClient(ns2, dynamicClient, noxuDefinition)
 	instances[ns2] = createInstanceWithNamespaceHelper(t, ns2, "foo2", noxuNamespacedResourceClient2, noxuDefinition)
-	noxuNamespacesWatch2 := noxuNamespacedResourceClient2.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
-	err = noxuWatch.GetErrors()
+	noxuNamespacesWatch2, err := noxuNamespacedResourceClient2.Watch(metav1.ListOptions{ResourceVersion: initialListListMeta.GetResourceVersion()})
 	defer noxuNamespacesWatch2.Stop()
 
 	createdList, err := noxuResourceClient.List(metav1.ListOptions{})
