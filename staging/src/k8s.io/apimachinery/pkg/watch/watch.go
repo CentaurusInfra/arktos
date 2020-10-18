@@ -216,9 +216,16 @@ func (a *AggregatedWatcher) GetErrors() error {
 			aggErr = append(aggErr, err)
 		}
 	}
-
 	a.mapLock.RUnlock()
-	return utilerrors.NewAggregate(aggErr)
+	switch len(aggErr) {
+	case 0:
+		return nil
+	case 1:
+		return aggErr[0]
+	default:
+		// TODO - multiple rest errors handling
+		return utilerrors.NewAggregate(aggErr)
+	}
 }
 
 func (a *AggregatedWatcher) GetWatchersCount() int {
