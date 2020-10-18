@@ -464,8 +464,8 @@ var _ = utils.SIGDescribe("PersistentVolumes-local ", func() {
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
-				w := config.client.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
-				framework.ExpectNoError(w.GetErrors())
+				w, err := config.client.CoreV1().PersistentVolumes().Watch(metav1.ListOptions{})
+				framework.ExpectNoError(err)
 				if w == nil {
 					return
 				}
