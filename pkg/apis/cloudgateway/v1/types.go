@@ -116,6 +116,15 @@ type CloudMesh struct {
 	// Enable indicates whether CloudMesh is enabled, if set ot false
 	// skip checking other CloudMesh configs.
 	Enable bool `json:"enable,omitempty"`
+	// Address set server ip address
+	// default 0.0.0.0
+	Address string `json:"address,omitempty"`
+	// Port set open port for websocket of CloudMesh
+	// default 10003
+	Port uint32 `json:"port,omitempty"`
+	// TapInterface set tap interface for CloudMesh
+	// default tap0
+	TapInterface string `json:"tapInterface,omitempty"`
 }
 
 // CloudService indicates the config of CloudService module.

@@ -26,6 +26,12 @@ type EdgeMesh struct {
 	// Enable indicates whether EdgeMesh is enabled, if set ot false
 	// skip checking other EdgeMesh configs.
 	Enable bool `json:"enable,omitempty"`
+	// Server indicates websocket server address (ip:port)
+	// +Required
+	Server string `json:"server,omitempty"`
+	// TapInterface set tap interface for EdgeMesh
+	// default tap0
+	TapInterface string `json:"tapInterface,omitempty"`
 }
 
 // EdgeService indicates the config of EdgeService module.

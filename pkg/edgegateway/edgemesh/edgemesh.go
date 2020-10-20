@@ -5,6 +5,8 @@ import (
 	"github.com/kubeedge/beehive/pkg/core"
 	v1 "k8s.io/kubernetes/pkg/apis/edgegateway/v1"
 	"k8s.io/kubernetes/pkg/edgegateway/common/modules"
+	"k8s.io/kubernetes/pkg/edgegateway/edgemesh/client"
+	"k8s.io/kubernetes/pkg/edgegateway/edgemesh/config"
 )
 
 type edgeMesh struct {
@@ -19,6 +21,7 @@ func newEdgeMesh(enable bool) *edgeMesh {
 }
 
 func Register(em *v1.EdgeMesh) {
+	config.InitConfigure(em)
 	core.Register(newEdgeMesh(em.Enable))
 }
 
@@ -35,5 +38,9 @@ func (em *edgeMesh) Enable() bool {
 }
 
 func (em *edgeMesh) Start() {
-
+	em.client = client.NewClient()
+	// send edge site message stream to cloud
+	go em.upstream()
+	// send cloud message stream to edge service
+	go em.downstream()
 }
