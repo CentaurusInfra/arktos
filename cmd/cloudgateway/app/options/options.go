@@ -2,14 +2,14 @@ package options
 
 import (
 	"io/ioutil"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	utilnet "k8s.io/apimachinery/pkg/util/net"
-	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/apis/cloudgateway"
 	"path"
 	"sigs.k8s.io/yaml"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	utilnet "k8s.io/apimachinery/pkg/util/net"
 	cliflag "k8s.io/component-base/cli/flag"
+	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/cloudgateway"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
 )
@@ -90,7 +90,13 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 					Address: "0.0.0.0",
 				},
 			},
+			Controller: &v1.Controller{
+				Enable: true,
+			},
 			CloudService: &v1.CloudService{
+				Enable: true,
+			},
+			CloudMesh: &v1.CloudMesh{
 				Enable: true,
 			},
 		},

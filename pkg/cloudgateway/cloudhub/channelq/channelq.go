@@ -37,7 +37,7 @@ func (q *ChannelMessageQueue) DispatchMessage() {
 			return
 		default:
 		}
-		msg, err := beehiveContext.Receive(modules.HubGroup)
+		msg, err := beehiveContext.Receive(modules.CloudHubModuleName)
 		if err != nil {
 			klog.Info("receive not Message format message")
 			continue

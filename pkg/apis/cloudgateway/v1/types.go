@@ -107,6 +107,15 @@ type Modules struct {
 	Controller *Controller `json:"controller,omitempty"`
 	// CloudService indicates CloudService module config
 	CloudService *CloudService `json:"cloudService,omitempty"`
+	// CloudMesh indicates CloudMesh module config
+	CloudMesh *CloudMesh `json:"cloudMesh,omitempty"`
+}
+
+// CloudMesh indicates the config of CloudMesh module.
+type CloudMesh struct {
+	// Enable indicates whether CloudMesh is enabled, if set ot false
+	// skip checking other CloudMesh configs.
+	Enable bool `json:"enable,omitempty"`
 }
 
 // CloudService indicates the config of CloudService module.
