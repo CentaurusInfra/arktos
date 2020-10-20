@@ -4,4 +4,5 @@ const (
 	EdgeHubGroup      = "edgeHub"
 	EdgeServiceGroup  = "edgeService"
 	CloudServiceGroup = "cloudService"
+	EdgeMeshGroup     = "edgeMesh"
 )

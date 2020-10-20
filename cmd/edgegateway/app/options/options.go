@@ -92,6 +92,9 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 			EdgeService: &v1.EdgeService{
 				Enable: true,
 			},
+			EdgeMesh: &v1.EdgeMesh{
+				Enable: true,
+			},
 		},
 	}
 }

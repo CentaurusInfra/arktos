@@ -4,4 +4,5 @@ const (
 	EdgeHubModuleName      = "edgeHub"
 	EdgeServiceModuleName  = "edgeService"
 	CloudServiceModuleName = "cloudService"
+	EdgeMeshModuleName     = "edgeMesh"
 )

@@ -5,4 +5,5 @@ const (
 	ControllerModuleName   = "controller"
 	CloudServiceModuleName = "cloudService"
 	EdgeServiceModuleName  = "edgeService"
+	CloudMeshModuleName    = "cloudMesh"
 )

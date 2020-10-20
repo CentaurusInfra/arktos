@@ -17,6 +17,15 @@ type Modules struct {
 	EdgeHub *EdgeHub `json:"edgeHub,omitempty"`
 	// EdgeService indicates EdgeService module config
 	EdgeService *EdgeService `json:"edgeService,omitempty"`
+	// EdgeMesh indicates EdgeMesh module config
+	EdgeMesh *EdgeMesh `json:"edgeMesh,omitempty"`
+}
+
+// EdgeMesh indicates the config of EdgeMesh module.
+type EdgeMesh struct {
+	// Enable indicates whether EdgeMesh is enabled, if set ot false
+	// skip checking other EdgeMesh configs.
+	Enable bool `json:"enable,omitempty"`
 }
 
 // EdgeService indicates the config of EdgeService module.

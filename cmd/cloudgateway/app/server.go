@@ -8,6 +8,7 @@ import (
 	"k8s.io/kubernetes/cmd/cloudgateway/app/options"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudhub"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudmesh"
 	"k8s.io/kubernetes/pkg/cloudgateway/cloudservice"
 	"k8s.io/kubernetes/pkg/cloudgateway/controller"
 	utilflag "k8s.io/kubernetes/pkg/util/flag"
@@ -59,4 +60,5 @@ func registerModules(c *v1.CloudGatewayConfig) {
 	cloudhub.Register(c.Modules.CloudHub, c.KubeAPIConfig)
 	controller.Register(c.Modules.Controller, c.KubeAPIConfig)
 	cloudservice.Register(c.Modules.CloudService)
+	cloudmesh.Register(c.Modules.CloudMesh)
 }
