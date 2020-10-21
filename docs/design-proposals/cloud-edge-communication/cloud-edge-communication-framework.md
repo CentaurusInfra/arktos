@@ -49,7 +49,7 @@ For example, we want to support rest calls(http/https), message queue connection
 The proxy works as a udp server, and it forward the udp connection/traffic to the destination site.
 
 It works just like a nginx, but there are some differences:
-1. It is not proxy the traffic to the destination service directly, but to the other proxy in other site
+1. It does not proxy the traffic to the destination service directly, but to the other proxy in other site
 2. It does not work only for one or two services, and with static configuration. It needs to support multiple services at the same time, and the services can be dynamic add or remove.
 It needs to solve the port allocation and traffic encryption/decryption problems
 
@@ -59,7 +59,7 @@ It needs to solve the port allocation and traffic encryption/decryption problems
 
 We want to implement the communication framework based on the network layer 3, and also we need to solve the ip address conflict and security problems. We can use ip translation to do this. 
 
-We need to add the gateway/proxy for the edge site and the cloud for the communication, we call it edgegateway in each edge site, and in addition to communication, cloudgateway in responsible for central control. We don't expose the network to the cloud or the edge site(cause too much attach surface), we expose the services to the gateway.  
+We need to add the gateway/proxy for the edge site and the cloud for the communication, we call it edgegateway in each edge site, and in addition to communication, cloudgateway is responsible for central control. We don't expose the network to the cloud or the edge site(cause too much attack surface), we expose the services to the gateway.  
 
 Here we want to introduce a concept "virtual presence":
 * It is a local virtual presentation of remote services
