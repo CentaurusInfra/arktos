@@ -1,8 +1,8 @@
-## Global Resource Scheduler – Cluster CRD
+# Global Resource Scheduler – Cluster CRD
 
 Oct-20-2020, Hong Zhang, Eunju Kim
 
-###1. Module Description
+## 1. Module Description
 
 This module allows global resource scheduler register, deregister (or
 unregister), get and list existing clusters.
@@ -21,7 +21,7 @@ unregister), get and list existing clusters.
     Cluster \> Namespace (multiple name space in a cluster) \> Node (Host or VM)
     \> Pod \> Container
 
-###2. Requirements
+## 2. Requirements
 
 -   In milestone1, it supports Openstack cluster, Kubernetes cluster, and Arktos
     cluster. They share one single common data structure. It supports both CLI
@@ -35,8 +35,8 @@ unregister), get and list existing clusters.
 
 [Picture1] Flow of registration of a cluster
 
-**2.1 [API
-Implementation](https://github.com/futurewei-cloud/global-resource-scheduler/issues/23)**
+**2.1** [API
+Implementation](https://github.com/futurewei-cloud/global-resource-scheduler/issues/23)
 
 (1) CLI: command line APIs like kubectl
 
@@ -46,13 +46,13 @@ Implementation](https://github.com/futurewei-cloud/global-resource-scheduler/iss
 
 -   Register cluster, Unregister cluster, List cluster, Get cluster
 
-**2.2 [Create the CRD Controller code framework via
-code-generator](https://github.com/futurewei-cloud/global-resource-scheduler/issues/25)**
+**2.2** [Create the CRD Controller code framework via
+code-generator](https://github.com/futurewei-cloud/global-resource-scheduler/issues/25)
 
 -   Global resource scheduler defines a cluster CRD definition.
 
-**2.3 [Implement the controller
-logic](https://github.com/futurewei-cloud/global-resource-scheduler/issues/27)**
+**2.3** [Implement the controller
+logic](https://github.com/futurewei-cloud/global-resource-scheduler/issues/27)
 
 -   List/watch the cluster object and scheduler object through Informer.
 
@@ -61,8 +61,9 @@ logic](https://github.com/futurewei-cloud/global-resource-scheduler/issues/27)**
 
 -   Save the binding to ETCD
 
-###3. Data Structure
-```
+## 3. Data Structure
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type Cluster struct {  
     apiversion:  
     kind:  
@@ -105,9 +106,9 @@ type RegionInfo {
 type OperatorInfo { 
     operator            string 
 }
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-###4. APIs Design
+## 4. APIs Design
 
 **4.1 CLI APIs**
 
@@ -127,29 +128,29 @@ type OperatorInfo {
 
 -   Kubrnetes
 
-    - Format: kubectl create -f FILENAME
+    -   Format: kubectl create -f FILENAME
 
-    - Example: kubectl create -f ./cluster1.yaml
+    -   Example: kubectl create -f ./cluster1.yaml
 
 -   Openstack
 
-    - Format: openstack cluster create --profile {FILENAME} {CLUSTERNAME}
+    -   Format: openstack cluster create --profile {FILENAME} {CLUSTERNAME}
 
-    - Example: openstack cluster create --profile qstack c3
+    -   Example: openstack cluster create --profile qstack c3
 
-    - qstack: profile file name
+    -   qstack: profile file name
 
-    - c3: cluster name
+    -   c3: cluster name
 
 **4.3 REST APIs & Error Codes Design**
 
-| **Group** | **API Name**            | **Method** | **Request**                                   |
-|-----------|-------------------------|------------|-----------------------------------------------|
-| Cluster   | registerCluster         | POST       | /globalscheduler/v1/clusters                  |
-|           | unregisterClusterById   | DELETE     | /globalscheduler/v1/clusters/id/{cluster_id}   |
+| **Group** | **API Name**            | **Method** | **Request**                                      |
+|-----------|-------------------------|------------|--------------------------------------------------|
+| Cluster   | registerCluster         | POST       | /globalscheduler/v1/clusters                     |
+|           | unregisterClusterById   | DELETE     | /globalscheduler/v1/clusters/id/{cluster_id}     |
 |           | unregisterClusterByName | DELETE     | /globalscheduler/v1/clusters/name/{cluster_name} |
-|           | listCluster             | GET        | /globalscheduler/v1/clusters                  |
-|           | getClusterById          | GET        | /globalscheduler/v1/clusters/id/{cluster_id}   |
+|           | listCluster             | GET        | /globalscheduler/v1/clusters                     |
+|           | getClusterById          | GET        | /globalscheduler/v1/clusters/id/{cluster_id}     |
 |           | getClusterByName        | GET        | /globalscheduler/v1/clusters/name/{cluster_name} |
 
 (1) Register Cluster
@@ -158,16 +159,17 @@ type OperatorInfo {
 
 -   Request: /globalscheduler/v1/clusters
 
--   Request Parameter: 
+-   Request Parameter:
 
 -   Response: cluster profile
 
-    - Normal response codes: 201
+    -   Normal response codes: 201
 
-    - Error response codes: 400, 409, 412, 500, 503
+    -   Error response codes: 400, 409, 412, 500, 503
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clusters 
 Body: 
@@ -209,7 +211,7 @@ Response:
             } 
         } 
     } 
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (2) Unregister Cluster By Id
 
@@ -217,22 +219,23 @@ Response:
 
 -   Request: /globalscheduler/v1/clusters/id/{cluster_id}
 
--   Request Parameter: @PathVariable String cluster_id
+-   Request Parameter: \@PathVariable String cluster_id
 
 -   Response: cluster_id
 
-    - Normal response codes: 200
+    -   Normal response codes: 200
 
-    - Error response codes: 400, 412, 500
+    -   Error response codes: 400, 412, 500
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clusters/3dda2801-d675-4688-a63f-dcda8d327f51
 
 Response: 
     deleted: 3dda2801-d675-4688-a63f-dcda8d327f50 
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (3) Unregister Cluster By Name
 
@@ -240,22 +243,23 @@ Response:
 
 -   Request: /globalscheduler/v1/clusters/name/{cluster_name}
 
--   Request Parameter: @PathVariable String cluster_name
+-   Request Parameter: \@PathVariable String cluster_name
 
 -   Response: cluster_name
 
-    - Normal response codes: 200
+    -   Normal response codes: 200
 
-    - Error response codes: 400, 412, 500
+    -   Error response codes: 400, 412, 500
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clutsers/name/cluster1
 
 Response: 
     Deleted: cluster1
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (4) List Clusters
 
@@ -267,12 +271,13 @@ Response:
 
 -   Response: clusters list
 
-    - Normal response codes: 200
+    -   Normal response codes: 200
 
-    - Error response codes: 400, 409, 412, 500, 503
+    -   Error response codes: 400, 409, 412, 500, 503
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clusters
 
@@ -289,7 +294,7 @@ Response:
             …
         ] 
     } 
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (5) Get ClusterById
 
@@ -297,16 +302,17 @@ Response:
 
 -   Request: v1/clusters/id/{cluster_id}
 
--   Request Parameter: @PathVariable String cluster_id
+-   Request Parameter: \@PathVariable String cluster_id
 
 -   Response: cluster profile
 
-    - Normal response codes: 200
+    -   Normal response codes: 200
 
-    - Error response codes: 400, 412, 500
+    -   Error response codes: 400, 412, 500
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clusters/3dda2801-d675-4688-a63f-dcda8d327f50 
 
@@ -329,7 +335,7 @@ Response:
             } 
         } 
     } 
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 (6) Get Cluster By Name
 
@@ -337,17 +343,17 @@ Response:
 
 -   Request: /clusters/name/{cluster_name}
 
--   Request Parameter: 
-        @PathVariable String cluster_name
+-   Request Parameter: \@PathVariable String cluster_name
 
 -   Response: cluster profile
 
-    - Normal response codes: 200
+    -   Normal response codes: 200
 
-    - Error response codes: 400, 412, 500
+    -   Error response codes: 400, 412, 500
 
 -   Example
-```
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Request: 
     http://127.0.0.1:8080/globalscheduler/v1/clusters/cluster1 
 Response: 
@@ -369,11 +375,11 @@ Response:
             } 
         } 
     } 
-```
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-###References
+## References
 
 [1] Kubernetes Cluster, https://kubernetes.io/docs/tutorials/kubernetes
 
-[2] Openstack Cluster, https://docs.openstack.org/senlin/latest/user/clusters.html#creating-a-cluster-basics/create-cluster/cluster-intro
-
+[2] Openstack Cluster,
+https://docs.openstack.org/senlin/latest/user/clusters.html\#creating-a-cluster-basics/create-cluster/cluster-intro
