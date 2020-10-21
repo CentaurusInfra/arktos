@@ -97,7 +97,10 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 				Enable: true,
 			},
 			CloudMesh: &v1.CloudMesh{
-				Enable: true,
+				Enable:       true,
+				Address:      "0.0.0.0",
+				Port:         10003,
+				TapInterface: "tap0",
 			},
 		},
 	}

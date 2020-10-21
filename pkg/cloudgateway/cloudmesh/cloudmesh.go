@@ -3,6 +3,8 @@ package cloudmesh
 import (
 	"github.com/kubeedge/beehive/pkg/core"
 	v1 "k8s.io/kubernetes/pkg/apis/cloudgateway/v1"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudmesh/config"
+	"k8s.io/kubernetes/pkg/cloudgateway/cloudmesh/server"
 	"k8s.io/kubernetes/pkg/cloudgateway/common/modules"
 )
 
@@ -17,6 +19,7 @@ func newCloudMesh(enable bool) *cloudMesh {
 }
 
 func Register(cm *v1.CloudMesh) {
+	config.InitConfigure(cm)
 	core.Register(newCloudMesh(cm.Enable))
 }
 
@@ -33,5 +36,6 @@ func (cm *cloudMesh) Enable() bool {
 }
 
 func (cm *cloudMesh) Start() {
-
+	// start cloudMesh
+	go server.StartCloudMesh()
 }

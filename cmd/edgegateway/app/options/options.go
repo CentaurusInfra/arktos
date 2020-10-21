@@ -93,7 +93,9 @@ func NewEdgeGatewayConfig() *v1.EdgeGatewayConfig {
 				Enable: true,
 			},
 			EdgeMesh: &v1.EdgeMesh{
-				Enable: true,
+				Enable:       true,
+				Server:       net.JoinHostPort(localIP, "10003"),
+				TapInterface: "tap0",
 			},
 		},
 	}
