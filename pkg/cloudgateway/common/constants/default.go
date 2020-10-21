@@ -13,4 +13,12 @@ const (
 	ResponseOperation = "response"
 	OpKeepalive       = "keepalive"
 	ResSite           = "site"
+
+	ServiceClient        = "client"
+	ServiceServer        = "server"
+	DefaultCloudSiteName = "cloud"
+	Insert               = "insert"
+	Delete               = "delete"
+
+	TapIP = "12.12.12.12"
 )

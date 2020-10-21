@@ -5,5 +5,5 @@ const (
 	ControllerGroup   = "controller"
 	CloudServiceGroup = "cloudService"
 	EdgeServiceGroup  = "edgeService"
-	CloudMeshGroup    = "cloudMesh"
+	MeshGroup         = "mesh"
 )
