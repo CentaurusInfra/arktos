@@ -31,7 +31,7 @@ unregister), get and list existing clusters.
     existing clusters which are created by other Kubernetes, Arktos, or
     Openstack API servers.
 
-![Diagram Description automatically generated](media/cluster-modules.png)
+![Diagram Description automatically generated](/images/global-scheduler-cluster-diagram.png)
 
 [Picture1] Flow of registration of a cluster
 
