@@ -2,8 +2,8 @@
 
 
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/futurewei-cloud/arktos)](https://goreportcard.com/report/github.com/futurewei-cloud/arktos)
-[![LICENSE](https://img.shields.io/badge/license-apache%202.0-green)](https://github.com/futurewei-cloud/arktos/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/centaurus-cloud/arktos)](https://goreportcard.com/report/github.com/centaurus-cloud/arktos)
+[![LICENSE](https://img.shields.io/badge/license-apache%202.0-green)](https://github.com/centaurus-cloud/arktos/blob/master/LICENSE)
 
 
 ## What is Arktos
@@ -13,7 +13,7 @@ Arktos is an open source project designed for large scale cloud compute infrastr
 Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ## Architecture
-![Architecture Diagram](https://raw.githubusercontent.com/futurewei-cloud/arktos/master/docs/design-proposals/arch/project_architecture.png)
+![Architecture Diagram](https://raw.githubusercontent.com/centaurus-cloud/arktos/master/docs/design-proposals/arch/project_architecture.png)
 ## Key Features
 
 ### Large Scalability
@@ -35,7 +35,7 @@ There are more features under development, such as cloud-edge scheduling, in-pla
 
 ## Build Arktos
 
-Arktos requires a few dependencies to build and run, and [a bash script](https://github.com/futurewei-cloud/arktos/tree/master/hack/setup-dev-node.sh) is provided to install them.
+Arktos requires a few dependencies to build and run, and [a bash script](https://github.com/centaurus-cloud/arktos/tree/master/hack/setup-dev-node.sh) is provided to install them.
 
 After the prerequisites are installed, you just need to clone the repo and run "make":
 
@@ -44,7 +44,7 @@ After the prerequisites are installed, you just need to clone the repo and run "
 ```
 mkdir -p $GOPATH/src/github.com
 cd $GOPATH/src/github.com
-git clone https://github.com/futurewei-cloud/arktos
+git clone https://github.com/centaurus-cloud/arktos
 cd arktos
 make
 ```
@@ -64,14 +64,14 @@ cd $GOPATH/src/github.com/arktos
 cluster/kubectl.sh get nodes
 ```
 
-To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](https://github.com/futurewei-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
+To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](https://github.com/centaurus-cloud/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
 
 ## Documents and Support
 
-The [design document folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
+The [design document folder](https://github.com/centaurus-cloud/arktos/tree/master/docs/design-proposals/) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-The [user guide folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/user-guide/) provides information about these features from users' perspective.
+The [user guide folder](https://github.com/centaurus-cloud/arktos/tree/master/docs/user-guide/) provides information about these features from users' perspective.
 
-To report a problem, please [create an issue](https://github.com/futurewei-cloud/arktos/issues) in the project repo. 
+To report a problem, please [create an issue](https://github.com/centaurus-cloud/arktos/issues) in the project repo. 
 
-To ask a question, here is [the invitation](https://join.slack.com/t/arktosworkspace/shared_invite/zt-cmak5gjq-rBxX4vX2TGMyNeU~jzAMLQ) to join [Arktos slack channels](http://arktosworkspace.slack.com/). You can also post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/futurewei-cloud/arktos/issues) of question type in the repo.
+To ask a question, here is [the invitation](https://join.slack.com/t/arktosworkspace/shared_invite/zt-cmak5gjq-rBxX4vX2TGMyNeU~jzAMLQ) to join [Arktos slack channels](http://arktosworkspace.slack.com/). You can also post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/centaurus-cloud/arktos/issues) of question type in the repo.
