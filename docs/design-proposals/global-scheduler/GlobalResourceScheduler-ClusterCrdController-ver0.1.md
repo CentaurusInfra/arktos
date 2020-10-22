@@ -7,10 +7,8 @@ Oct-20-2020, Hong Zhang, Eunju Kim
 This module allows global resource scheduler register, deregister (or
 unregister), get and list existing clusters.
 
--   Cluster is a set of nodes.
-
--   Nodes are VM or host machines for running containerized applications in
-    Pods.
+-   Cluster consists of a group of nodes and nodes are host machines for
+    hosting/running VM/Container PODs.
 
 -   Namespace is a virtual cluster inside a Kubernetes cluster. There can be
     multiple namespaces inside a single Kubernetes cluster, and they are all
@@ -23,15 +21,15 @@ unregister), get and list existing clusters.
 
 ## 2. Requirements
 
--   In milestone1, it supports Openstack cluster, Kubernetes cluster, and Arktos
-    cluster. They share one single common data structure. It supports both CLI
-    and REST APIs.
+-   In milestone1, The global-scheduler can interface with different types of
+    clusters (openstack cluster, kubernetes cluster, etc.) through a generic
+    southbound API. They share one single cluster resoruce data strcuture.
 
--   Global resource controller does not create a cluster. It just register
-    existing clusters which are created by other Kubernetes, Arktos, or
-    Openstack API servers.
+-   The cluster resource controller does not create a cluster. it just registers
+    existing clusters which are already deployed through other approaches. The
+    deployment of clusters themselves is out of the scope of this project.
 
-![Diagram Description automatically generated](/images/global-scheduler-cluster-diagram.png)
+![](/images/global-scheduler-cluster-diagram.png)
 
 [Picture1] Flow of registration of a cluster
 
@@ -65,14 +63,14 @@ logic](https://github.com/futurewei-cloud/global-resource-scheduler/issues/27)
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type Cluster struct {  
-    apiversion:  
-    kind:  
-    Name: 
-    // Spec is the custom resource spec 
-    Spec                ClusterSpec 
+    apiversion:         string          //v1
+    kind:               string11        //Cluster
+    Name:               string          
+    Spec                ClusterSpec     // Spec is the custom resource spec 
 } 
-// MyResourceSpec is the spec for a MyResource resource 
-type ClusterSpec struct { // this is where you would put your custom resource data 
+// MyResourceSpec is the spec for a MyResource resource. 
+//This is where you would put your custom resource data
+type ClusterSpec struct { 
     ipAdrress           string 
     GeoLocation         GeolocationInfo 
     Region              RegionInfo 
@@ -90,7 +88,7 @@ type FlavorInfo struct {
     TotalCapacity       int64 
 } 
 type StorageSpec struct { 
-    TypeID              string //(sata, sas, ssd) 
+    TypeID              string      //(sata, sas, ssd) 
     StorageCapacity     int64 
 } 
 type GeolocationInfo struct { 
@@ -114,35 +112,29 @@ type OperatorInfo {
 
 -   register cluster -filename FILENAME
 
+    `Example: register -filename ./cluster1.yaml`
+
 -   unregister cluster -name CLUSTERNAME
+
+    `Example: unregister -name cluster1`
 
 -   unregister cluster -id CLUSTERID
 
+    `Example: unregister -id 3dda2801-d675-4688-a63f-dcda8d327f51`
+
 -   list clusters
+
+    `Example: list clusters`
 
 -   get cluster -name CLUSTERNAME
 
+    `Example: get cluster -name cluster1`
+
 -   get cluster -id CLUSTERID
 
-**4.2 Case Study of CLI commands**
+    `Example: get cluster -id 3dda2801-d675-4688-a63f-dcda8d327f51`
 
--   Kubrnetes
-
-    -   Format: kubectl create -f FILENAME
-
-    -   Example: kubectl create -f ./cluster1.yaml
-
--   Openstack
-
-    -   Format: openstack cluster create --profile {FILENAME} {CLUSTERNAME}
-
-    -   Example: openstack cluster create --profile qstack c3
-
-    -   qstack: profile file name
-
-    -   c3: cluster name
-
-**4.3 REST APIs & Error Codes Design**
+**4.2 REST APIs & Error Codes Design**
 
 | **Group** | **API Name**            | **Method** | **Request**                                      |
 |-----------|-------------------------|------------|--------------------------------------------------|
