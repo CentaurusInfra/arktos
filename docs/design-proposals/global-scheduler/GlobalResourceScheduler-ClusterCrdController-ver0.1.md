@@ -59,7 +59,7 @@ logic](https://github.com/futurewei-cloud/global-resource-scheduler/issues/27)
 
 -   Save the binding to ETCD
 
-## 3. Clusrer CRD Definition & Data Structure
+## 3. Cluster CRD Definition & Data Structure
 
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 type Cluster struct {  
