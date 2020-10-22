@@ -41,6 +41,12 @@ func NewHeuristicWatchCacheSizes(expectedRAMCapacityMB int) map[schema.GroupReso
 	watchCacheSizes[schema.GroupResource{Resource: "services"}] = maxInt(5*clusterSize, 1000)
 	watchCacheSizes[schema.GroupResource{Resource: "events"}] = 0
 	watchCacheSizes[schema.GroupResource{Resource: "apiservices", Group: "apiregistration.k8s.io"}] = maxInt(5*clusterSize, 1000)
+	watchCacheSizes[schema.GroupResource{Resource: "leases", Group: "coordination.k8s.io"}] = maxInt(5*clusterSize, 1000)	// 1.18
+
+	// Arktos perf tune:
+	// this is configurable from arg watch-cache-size but still need to change code in perf test. Change code to avoid perf test script changes
+	watchCacheSizes[schema.GroupResource{Resource: "secrets"}] = maxInt(5*clusterSize, 100)		// arktos perf tune
+	watchCacheSizes[schema.GroupResource{Resource: "configmaps"}] = maxInt(5*clusterSize, 100)	// arktos perf tune
 	return watchCacheSizes
 }
 
