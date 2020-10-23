@@ -2318,6 +2318,9 @@ type Container struct {
 	// Default is false.
 	// +optional
 	TTY bool `json:"tty,omitempty" protobuf:"varint,18,opt,name=tty"`
+	// resource common information for vms or containers
+	// +optional
+	ResourceCommonInfo ResourceCommonInfo `json:"resourceCommonInfo,omitempty" protobuf:"bytes,24,opt,name=resourceCommonInfo"`
 }
 
 // Network interface type used in the VM workload
@@ -2420,6 +2423,15 @@ type VirtualMachine struct {
 	// cloud-init user data script
 	// +optional
 	CloudInitUserDataScript string `json:"cloudInitUserDataScript,omitempty" protobuf:"bytes,14,opt,name=cloudInitUserDataScript"`
+	// resource common information for vms or containers
+	// +optional
+	ResourceCommonInfo ResourceCommonInfo `json:"resourceCommonInfo,omitempty" protobuf:"bytes,18,opt,name=resourceCommonInfo"`
+	// flag that if the vm needs any external ip address
+	// +optional
+	NeedEIP bool `json:"needEIP,omitempty" protobuf:"varint,19,opt,name=needEIP"`
+	// resource flavor information
+	// +optional
+	Flavors []ResourceFlavor `json:"flavors,omitempty" protobuf:"bytes,20,rep,name=flavors"`
 }
 
 // Handler defines a specific action that should be taken
@@ -3250,6 +3262,9 @@ type PodSpec struct {
 	// This field is alpha-level and is only honored by servers that enable the NonPreemptingPriority feature.
 	// +optional
 	PreemptionPolicy *PreemptionPolicy `json:"preemptionPolicy,omitempty" protobuf:"bytes,31,opt,name=preemptionPolicy"`
+	// Resource Type indicates whether the resource objects are VM or containers
+	// +optional
+	ResourceType string `json:"resourceType,omitempty" protobuf:"bytes,36,opt,name=resourceType"`
 }
 
 func (ps *PodSpec) Workloads() []CommonInfo {
@@ -6097,4 +6112,78 @@ type DataPartitionConfigList struct {
 
 	// List of data partition configuration
 	Items []DataPartitionConfig `json:"items,omitempty" protobuf:"bytes,2,rep,name=items"`
+}
+
+// ResourceCommonInfo contains common information for virtual machines or containers
+type ResourceCommonInfo struct {
+	// +optional
+	Volume ResourceVolume `json:"volume,omitempty" protobuf:"bytes,1,opt,name=volume"`
+	// +optional
+	Selector ResourceSelector `json:"selector,omitempty" protobuf:"bytes,2,opt,name=selector"`
+}
+
+// ResourceVolume contains resource storage information
+type ResourceVolume struct {
+	// +optional
+	Type string `json:"type,omitempty" protobuf:"bytes,1,opt,name=type"`
+	// +optional
+	Volume int32 `json:"volume,omitempty" protobuf:"varint,2,opt,name=volume"`
+}
+
+// ResourceSelector contains resource selector information
+type ResourceSelector struct {
+	// +optional
+	GeoLocation ResourceGeoLocation `json:"geoLocation,omitempty" protobuf:"bytes,1,opt,name=geoLocation"`
+	// +optional
+	Regions []ResourceRegion `json:"regions,omitempty" protobuf:"bytes,2,rep,name=regions"`
+	// +optional
+	Operator string `json:"operator,omitempty" protobuf:"bytes,3,opt,name=operator"`
+	// +optional
+	Strategy ResourceStrategy `json:"strategy,omitempty" protobuf:"bytes,4,opt,name=strategy"`
+}
+
+// ResourceStrategy contains resource strategy  information
+type ResourceStrategy struct {
+	// +optional
+	LocalStrategy string `json:"localStrategy,omitempty" protobuf:"bytes,1,opt,name=localStrategy"`
+}
+
+// ResourceGeoLocation contains resource geography location information
+type ResourceGeoLocation struct {
+	// +optional
+	City string `json:"city,omitempty" protobuf:"bytes,1,opt,name=city"`
+	// +optional
+	Province string `json:"province,omitempty" protobuf:"bytes,2,opt,name=province"`
+	// +optional
+	Area string `json:"area,omitempty" protobuf:"bytes,3,opt,name=area"`
+	// +optional
+	Country string `json:"country,omitempty" protobuf:"bytes,4,opt,name=country"`
+}
+
+// ResourceRegion contains resource region information
+type ResourceRegion struct {
+	// This field is required in all cases.
+	Region string `json:"region,omitempty" protobuf:"bytes,1,opt,name=region"`
+	// +optional
+	AvailablityZone []string `json:"availablityZone,omitempty" protobuf:"bytes,2,opt,name=availablityZone"`
+}
+
+// ResourceFlavor contains resource flavor information
+type ResourceFlavor struct {
+	// +optional
+	FlavorID string `json:"flavorID,omitempty" protobuf:"bytes,1,opt,name=flavorID"`
+	// +optional
+	Spot ResourceSpot `json:"spot,omitempty" protobuf:"bytes,2,opt,name=spot"`
+}
+
+// ResourceSpot contains resource spot information
+type ResourceSpot struct {
+	// +optional
+	MaxPrice float32 `json:"maxPrice,omitempty" protobuf:"float,1,opt,name=maxPrice"`
+	// +optional
+	SpotDurationHours int32 `json:"spotDurationHours,omitempty" protobuf:"varint,2,opt,name=spotDurationHours"`
+	// +optional
+	SpotDurationCount int32 `json:"spotDurationCount,omitempty" protobuf:"varint,3,opt,name=spotDurationCount"`
+	// +optional
+	InterruptionPolicy string `json:"interruptionPolicy,omitempty" protobuf:"bytes,4,opt,name=interruptionPolicy"`
 }

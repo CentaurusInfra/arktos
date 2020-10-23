@@ -2134,6 +2134,9 @@ type Container struct {
 	StdinOnce bool
 	// +optional
 	TTY bool
+	// resource common information for vms or containers
+	// +optional
+	ResourceCommonInfo ResourceCommonInfo
 }
 
 // Network interface type used in the VM workload
@@ -2217,6 +2220,15 @@ type VirtualMachine struct {
 	// cloud-init user data script
 	// +optional
 	CloudInitUserDataScript string
+	// resource common information for vms or containers
+	// +optional
+	ResourceCommonInfo ResourceCommonInfo
+	// flag that if the vm needs any external ip address
+	// +optional
+	NeedEIP bool
+	// resource flavor information
+	// +optional
+	Flavors []ResourceFlavor
 }
 
 // Handler defines a specific action that should be taken
@@ -2924,6 +2936,9 @@ type PodSpec struct {
 	// If not specified, the default is true.
 	// +optional
 	EnableServiceLinks *bool
+	// Resource Type indicates whether the resource objects are VM or containers
+	// +optional
+	ResourceType string
 }
 
 func (ps *PodSpec) Workloads() []CommonInfo {
@@ -5394,4 +5409,59 @@ type DataPartitionConfigList struct {
 
 	// List of data partition configuration
 	Items []DataPartitionConfig
+}
+
+// ResourceCommonInfo holds the resource common information
+type ResourceCommonInfo struct {
+	// +optional
+	Volume ResourceVolume
+	// +optional
+	Selector ResourceSelector
+}
+
+// ResourceVolume holds the resource volume information
+type ResourceVolume struct {
+	Type   string //SATA,SAS,SSD
+	Volume int32  //Default: 40(SATA), 10(SAS), 10(SSDs)
+}
+
+// ResourceSelector holds the resource selector information
+type ResourceSelector struct {
+	GeoLocation ResourceGeoLocation
+	Regions     []ResourceRegion
+	Operator    string //chinatelecom, chinaunicom, chinamobile
+	Strategy    ResourceStrategy
+}
+
+// ResourceStrategy holds the resource strategy information
+type ResourceStrategy struct {
+	LocalStrategy string //centralize, centralize(default)
+}
+
+// ResourceFlavor holds the resource flavor information
+type ResourceFlavor struct {
+	FlavorID string //c6.large.2(default)
+	Spot     ResourceSpot
+}
+
+// ResourceGeoLocation holds the resource geography information
+type ResourceGeoLocation struct {
+	City     string
+	Province string
+	Area     string
+	Country  string
+}
+
+// ResourceRegion holds the resource region information
+type ResourceRegion struct {
+	Region          string
+	AvailablityZone []string
+}
+
+// ResourceSpot holds the resource spot information
+type ResourceSpot struct {
+	MaxPrice           int32  //1.5(default)
+	SpotDurationHours  int32  //1(default,0-6)
+	SpotDurationCount  int32  //2(default)
+	InterruptionPolicy string //immediate(default)
 }
