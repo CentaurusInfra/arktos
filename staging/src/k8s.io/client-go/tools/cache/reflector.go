@@ -396,8 +396,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		if len(r.filterBounds) > 0 {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
-		aggregatedWatcher := r.listerWatcher.Watch(options)
-		err := aggregatedWatcher.GetErrors()
+		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
 			switch err {
 			case io.EOF:
@@ -415,7 +414,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				if opError, ok := urlError.Err.(*net.OpError); ok {
 					if errno, ok := opError.Err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
 						klog.Errorf("Got connection refused error [%v]. Close aggregated watcher and retry.", err)
-						aggregatedWatcher.Stop()
+						w.Stop()
 						time.Sleep(time.Second)
 						continue
 					}
@@ -424,7 +423,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			return nil
 		}
 
-		if err := r.watchHandler(aggregatedWatcher, &resourceVersion, resyncerrc, stopCh); err != nil {
+		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err == errorResetFilterBoundRequested || err == errorClientSetResetRequested {
 				select {
 				case cancelCh <- struct{}{}:
@@ -466,7 +465,7 @@ func (r *Reflector) syncWith(items []runtime.Object, resourceVersion string) err
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.AggregatedWatchInterface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
+func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
 	start := r.clock.Now()
 	eventCount := 0
 

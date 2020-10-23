@@ -111,32 +111,30 @@ func (g *genFakeForType) GenerateType(c *generator.Context, t *types.Type, w io.
 
 	const pkgClientGoTesting = "k8s.io/client-go/testing"
 	m := map[string]interface{}{
-		"type":                     t,
-		"inputType":                t,
-		"resultType":               t,
-		"subresourcePath":          "",
-		"package":                  pkg,
-		"Package":                  namer.IC(pkg),
-		"namespaced":               !tags.NonNamespaced && !tags.NonTenanted,
-		"tenanted":                 tags.NonNamespaced && !tags.NonTenanted,
-		"clusterScoped":            tags.NonNamespaced && tags.NonTenanted,
-		"Group":                    namer.IC(g.group),
-		"GroupGoName":              g.groupGoName,
-		"Version":                  namer.IC(g.version),
-		"group":                    canonicalGroup,
-		"groupName":                groupName,
-		"version":                  g.version,
-		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
-		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
-		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
-		"Everything":               c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/labels", Name: "Everything"}),
-		"GroupVersionResource":     c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersionResource"}),
-		"GroupVersionKind":         c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersionKind"}),
-		"PatchType":                c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
-		"watchInterface":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
-		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
-		"aggregatedWatchInterface": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "AggregatedWatchInterface"}),
-		"DefaultTenant":            metav1.TenantSystem,
+		"type":                 t,
+		"inputType":            t,
+		"resultType":           t,
+		"subresourcePath":      "",
+		"package":              pkg,
+		"Package":              namer.IC(pkg),
+		"namespaced":           !tags.NonNamespaced && !tags.NonTenanted,
+		"tenanted":             tags.NonNamespaced && !tags.NonTenanted,
+		"clusterScoped":        tags.NonNamespaced && tags.NonTenanted,
+		"Group":                namer.IC(g.group),
+		"GroupGoName":          g.groupGoName,
+		"Version":              namer.IC(g.version),
+		"group":                canonicalGroup,
+		"groupName":            groupName,
+		"version":              g.version,
+		"DeleteOptions":        c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
+		"ListOptions":          c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
+		"GetOptions":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
+		"Everything":           c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/labels", Name: "Everything"}),
+		"GroupVersionResource": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersionResource"}),
+		"GroupVersionKind":     c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/runtime/schema", Name: "GroupVersionKind"}),
+		"PatchType":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
+		"watchInterface":       c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
+		"DefaultTenant":        metav1.TenantSystem,
 
 		"NewRootListAction":              c.Universe.Function(types.Name{Package: pkgClientGoTesting, Name: "NewRootListAction"}),
 		"NewListAction":                  c.Universe.Function(types.Name{Package: pkgClientGoTesting, Name: "NewListAction"}),
@@ -509,15 +507,12 @@ func (c *Fake$.type|publicPlural$) UpdateStatus($.type|private$ *$.type|raw$) (*
 `
 
 var watchTemplate = `
-// Watch returns a $.aggregatedWatchInterface|raw$ that watches the requested $.type|privatePlural$.
-func (c *Fake$.type|publicPlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
-	aggWatch := $.aggregatedWatcher|raw$()
-	watcher, err := c.Fake.
+// Watch returns a $.watchInterface|raw$ that watches the requested $.type|privatePlural$.
+func (c *Fake$.type|publicPlural$) Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error) {
+	return c.Fake.
 		$if .namespaced$InvokesWatch($.NewWatchAction|raw$WithMultiTenancy($.type|allLowercasePlural$Resource, c.ns, opts, c.te))$end$
 		$if .tenanted$InvokesWatch($.NewTenantWatchAction|raw$($.type|allLowercasePlural$Resource, opts, c.te))$end$
 		$if .clusterScoped$InvokesWatch($.NewRootWatchAction|raw$($.type|allLowercasePlural$Resource, opts))$end$
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 `
 

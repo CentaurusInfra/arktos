@@ -963,21 +963,21 @@ func growSlice(v reflect.Value, maxCapacity int, sizes ...int) {
 }
 
 // Watch implements storage.Interface.Watch.
-func (s *store) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (s *store) Watch(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) (watch.Interface, error) {
 	//klog.Infof("=====etcd3 store watch key %s", key)
 	return s.watch(ctx, key, resourceVersion, pred, false)
 }
 
 // WatchList implements storage.Interface.WatchList.
-func (s *store) WatchList(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (s *store) WatchList(ctx context.Context, key string, resourceVersion string, pred storage.SelectionPredicate) (watch.Interface, error) {
 	//klog.Infof("=====etcd3 store watchlist key %s", key)
 	return s.watch(ctx, key, resourceVersion, pred, true)
 }
 
-func (s *store) watch(ctx context.Context, key string, rv string, pred storage.SelectionPredicate, recursive bool) watch.AggregatedWatchInterface {
+func (s *store) watch(ctx context.Context, key string, rv string, pred storage.SelectionPredicate, recursive bool) (watch.Interface, error) {
 	rev, err := s.versioner.ParseResourceVersion(rv)
 	if err != nil {
-		return watch.NewAggregatedWatcherWithOneWatch(nil, err)
+		return nil, err
 	}
 	key = path.Join(s.pathPrefix, key)
 	aw := s.watcher.Watch(ctx, key, int64(rev), recursive, pred)
@@ -994,7 +994,7 @@ func (s *store) watch(ctx context.Context, key string, rv string, pred storage.S
 		}
 	}(s, ctx, key, rv, pred, recursive, aw)
 
-	return aw
+	return aw, aw.GetErrors()
 }
 
 func (s *store) getState(getResp *clientv3.GetResponse, key string, v reflect.Value, ignoreNotFound bool) (*objState, error) {
