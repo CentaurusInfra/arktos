@@ -852,6 +852,10 @@ message Container {
   // Default is false.
   // +optional
   optional bool tty = 18;
+
+  // resource common information for vms or containers
+  // +optional
+  optional ResourceCommonInfo resourceCommonInfo = 24;
 }
 
 // Describe a container image
@@ -3461,6 +3465,10 @@ message PodSpec {
   // This field is alpha-level and is only honored by servers that enable the NonPreemptingPriority feature.
   // +optional
   optional string preemptionPolicy = 31;
+
+  // Resource Type indicates whether the resource objects are VM or containers
+  // +optional
+  optional string resourceType = 36;
 }
 
 // PodStatus represents information about the status of a pod. Status may trail the actual
@@ -3993,6 +4001,15 @@ message ResizePolicy {
   optional string policy = 2;
 }
 
+// ResourceCommonInfo contains common information for virtual machines or containers
+message ResourceCommonInfo {
+  // +optional
+  optional ResourceVolume volume = 1;
+
+  // +optional
+  optional ResourceSelector selector = 2;
+}
+
 // ResourceFieldSelector represents container resources (cpu, memory) and their output format
 message ResourceFieldSelector {
   // Container name: required for volumes, optional for env vars
@@ -4005,6 +4022,30 @@ message ResourceFieldSelector {
   // Specifies the output format of the exposed resources, defaults to "1"
   // +optional
   optional k8s.io.apimachinery.pkg.api.resource.Quantity divisor = 3;
+}
+
+// ResourceFlavor contains resource flavor information
+message ResourceFlavor {
+  // +optional
+  optional string flavorID = 1;
+
+  // +optional
+  optional ResourceSpot spot = 2;
+}
+
+// ResourceGeoLocation contains resource geography location information
+message ResourceGeoLocation {
+  // +optional
+  optional string city = 1;
+
+  // +optional
+  optional string province = 2;
+
+  // +optional
+  optional string area = 3;
+
+  // +optional
+  optional string country = 4;
 }
 
 // ResourceQuota sets aggregate quota restrictions enforced per namespace
@@ -4068,6 +4109,15 @@ message ResourceQuotaStatus {
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> used = 2;
 }
 
+// ResourceRegion contains resource region information
+message ResourceRegion {
+  // This field is required in all cases.
+  optional string region = 1;
+
+  // +optional
+  repeated string availablityZone = 2;
+}
+
 // ResourceRequirements describes the compute resource requirements.
 message ResourceRequirements {
   // Limits describes the maximum amount of compute resources allowed.
@@ -4081,6 +4131,51 @@ message ResourceRequirements {
   // More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/
   // +optional
   map<string, k8s.io.apimachinery.pkg.api.resource.Quantity> requests = 2;
+}
+
+// ResourceSelector contains resource selector information
+message ResourceSelector {
+  // +optional
+  optional ResourceGeoLocation geoLocation = 1;
+
+  // +optional
+  repeated ResourceRegion regions = 2;
+
+  // +optional
+  optional string operator = 3;
+
+  // +optional
+  optional ResourceStrategy strategy = 4;
+}
+
+// ResourceSpot contains resource spot information
+message ResourceSpot {
+  // +optional
+  optional float maxPrice = 1;
+
+  // +optional
+  optional int32 spotDurationHours = 2;
+
+  // +optional
+  optional int32 spotDurationCount = 3;
+
+  // +optional
+  optional string interruptionPolicy = 4;
+}
+
+// ResourceStrategy contains resource strategy  information
+message ResourceStrategy {
+  // +optional
+  optional string localStrategy = 1;
+}
+
+// ResourceVolume contains resource storage information
+message ResourceVolume {
+  // +optional
+  optional string type = 1;
+
+  // +optional
+  optional int32 volume = 2;
 }
 
 message RestoreAction {
@@ -5074,6 +5169,18 @@ message VirtualMachine {
   // cloud-init user data script
   // +optional
   optional string cloudInitUserDataScript = 14;
+
+  // resource common information for vms or containers
+  // +optional
+  optional ResourceCommonInfo resourceCommonInfo = 18;
+
+  // flag that if the vm needs any external ip address
+  // +optional
+  optional bool needEIP = 19;
+
+  // resource flavor information
+  // +optional
+  repeated ResourceFlavor flavors = 20;
 }
 
 // VirtualMachineStatus holds the details of the current status of a given virtual machine instance

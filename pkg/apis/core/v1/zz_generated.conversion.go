@@ -1701,6 +1701,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceCommonInfo)(nil), (*core.ResourceCommonInfo)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(a.(*v1.ResourceCommonInfo), b.(*core.ResourceCommonInfo), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceCommonInfo)(nil), (*v1.ResourceCommonInfo)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(a.(*core.ResourceCommonInfo), b.(*v1.ResourceCommonInfo), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*v1.ResourceFieldSelector)(nil), (*core.ResourceFieldSelector)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1_ResourceFieldSelector_To_core_ResourceFieldSelector(a.(*v1.ResourceFieldSelector), b.(*core.ResourceFieldSelector), scope)
 	}); err != nil {
@@ -1708,6 +1718,26 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ResourceFieldSelector)(nil), (*v1.ResourceFieldSelector)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ResourceFieldSelector_To_v1_ResourceFieldSelector(a.(*core.ResourceFieldSelector), b.(*v1.ResourceFieldSelector), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceFlavor)(nil), (*core.ResourceFlavor)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceFlavor_To_core_ResourceFlavor(a.(*v1.ResourceFlavor), b.(*core.ResourceFlavor), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceFlavor)(nil), (*v1.ResourceFlavor)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceFlavor_To_v1_ResourceFlavor(a.(*core.ResourceFlavor), b.(*v1.ResourceFlavor), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceGeoLocation)(nil), (*core.ResourceGeoLocation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation(a.(*v1.ResourceGeoLocation), b.(*core.ResourceGeoLocation), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceGeoLocation)(nil), (*v1.ResourceGeoLocation)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation(a.(*core.ResourceGeoLocation), b.(*v1.ResourceGeoLocation), scope)
 	}); err != nil {
 		return err
 	}
@@ -1751,6 +1781,16 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}); err != nil {
 		return err
 	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceRegion)(nil), (*core.ResourceRegion)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceRegion_To_core_ResourceRegion(a.(*v1.ResourceRegion), b.(*core.ResourceRegion), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceRegion)(nil), (*v1.ResourceRegion)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceRegion_To_v1_ResourceRegion(a.(*core.ResourceRegion), b.(*v1.ResourceRegion), scope)
+	}); err != nil {
+		return err
+	}
 	if err := s.AddGeneratedConversionFunc((*v1.ResourceRequirements)(nil), (*core.ResourceRequirements)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_v1_ResourceRequirements_To_core_ResourceRequirements(a.(*v1.ResourceRequirements), b.(*core.ResourceRequirements), scope)
 	}); err != nil {
@@ -1758,6 +1798,46 @@ func RegisterConversions(s *runtime.Scheme) error {
 	}
 	if err := s.AddGeneratedConversionFunc((*core.ResourceRequirements)(nil), (*v1.ResourceRequirements)(nil), func(a, b interface{}, scope conversion.Scope) error {
 		return Convert_core_ResourceRequirements_To_v1_ResourceRequirements(a.(*core.ResourceRequirements), b.(*v1.ResourceRequirements), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceSelector)(nil), (*core.ResourceSelector)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceSelector_To_core_ResourceSelector(a.(*v1.ResourceSelector), b.(*core.ResourceSelector), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceSelector)(nil), (*v1.ResourceSelector)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceSelector_To_v1_ResourceSelector(a.(*core.ResourceSelector), b.(*v1.ResourceSelector), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceSpot)(nil), (*core.ResourceSpot)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceSpot_To_core_ResourceSpot(a.(*v1.ResourceSpot), b.(*core.ResourceSpot), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceSpot)(nil), (*v1.ResourceSpot)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceSpot_To_v1_ResourceSpot(a.(*core.ResourceSpot), b.(*v1.ResourceSpot), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceStrategy)(nil), (*core.ResourceStrategy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceStrategy_To_core_ResourceStrategy(a.(*v1.ResourceStrategy), b.(*core.ResourceStrategy), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceStrategy)(nil), (*v1.ResourceStrategy)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceStrategy_To_v1_ResourceStrategy(a.(*core.ResourceStrategy), b.(*v1.ResourceStrategy), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*v1.ResourceVolume)(nil), (*core.ResourceVolume)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_v1_ResourceVolume_To_core_ResourceVolume(a.(*v1.ResourceVolume), b.(*core.ResourceVolume), scope)
+	}); err != nil {
+		return err
+	}
+	if err := s.AddGeneratedConversionFunc((*core.ResourceVolume)(nil), (*v1.ResourceVolume)(nil), func(a, b interface{}, scope conversion.Scope) error {
+		return Convert_core_ResourceVolume_To_v1_ResourceVolume(a.(*core.ResourceVolume), b.(*v1.ResourceVolume), scope)
 	}); err != nil {
 		return err
 	}
@@ -3264,6 +3344,9 @@ func autoConvert_v1_Container_To_core_Container(in *v1.Container, out *core.Cont
 	out.Stdin = in.Stdin
 	out.StdinOnce = in.StdinOnce
 	out.TTY = in.TTY
+	if err := Convert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(&in.ResourceCommonInfo, &out.ResourceCommonInfo, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -3298,6 +3381,9 @@ func autoConvert_core_Container_To_v1_Container(in *core.Container, out *v1.Cont
 	out.Stdin = in.Stdin
 	out.StdinOnce = in.StdinOnce
 	out.TTY = in.TTY
+	if err := Convert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(&in.ResourceCommonInfo, &out.ResourceCommonInfo, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -6230,7 +6316,15 @@ func autoConvert_v1_PodSpec_To_core_PodSpec(in *v1.PodSpec, out *core.PodSpec, s
 	}
 	out.InitContainers = *(*[]core.Container)(unsafe.Pointer(&in.InitContainers))
 	out.Containers = *(*[]core.Container)(unsafe.Pointer(&in.Containers))
-	out.VirtualMachine = (*core.VirtualMachine)(unsafe.Pointer(in.VirtualMachine))
+	if in.VirtualMachine != nil {
+		in, out := &in.VirtualMachine, &out.VirtualMachine
+		*out = new(core.VirtualMachine)
+		if err := Convert_v1_VirtualMachine_To_core_VirtualMachine(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.VirtualMachine = nil
+	}
 	out.WorkloadInfo = *(*[]core.CommonInfo)(unsafe.Pointer(&in.WorkloadInfo))
 	out.RestartPolicy = core.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
@@ -6268,6 +6362,7 @@ func autoConvert_v1_PodSpec_To_core_PodSpec(in *v1.PodSpec, out *core.PodSpec, s
 	out.RuntimeClassName = (*string)(unsafe.Pointer(in.RuntimeClassName))
 	out.EnableServiceLinks = (*bool)(unsafe.Pointer(in.EnableServiceLinks))
 	out.PreemptionPolicy = (*core.PreemptionPolicy)(unsafe.Pointer(in.PreemptionPolicy))
+	out.ResourceType = in.ResourceType
 	return nil
 }
 
@@ -6287,7 +6382,15 @@ func autoConvert_core_PodSpec_To_v1_PodSpec(in *core.PodSpec, out *v1.PodSpec, s
 	}
 	out.InitContainers = *(*[]v1.Container)(unsafe.Pointer(&in.InitContainers))
 	out.Containers = *(*[]v1.Container)(unsafe.Pointer(&in.Containers))
-	out.VirtualMachine = (*v1.VirtualMachine)(unsafe.Pointer(in.VirtualMachine))
+	if in.VirtualMachine != nil {
+		in, out := &in.VirtualMachine, &out.VirtualMachine
+		*out = new(v1.VirtualMachine)
+		if err := Convert_core_VirtualMachine_To_v1_VirtualMachine(*in, *out, s); err != nil {
+			return err
+		}
+	} else {
+		out.VirtualMachine = nil
+	}
 	out.WorkloadInfo = *(*[]v1.CommonInfo)(unsafe.Pointer(&in.WorkloadInfo))
 	out.RestartPolicy = v1.RestartPolicy(in.RestartPolicy)
 	out.TerminationGracePeriodSeconds = (*int64)(unsafe.Pointer(in.TerminationGracePeriodSeconds))
@@ -6320,6 +6423,7 @@ func autoConvert_core_PodSpec_To_v1_PodSpec(in *core.PodSpec, out *v1.PodSpec, s
 	out.ReadinessGates = *(*[]v1.PodReadinessGate)(unsafe.Pointer(&in.ReadinessGates))
 	out.RuntimeClassName = (*string)(unsafe.Pointer(in.RuntimeClassName))
 	out.EnableServiceLinks = (*bool)(unsafe.Pointer(in.EnableServiceLinks))
+	out.ResourceType = in.ResourceType
 	return nil
 }
 
@@ -7025,6 +7129,36 @@ func Convert_core_ResizePolicy_To_v1_ResizePolicy(in *core.ResizePolicy, out *v1
 	return autoConvert_core_ResizePolicy_To_v1_ResizePolicy(in, out, s)
 }
 
+func autoConvert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(in *v1.ResourceCommonInfo, out *core.ResourceCommonInfo, s conversion.Scope) error {
+	if err := Convert_v1_ResourceVolume_To_core_ResourceVolume(&in.Volume, &out.Volume, s); err != nil {
+		return err
+	}
+	if err := Convert_v1_ResourceSelector_To_core_ResourceSelector(&in.Selector, &out.Selector, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo is an autogenerated conversion function.
+func Convert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(in *v1.ResourceCommonInfo, out *core.ResourceCommonInfo, s conversion.Scope) error {
+	return autoConvert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(in, out, s)
+}
+
+func autoConvert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(in *core.ResourceCommonInfo, out *v1.ResourceCommonInfo, s conversion.Scope) error {
+	if err := Convert_core_ResourceVolume_To_v1_ResourceVolume(&in.Volume, &out.Volume, s); err != nil {
+		return err
+	}
+	if err := Convert_core_ResourceSelector_To_v1_ResourceSelector(&in.Selector, &out.Selector, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo is an autogenerated conversion function.
+func Convert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(in *core.ResourceCommonInfo, out *v1.ResourceCommonInfo, s conversion.Scope) error {
+	return autoConvert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(in, out, s)
+}
+
 func autoConvert_v1_ResourceFieldSelector_To_core_ResourceFieldSelector(in *v1.ResourceFieldSelector, out *core.ResourceFieldSelector, s conversion.Scope) error {
 	out.ContainerName = in.ContainerName
 	out.Resource = in.Resource
@@ -7047,6 +7181,58 @@ func autoConvert_core_ResourceFieldSelector_To_v1_ResourceFieldSelector(in *core
 // Convert_core_ResourceFieldSelector_To_v1_ResourceFieldSelector is an autogenerated conversion function.
 func Convert_core_ResourceFieldSelector_To_v1_ResourceFieldSelector(in *core.ResourceFieldSelector, out *v1.ResourceFieldSelector, s conversion.Scope) error {
 	return autoConvert_core_ResourceFieldSelector_To_v1_ResourceFieldSelector(in, out, s)
+}
+
+func autoConvert_v1_ResourceFlavor_To_core_ResourceFlavor(in *v1.ResourceFlavor, out *core.ResourceFlavor, s conversion.Scope) error {
+	out.FlavorID = in.FlavorID
+	if err := Convert_v1_ResourceSpot_To_core_ResourceSpot(&in.Spot, &out.Spot, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1_ResourceFlavor_To_core_ResourceFlavor is an autogenerated conversion function.
+func Convert_v1_ResourceFlavor_To_core_ResourceFlavor(in *v1.ResourceFlavor, out *core.ResourceFlavor, s conversion.Scope) error {
+	return autoConvert_v1_ResourceFlavor_To_core_ResourceFlavor(in, out, s)
+}
+
+func autoConvert_core_ResourceFlavor_To_v1_ResourceFlavor(in *core.ResourceFlavor, out *v1.ResourceFlavor, s conversion.Scope) error {
+	out.FlavorID = in.FlavorID
+	if err := Convert_core_ResourceSpot_To_v1_ResourceSpot(&in.Spot, &out.Spot, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_core_ResourceFlavor_To_v1_ResourceFlavor is an autogenerated conversion function.
+func Convert_core_ResourceFlavor_To_v1_ResourceFlavor(in *core.ResourceFlavor, out *v1.ResourceFlavor, s conversion.Scope) error {
+	return autoConvert_core_ResourceFlavor_To_v1_ResourceFlavor(in, out, s)
+}
+
+func autoConvert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation(in *v1.ResourceGeoLocation, out *core.ResourceGeoLocation, s conversion.Scope) error {
+	out.City = in.City
+	out.Province = in.Province
+	out.Area = in.Area
+	out.Country = in.Country
+	return nil
+}
+
+// Convert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation is an autogenerated conversion function.
+func Convert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation(in *v1.ResourceGeoLocation, out *core.ResourceGeoLocation, s conversion.Scope) error {
+	return autoConvert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation(in, out, s)
+}
+
+func autoConvert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation(in *core.ResourceGeoLocation, out *v1.ResourceGeoLocation, s conversion.Scope) error {
+	out.City = in.City
+	out.Province = in.Province
+	out.Area = in.Area
+	out.Country = in.Country
+	return nil
+}
+
+// Convert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation is an autogenerated conversion function.
+func Convert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation(in *core.ResourceGeoLocation, out *v1.ResourceGeoLocation, s conversion.Scope) error {
+	return autoConvert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation(in, out, s)
 }
 
 func autoConvert_v1_ResourceQuota_To_core_ResourceQuota(in *v1.ResourceQuota, out *core.ResourceQuota, s conversion.Scope) error {
@@ -7149,6 +7335,28 @@ func Convert_core_ResourceQuotaStatus_To_v1_ResourceQuotaStatus(in *core.Resourc
 	return autoConvert_core_ResourceQuotaStatus_To_v1_ResourceQuotaStatus(in, out, s)
 }
 
+func autoConvert_v1_ResourceRegion_To_core_ResourceRegion(in *v1.ResourceRegion, out *core.ResourceRegion, s conversion.Scope) error {
+	out.Region = in.Region
+	out.AvailablityZone = *(*[]string)(unsafe.Pointer(&in.AvailablityZone))
+	return nil
+}
+
+// Convert_v1_ResourceRegion_To_core_ResourceRegion is an autogenerated conversion function.
+func Convert_v1_ResourceRegion_To_core_ResourceRegion(in *v1.ResourceRegion, out *core.ResourceRegion, s conversion.Scope) error {
+	return autoConvert_v1_ResourceRegion_To_core_ResourceRegion(in, out, s)
+}
+
+func autoConvert_core_ResourceRegion_To_v1_ResourceRegion(in *core.ResourceRegion, out *v1.ResourceRegion, s conversion.Scope) error {
+	out.Region = in.Region
+	out.AvailablityZone = *(*[]string)(unsafe.Pointer(&in.AvailablityZone))
+	return nil
+}
+
+// Convert_core_ResourceRegion_To_v1_ResourceRegion is an autogenerated conversion function.
+func Convert_core_ResourceRegion_To_v1_ResourceRegion(in *core.ResourceRegion, out *v1.ResourceRegion, s conversion.Scope) error {
+	return autoConvert_core_ResourceRegion_To_v1_ResourceRegion(in, out, s)
+}
+
 func autoConvert_v1_ResourceRequirements_To_core_ResourceRequirements(in *v1.ResourceRequirements, out *core.ResourceRequirements, s conversion.Scope) error {
 	out.Limits = *(*core.ResourceList)(unsafe.Pointer(&in.Limits))
 	out.Requests = *(*core.ResourceList)(unsafe.Pointer(&in.Requests))
@@ -7169,6 +7377,108 @@ func autoConvert_core_ResourceRequirements_To_v1_ResourceRequirements(in *core.R
 // Convert_core_ResourceRequirements_To_v1_ResourceRequirements is an autogenerated conversion function.
 func Convert_core_ResourceRequirements_To_v1_ResourceRequirements(in *core.ResourceRequirements, out *v1.ResourceRequirements, s conversion.Scope) error {
 	return autoConvert_core_ResourceRequirements_To_v1_ResourceRequirements(in, out, s)
+}
+
+func autoConvert_v1_ResourceSelector_To_core_ResourceSelector(in *v1.ResourceSelector, out *core.ResourceSelector, s conversion.Scope) error {
+	if err := Convert_v1_ResourceGeoLocation_To_core_ResourceGeoLocation(&in.GeoLocation, &out.GeoLocation, s); err != nil {
+		return err
+	}
+	out.Regions = *(*[]core.ResourceRegion)(unsafe.Pointer(&in.Regions))
+	out.Operator = in.Operator
+	if err := Convert_v1_ResourceStrategy_To_core_ResourceStrategy(&in.Strategy, &out.Strategy, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_v1_ResourceSelector_To_core_ResourceSelector is an autogenerated conversion function.
+func Convert_v1_ResourceSelector_To_core_ResourceSelector(in *v1.ResourceSelector, out *core.ResourceSelector, s conversion.Scope) error {
+	return autoConvert_v1_ResourceSelector_To_core_ResourceSelector(in, out, s)
+}
+
+func autoConvert_core_ResourceSelector_To_v1_ResourceSelector(in *core.ResourceSelector, out *v1.ResourceSelector, s conversion.Scope) error {
+	if err := Convert_core_ResourceGeoLocation_To_v1_ResourceGeoLocation(&in.GeoLocation, &out.GeoLocation, s); err != nil {
+		return err
+	}
+	out.Regions = *(*[]v1.ResourceRegion)(unsafe.Pointer(&in.Regions))
+	out.Operator = in.Operator
+	if err := Convert_core_ResourceStrategy_To_v1_ResourceStrategy(&in.Strategy, &out.Strategy, s); err != nil {
+		return err
+	}
+	return nil
+}
+
+// Convert_core_ResourceSelector_To_v1_ResourceSelector is an autogenerated conversion function.
+func Convert_core_ResourceSelector_To_v1_ResourceSelector(in *core.ResourceSelector, out *v1.ResourceSelector, s conversion.Scope) error {
+	return autoConvert_core_ResourceSelector_To_v1_ResourceSelector(in, out, s)
+}
+
+func autoConvert_v1_ResourceSpot_To_core_ResourceSpot(in *v1.ResourceSpot, out *core.ResourceSpot, s conversion.Scope) error {
+	out.MaxPrice = int32(in.MaxPrice)
+	out.SpotDurationHours = in.SpotDurationHours
+	out.SpotDurationCount = in.SpotDurationCount
+	out.InterruptionPolicy = in.InterruptionPolicy
+	return nil
+}
+
+// Convert_v1_ResourceSpot_To_core_ResourceSpot is an autogenerated conversion function.
+func Convert_v1_ResourceSpot_To_core_ResourceSpot(in *v1.ResourceSpot, out *core.ResourceSpot, s conversion.Scope) error {
+	return autoConvert_v1_ResourceSpot_To_core_ResourceSpot(in, out, s)
+}
+
+func autoConvert_core_ResourceSpot_To_v1_ResourceSpot(in *core.ResourceSpot, out *v1.ResourceSpot, s conversion.Scope) error {
+	out.MaxPrice = float32(in.MaxPrice)
+	out.SpotDurationHours = in.SpotDurationHours
+	out.SpotDurationCount = in.SpotDurationCount
+	out.InterruptionPolicy = in.InterruptionPolicy
+	return nil
+}
+
+// Convert_core_ResourceSpot_To_v1_ResourceSpot is an autogenerated conversion function.
+func Convert_core_ResourceSpot_To_v1_ResourceSpot(in *core.ResourceSpot, out *v1.ResourceSpot, s conversion.Scope) error {
+	return autoConvert_core_ResourceSpot_To_v1_ResourceSpot(in, out, s)
+}
+
+func autoConvert_v1_ResourceStrategy_To_core_ResourceStrategy(in *v1.ResourceStrategy, out *core.ResourceStrategy, s conversion.Scope) error {
+	out.LocalStrategy = in.LocalStrategy
+	return nil
+}
+
+// Convert_v1_ResourceStrategy_To_core_ResourceStrategy is an autogenerated conversion function.
+func Convert_v1_ResourceStrategy_To_core_ResourceStrategy(in *v1.ResourceStrategy, out *core.ResourceStrategy, s conversion.Scope) error {
+	return autoConvert_v1_ResourceStrategy_To_core_ResourceStrategy(in, out, s)
+}
+
+func autoConvert_core_ResourceStrategy_To_v1_ResourceStrategy(in *core.ResourceStrategy, out *v1.ResourceStrategy, s conversion.Scope) error {
+	out.LocalStrategy = in.LocalStrategy
+	return nil
+}
+
+// Convert_core_ResourceStrategy_To_v1_ResourceStrategy is an autogenerated conversion function.
+func Convert_core_ResourceStrategy_To_v1_ResourceStrategy(in *core.ResourceStrategy, out *v1.ResourceStrategy, s conversion.Scope) error {
+	return autoConvert_core_ResourceStrategy_To_v1_ResourceStrategy(in, out, s)
+}
+
+func autoConvert_v1_ResourceVolume_To_core_ResourceVolume(in *v1.ResourceVolume, out *core.ResourceVolume, s conversion.Scope) error {
+	out.Type = in.Type
+	out.Volume = in.Volume
+	return nil
+}
+
+// Convert_v1_ResourceVolume_To_core_ResourceVolume is an autogenerated conversion function.
+func Convert_v1_ResourceVolume_To_core_ResourceVolume(in *v1.ResourceVolume, out *core.ResourceVolume, s conversion.Scope) error {
+	return autoConvert_v1_ResourceVolume_To_core_ResourceVolume(in, out, s)
+}
+
+func autoConvert_core_ResourceVolume_To_v1_ResourceVolume(in *core.ResourceVolume, out *v1.ResourceVolume, s conversion.Scope) error {
+	out.Type = in.Type
+	out.Volume = in.Volume
+	return nil
+}
+
+// Convert_core_ResourceVolume_To_v1_ResourceVolume is an autogenerated conversion function.
+func Convert_core_ResourceVolume_To_v1_ResourceVolume(in *core.ResourceVolume, out *v1.ResourceVolume, s conversion.Scope) error {
+	return autoConvert_core_ResourceVolume_To_v1_ResourceVolume(in, out, s)
 }
 
 func autoConvert_v1_RestoreAction_To_core_RestoreAction(in *v1.RestoreAction, out *core.RestoreAction, s conversion.Scope) error {
@@ -8360,6 +8670,21 @@ func autoConvert_v1_VirtualMachine_To_core_VirtualMachine(in *v1.VirtualMachine,
 	out.PowerSpec = core.VmPowerSpec(in.PowerSpec)
 	out.VolumeDevices = *(*[]core.VolumeDevice)(unsafe.Pointer(&in.VolumeDevices))
 	out.CloudInitUserDataScript = in.CloudInitUserDataScript
+	if err := Convert_v1_ResourceCommonInfo_To_core_ResourceCommonInfo(&in.ResourceCommonInfo, &out.ResourceCommonInfo, s); err != nil {
+		return err
+	}
+	out.NeedEIP = in.NeedEIP
+	if in.Flavors != nil {
+		in, out := &in.Flavors, &out.Flavors
+		*out = make([]core.ResourceFlavor, len(*in))
+		for i := range *in {
+			if err := Convert_v1_ResourceFlavor_To_core_ResourceFlavor(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Flavors = nil
+	}
 	return nil
 }
 
@@ -8387,6 +8712,21 @@ func autoConvert_core_VirtualMachine_To_v1_VirtualMachine(in *core.VirtualMachin
 	out.PowerSpec = v1.VmPowerSpec(in.PowerSpec)
 	out.VolumeDevices = *(*[]v1.VolumeDevice)(unsafe.Pointer(&in.VolumeDevices))
 	out.CloudInitUserDataScript = in.CloudInitUserDataScript
+	if err := Convert_core_ResourceCommonInfo_To_v1_ResourceCommonInfo(&in.ResourceCommonInfo, &out.ResourceCommonInfo, s); err != nil {
+		return err
+	}
+	out.NeedEIP = in.NeedEIP
+	if in.Flavors != nil {
+		in, out := &in.Flavors, &out.Flavors
+		*out = make([]v1.ResourceFlavor, len(*in))
+		for i := range *in {
+			if err := Convert_core_ResourceFlavor_To_v1_ResourceFlavor(&(*in)[i], &(*out)[i], s); err != nil {
+				return err
+			}
+		}
+	} else {
+		out.Flavors = nil
+	}
 	return nil
 }
 

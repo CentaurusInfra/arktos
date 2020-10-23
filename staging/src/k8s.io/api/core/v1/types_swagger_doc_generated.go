@@ -383,6 +383,7 @@ var map_Container = map[string]string{
 	"stdin":                    "Whether this container should allocate a buffer for stdin in the container runtime. If this is not set, reads from stdin in the container will always result in EOF. Default is false.",
 	"stdinOnce":                "Whether the container runtime should close the stdin channel after it has been opened by a single attach. When stdin is true the stdin stream will remain open across multiple attach sessions. If stdinOnce is set to true, stdin is opened on container start, is empty until the first client attaches to stdin, and then remains open and accepts data until the client disconnects, at which time stdin is closed and remains closed until the container is restarted. If this flag is false, a container processes that reads from stdin will never receive an EOF. Default is false",
 	"tty":                      "Whether this container should allocate a TTY for itself, also requires 'stdin' to be true. Default is false.",
+	"resourceCommonInfo":       "resource common information for vms or containers",
 }
 
 func (Container) SwaggerDoc() map[string]string {
@@ -1680,6 +1681,7 @@ var map_PodSpec = map[string]string{
 	"runtimeClassName":              "RuntimeClassName refers to a RuntimeClass object in the node.k8s.io group, which should be used to run this pod.  If no RuntimeClass resource matches the named class, the pod will not be run. If unset or empty, the \"legacy\" RuntimeClass will be used, which is an implicit class with an empty definition that uses the default runtime handler. More info: https://git.k8s.io/enhancements/keps/sig-node/runtime-class.md This is a beta feature as of Kubernetes v1.14.",
 	"enableServiceLinks":            "EnableServiceLinks indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. Optional: Defaults to true.",
 	"preemptionPolicy":              "PreemptionPolicy is the Policy for preempting pods with lower priority. One of Never, PreemptLowerPriority. Defaults to PreemptLowerPriority if unset. This field is alpha-level and is only honored by servers that enable the NonPreemptingPriority feature.",
+	"resourceType":                  "Resource Type indicates whether the resource objects are VM or containers",
 }
 
 func (PodSpec) SwaggerDoc() map[string]string {
@@ -1939,6 +1941,14 @@ func (ResizePolicy) SwaggerDoc() map[string]string {
 	return map_ResizePolicy
 }
 
+var map_ResourceCommonInfo = map[string]string{
+	"": "ResourceCommonInfo contains common information for virtual machines or containers",
+}
+
+func (ResourceCommonInfo) SwaggerDoc() map[string]string {
+	return map_ResourceCommonInfo
+}
+
 var map_ResourceFieldSelector = map[string]string{
 	"":              "ResourceFieldSelector represents container resources (cpu, memory) and their output format",
 	"containerName": "Container name: required for volumes, optional for env vars",
@@ -1948,6 +1958,22 @@ var map_ResourceFieldSelector = map[string]string{
 
 func (ResourceFieldSelector) SwaggerDoc() map[string]string {
 	return map_ResourceFieldSelector
+}
+
+var map_ResourceFlavor = map[string]string{
+	"": "ResourceFlavor contains resource flavor information",
+}
+
+func (ResourceFlavor) SwaggerDoc() map[string]string {
+	return map_ResourceFlavor
+}
+
+var map_ResourceGeoLocation = map[string]string{
+	"": "ResourceGeoLocation contains resource geography location information",
+}
+
+func (ResourceGeoLocation) SwaggerDoc() map[string]string {
+	return map_ResourceGeoLocation
 }
 
 var map_ResourceQuota = map[string]string{
@@ -1992,6 +2018,15 @@ func (ResourceQuotaStatus) SwaggerDoc() map[string]string {
 	return map_ResourceQuotaStatus
 }
 
+var map_ResourceRegion = map[string]string{
+	"":       "ResourceRegion contains resource region information",
+	"region": "This field is required in all cases.",
+}
+
+func (ResourceRegion) SwaggerDoc() map[string]string {
+	return map_ResourceRegion
+}
+
 var map_ResourceRequirements = map[string]string{
 	"":         "ResourceRequirements describes the compute resource requirements.",
 	"limits":   "Limits describes the maximum amount of compute resources allowed. More info: https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/",
@@ -2000,6 +2035,38 @@ var map_ResourceRequirements = map[string]string{
 
 func (ResourceRequirements) SwaggerDoc() map[string]string {
 	return map_ResourceRequirements
+}
+
+var map_ResourceSelector = map[string]string{
+	"": "ResourceSelector contains resource selector information",
+}
+
+func (ResourceSelector) SwaggerDoc() map[string]string {
+	return map_ResourceSelector
+}
+
+var map_ResourceSpot = map[string]string{
+	"": "ResourceSpot contains resource spot information",
+}
+
+func (ResourceSpot) SwaggerDoc() map[string]string {
+	return map_ResourceSpot
+}
+
+var map_ResourceStrategy = map[string]string{
+	"": "ResourceStrategy contains resource strategy  information",
+}
+
+func (ResourceStrategy) SwaggerDoc() map[string]string {
+	return map_ResourceStrategy
+}
+
+var map_ResourceVolume = map[string]string{
+	"": "ResourceVolume contains resource storage information",
+}
+
+func (ResourceVolume) SwaggerDoc() map[string]string {
+	return map_ResourceVolume
 }
 
 var map_RestoreParams = map[string]string{
@@ -2481,6 +2548,9 @@ var map_VirtualMachine = map[string]string{
 	"powerSpec":               "default running",
 	"volumeDevices":           "volumeDevices is the list of block devices to be used by the container. This is a beta feature.",
 	"cloudInitUserDataScript": "cloud-init user data script",
+	"resourceCommonInfo":      "resource common information for vms or containers",
+	"needEIP":                 "flag that if the vm needs any external ip address",
+	"flavors":                 "resource flavor information",
 }
 
 func (VirtualMachine) SwaggerDoc() map[string]string {
