@@ -62,7 +62,7 @@ func NewFilteredStorageClusterInformer(client kubernetes.Interface, resyncPeriod
 				}
 				return client.CoreV1().StorageClusters().List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

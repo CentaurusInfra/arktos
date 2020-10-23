@@ -52,7 +52,7 @@ type VolumeAttachmentInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.VolumeAttachment, error)
 	List(opts v1.ListOptions) (*v1alpha1.VolumeAttachmentList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.VolumeAttachment, err error)
 	VolumeAttachmentExpansion
 }
@@ -223,7 +223,7 @@ func (c *volumeAttachments) List(opts v1.ListOptions) (result *v1alpha1.VolumeAt
 }
 
 // Watch returns a watch.Interface that watches the requested volumeAttachments.
-func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *volumeAttachments) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -244,7 +244,7 @@ func (c *volumeAttachments) Watch(opts v1.ListOptions) watch.AggregatedWatchInte
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a volumeAttachment and creates it.  Returns the server's representation of the volumeAttachment, and an error, if there is any.

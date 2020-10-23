@@ -69,13 +69,10 @@ func (c *FakeStorageClusters) List(opts v1.ListOptions) (result *corev1.StorageC
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested storageClusters.
-func (c *FakeStorageClusters) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested storageClusters.
+func (c *FakeStorageClusters) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(storageclustersResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a storageCluster and creates it.  Returns the server's representation of the storageCluster, and an error, if there is any.

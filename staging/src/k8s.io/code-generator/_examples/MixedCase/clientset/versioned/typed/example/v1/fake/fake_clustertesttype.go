@@ -71,13 +71,10 @@ func (c *FakeClusterTestTypes) List(opts v1.ListOptions) (result *examplev1.Clus
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested clusterTestTypes.
-func (c *FakeClusterTestTypes) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested clusterTestTypes.
+func (c *FakeClusterTestTypes) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(clustertesttypesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a clusterTestType and creates it.  Returns the server's representation of the clusterTestType, and an error, if there is any.

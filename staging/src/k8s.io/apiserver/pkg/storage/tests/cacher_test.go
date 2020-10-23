@@ -398,49 +398,49 @@ func TestWatch(t *testing.T) {
 	startVersion := strconv.Itoa(int(initialVersion))
 
 	// Set up Watch for object "podFoo".
-	aw := cacher.Watch(context.TODO(), "pods/ns/foo", startVersion, storage.Everything)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", aw.GetErrors())
+	watcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", startVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer aw.Stop()
+	defer watcher.Stop()
 
 	fooCreated := updatePod(t, etcdStorage, podFoo, nil)
 	_ = updatePod(t, etcdStorage, podBar, nil)
 	fooUpdated := updatePod(t, etcdStorage, podFooPrime, fooCreated)
 
-	verifyWatchEvent(t, aw, watch.Added, podFoo)
-	verifyWatchEvent(t, aw, watch.Modified, podFooPrime)
+	verifyWatchEvent(t, watcher, watch.Added, podFoo)
+	verifyWatchEvent(t, watcher, watch.Modified, podFooPrime)
 
 	// Check whether we get too-old error via the watch channel
-	tooOldWatcherAgg := cacher.Watch(context.TODO(), "pods/ns/foo", "1", storage.Everything)
-	if tooOldWatcherAgg.GetErrors() != nil {
-		t.Fatalf("Expected no direct error, got %v", tooOldWatcherAgg.GetErrors())
+	tooOldWatcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", "1", storage.Everything)
+	if err != nil {
+		t.Fatalf("Expected no direct error, got %v", err)
 	}
-	defer tooOldWatcherAgg.Stop()
+	defer tooOldWatcher.Stop()
 	// Ensure we get a "Gone" error
 	expectedGoneError := errors.NewGone("").ErrStatus
-	verifyWatchEvent(t, tooOldWatcherAgg, watch.Error, &expectedGoneError)
+	verifyWatchEvent(t, tooOldWatcher, watch.Error, &expectedGoneError)
 
-	initialWatcherAgg := cacher.Watch(context.TODO(), "pods/ns/foo", fooCreated.ResourceVersion, storage.Everything)
-	if initialWatcherAgg.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", initialWatcherAgg.GetErrors())
+	initialWatcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", fooCreated.ResourceVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer initialWatcherAgg.Stop()
+	defer initialWatcher.Stop()
 
-	verifyWatchEvent(t, initialWatcherAgg, watch.Modified, podFooPrime)
+	verifyWatchEvent(t, initialWatcher, watch.Modified, podFooPrime)
 
 	// Now test watch from "now".
-	nowWatcherAgg := cacher.Watch(context.TODO(), "pods/ns/foo", "0", storage.Everything)
-	if nowWatcherAgg.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", nowWatcherAgg.GetErrors())
+	nowWatcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", "0", storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer nowWatcherAgg.Stop()
+	defer nowWatcher.Stop()
 
-	verifyWatchEvent(t, nowWatcherAgg, watch.Added, podFooPrime)
+	verifyWatchEvent(t, nowWatcher, watch.Added, podFooPrime)
 
 	_ = updatePod(t, etcdStorage, podFooBis, fooUpdated)
 
-	verifyWatchEvent(t, nowWatcherAgg, watch.Modified, podFooBis)
+	verifyWatchEvent(t, nowWatcher, watch.Modified, podFooBis)
 }
 
 func TestWatcherTimeout(t *testing.T) {
@@ -460,25 +460,25 @@ func TestWatcherTimeout(t *testing.T) {
 	// Create a number of watchers that will not be reading any result.
 	nonReadingWatchers := 50
 	for i := 0; i < nonReadingWatchers; i++ {
-		aw := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Unexpected error: %v", aw.GetErrors())
+		watcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
-		defer aw.Stop()
+		defer watcher.Stop()
 	}
 
 	// Create a second watcher that will be reading result.
-	readingWatcherAgg := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
-	if readingWatcherAgg.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", readingWatcherAgg.GetErrors())
+	readingWatcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer readingWatcherAgg.Stop()
+	defer readingWatcher.Stop()
 
 	startTime := time.Now()
 	for i := 1; i <= 22; i++ {
 		pod := makeTestPod(strconv.Itoa(i))
 		_ = updatePod(t, etcdStorage, pod, nil)
-		verifyWatchEvent(t, readingWatcherAgg, watch.Added, pod)
+		verifyWatchEvent(t, readingWatcher, watch.Added, pod)
 	}
 	if time.Since(startTime) > time.Duration(250*nonReadingWatchers)*time.Millisecond {
 		t.Errorf("waiting for events took too long: %v", time.Since(startTime))
@@ -493,11 +493,11 @@ func TestFiltering(t *testing.T) {
 
 	// Ensure that the cacher is initialized, before creating any pods,
 	// so that we are sure that all events will be present in cacher.
-	syncWatcherAgg := cacher.Watch(context.TODO(), "pods/ns/foo", "0", storage.Everything)
-	if syncWatcherAgg.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", syncWatcherAgg.GetErrors())
+	syncWatcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", "0", storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	syncWatcherAgg.Stop()
+	syncWatcher.Stop()
 
 	podFoo := makeTestPod("foo")
 	podFoo.Labels = map[string]string{"filter": "foo"}
@@ -535,16 +535,16 @@ func TestFiltering(t *testing.T) {
 			return labels.Set(metadata.GetLabels()), nil, nil
 		},
 	}
-	aw := cacher.Watch(context.TODO(), "pods/ns/foo", fooCreated.ResourceVersion, pred)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", aw.GetErrors())
+	watcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", fooCreated.ResourceVersion, pred)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer aw.Stop()
+	defer watcher.Stop()
 
-	verifyWatchEvent(t, aw, watch.Deleted, podFooFiltered)
-	verifyWatchEvent(t, aw, watch.Added, podFoo)
-	verifyWatchEvent(t, aw, watch.Modified, podFooPrime)
-	verifyWatchEvent(t, aw, watch.Deleted, podFooPrime)
+	verifyWatchEvent(t, watcher, watch.Deleted, podFooFiltered)
+	verifyWatchEvent(t, watcher, watch.Added, podFoo)
+	verifyWatchEvent(t, watcher, watch.Modified, podFooPrime)
+	verifyWatchEvent(t, watcher, watch.Deleted, podFooPrime)
 }
 
 func TestStartingResourceVersion(t *testing.T) {
@@ -565,11 +565,11 @@ func TestStartingResourceVersion(t *testing.T) {
 	rv += 10
 	startVersion := strconv.Itoa(int(rv))
 
-	aw := cacher.Watch(context.TODO(), "pods/ns/foo", startVersion, storage.Everything)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", aw.GetErrors())
+	watcher, err := cacher.Watch(context.TODO(), "pods/ns/foo", startVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer aw.Stop()
+	defer watcher.Stop()
 
 	lastFoo := fooCreated
 	for i := 0; i < 11; i++ {
@@ -579,7 +579,7 @@ func TestStartingResourceVersion(t *testing.T) {
 	}
 
 	select {
-	case e := <-aw.ResultChan():
+	case e := <-watcher.ResultChan():
 		pod := e.Object.(*example.Pod)
 		podRV, err := v.ParseResourceVersion(pod.ResourceVersion)
 		if err != nil {
@@ -621,23 +621,23 @@ func TestEmptyWatchEventCache(t *testing.T) {
 	// It should support establishing watches from rv and higher, but not older.
 
 	{
-		aw := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv-1)), storage.Everything)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Unexpected error: %v", aw.GetErrors())
+		watcher, err := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv-1)), storage.Everything)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
-		defer aw.Stop()
+		defer watcher.Stop()
 		expectedGoneError := errors.NewGone("").ErrStatus
-		verifyWatchEvent(t, aw, watch.Error, &expectedGoneError)
+		verifyWatchEvent(t, watcher, watch.Error, &expectedGoneError)
 	}
 
 	{
-		aw := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv+1)), storage.Everything)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Unexpected error: %v", aw.GetErrors())
+		watcher, err := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv+1)), storage.Everything)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
-		defer aw.Stop()
+		defer watcher.Stop()
 		select {
-		case e := <-aw.ResultChan():
+		case e := <-watcher.ResultChan():
 			t.Errorf("unexpected event %#v", e)
 		case <-time.After(3 * time.Second):
 			// watch from rv+1 remained established successfully
@@ -645,13 +645,13 @@ func TestEmptyWatchEventCache(t *testing.T) {
 	}
 
 	{
-		aw := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv)), storage.Everything)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Unexpected error: %v", aw.GetErrors())
+		watcher, err := cacher.Watch(context.TODO(), "pods/ns", strconv.Itoa(int(rv)), storage.Everything)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
-		defer aw.Stop()
+		defer watcher.Stop()
 		select {
-		case e := <-aw.ResultChan():
+		case e := <-watcher.ResultChan():
 			t.Errorf("unexpected event %#v", e)
 		case <-time.After(3 * time.Second):
 			// watch from rv remained established successfully
@@ -672,9 +672,9 @@ func TestRandomWatchDeliver(t *testing.T) {
 	}
 	startVersion := strconv.Itoa(int(rv))
 
-	aw := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", aw.GetErrors())
+	watcher, err := cacher.WatchList(context.TODO(), "pods/ns", startVersion, storage.Everything)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
 
 	// Now we can create exactly 21 events that should be delivered
@@ -685,11 +685,11 @@ func TestRandomWatchDeliver(t *testing.T) {
 	}
 
 	// Now stop the watcher and check if the consecutive events are being delivered.
-	aw.Stop()
+	watcher.Stop()
 
 	watched := 0
 	for {
-		event, ok := <-aw.ResultChan()
+		event, ok := <-watcher.ResultChan()
 		if !ok {
 			break
 		}
@@ -819,9 +819,9 @@ func TestWatchDispatchBookmarkEvents(t *testing.T) {
 		pred := storage.Everything
 		pred.AllowWatchBookmarks = c.allowWatchBookmark
 		ctx, _ := context.WithTimeout(context.Background(), c.timeout)
-		aw := cacher.Watch(ctx, "pods/ns/foo", startVersion, pred)
-		if aw.GetErrors() != nil {
-			t.Fatalf("Unexpected error: %v", aw.GetErrors())
+		watcher, err := cacher.Watch(ctx, "pods/ns/foo", startVersion, pred)
+		if err != nil {
+			t.Fatalf("Unexpected error: %v", err)
 		}
 
 		// Create events of other pods
@@ -829,7 +829,7 @@ func TestWatchDispatchBookmarkEvents(t *testing.T) {
 
 		// Now wait for Bookmark event
 		select {
-		case event, ok := <-aw.ResultChan():
+		case event, ok := <-watcher.ResultChan():
 			if !ok && c.expected {
 				t.Errorf("Unexpected object watched (no objects)")
 			}
@@ -841,7 +841,7 @@ func TestWatchDispatchBookmarkEvents(t *testing.T) {
 				t.Errorf("Unexpected object watched (timeout)")
 			}
 		}
-		aw.Stop()
+		watcher.Stop()
 	}
 }
 
@@ -856,11 +856,11 @@ func TestWatchBookmarksWithCorrectResourceVersion(t *testing.T) {
 	pred := storage.Everything
 	pred.AllowWatchBookmarks = true
 	ctx, _ := context.WithTimeout(context.Background(), 2*time.Second)
-	aw := cacher.WatchList(ctx, "pods/ns", "0", pred)
-	if aw.GetErrors() != nil {
-		t.Fatalf("Unexpected error: %v", aw.GetErrors())
+	watcher, err := cacher.WatchList(ctx, "pods/ns", "0", pred)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
 	}
-	defer aw.Stop()
+	defer watcher.Stop()
 
 	done := make(chan struct{})
 	defer close(done)
@@ -882,7 +882,7 @@ func TestWatchBookmarksWithCorrectResourceVersion(t *testing.T) {
 
 	bookmarkReceived := false
 	lastObservedResourceVersion := uint64(0)
-	for event := range aw.ResultChan() {
+	for event := range watcher.ResultChan() {
 		rv, err := v.ObjectResourceVersion(event.Object)
 		if err != nil {
 			t.Fatalf("failed to parse resourceVersion from %#v", event)

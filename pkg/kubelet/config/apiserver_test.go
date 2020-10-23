@@ -38,10 +38,8 @@ func (lw fakePodLW) List(options metav1.ListOptions) (runtime.Object, error) {
 	return lw.listResp, nil
 }
 
-func (lw fakePodLW) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	aggWatch.AddWatchInterface(lw.watchResp, nil)
-	return aggWatch
+func (lw fakePodLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
+	return lw.watchResp, nil
 }
 
 func (lw fakePodLW) Update(options metav1.ListOptions) {

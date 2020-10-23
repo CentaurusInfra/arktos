@@ -1228,13 +1228,11 @@ func (fs *fakeStorage) Delete(_ context.Context, _ string, _ runtime.Object, _ *
 	fs.callDelete++
 	return fs.err
 }
-func (fs *fakeStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (fs *fakeStorage) Watch(_ context.Context, _ string, _ string, _ storage.SelectionPredicate) (watch.Interface, error) {
 	w := newDummyWatch()
-	aggWatch := watch.NewAggregatedWatcher()
-	aggWatch.AddWatchInterface(w, nil)
-	return aggWatch
+	return w, nil
 }
-func (fs *fakeStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (fs *fakeStorage) WatchList(c context.Context, s1 string, s2 string, p storage.SelectionPredicate) (watch.Interface, error) {
 	return fs.Watch(c, s1, s2, p)
 }
 func (fs *fakeStorage) Get(_ context.Context, _ string, _ string, _ runtime.Object, _ bool) error {

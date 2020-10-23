@@ -580,16 +580,16 @@ var _ = SIGDescribe("StatefulSet", func() {
 		framework.ConformanceIt("Scaling should happen in predictable order and halt if any stateful pod is unhealthy [Slow]", func() {
 			psLabels := klabels.Set(labels)
 			ginkgo.By("Initializing watcher for selector " + psLabels.String())
-			watcher := f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
+			watcher, err := f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
 				LabelSelector: psLabels.AsSelector().String(),
 			})
-			framework.ExpectNoError(watcher.GetErrors())
+			framework.ExpectNoError(err)
 
 			ginkgo.By("Creating stateful set " + ssName + " in namespace " + ns)
 			ss := framework.NewStatefulSet(ssName, ns, headlessSvcName, 1, nil, nil, psLabels)
 			sst := framework.NewStatefulSetTester(c)
 			sst.SetHTTPProbe(ss)
-			ss, err := c.AppsV1().StatefulSets(ns).Create(ss)
+			ss, err = c.AppsV1().StatefulSets(ns).Create(ss)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Waiting until all stateful set " + ssName + " replicas will be running in namespace " + ns)
@@ -624,10 +624,10 @@ var _ = SIGDescribe("StatefulSet", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("Scale down will halt with unhealthy stateful pod")
-			watcher = f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
+			watcher, err = f.ClientSet.CoreV1().Pods(ns).Watch(metav1.ListOptions{
 				LabelSelector: psLabels.AsSelector().String(),
 			})
-			framework.ExpectNoError(watcher.GetErrors())
+			framework.ExpectNoError(err)
 
 			sst.BreakHTTPProbe(ss)
 			sst.WaitForStatusReadyReplicas(ss, 0)
@@ -747,8 +747,8 @@ var _ = SIGDescribe("StatefulSet", func() {
 
 			var initialStatefulPodUID types.UID
 			ginkgo.By("Waiting until stateful pod " + statefulPodName + " will be recreated and deleted at least once in namespace " + f.Namespace.Name)
-			w := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: statefulPodName}))
-			framework.ExpectNoError(w.GetErrors())
+			w, err := f.ClientSet.CoreV1().Pods(f.Namespace.Name).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: statefulPodName}))
+			framework.ExpectNoError(err)
 			ctx, cancel := watchtools.ContextWithOptionalTimeout(context.Background(), framework.StatefulPodTimeout)
 			defer cancel()
 			// we need to get UID from pod in any state and wait until stateful set controller will remove pod at least once

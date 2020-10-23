@@ -74,14 +74,11 @@ func (c *FakePods) List(opts v1.ListOptions) (result *corev1.PodList, err error)
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested pods.
-func (c *FakePods) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested pods.
+func (c *FakePods) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(podsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a pod and creates it.  Returns the server's representation of the pod, and an error, if there is any.

@@ -52,7 +52,7 @@ type ResourceQuotaInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ResourceQuota, error)
 	List(opts metav1.ListOptions) (*v1.ResourceQuotaList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ResourceQuota, err error)
 	ResourceQuotaExpansion
 }
@@ -226,7 +226,7 @@ func (c *resourceQuotas) List(opts metav1.ListOptions) (result *v1.ResourceQuota
 }
 
 // Watch returns a watch.Interface that watches the requested resourceQuotas.
-func (c *resourceQuotas) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *resourceQuotas) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -248,7 +248,7 @@ func (c *resourceQuotas) Watch(opts metav1.ListOptions) watch.AggregatedWatchInt
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a resourceQuota and creates it.  Returns the server's representation of the resourceQuota, and an error, if there is any.

@@ -74,14 +74,11 @@ func (c *FakeEvents) List(opts v1.ListOptions) (result *corev1.EventList, err er
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested events.
-func (c *FakeEvents) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested events.
+func (c *FakeEvents) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(eventsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a event and creates it.  Returns the server's representation of the event, and an error, if there is any.

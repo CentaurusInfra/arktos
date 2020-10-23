@@ -160,8 +160,7 @@ func TestQuota(t *testing.T) {
 }
 
 func waitForQuota(t *testing.T, quota *v1.ResourceQuota, clientset *clientset.Clientset) {
-	w := clientset.CoreV1().ResourceQuotasWithMultiTenancy(quota.Namespace, quota.Tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
-	err := w.GetErrors()
+	w, err := clientset.CoreV1().ResourceQuotasWithMultiTenancy(quota.Namespace, quota.Tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: quota.Name}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -221,8 +220,7 @@ func scale(t *testing.T, tenant string, namespace string, clientset *clientset.C
 		},
 	}
 
-	w := clientset.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
-	err := w.GetErrors()
+	w, err := clientset.CoreV1().ReplicationControllersWithMultiTenancy(namespace, tenant).Watch(metav1.SingleObject(metav1.ObjectMeta{Name: rc.Name}))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

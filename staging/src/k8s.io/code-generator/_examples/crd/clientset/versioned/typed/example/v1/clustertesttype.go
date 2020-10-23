@@ -52,7 +52,7 @@ type ClusterTestTypeInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ClusterTestType, error)
 	List(opts metav1.ListOptions) (*v1.ClusterTestTypeList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterTestType, err error)
 	GetScale(clusterTestTypeName string, options metav1.GetOptions) (*autoscaling.Scale, error)
 	UpdateScale(clusterTestTypeName string, scale *autoscaling.Scale) (*autoscaling.Scale, error)
@@ -216,7 +216,7 @@ func (c *clusterTestTypes) List(opts metav1.ListOptions) (result *v1.ClusterTest
 }
 
 // Watch returns a watch.Interface that watches the requested clusterTestTypes.
-func (c *clusterTestTypes) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *clusterTestTypes) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -236,7 +236,7 @@ func (c *clusterTestTypes) Watch(opts metav1.ListOptions) watch.AggregatedWatchI
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a clusterTestType and creates it.  Returns the server's representation of the clusterTestType, and an error, if there is any.

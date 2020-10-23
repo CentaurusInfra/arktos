@@ -127,12 +127,12 @@ func (r *Selector) Visit(fn VisitorFunc) error {
 	}
 }
 
-func (r *Selector) Watch(resourceVersion string) watch.AggregatedWatchInterface {
+func (r *Selector) Watch(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(r.Clients, r.Mapping).Watch(r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }
 
-func (r *Selector) WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface {
+func (r *Selector) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(r.Clients, r.Mapping).WatchWithMultiTenancy(r.Tenant, r.Namespace, r.ResourceMapping().GroupVersionKind.GroupVersion().String(),
 		&metav1.ListOptions{ResourceVersion: resourceVersion, LabelSelector: r.LabelSelector, FieldSelector: r.FieldSelector})
 }

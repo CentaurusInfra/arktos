@@ -108,7 +108,6 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"v1ListOptions":                   c.Universe.Type(v1ListOptions),
 		"version":                         namer.IC(g.groupVersion.Version.String()),
 		"watchInterface":                  c.Universe.Type(watchInterface),
-		"aggregatedWatchInterface":        c.Universe.Type(aggregatedWatchInterface),
 		"DefaultTenant":                   metav1.TenantSystem,
 	}
 
@@ -227,7 +226,7 @@ func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$, resyncP
 				}
 				return client.$.group$$.version$().$.type|publicPlural$().List(options)
 			},
-			WatchFunc: func(options $.v1ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
+			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
@@ -258,7 +257,7 @@ func NewFiltered$.type|public$InformerWithMultiTenancy(client $.clientSetInterfa
 				}
 				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options $.v1ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
+			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
@@ -289,7 +288,7 @@ func NewFiltered$.type|public$InformerWithMultiTenancy(client $.clientSetInterfa
 				}
 				return client.$.group$$.version$().$.type|publicPlural$WithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options $.v1ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
+			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

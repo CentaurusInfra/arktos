@@ -52,7 +52,7 @@ type DaemonSetInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta2.DaemonSet, error)
 	List(opts v1.ListOptions) (*v1beta2.DaemonSetList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.DaemonSet, err error)
 	DaemonSetExpansion
 }
@@ -226,7 +226,7 @@ func (c *daemonSets) List(opts v1.ListOptions) (result *v1beta2.DaemonSetList, e
 }
 
 // Watch returns a watch.Interface that watches the requested daemonSets.
-func (c *daemonSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *daemonSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -248,7 +248,7 @@ func (c *daemonSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a daemonSet and creates it.  Returns the server's representation of the daemonSet, and an error, if there is any.

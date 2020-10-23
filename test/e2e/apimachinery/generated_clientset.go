@@ -121,8 +121,7 @@ var _ = SIGDescribe("Generated clientset", func() {
 			LabelSelector:   selector,
 			ResourceVersion: pods.ListMeta.ResourceVersion,
 		}
-		w := podClient.Watch(options)
-		err = w.GetErrors()
+		w, err := podClient.Watch(options)
 		if err != nil {
 			framework.Failf("Failed to set up watch: %v", err)
 		}
@@ -238,8 +237,7 @@ var _ = SIGDescribe("Generated clientset", func() {
 			LabelSelector:   selector,
 			ResourceVersion: cronJobs.ListMeta.ResourceVersion,
 		}
-		w := cronJobClient.Watch(options)
-		err = w.GetErrors()
+		w, err := cronJobClient.Watch(options)
 		if err != nil {
 			framework.Failf("Failed to set up watch: %v", err)
 		}

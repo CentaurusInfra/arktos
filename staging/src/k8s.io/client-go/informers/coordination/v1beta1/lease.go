@@ -73,7 +73,7 @@ func NewFilteredLeaseInformerWithMultiTenancy(client kubernetes.Interface, names
 				}
 				return client.CoordinationV1beta1().LeasesWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

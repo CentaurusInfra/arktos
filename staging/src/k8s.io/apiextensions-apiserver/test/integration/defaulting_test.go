@@ -336,8 +336,7 @@ func testDefaulting(t *testing.T, watchCache bool) {
 	// The contents of the watch cache are seen by list with rv=0, which is tested by this test.
 	if !watchCache {
 		t.Logf("verify WATCH sees 'c' in both status and spec")
-		w := fooClient.Watch(metav1.ListOptions{ResourceVersion: initialResourceVersion})
-		err = w.GetErrors()
+		w, err := fooClient.Watch(metav1.ListOptions{ResourceVersion: initialResourceVersion})
 		if err != nil {
 			t.Fatal(err)
 		}

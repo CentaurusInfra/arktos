@@ -70,13 +70,10 @@ func (c *FakeRuntimeClasses) List(opts v1.ListOptions) (result *v1alpha1.Runtime
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested runtimeClasses.
-func (c *FakeRuntimeClasses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested runtimeClasses.
+func (c *FakeRuntimeClasses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(runtimeclassesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a runtimeClass and creates it.  Returns the server's representation of the runtimeClass, and an error, if there is any.

@@ -130,8 +130,7 @@ func TestChangeCRD(t *testing.T) {
 				case <-stopChan:
 					return
 				default:
-					w := noxuNamespacedResourceClient.Watch(metav1.ListOptions{})
-					err = w.GetErrors()
+					w, err := noxuNamespacedResourceClient.Watch(metav1.ListOptions{})
 					if err != nil {
 						t.Fatalf("unexpected error establishing watch: %v", err)
 					}

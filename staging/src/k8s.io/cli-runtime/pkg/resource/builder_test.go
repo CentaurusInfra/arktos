@@ -1500,7 +1500,7 @@ func TestListObjectWithDifferentVersions(t *testing.T) {
 
 func TestWatch(t *testing.T) {
 	_, svc := testData()
-	aw := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
+	w, err := newDefaultBuilderWith(fakeClientWith("", t, map[string]string{
 		"/namespaces/test/services?fieldSelector=metadata.name%3Dredis-master&resourceVersion=12&watch=true": watchBody(watch.Event{
 			Type:   watch.Added,
 			Object: &svc.Items[0],
@@ -1510,12 +1510,12 @@ func TestWatch(t *testing.T) {
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-service.yaml"}}).Flatten().
 		Do().Watch("12")
 
-	if aw.GetErrors() != nil {
-		t.Fatalf("unexpected error: %v", aw.GetErrors())
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
 	}
 
-	defer aw.Stop()
-	ch := aw.ResultChan()
+	defer w.Stop()
+	ch := w.ResultChan()
 	select {
 	case obj := <-ch:
 		if obj.Type != watch.Added {
@@ -1532,13 +1532,13 @@ func TestWatch(t *testing.T) {
 }
 
 func TestWatchMultipleError(t *testing.T) {
-	aw := newDefaultBuilder().
+	_, err := newDefaultBuilder().
 		NamespaceParam("test").DefaultNamespace().
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-controller.yaml"}}).Flatten().
 		FilenameParam(false, &FilenameOptions{Recursive: false, Filenames: []string{"../../artifacts/guestbook/redis-master-controller.yaml"}}).Flatten().
 		Do().Watch("")
 
-	if aw.GetErrors() == nil {
+	if err == nil {
 		t.Fatalf("unexpected non-error")
 	}
 }

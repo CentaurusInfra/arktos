@@ -51,7 +51,7 @@ type CustomResourceDefinitionInterface interface {
 	Delete(name string, options *v1.DeleteOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.CustomResourceDefinition, error)
 	List(opts v1.ListOptions) (*v1beta1.CustomResourceDefinitionList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.CustomResourceDefinition, err error)
 	CustomResourceDefinitionExpansion
 }
@@ -222,7 +222,7 @@ func (c *customResourceDefinitions) List(opts v1.ListOptions) (result *v1beta1.C
 }
 
 // Watch returns a watch.Interface that watches the requested customResourceDefinitions.
-func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *customResourceDefinitions) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -243,7 +243,7 @@ func (c *customResourceDefinitions) Watch(opts v1.ListOptions) watch.AggregatedW
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a customResourceDefinition and creates it.  Returns the server's representation of the customResourceDefinition, and an error, if there is any.

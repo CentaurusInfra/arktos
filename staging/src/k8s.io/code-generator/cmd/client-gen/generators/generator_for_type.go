@@ -128,39 +128,38 @@ func (g *genClientForType) GenerateType(c *generator.Context, t *types.Type, w i
 		})
 	}
 	m := map[string]interface{}{
-		"type":                     t,
-		"inputType":                t,
-		"resultType":               t,
-		"package":                  pkg,
-		"Package":                  namer.IC(pkg),
-		"namespaced":               !tags.NonNamespaced && !tags.NonTenanted,
-		"tenanted":                 tags.NonNamespaced && !tags.NonTenanted,
-		"clusterScoped":            tags.NonNamespaced && tags.NonTenanted,
-		"Group":                    namer.IC(g.group),
-		"subresource":              false,
-		"subresourcePath":          "",
-		"GroupGoName":              g.groupGoName,
-		"Version":                  namer.IC(g.version),
-		"klogInfof":                c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
-		"errorIsForbidden":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
-		"errorNewInternal":         c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "NewInternalError"}),
-		"revisionStringCompare":    c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/diff", Name: "RevisionStrIsNewer"}),
-		"fmtErrorf":                c.Universe.Type(types.Name{Package: "fmt", Name: "Errorf"}),
-		"stringsContains":          c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
-		"listLock":                 c.Universe.Type(types.Name{Package: "sync", Name: "Lock"}),
-		"listUnlock":               c.Universe.Type(types.Name{Package: "sync", Name: "Unlock"}),
-		"syncMutex":                c.Universe.Type(types.Name{Package: "sync", Name: "Mutex"}),
-		"syncWaitGroup":            c.Universe.Type(types.Name{Package: "sync", Name: "WaitGroup"}),
-		"DeleteOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
-		"ListOptions":              c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
-		"GetOptions":               c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
-		"PatchType":                c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
-		"watchInterface":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
-		"aggregatedWatchInterface": c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "AggregatedWatchInterface"}),
-		"aggregatedWatcher":        c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
-		"RESTClientInterface":      c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
-		"schemeParameterCodec":     c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
-		"DefaultTenant":            metav1.TenantSystem,
+		"type":                  t,
+		"inputType":             t,
+		"resultType":            t,
+		"package":               pkg,
+		"Package":               namer.IC(pkg),
+		"namespaced":            !tags.NonNamespaced && !tags.NonTenanted,
+		"tenanted":              tags.NonNamespaced && !tags.NonTenanted,
+		"clusterScoped":         tags.NonNamespaced && tags.NonTenanted,
+		"Group":                 namer.IC(g.group),
+		"subresource":           false,
+		"subresourcePath":       "",
+		"GroupGoName":           g.groupGoName,
+		"Version":               namer.IC(g.version),
+		"klogInfof":             c.Universe.Type(types.Name{Package: "k8s.io/klog", Name: "V"}),
+		"errorIsForbidden":      c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "IsForbidden"}),
+		"errorNewInternal":      c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/api/errors", Name: "NewInternalError"}),
+		"revisionStringCompare": c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/util/diff", Name: "RevisionStrIsNewer"}),
+		"fmtErrorf":             c.Universe.Type(types.Name{Package: "fmt", Name: "Errorf"}),
+		"stringsContains":       c.Universe.Type(types.Name{Package: "strings", Name: "Contains"}),
+		"listLock":              c.Universe.Type(types.Name{Package: "sync", Name: "Lock"}),
+		"listUnlock":            c.Universe.Type(types.Name{Package: "sync", Name: "Unlock"}),
+		"syncMutex":             c.Universe.Type(types.Name{Package: "sync", Name: "Mutex"}),
+		"syncWaitGroup":         c.Universe.Type(types.Name{Package: "sync", Name: "WaitGroup"}),
+		"DeleteOptions":         c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "DeleteOptions"}),
+		"ListOptions":           c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "ListOptions"}),
+		"GetOptions":            c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/apis/meta/v1", Name: "GetOptions"}),
+		"PatchType":             c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/types", Name: "PatchType"}),
+		"watchInterface":        c.Universe.Type(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "Interface"}),
+		"aggregatedWatcher":     c.Universe.Function(types.Name{Package: "k8s.io/apimachinery/pkg/watch", Name: "NewAggregatedWatcher"}),
+		"RESTClientInterface":   c.Universe.Type(types.Name{Package: "k8s.io/client-go/rest", Name: "Interface"}),
+		"schemeParameterCodec":  c.Universe.Variable(types.Name{Package: filepath.Join(g.clientsetPackage, "scheme"), Name: "ParameterCodec"}),
+		"DefaultTenant":         metav1.TenantSystem,
 	}
 
 	sw.Do(getterComment, m)
@@ -346,7 +345,7 @@ var defaultVerbTemplates = map[string]string{
 	"deleteCollection": `DeleteCollection(options *$.DeleteOptions|raw$, listOptions $.ListOptions|raw$) error`,
 	"get":              `Get(name string, options $.GetOptions|raw$) (*$.resultType|raw$, error)`,
 	"list":             `List(opts $.ListOptions|raw$) (*$.resultType|raw$List, error)`,
-	"watch":            `Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$`,
+	"watch":            `Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error)`,
 	"patch":            `Patch(name string, pt $.PatchType|raw$, data []byte, subresources ...string) (result *$.resultType|raw$, err error)`,
 }
 
@@ -843,7 +842,7 @@ func (c *$.type|privatePlural$) UpdateStatus($.type|private$ *$.type|raw$) (resu
 
 var watchTemplate = `
 // Watch returns a $.watchInterface|raw$ that watches the requested $.type|privatePlural$.
-func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatchInterface|raw$ {
+func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) ($.watchInterface|raw$, error) { 
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil{
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -866,7 +865,7 @@ func (c *$.type|privatePlural$) Watch(opts $.ListOptions|raw$) $.aggregatedWatch
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 `
 

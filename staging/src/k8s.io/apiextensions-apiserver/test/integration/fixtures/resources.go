@@ -331,10 +331,10 @@ func isWatchCachePrimed(crd *apiextensionsv1beta1.CustomResourceDefinition, dyna
 	// events for all versions here, we make sure that the head of the cache is passed those events and they will not being
 	// delivered to any future watch with resourceVersion=0.
 	for _, v := range versions {
-		noxuWatch := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
+		noxuWatch, err := resourceClientForVersion(crd, dynamicClientSet, ns, v).Watch(
 			metav1.ListOptions{ResourceVersion: createdInstance.GetResourceVersion()})
-		if noxuWatch.GetErrors() != nil {
-			return false, noxuWatch.GetErrors()
+		if err != nil {
+			return false, err
 		}
 		defer noxuWatch.Stop()
 

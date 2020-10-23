@@ -26,16 +26,16 @@ import (
 )
 
 type decoratedWatcher struct {
-	aw        watch.AggregatedWatchInterface
+	w         watch.Interface
 	decorator ObjectFunc
 	cancel    context.CancelFunc
 	resultCh  chan watch.Event
 }
 
-func newDecoratedWatcher(aw watch.AggregatedWatchInterface, decorator ObjectFunc) *decoratedWatcher {
+func newDecoratedWatcher(w watch.Interface, decorator ObjectFunc) *decoratedWatcher {
 	ctx, cancel := context.WithCancel(context.Background())
 	d := &decoratedWatcher{
-		aw:        aw,
+		w:         w,
 		decorator: decorator,
 		cancel:    cancel,
 		resultCh:  make(chan watch.Event),
@@ -49,7 +49,7 @@ func (d *decoratedWatcher) run(ctx context.Context) {
 	var ok bool
 	for {
 		select {
-		case recv, ok = <-d.aw.ResultChan():
+		case recv, ok = <-d.w.ResultChan():
 			// The underlying channel may be closed after timeout.
 			if !ok {
 				d.cancel()
@@ -75,7 +75,7 @@ func (d *decoratedWatcher) run(ctx context.Context) {
 			case <-ctx.Done():
 			}
 		case <-ctx.Done():
-			d.aw.Stop()
+			d.w.Stop()
 			close(d.resultCh)
 			return
 		}

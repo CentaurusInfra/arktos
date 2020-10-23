@@ -63,7 +63,7 @@ func NewFilteredCSIDriverInformer(client kubernetes.Interface, resyncPeriod time
 				}
 				return client.StorageV1beta1().CSIDrivers().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

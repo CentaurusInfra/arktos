@@ -74,14 +74,11 @@ func (c *FakeControllerRevisions) List(opts v1.ListOptions) (result *appsv1.Cont
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested controllerRevisions.
-func (c *FakeControllerRevisions) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested controllerRevisions.
+func (c *FakeControllerRevisions) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(controllerrevisionsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a controllerRevision and creates it.  Returns the server's representation of the controllerRevision, and an error, if there is any.

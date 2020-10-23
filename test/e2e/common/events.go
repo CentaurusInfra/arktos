@@ -52,7 +52,7 @@ func ObserveNodeUpdateAfterAction(f *framework.Framework, nodeName string, nodeP
 				ls, err := f.ClientSet.CoreV1().Nodes().List(options)
 				return ls, err
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				// Signal parent goroutine that watching has begun.
 				defer informerStartedGuard.Do(func() { close(informerStartedChan) })
 				options.FieldSelector = nodeSelector.String()
@@ -108,7 +108,7 @@ func ObserveEventAfterAction(f *framework.Framework, eventPredicate func(*v1.Eve
 				ls, err := f.ClientSet.CoreV1().Events(f.Namespace.Name).List(options)
 				return ls, err
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				// Signal parent goroutine that watching has begun.
 				defer informerStartedGuard.Do(func() { close(informerStartedChan) })
 				return f.ClientSet.CoreV1().Events(f.Namespace.Name).Watch(options)

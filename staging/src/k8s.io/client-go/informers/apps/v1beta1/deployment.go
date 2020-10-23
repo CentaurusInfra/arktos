@@ -73,7 +73,7 @@ func NewFilteredDeploymentInformerWithMultiTenancy(client kubernetes.Interface, 
 				}
 				return client.AppsV1beta1().DeploymentsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

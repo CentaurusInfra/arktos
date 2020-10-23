@@ -44,7 +44,7 @@ type NetworkInterface interface {
 	UpdateStatus(*v1.Network) (*v1.Network, error)
 	Get(name string, options metav1.GetOptions) (*v1.Network, error)
 	List(opts metav1.ListOptions) (*v1.NetworkList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	NetworkExpansion
 }
 
@@ -134,7 +134,7 @@ func (c *networks) List(opts metav1.ListOptions) (result *v1.NetworkList, err er
 }
 
 // Watch returns a watch.Interface that watches the requested networks.
-func (c *networks) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *networks) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -155,7 +155,7 @@ func (c *networks) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a network and creates it.  Returns the server's representation of the network, and an error, if there is any.

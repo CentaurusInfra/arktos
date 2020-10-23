@@ -49,7 +49,7 @@ type TenantInterface interface {
 	Delete(name string, options *metav1.DeleteOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.Tenant, error)
 	List(opts metav1.ListOptions) (*v1.TenantList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.Tenant, err error)
 	TenantExpansion
 }
@@ -210,7 +210,7 @@ func (c *tenants) List(opts metav1.ListOptions) (result *v1.TenantList, err erro
 }
 
 // Watch returns a watch.Interface that watches the requested tenants.
-func (c *tenants) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *tenants) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -230,7 +230,7 @@ func (c *tenants) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface 
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a tenant and creates it.  Returns the server's representation of the tenant, and an error, if there is any.

@@ -548,14 +548,14 @@ func TestWatchOnlyGetDataFromOneParition(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient1 := clientset1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w1 := rsClient1.Watch(metav1.ListOptions{})
+	w1, err := rsClient1.Watch(metav1.ListOptions{})
 	defer w1.Stop()
-	assert.Nil(t, w1.GetErrors())
+	assert.Nil(t, err)
 
 	rsClient2 := clientset2.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w2 := rsClient2.Watch(metav1.ListOptions{})
+	w2, err := rsClient2.Watch(metav1.ListOptions{})
 	defer w2.Stop()
-	assert.Nil(t, w2.GetErrors())
+	assert.Nil(t, err)
 
 	// create rs via 2 different api servers
 	rs1 := createRS(t, clientset1, tenant1, namespace, "rs1", 1)
@@ -666,9 +666,9 @@ func TestPartitionWithLeftUnbounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w := rsClient.Watch(metav1.ListOptions{})
+	w, err := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, w.GetErrors())
+	assert.Nil(t, err)
 
 	rs := createRS(t, clientset, tenant1, namespace, "rs1", 1)
 	assert.NotNil(t, rs)
@@ -745,9 +745,9 @@ func TestPartitionRightUnbounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w := rsClient.Watch(metav1.ListOptions{})
+	w, err := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, w.GetErrors())
+	assert.Nil(t, err)
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
@@ -822,9 +822,9 @@ func TestPartitionLeftRightBounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w := rsClient.Watch(metav1.ListOptions{})
+	w, err := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, w.GetErrors())
+	assert.Nil(t, err)
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
@@ -894,9 +894,9 @@ func TestPartitionUnBounded(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient := clientset.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant2)
-	w := rsClient.Watch(metav1.ListOptions{})
+	w, err := rsClient.Watch(metav1.ListOptions{})
 	defer w.Stop()
-	assert.Nil(t, w.GetErrors())
+	assert.Nil(t, err)
 
 	rs := createRS(t, clientset, tenant2, namespace, "rs2", 1)
 	assert.NotNil(t, rs)
@@ -985,9 +985,9 @@ func testDataPartitionReset(t *testing.T) {
 
 	namespace := "ns1"
 	rsClient1 := clientSet.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w1 := rsClient1.Watch(metav1.ListOptions{})
+	w1, err := rsClient1.Watch(metav1.ListOptions{})
 	defer w1.Stop()
-	assert.Nil(t, w1.GetErrors())
+	assert.Nil(t, err)
 
 	// create rs with tenant in data partition
 	rs1 := createRS(t, clientSet, tenant1, namespace, "rs1", 1)
@@ -1110,9 +1110,9 @@ func testOneApiServerCluster(t *testing.T) {
 	// 3. create replicaset
 	namespace := "ns1"
 	rsClient1 := clientSet1.AppsV1().ReplicaSetsWithMultiTenancy(namespace, tenant1)
-	w1 := rsClient1.Watch(metav1.ListOptions{})
+	w1, err := rsClient1.Watch(metav1.ListOptions{})
 	defer w1.Stop()
-	assert.Nil(t, w1.GetErrors())
+	assert.Nil(t, err)
 
 	// create rs with tenant in data partition
 	rs1 := createRS(t, clientSet1, tenant1, namespace, "rs1", 1)

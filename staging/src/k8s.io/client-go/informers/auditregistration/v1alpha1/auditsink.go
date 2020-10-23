@@ -72,7 +72,7 @@ func NewFilteredAuditSinkInformerWithMultiTenancy(client kubernetes.Interface, r
 				}
 				return client.AuditregistrationV1alpha1().AuditSinksWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

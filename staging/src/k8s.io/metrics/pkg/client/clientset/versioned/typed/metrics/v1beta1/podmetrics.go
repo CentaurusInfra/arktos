@@ -46,7 +46,7 @@ type PodMetricsesGetter interface {
 type PodMetricsInterface interface {
 	Get(name string, options v1.GetOptions) (*v1beta1.PodMetrics, error)
 	List(opts v1.ListOptions) (*v1beta1.PodMetricsList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	PodMetricsExpansion
 }
 
@@ -219,7 +219,7 @@ func (c *podMetricses) List(opts v1.ListOptions) (result *v1beta1.PodMetricsList
 }
 
 // Watch returns a watch.Interface that watches the requested podMetricses.
-func (c *podMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *podMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -241,5 +241,5 @@ func (c *podMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }

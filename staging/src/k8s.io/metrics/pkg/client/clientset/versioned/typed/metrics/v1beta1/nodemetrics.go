@@ -45,7 +45,7 @@ type NodeMetricsesGetter interface {
 type NodeMetricsInterface interface {
 	Get(name string, options v1.GetOptions) (*v1beta1.NodeMetrics, error)
 	List(opts v1.ListOptions) (*v1beta1.NodeMetricsList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	NodeMetricsExpansion
 }
 
@@ -205,7 +205,7 @@ func (c *nodeMetricses) List(opts v1.ListOptions) (result *v1beta1.NodeMetricsLi
 }
 
 // Watch returns a watch.Interface that watches the requested nodeMetricses.
-func (c *nodeMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *nodeMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -225,5 +225,5 @@ func (c *nodeMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterfac
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }

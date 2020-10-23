@@ -51,7 +51,7 @@ type ClusterRoleInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.ClusterRole, error)
 	List(opts metav1.ListOptions) (*v1.ClusterRoleList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ClusterRole, err error)
 	ClusterRoleExpansion
 }
@@ -222,7 +222,7 @@ func (c *clusterRoles) List(opts metav1.ListOptions) (result *v1.ClusterRoleList
 }
 
 // Watch returns a watch.Interface that watches the requested clusterRoles.
-func (c *clusterRoles) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *clusterRoles) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -243,7 +243,7 @@ func (c *clusterRoles) Watch(opts metav1.ListOptions) watch.AggregatedWatchInter
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a clusterRole and creates it.  Returns the server's representation of the clusterRole, and an error, if there is any.

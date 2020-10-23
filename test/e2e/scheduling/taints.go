@@ -125,7 +125,7 @@ func createTestController(cs clientset.Interface, observedDeletions chan string,
 				obj, err := cs.CoreV1().Pods(ns).List(options)
 				return runtime.Object(obj), err
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.LabelSelector = labels.SelectorFromSet(labels.Set{"group": podLabel}).String()
 				return cs.CoreV1().Pods(ns).Watch(options)
 			},
