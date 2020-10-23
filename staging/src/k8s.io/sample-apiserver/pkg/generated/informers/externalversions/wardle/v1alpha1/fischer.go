@@ -63,7 +63,7 @@ func NewFilteredFischerInformer(client versioned.Interface, resyncPeriod time.Du
 				}
 				return client.WardleV1alpha1().Fischers().List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

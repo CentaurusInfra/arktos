@@ -51,7 +51,7 @@ type NetworkPolicyInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.NetworkPolicy, error)
 	List(opts metav1.ListOptions) (*v1.NetworkPolicyList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.NetworkPolicy, err error)
 	NetworkPolicyExpansion
 }
@@ -225,7 +225,7 @@ func (c *networkPolicies) List(opts metav1.ListOptions) (result *v1.NetworkPolic
 }
 
 // Watch returns a watch.Interface that watches the requested networkPolicies.
-func (c *networkPolicies) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *networkPolicies) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -247,7 +247,7 @@ func (c *networkPolicies) Watch(opts metav1.ListOptions) watch.AggregatedWatchIn
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a networkPolicy and creates it.  Returns the server's representation of the networkPolicy, and an error, if there is any.

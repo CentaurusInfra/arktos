@@ -74,14 +74,11 @@ func (c *FakeServiceAccounts) List(opts v1.ListOptions) (result *corev1.ServiceA
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested serviceAccounts.
-func (c *FakeServiceAccounts) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested serviceAccounts.
+func (c *FakeServiceAccounts) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(serviceaccountsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a serviceAccount and creates it.  Returns the server's representation of the serviceAccount, and an error, if there is any.

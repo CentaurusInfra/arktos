@@ -74,14 +74,11 @@ func (c *FakeRoles) List(opts v1.ListOptions) (result *rbacv1.RoleList, err erro
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested roles.
-func (c *FakeRoles) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested roles.
+func (c *FakeRoles) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(rolesResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a role and creates it.  Returns the server's representation of the role, and an error, if there is any.

@@ -72,7 +72,7 @@ func NewFilteredStorageClassInformerWithMultiTenancy(client kubernetes.Interface
 				}
 				return client.StorageV1beta1().StorageClassesWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

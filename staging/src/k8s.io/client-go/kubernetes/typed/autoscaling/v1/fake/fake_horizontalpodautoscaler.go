@@ -74,14 +74,11 @@ func (c *FakeHorizontalPodAutoscalers) List(opts v1.ListOptions) (result *autosc
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested horizontalPodAutoscalers.
-func (c *FakeHorizontalPodAutoscalers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested horizontalPodAutoscalers.
+func (c *FakeHorizontalPodAutoscalers) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(horizontalpodautoscalersResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a horizontalPodAutoscaler and creates it.  Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.

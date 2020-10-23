@@ -74,14 +74,11 @@ func (c *FakeConfigMaps) List(opts v1.ListOptions) (result *corev1.ConfigMapList
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested configMaps.
-func (c *FakeConfigMaps) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested configMaps.
+func (c *FakeConfigMaps) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(configmapsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a configMap and creates it.  Returns the server's representation of the configMap, and an error, if there is any.

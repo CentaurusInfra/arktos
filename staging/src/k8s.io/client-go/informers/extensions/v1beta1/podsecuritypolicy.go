@@ -72,7 +72,7 @@ func NewFilteredPodSecurityPolicyInformerWithMultiTenancy(client kubernetes.Inte
 				}
 				return client.ExtensionsV1beta1().PodSecurityPoliciesWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

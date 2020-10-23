@@ -73,12 +73,9 @@ func (c *FakePodMetricses) List(opts v1.ListOptions) (result *v1beta1.PodMetrics
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested podMetricses.
-func (c *FakePodMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested podMetricses.
+func (c *FakePodMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(podmetricsesResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }

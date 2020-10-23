@@ -50,7 +50,7 @@ type FischerInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Fischer, error)
 	List(opts v1.ListOptions) (*v1alpha1.FischerList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Fischer, err error)
 	FischerExpansion
 }
@@ -211,7 +211,7 @@ func (c *fischers) List(opts v1.ListOptions) (result *v1alpha1.FischerList, err 
 }
 
 // Watch returns a watch.Interface that watches the requested fischers.
-func (c *fischers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *fischers) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -231,7 +231,7 @@ func (c *fischers) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a fischer and creates it.  Returns the server's representation of the fischer, and an error, if there is any.

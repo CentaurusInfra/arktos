@@ -52,7 +52,7 @@ type FooInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.Foo, error)
 	List(opts v1.ListOptions) (*v1alpha1.FooList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.Foo, err error)
 	FooExpansion
 }
@@ -226,7 +226,7 @@ func (c *foos) List(opts v1.ListOptions) (result *v1alpha1.FooList, err error) {
 }
 
 // Watch returns a watch.Interface that watches the requested foos.
-func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *foos) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -248,7 +248,7 @@ func (c *foos) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a foo and creates it.  Returns the server's representation of the foo, and an error, if there is any.

@@ -73,7 +73,7 @@ func NewFilteredJobInformerWithMultiTenancy(client kubernetes.Interface, namespa
 				}
 				return client.BatchV1().JobsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

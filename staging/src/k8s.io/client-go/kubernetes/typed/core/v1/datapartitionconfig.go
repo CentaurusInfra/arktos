@@ -49,7 +49,7 @@ type DataPartitionConfigInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.DataPartitionConfig, error)
 	List(opts metav1.ListOptions) (*v1.DataPartitionConfigList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.DataPartitionConfig, err error)
 	DataPartitionConfigExpansion
 }
@@ -210,7 +210,7 @@ func (c *dataPartitionConfigs) List(opts metav1.ListOptions) (result *v1.DataPar
 }
 
 // Watch returns a watch.Interface that watches the requested dataPartitionConfigs.
-func (c *dataPartitionConfigs) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *dataPartitionConfigs) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -230,7 +230,7 @@ func (c *dataPartitionConfigs) Watch(opts metav1.ListOptions) watch.AggregatedWa
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a dataPartitionConfig and creates it.  Returns the server's representation of the dataPartitionConfig, and an error, if there is any.

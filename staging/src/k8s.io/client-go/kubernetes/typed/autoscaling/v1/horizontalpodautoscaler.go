@@ -52,7 +52,7 @@ type HorizontalPodAutoscalerInterface interface {
 	DeleteCollection(options *metav1.DeleteOptions, listOptions metav1.ListOptions) error
 	Get(name string, options metav1.GetOptions) (*v1.HorizontalPodAutoscaler, error)
 	List(opts metav1.ListOptions) (*v1.HorizontalPodAutoscalerList, error)
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.HorizontalPodAutoscaler, err error)
 	HorizontalPodAutoscalerExpansion
 }
@@ -226,7 +226,7 @@ func (c *horizontalPodAutoscalers) List(opts metav1.ListOptions) (result *v1.Hor
 }
 
 // Watch returns a watch.Interface that watches the requested horizontalPodAutoscalers.
-func (c *horizontalPodAutoscalers) Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface {
+func (c *horizontalPodAutoscalers) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -248,7 +248,7 @@ func (c *horizontalPodAutoscalers) Watch(opts metav1.ListOptions) watch.Aggregat
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a horizontalPodAutoscaler and creates it.  Returns the server's representation of the horizontalPodAutoscaler, and an error, if there is any.

@@ -74,14 +74,11 @@ func (c *FakeNetworkPolicies) List(opts v1.ListOptions) (result *v1beta1.Network
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested networkPolicies.
-func (c *FakeNetworkPolicies) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested networkPolicies.
+func (c *FakeNetworkPolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(networkpoliciesResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a networkPolicy and creates it.  Returns the server's representation of the networkPolicy, and an error, if there is any.

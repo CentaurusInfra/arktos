@@ -73,7 +73,7 @@ func NewFilteredPodDisruptionBudgetInformerWithMultiTenancy(client kubernetes.In
 				}
 				return client.PolicyV1beta1().PodDisruptionBudgetsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

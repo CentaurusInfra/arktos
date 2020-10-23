@@ -74,14 +74,11 @@ func (c *FakePersistentVolumeClaims) List(opts v1.ListOptions) (result *corev1.P
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested persistentVolumeClaims.
-func (c *FakePersistentVolumeClaims) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested persistentVolumeClaims.
+func (c *FakePersistentVolumeClaims) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(persistentvolumeclaimsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a persistentVolumeClaim and creates it.  Returns the server's representation of the persistentVolumeClaim, and an error, if there is any.

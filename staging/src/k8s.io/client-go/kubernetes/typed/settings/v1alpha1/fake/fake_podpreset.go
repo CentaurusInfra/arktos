@@ -74,14 +74,11 @@ func (c *FakePodPresets) List(opts v1.ListOptions) (result *v1alpha1.PodPresetLi
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested podPresets.
-func (c *FakePodPresets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested podPresets.
+func (c *FakePodPresets) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(podpresetsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a podPreset and creates it.  Returns the server's representation of the podPreset, and an error, if there is any.

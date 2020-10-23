@@ -51,7 +51,7 @@ type PodSecurityPolicyInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.PodSecurityPolicy, error)
 	List(opts v1.ListOptions) (*v1beta1.PodSecurityPolicyList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.PodSecurityPolicy, err error)
 	PodSecurityPolicyExpansion
 }
@@ -222,7 +222,7 @@ func (c *podSecurityPolicies) List(opts v1.ListOptions) (result *v1beta1.PodSecu
 }
 
 // Watch returns a watch.Interface that watches the requested podSecurityPolicies.
-func (c *podSecurityPolicies) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *podSecurityPolicies) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -243,7 +243,7 @@ func (c *podSecurityPolicies) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a podSecurityPolicy and creates it.  Returns the server's representation of the podSecurityPolicy, and an error, if there is any.

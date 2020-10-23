@@ -69,11 +69,8 @@ func (c *FakeNodeMetricses) List(opts v1.ListOptions) (result *v1alpha1.NodeMetr
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested nodeMetricses.
-func (c *FakeNodeMetricses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested nodeMetricses.
+func (c *FakeNodeMetricses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewRootWatchAction(nodemetricsesResource, opts))
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }

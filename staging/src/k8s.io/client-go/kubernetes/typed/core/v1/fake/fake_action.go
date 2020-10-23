@@ -73,14 +73,11 @@ func (c *FakeActions) List(opts v1.ListOptions) (result *corev1.ActionList, err 
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested actions.
-func (c *FakeActions) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested actions.
+func (c *FakeActions) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(actionsResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a action and creates it.  Returns the server's representation of the action, and an error, if there is any.

@@ -73,7 +73,7 @@ func NewFilteredStatefulSetInformerWithMultiTenancy(client kubernetes.Interface,
 				}
 				return client.AppsV1beta2().StatefulSetsWithMultiTenancy(namespace, tenant).List(options)
 			},
-			WatchFunc: func(options v1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

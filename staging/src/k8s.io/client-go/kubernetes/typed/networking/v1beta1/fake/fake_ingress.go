@@ -74,14 +74,11 @@ func (c *FakeIngresses) List(opts v1.ListOptions) (result *v1beta1.IngressList, 
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested ingresses.
-func (c *FakeIngresses) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested ingresses.
+func (c *FakeIngresses) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewWatchActionWithMultiTenancy(ingressesResource, c.ns, opts, c.te))
 
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a ingress and creates it.  Returns the server's representation of the ingress, and an error, if there is any.

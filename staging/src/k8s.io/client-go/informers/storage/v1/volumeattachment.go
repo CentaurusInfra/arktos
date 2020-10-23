@@ -72,7 +72,7 @@ func NewFilteredVolumeAttachmentInformerWithMultiTenancy(client kubernetes.Inter
 				}
 				return client.StorageV1().VolumeAttachmentsWithMultiTenancy(tenant).List(options)
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}

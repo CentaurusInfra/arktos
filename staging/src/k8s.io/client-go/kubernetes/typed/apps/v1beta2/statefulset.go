@@ -52,7 +52,7 @@ type StatefulSetInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta2.StatefulSet, error)
 	List(opts v1.ListOptions) (*v1beta2.StatefulSetList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta2.StatefulSet, err error)
 	GetScale(statefulSetName string, options v1.GetOptions) (*v1beta2.Scale, error)
 	UpdateScale(statefulSetName string, scale *v1beta2.Scale) (*v1beta2.Scale, error)
@@ -229,7 +229,7 @@ func (c *statefulSets) List(opts v1.ListOptions) (result *v1beta2.StatefulSetLis
 }
 
 // Watch returns a watch.Interface that watches the requested statefulSets.
-func (c *statefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *statefulSets) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -251,7 +251,7 @@ func (c *statefulSets) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a statefulSet and creates it.  Returns the server's representation of the statefulSet, and an error, if there is any.

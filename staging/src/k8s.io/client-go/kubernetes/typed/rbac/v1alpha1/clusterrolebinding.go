@@ -51,7 +51,7 @@ type ClusterRoleBindingInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1alpha1.ClusterRoleBinding, error)
 	List(opts v1.ListOptions) (*v1alpha1.ClusterRoleBindingList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1alpha1.ClusterRoleBinding, err error)
 	ClusterRoleBindingExpansion
 }
@@ -222,7 +222,7 @@ func (c *clusterRoleBindings) List(opts v1.ListOptions) (result *v1alpha1.Cluste
 }
 
 // Watch returns a watch.Interface that watches the requested clusterRoleBindings.
-func (c *clusterRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *clusterRoleBindings) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -243,7 +243,7 @@ func (c *clusterRoleBindings) Watch(opts v1.ListOptions) watch.AggregatedWatchIn
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a clusterRoleBinding and creates it.  Returns the server's representation of the clusterRoleBinding, and an error, if there is any.

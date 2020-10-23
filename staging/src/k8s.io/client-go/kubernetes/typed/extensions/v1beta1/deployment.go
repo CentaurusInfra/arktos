@@ -52,7 +52,7 @@ type DeploymentInterface interface {
 	DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error
 	Get(name string, options v1.GetOptions) (*v1beta1.Deployment, error)
 	List(opts v1.ListOptions) (*v1beta1.DeploymentList, error)
-	Watch(opts v1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts v1.ListOptions) (watch.Interface, error)
 	Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1beta1.Deployment, err error)
 	GetScale(deploymentName string, options v1.GetOptions) (*v1beta1.Scale, error)
 	UpdateScale(deploymentName string, scale *v1beta1.Scale) (*v1beta1.Scale, error)
@@ -229,7 +229,7 @@ func (c *deployments) List(opts v1.ListOptions) (result *v1beta1.DeploymentList,
 }
 
 // Watch returns a watch.Interface that watches the requested deployments.
-func (c *deployments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
+func (c *deployments) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	var timeout time.Duration
 	if opts.TimeoutSeconds != nil {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
@@ -251,7 +251,7 @@ func (c *deployments) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface 
 		}
 		aggWatch.AddWatchInterface(watcher, err)
 	}
-	return aggWatch
+	return aggWatch, aggWatch.GetErrors()
 }
 
 // Create takes the representation of a deployment and creates it.  Returns the server's representation of the deployment, and an error, if there is any.
