@@ -664,16 +664,16 @@ func TestWatchHTTPDynamicClientErrors(t *testing.T) {
 	}
 	client := dynamic.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig)).Resource(newGroupVersion.WithResource("simple"))
 
-	ag := client.Watch(metav1.ListOptions{})
-	if ag.GetErrors() != nil {
-		t.Fatal(ag.GetErrors())
+	w, err := client.Watch(metav1.ListOptions{})
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	errStatus := errors.NewInternalError(fmt.Errorf("we got an error")).Status()
 	watcher.Error(&errStatus)
 	watcher.Stop()
 
-	got := <-ag.ResultChan()
+	got := <-w.ResultChan()
 	if got.Type != watch.Error {
 		t.Fatalf("unexpected watch type: %#v", got)
 	}

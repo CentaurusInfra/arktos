@@ -239,7 +239,8 @@ func TestProxyWatcherInAggegatedWatch(t *testing.T) {
 
 	ch := make(chan Event, len(events))
 	w := NewProxyWatcher(ch)
-	aw := NewAggregatedWatcherWithOneWatch(w, nil)
+	aw := NewAggregatedWatcher()
+	aw.AddWatchInterface(w, nil)
 
 	var wg sync.WaitGroup
 	wg.Add(len(events))

@@ -369,8 +369,8 @@ func testDeploymentCleanUpPolicy(f *framework.Framework) {
 	}
 	stopCh := make(chan struct{})
 	defer close(stopCh)
-	w := c.CoreV1().Pods(ns).Watch(options)
-	framework.ExpectNoError(w.GetErrors())
+	w, err := c.CoreV1().Pods(ns).Watch(options)
+	framework.ExpectNoError(err)
 	go func() {
 		// There should be only one pod being created, which is the pod with the redis image.
 		// The old RS shouldn't create new pod when deployment controller adding pod template hash label to its selector.

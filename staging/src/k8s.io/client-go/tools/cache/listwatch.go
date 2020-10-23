@@ -38,7 +38,7 @@ type Lister interface {
 // Watcher is any object that knows how to start a watch on a resource.
 type Watcher interface {
 	// Watch should begin a watch at the specified version.
-	Watch(options metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(options metav1.ListOptions) (watch.Interface, error)
 }
 
 // Updater is to set the search conditions of resources for listers and watchers
@@ -58,7 +58,7 @@ type ListerWatcher interface {
 type ListFunc func(options metav1.ListOptions) (runtime.Object, error)
 
 // WatchFunc knows how to watch resources
-type WatchFunc func(options metav1.ListOptions) watch.AggregatedWatchInterface
+type WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
 
 // UpdateFunc knows how to update search resource conditions
 type UpdateFunc func(options metav1.ListOptions)
@@ -123,7 +123,7 @@ func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, n
 			Do().
 			Get()
 	}
-	watchFunc := func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.Watch = true
 		optionsModifier(&options)
 
@@ -137,7 +137,7 @@ func NewFilteredListWatchFromClientWithMultiTenancy(c Getter, resource string, n
 				Watch()
 			watchClient.AddWatchInterface(watcher, err)
 		}
-		return watchClient
+		return watchClient, watchClient.GetErrors()
 	}
 	return &ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}
 }
@@ -151,7 +151,7 @@ func (lw *ListWatch) List(options metav1.ListOptions) (runtime.Object, error) {
 }
 
 // Watch a set of apiserver resources
-func (lw *ListWatch) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+func (lw *ListWatch) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return lw.WatchFunc(lw.appendOptions(options))
 }
 

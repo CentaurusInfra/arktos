@@ -387,13 +387,13 @@ func TestWaitUntilFreshAndListTimeout(t *testing.T) {
 
 type testLW struct {
 	ListFunc  func(options metav1.ListOptions) (runtime.Object, error)
-	WatchFunc func(options metav1.ListOptions) watch.AggregatedWatchInterface
+	WatchFunc func(options metav1.ListOptions) (watch.Interface, error)
 }
 
 func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
 	return t.ListFunc(options)
 }
-func (t *testLW) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+func (t *testLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return t.WatchFunc(options)
 }
 func (t *testLW) Update(options metav1.ListOptions) {
@@ -413,11 +413,10 @@ func TestReflectorForWatchCache(t *testing.T) {
 	}
 
 	lw := &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			fw := watch.NewFake()
-			fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
 			go fw.Stop()
-			return fws
+			return fw, nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "10"}}, nil

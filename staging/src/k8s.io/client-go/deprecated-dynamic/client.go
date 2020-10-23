@@ -58,7 +58,7 @@ type ResourceInterface interface {
 	// Update updates the provided resource.
 	Update(obj *unstructured.Unstructured) (*unstructured.Unstructured, error)
 	// Watch returns a watch.Interface that watches the resource.
-	Watch(opts metav1.ListOptions) watch.AggregatedWatchInterface
+	Watch(opts metav1.ListOptions) (watch.Interface, error)
 	// Patch patches the provided resource.
 	Patch(name string, pt types.PatchType, data []byte) (*unstructured.Unstructured, error)
 }

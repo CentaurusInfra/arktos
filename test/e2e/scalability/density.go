@@ -807,7 +807,7 @@ var _ = SIGDescribe("Density", func() {
 								obj, err := c.CoreV1().Pods(nsName).List(options)
 								return runtime.Object(obj), err
 							},
-							WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+							WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 								options.LabelSelector = labels.SelectorFromSet(labels.Set{"type": additionalPodsPrefix}).String()
 								return c.CoreV1().Pods(nsName).Watch(options)
 							},

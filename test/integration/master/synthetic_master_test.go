@@ -810,8 +810,7 @@ func TestUpdateNodeObjects(t *testing.T) {
 
 	for k := 0; k < watchers; k++ {
 		go func(lister int) {
-			w := c.Nodes().Watch(metav1.ListOptions{})
-			err := w.GetErrors()
+			w, err := c.Nodes().Watch(metav1.ListOptions{})
 			if err != nil {
 				fmt.Printf("[watch:%d] error: %v", lister, err)
 				return

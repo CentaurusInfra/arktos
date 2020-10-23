@@ -235,7 +235,7 @@ func TestNewInformerWatcher(t *testing.T) {
 				ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 					return fake.CoreV1().Secrets("").List(options)
 				},
-				WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					return fake.CoreV1().Secrets("").Watch(options)
 				},
 			}

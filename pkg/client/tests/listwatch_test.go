@@ -186,15 +186,15 @@ func TestListWatchesCanWatch(t *testing.T) {
 
 type lw struct {
 	list  runtime.Object
-	watch watch.AggregatedWatchInterface
+	watch watch.Interface
 }
 
 func (w lw) List(options metav1.ListOptions) (runtime.Object, error) {
 	return w.list, nil
 }
 
-func (w lw) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
-	return w.watch
+func (w lw) Watch(options metav1.ListOptions) (watch.Interface, error) {
+	return w.watch, nil
 }
 
 func (w lw) Update(options metav1.ListOptions) {

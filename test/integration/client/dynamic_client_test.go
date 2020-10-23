@@ -163,13 +163,12 @@ func TestDynamicClientWatch(t *testing.T) {
 		t.Logf("Created event %#v", got.ObjectMeta)
 	}
 
-	w := dynamicClient.Resource(resource).Namespace("default").Watch(metav1.ListOptions{
+	w, err := dynamicClient.Resource(resource).Namespace("default").Watch(metav1.ListOptions{
 		ResourceVersion: rv1,
 		Watch:           true,
 		FieldSelector:   fields.OneTermEqualSelector("metadata.name", "event-9").String(),
 	})
 
-	err = w.GetErrors()
 	if err != nil {
 		t.Fatalf("Failed watch: %v", err)
 	}

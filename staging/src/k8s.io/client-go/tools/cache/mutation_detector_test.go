@@ -31,10 +31,9 @@ import (
 
 func TestMutationDetector(t *testing.T) {
 	fakeWatch := watch.NewFake()
-	aggWatch := watch.NewAggregatedWatcherWithOneWatch(fakeWatch, nil)
 	lw := &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
-			return aggWatch
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			return fakeWatch, nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{}, nil

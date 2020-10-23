@@ -1204,30 +1204,29 @@ func (e *Store) Watch(ctx context.Context, options *metainternalversion.ListOpti
 func (e *Store) WatchPredicate(ctx context.Context, p storage.SelectionPredicate, resourceVersion string) (watch.Interface, error) {
 	if name, ok := p.MatchesSingle(); ok {
 		if key, err := e.KeyFunc(ctx, name); err == nil {
-			aw := e.Storage.Watch(ctx, key, resourceVersion, p)
-			return e.convertToDecoratedWatcher(aw)
+			w, err := e.Storage.Watch(ctx, key, resourceVersion, p)
+			if err != nil {
+				return nil, err
+			}
+			if e.Decorator != nil {
+				return newDecoratedWatcher(w, e.Decorator), nil
+			}
+			return w, nil
 		}
 		// if we cannot extract a key based on the current context, the
 		// optimization is skipped
 	}
 
-	aw := e.Storage.WatchList(ctx, e.KeyRootFunc(ctx), resourceVersion, p)
-	return e.convertToDecoratedWatcher(aw)
-}
-
-// Convert watchers to decorated watcher
-func (e *Store) convertToDecoratedWatcher(aw watch.AggregatedWatchInterface) (watch.Interface, error) {
-	err := aw.GetErrors()
+	w, err := e.Storage.WatchList(ctx, e.KeyRootFunc(ctx), resourceVersion, p)
 	if err != nil {
-		aw.Stop()
 		return nil, err
 	}
 
 	if e.Decorator != nil {
-		return newDecoratedWatcher(aw, e.Decorator), nil
+		return newDecoratedWatcher(w, e.Decorator), nil
 	}
 
-	return aw, nil
+	return w, nil
 }
 
 // calculateTTL is a helper for retrieving the updated TTL for an object or

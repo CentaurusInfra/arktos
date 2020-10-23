@@ -242,7 +242,7 @@ var _ = framework.KubeDescribe("Pods", func() {
 				}
 				return podList, err
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				options.LabelSelector = selector.String()
 				return podClient.Watch(options)
 			},

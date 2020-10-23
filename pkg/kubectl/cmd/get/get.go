@@ -721,9 +721,9 @@ func (o *GetOptions) watch(f cmdutil.Factory, cmd *cobra.Command, args []string)
 	}
 
 	// print watched changes
-	aw := r.WatchWithMultiTenancy(rv)
-	if aw.GetErrors() != nil {
-		return aw.GetErrors()
+	aw, err := r.WatchWithMultiTenancy(rv)
+	if err != nil {
+		return err
 	}
 
 	first := true

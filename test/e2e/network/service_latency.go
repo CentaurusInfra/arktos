@@ -297,7 +297,7 @@ func startEndpointWatcher(f *framework.Framework, q *endpointQueries) {
 				obj, err := f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).List(options)
 				return runtime.Object(obj), err
 			},
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				return f.ClientSet.CoreV1().Endpoints(f.Namespace.Name).Watch(options)
 			},
 		},

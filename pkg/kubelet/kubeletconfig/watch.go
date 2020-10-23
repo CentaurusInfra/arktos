@@ -52,7 +52,7 @@ func newSharedNodeInformer(client clientset.Interface, nodeName string,
 				FieldSelector: fieldselector.String(),
 			})
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			return client.CoreV1().Nodes().Watch(metav1.ListOptions{
 				FieldSelector:   fieldselector.String(),
 				ResourceVersion: options.ResourceVersion,

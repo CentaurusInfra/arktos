@@ -226,7 +226,7 @@ func (r *remoteConfigMap) Informer(client clientset.Interface, handler cache.Res
 				FieldSelector: fieldselector.String(),
 			})
 		},
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			return client.CoreV1().ConfigMaps(r.source.ConfigMap.Namespace).Watch(metav1.ListOptions{
 				FieldSelector:   fieldselector.String(),
 				ResourceVersion: options.ResourceVersion,

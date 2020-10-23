@@ -53,8 +53,8 @@ const (
 // Watchable describes a resource that can be watched for changes that occur on the server,
 // beginning after the provided resource version.
 type Watchable interface {
-	Watch(resourceVersion string) watch.AggregatedWatchInterface
-	WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface
+	Watch(resourceVersion string) (watch.Interface, error)
+	WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error)
 }
 
 // ResourceMapping allows an object to return the resource mapping associated with
@@ -237,12 +237,12 @@ func (i *Info) Scope() meta.RESTScopeName {
 }
 
 // Watch returns server changes to this object after it was retrieved.
-func (i *Info) Watch(resourceVersion string) watch.AggregatedWatchInterface {
+func (i *Info) Watch(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(i.Clients, i.Mapping).WatchSingle(i.Namespace, i.Name, resourceVersion)
 }
 
 // Watch returns server changes to this object after it was retrieved.
-func (i *Info) WatchWithMultiTenancy(resourceVersion string) watch.AggregatedWatchInterface {
+func (i *Info) WatchWithMultiTenancy(resourceVersion string) (watch.Interface, error) {
 	return NewHelper(i.Clients, i.Mapping).WatchSingleWithMultiTenancy(i.Tenant, i.Namespace, i.Name, resourceVersion)
 }
 

@@ -58,11 +58,11 @@ func (s *DryRunnableStorage) Delete(ctx context.Context, key string, out runtime
 	return s.Storage.Delete(ctx, key, out, preconditions, deleteValidation)
 }
 
-func (s *DryRunnableStorage) Watch(ctx context.Context, key string, resourceVersion string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (s *DryRunnableStorage) Watch(ctx context.Context, key string, resourceVersion string, p storage.SelectionPredicate) (watch.Interface, error) {
 	return s.Storage.Watch(ctx, key, resourceVersion, p)
 }
 
-func (s *DryRunnableStorage) WatchList(ctx context.Context, key string, resourceVersion string, p storage.SelectionPredicate) watch.AggregatedWatchInterface {
+func (s *DryRunnableStorage) WatchList(ctx context.Context, key string, resourceVersion string, p storage.SelectionPredicate) (watch.Interface, error) {
 	return s.Storage.WatchList(ctx, key, resourceVersion, p)
 }
 

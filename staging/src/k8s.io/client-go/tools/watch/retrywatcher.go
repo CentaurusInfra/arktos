@@ -101,26 +101,12 @@ func (rw *RetryWatcher) send(event watch.Event) bool {
 // doReceive returns true when it is done, false otherwise.
 // If it is not done the second return value holds the time to wait before calling it again.
 func (rw *RetryWatcher) doReceive() (bool, time.Duration) {
-	aggWatchers := rw.watcherClient.Watch(metav1.ListOptions{
+	watcher, err := rw.watcherClient.Watch(metav1.ListOptions{
 		ResourceVersion: rw.lastResourceVersion,
 	})
-
 	// We are very unlikely to hit EOF here since we are just establishing the call,
 	// but it may happen that the apiserver is just shutting down (e.g. being restarted)
 	// This is consistent with how it is handled for informers
-	if aggWatchers == nil {
-		klog.Error("Watch returned nil watcher")
-		// Retry
-		return false, 0
-	}
-
-	defer aggWatchers.Stop()
-	if aggWatchers.GetWatchersCount() == 0 {
-		klog.Error("No watcher in aggregated watchers")
-		return false, 0
-	}
-
-	err := aggWatchers.GetErrors()
 	switch err {
 	case nil:
 		break
@@ -146,7 +132,14 @@ func (rw *RetryWatcher) doReceive() (bool, time.Duration) {
 		return false, 0
 	}
 
-	ch := aggWatchers.ResultChan()
+	if watcher == nil {
+		klog.Error("Watch returned nil watcher")
+		// Retry
+		return false, 0
+	}
+
+	ch := watcher.ResultChan()
+	defer watcher.Stop()
 
 	for {
 		select {

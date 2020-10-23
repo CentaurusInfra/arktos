@@ -79,11 +79,11 @@ var _ = SIGDescribe("CustomResourceDefinition Watch", func() {
 			ns := ""
 			noxuResourceClient := newNamespacedCustomResourceClient(ns, f.DynamicClient, noxuDefinition)
 
-			watchA := watchCRWithName(noxuResourceClient, watchCRNameA)
-			framework.ExpectNoError(watchA.GetErrors(), "failed to watch custom resource: %s", watchCRNameA)
+			watchA, err := watchCRWithName(noxuResourceClient, watchCRNameA)
+			framework.ExpectNoError(err, "failed to watch custom resource: %s", watchCRNameA)
 
-			watchB := watchCRWithName(noxuResourceClient, watchCRNameB)
-			framework.ExpectNoError(watchB.GetErrors(), "failed to watch custom resource: %s", watchCRNameB)
+			watchB, err := watchCRWithName(noxuResourceClient, watchCRNameB)
+			framework.ExpectNoError(err, "failed to watch custom resource: %s", watchCRNameB)
 
 			testCrA := fixtures.NewNoxuInstance(ns, watchCRNameA)
 			testCrB := fixtures.NewNoxuInstance(ns, watchCRNameB)
@@ -115,7 +115,7 @@ var _ = SIGDescribe("CustomResourceDefinition Watch", func() {
 	})
 })
 
-func watchCRWithName(crdResourceClient dynamic.ResourceInterface, name string) watch.AggregatedWatchInterface {
+func watchCRWithName(crdResourceClient dynamic.ResourceInterface, name string) (watch.Interface, error) {
 	return crdResourceClient.Watch(
 		metav1.ListOptions{
 			FieldSelector:  "metadata.name=" + name,

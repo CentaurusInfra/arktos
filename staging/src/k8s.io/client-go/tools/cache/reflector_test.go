@@ -36,14 +36,14 @@ var nevererrc chan error
 
 type testLW struct {
 	ListFunc   func(options metav1.ListOptions) (runtime.Object, error)
-	WatchFunc  func(options metav1.ListOptions) watch.AggregatedWatchInterface
+	WatchFunc  func(options metav1.ListOptions) (watch.Interface, error)
 	UpdateFunc func(options metav1.ListOptions)
 }
 
 func (t *testLW) List(options metav1.ListOptions) (runtime.Object, error) {
 	return t.ListFunc(options)
 }
-func (t *testLW) Watch(options metav1.ListOptions) watch.AggregatedWatchInterface {
+func (t *testLW) Watch(options metav1.ListOptions) (watch.Interface, error) {
 	return t.WatchFunc(options)
 }
 func (t *testLW) Update(options metav1.ListOptions) {
@@ -53,10 +53,9 @@ func TestCloseWatchChannelOnError(t *testing.T) {
 	r := NewReflector(&testLW{}, &v1.Pod{}, NewStore(MetaNamespaceKeyFunc), 0)
 	pod := &v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bar"}}
 	fw := watch.NewFake()
-	fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
 	r.listerWatcher = &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
-			return fws
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			return fw, nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}}, nil
@@ -80,10 +79,9 @@ func TestRunUntil(t *testing.T) {
 	store := NewStore(MetaNamespaceKeyFunc)
 	r := NewReflector(&testLW{}, &v1.Pod{}, store, 0)
 	fw := watch.NewFake()
-	fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
 	r.listerWatcher = &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
-			return fws
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			return fw, nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}}, nil
@@ -134,13 +132,12 @@ func TestReflectorWatchHandlerError(t *testing.T) {
 	s := NewStore(MetaNamespaceKeyFunc)
 	g := NewReflector(&testLW{}, &v1.Pod{}, s, 0)
 	fw := watch.NewFake()
-	fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
 
 	go func() {
 		fw.Stop()
 	}()
 	var resumeRV string
-	err := g.watchHandler(fws, &resumeRV, nevererrc, wait.NeverStop)
+	err := g.watchHandler(fw, &resumeRV, nevererrc, wait.NeverStop)
 	if err == nil {
 		t.Errorf("unexpected non-error")
 	}
@@ -150,7 +147,8 @@ func TestReflectorWatchHandler(t *testing.T) {
 	s := NewStore(MetaNamespaceKeyFunc)
 	g := NewReflector(&testLW{}, &v1.Pod{}, s, 0)
 	fw := watch.NewFake()
-	fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
+	fws := watch.NewAggregatedWatcher()
+	fws.AddWatchInterface(fw, nil)
 
 	s.Add(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "foo"}})
 	s.Add(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "bar"}})
@@ -228,10 +226,11 @@ func TestReflectorListAndWatch(t *testing.T) {
 	// inject an error.
 	expectedRVs := []string{"1", "3"}
 	lw := &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			rv := options.ResourceVersion
 			fw := watch.NewFake()
-			fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
+			fws := watch.NewAggregatedWatcher()
+			fws.AddWatchInterface(fw, nil)
 
 			if e, a := expectedRVs[0], rv; e != a {
 				t.Errorf("Expected rv %v, but got %v", e, a)
@@ -240,7 +239,7 @@ func TestReflectorListAndWatch(t *testing.T) {
 			// channel is not buffered because the for loop below needs to block. But
 			// we don't want to block here, so report the new fake via a go routine.
 			go func() { createdFakes <- fw }()
-			return fws
+			return fws, fws.GetErrors()
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "1"}}, nil
@@ -346,14 +345,14 @@ func TestReflectorListAndWatchWithErrors(t *testing.T) {
 		}
 		watchRet, watchErr := item.events, item.watchErr
 		lw := &testLW{
-			WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if watchErr != nil {
-					aggWatch := watch.NewAggregatedWatcherWithOneWatch(nil, watchErr)
-					return aggWatch
+					return nil, watchErr
 				}
 				watchErr = fmt.Errorf("second watch")
 				fw := watch.NewFake()
-				fws := watch.NewAggregatedWatcherWithOneWatch(fw, nil)
+				fws := watch.NewAggregatedWatcher()
+				fws.AddWatchInterface(fw, nil)
 
 				go func() {
 					for _, e := range watchRet {
@@ -361,7 +360,7 @@ func TestReflectorListAndWatchWithErrors(t *testing.T) {
 					}
 					fw.Stop()
 				}()
-				return fws
+				return fws, fws.GetErrors()
 			},
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				return item.list, item.listErr
@@ -387,9 +386,8 @@ func TestReflectorResync(t *testing.T) {
 	}
 
 	lw := &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
-			fws := watch.NewAggregatedWatcherWithOneWatch(watch.NewFake(), nil)
-			return fws
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+			return watch.NewFake(), nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return &v1.PodList{ListMeta: metav1.ListMeta{ResourceVersion: "0"}}, nil
@@ -411,11 +409,10 @@ func TestReflectorWatchListPageSize(t *testing.T) {
 	s := NewStore(MetaNamespaceKeyFunc)
 
 	lw := &testLW{
-		WatchFunc: func(options metav1.ListOptions) watch.AggregatedWatchInterface {
+		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			// Stop once the reflector begins watching since we're only interested in the list.
 			close(stopCh)
-			fws := watch.NewAggregatedWatcherWithOneWatch(watch.NewFake(), nil)
-			return fws
+			return watch.NewFake(), nil
 		},
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			if options.Limit != 4 {

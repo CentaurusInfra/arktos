@@ -71,14 +71,10 @@ func (c *FakeNetworks) List(opts v1.ListOptions) (result *arktosextensionsv1.Net
 	return list, err
 }
 
-// Watch returns a watch.AggregatedWatchInterface that watches the requested networks.
-func (c *FakeNetworks) Watch(opts v1.ListOptions) watch.AggregatedWatchInterface {
-	aggWatch := watch.NewAggregatedWatcher()
-	watcher, err := c.Fake.
+// Watch returns a watch.Interface that watches the requested networks.
+func (c *FakeNetworks) Watch(opts v1.ListOptions) (watch.Interface, error) {
+	return c.Fake.
 		InvokesWatch(testing.NewTenantWatchAction(networksResource, opts, c.te))
-
-	aggWatch.AddWatchInterface(watcher, err)
-	return aggWatch
 }
 
 // Create takes the representation of a network and creates it.  Returns the server's representation of the network, and an error, if there is any.
