@@ -14,4 +14,11 @@ const (
 	LocalIP       = "127.0.0.1"
 
 	ResponseOperation = "response"
+
+	ServiceClient = "client"
+	ServiceServer = "server"
+	Insert        = "insert"
+	Delete        = "delete"
+
+	TapIP = "13.13.13.13"
 )

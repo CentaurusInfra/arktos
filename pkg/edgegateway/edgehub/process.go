@@ -71,6 +71,8 @@ func (eh *EdgeHub) dispatch(message model.Message) error {
 	switch message.GetGroup() {
 	case modules.EdgeServiceGroup:
 		beehiveContext.SendToGroup(modules.EdgeServiceGroup, message)
+	case modules.MeshGroup:
+		beehiveContext.SendToGroup(modules.MeshGroup, message)
 	default:
 		klog.Warningf("message %s does not belong to any group, it will be discarded", message.GetID())
 	}
