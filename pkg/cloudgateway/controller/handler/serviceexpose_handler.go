@@ -84,7 +84,7 @@ func (h *ServiceExposeHandler) RequestVirtualPresence(site *v1.ESite, serviceExp
 	}
 
 	// There is no available virtual presence ip
-	return "", fmt.Errorf("There is no avaialbe virtual presence ip, %v", h.virtualPresenceMap[siteName])
+	return "", fmt.Errorf("there is no avaialbe virtual presence ip, %v", h.virtualPresenceMap[siteName])
 }
 
 // Generate one virtual presence ip for service expose
@@ -99,11 +99,11 @@ func GenerateAllIps(cidr string) ([]string, error) {
 		ips = append(ips, ip.String())
 	}
 
-	if ips != nil && len(ips) > 1 {
-		return ips[1 : len(ips)-1], nil
+	if ips != nil && len(ips) > 2 {
+		return ips[2 : len(ips)-1], nil
 	}
 
-	return ips, fmt.Errorf("Invalid cidr ips:%v", ips)
+	return ips, fmt.Errorf("invalid cidr ips:%v", ips)
 }
 
 // Increase ip
@@ -233,7 +233,7 @@ func (h *ServiceExposeHandler) ObjectCreated(tenant string, namespace string, ob
 			if err != nil {
 				klog.Errorf("Update virtual presence ip for se error, se:%v, err:%v", se, err)
 				// TODO(nkwangjun): update record to detail message
-				h.ReleaseVirtualPresence(&seObj.clientSite, se, virtualPresenceIp)
+				h.ReleaseVirtualPresence(&seObj.serviceSite, se, virtualPresenceIp)
 				return
 			}
 
@@ -357,14 +357,14 @@ func (h *ServiceExposeHandler) ObjectDeleted(tenant string, namespace string, ob
 	// Release virtual presence ip
 	klog.Infof("Release virtual presence ip for service expose:%v", seObj)
 	if seObj.serviceExpose.VirtualPresenceIp != "" {
-		h.ReleaseVirtualPresence(&seObj.serviceSite, &seObj.serviceExpose, seObj.serviceExpose.VirtualPresenceIp)
+		h.ReleaseVirtualPresence(&seObj.clientSite, &seObj.serviceExpose, seObj.serviceExpose.VirtualPresenceIp)
 	}
 
 	// Release virtual presence ip for allowed client
 	for _, eClient := range se.AllowedClients {
 		// If eClient virtual presence ip is assigned, do check and update
 		if eClient.VirtualPresenceIp != "" {
-			h.ReleaseVirtualPresence(&seObj.clientSite, &seObj.serviceExpose, eClient.VirtualPresenceIp)
+			h.ReleaseVirtualPresence(&seObj.serviceSite, &seObj.serviceExpose, eClient.VirtualPresenceIp)
 		}
 	}
 

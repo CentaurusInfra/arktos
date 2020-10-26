@@ -9,7 +9,7 @@ import (
 	"github.com/kubeedge/beehive/pkg/core/model"
 	"github.com/vishvananda/netlink"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/cloudgateway/common/constants"
+	"k8s.io/kubernetes/pkg/edgegateway/common/constants"
 	utildbus "k8s.io/kubernetes/pkg/util/dbus"
 	utiliptables "k8s.io/kubernetes/pkg/util/iptables"
 	utilexec "k8s.io/utils/exec"
@@ -47,8 +47,8 @@ func MeshHandler(message model.Message) {
 	}
 	resource := strings.Split(message.GetResource(), "/")
 	operation := message.GetOperation()
-	// service is on the cloud
-	if resource[3] == constants.ServiceServer {
+	// service is at the edge site
+	if resource[1] == constants.ServiceServer {
 		var serviceServer ServiceServer
 		if err := json.Unmarshal(content, &serviceServer); err != nil {
 			klog.Errorf("error to parse service server struct: %v", err)
@@ -64,7 +64,7 @@ func MeshHandler(message model.Message) {
 
 		return
 	}
-	// the service is at the edge site
+	// the service is on the cloud
 	var serviceClient ServiceClient
 	if err := json.Unmarshal(content, &serviceClient); err != nil {
 		klog.Errorf("error to parse service client struct: %v", err)

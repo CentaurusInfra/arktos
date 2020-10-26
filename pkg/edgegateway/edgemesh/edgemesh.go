@@ -3,10 +3,13 @@ package edgemesh
 import (
 	"github.com/gorilla/websocket"
 	"github.com/kubeedge/beehive/pkg/core"
+	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
+	"k8s.io/klog"
 	v1 "k8s.io/kubernetes/pkg/apis/edgegateway/v1"
 	"k8s.io/kubernetes/pkg/edgegateway/common/modules"
 	"k8s.io/kubernetes/pkg/edgegateway/edgemesh/client"
 	"k8s.io/kubernetes/pkg/edgegateway/edgemesh/config"
+	"k8s.io/kubernetes/pkg/edgegateway/edgemesh/proxy"
 )
 
 type edgeMesh struct {
@@ -43,4 +46,21 @@ func (em *edgeMesh) Start() {
 	go em.upstream()
 	// send cloud message stream to edge service
 	go em.downstream()
+
+	proxy.Init()
+	// set iptables and route
+	for {
+		select {
+		case <-beehiveContext.Done():
+			klog.Warning("edgeMesh stop")
+			return
+		default:
+		}
+		msg, err := beehiveContext.Receive(modules.EdgeMeshModuleName)
+		if err != nil {
+			klog.Warningf("%s receive message error: %v", modules.EdgeMeshModuleName, err)
+			continue
+		}
+		proxy.MeshHandler(msg)
+	}
 }
