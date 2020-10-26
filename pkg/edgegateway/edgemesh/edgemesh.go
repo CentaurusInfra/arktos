@@ -30,7 +30,7 @@ func (em *edgeMesh) Name() string {
 }
 
 func (em *edgeMesh) Group() string {
-	return modules.EdgeMeshGroup
+	return modules.MeshGroup
 }
 
 func (em *edgeMesh) Enable() bool {
