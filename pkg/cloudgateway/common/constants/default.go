@@ -19,6 +19,4 @@ const (
 	DefaultCloudSiteName = "cloud"
 	Insert               = "insert"
 	Delete               = "delete"
-
-	TapIP = "12.12.12.12"
 )

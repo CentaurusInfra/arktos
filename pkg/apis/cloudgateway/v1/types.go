@@ -38,6 +38,9 @@ type ESite struct {
 	// Virtual presence ip address cidr of this site
 	// +optional
 	VirtualPresenceIPCidr string
+
+	// tap ip address of this site
+	TapIP string
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
