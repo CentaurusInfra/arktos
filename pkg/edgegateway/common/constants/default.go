@@ -19,6 +19,4 @@ const (
 	ServiceServer = "server"
 	Insert        = "insert"
 	Delete        = "delete"
-
-	TapIP = "13.13.13.13"
 )

@@ -16,14 +16,16 @@ import (
 )
 
 type ServiceClient struct {
-	Vip    string
-	Client map[string]string
+	Vip         string
+	Client      map[string]string
+	ServerTapIP string
 }
 
 type ServiceServer struct {
-	Ip        string
-	Vip       string
-	ClientVip []string
+	Ip          string
+	Vip         string
+	ClientVip   []string
+	ClientTapIP string
 }
 
 var (
@@ -59,7 +61,7 @@ func MeshHandler(message model.Message) {
 		ruleManager(utiliptables.ChainPrerouting, dNatRule, operation)
 		// set route
 		for _, vip := range serviceServer.ClientVip {
-			routeManager(vip, operation)
+			routeManager(vip, serviceServer.ClientTapIP, operation)
 		}
 
 		return
@@ -76,16 +78,16 @@ func MeshHandler(message model.Message) {
 		ruleManager(utiliptables.ChainPostrouting, sNatRule, operation)
 	}
 	// set route
-	routeManager(serviceClient.Vip, operation)
+	routeManager(serviceClient.Vip, serviceClient.ServerTapIP, operation)
 }
 
-func routeManager(ip string, operation string) {
+func routeManager(ip string, tapIP string, operation string) {
 	dst, err := netlink.ParseIPNet(fmt.Sprintf("%s/%d", ip, 32))
 	if err != nil {
 		klog.Errorf("parse ip error: %v", err)
 		return
 	}
-	gw := net.ParseIP(constants.TapIP)
+	gw := net.ParseIP(tapIP)
 	route = netlink.Route{
 		Dst: dst,
 		Gw:  gw,

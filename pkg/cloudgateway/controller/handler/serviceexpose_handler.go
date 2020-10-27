@@ -359,8 +359,10 @@ func (h *ServiceExposeHandler) handleServiceExpose(seObj *ServiceExposeObj, oper
 	client.Client = make(map[string]string)
 
 	client.Vip = seObj.serviceExpose.VirtualPresenceIp
+	client.ServerTapIP = seObj.serviceSite.TapIP
 	server.Ip = seObj.service.Ip
 	server.Vip = seObj.serviceExpose.VirtualPresenceIp
+	server.ClientTapIP = seObj.clientSite.TapIP
 
 	for _, edgeClient := range seObj.serviceExpose.AllowedClients {
 		client.Client[edgeClient.Ip] = edgeClient.VirtualPresenceIp
