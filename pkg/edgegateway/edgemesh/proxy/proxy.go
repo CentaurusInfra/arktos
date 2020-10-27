@@ -81,6 +81,10 @@ func MeshHandler(message model.Message) {
 
 func routeManager(ip string, operation string) {
 	dst, err := netlink.ParseIPNet(fmt.Sprintf("%s/%d", ip, 32))
+	if err != nil {
+		klog.Errorf("parse ip error: %v", err)
+		return
+	}
 	gw := net.ParseIP(constants.TapIP)
 	route = netlink.Route{
 		Dst: dst,

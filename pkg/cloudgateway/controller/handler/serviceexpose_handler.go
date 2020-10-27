@@ -221,7 +221,7 @@ func (h *ServiceExposeHandler) ObjectCreated(tenant string, namespace string, ob
 				// TODO(nkwangjun): update record to detail message
 				nerr := h.updateServiceExposeStatus(se, v1.ServiceExposeError, namespace, tenant)
 				if nerr != nil {
-					klog.Error("UpdateServiceExpose to error failed, %v, err:%v", se, nerr)
+					klog.Errorf("UpdateServiceExpose to error failed, %v, err:%v", se, nerr)
 				}
 				return
 			}
@@ -267,36 +267,7 @@ func (h *ServiceExposeHandler) updateServiceExposeStatus(serviceExpose *v1.Servi
 
 func (h *ServiceExposeHandler) syncServiceExpose(seObj *ServiceExposeObj) {
 	klog.V(4).Infof("Sync service expose:%v", seObj)
-	var client proxy.ServiceClient
-	var server proxy.ServiceServer
-	client.Client = make(map[string]string)
-
-	client.Vip = seObj.serviceExpose.VirtualPresenceIp
-	server.Ip = seObj.service.Ip
-	server.Vip = seObj.serviceExpose.VirtualPresenceIp
-
-	for _, edgeClient := range seObj.serviceExpose.AllowedClients {
-		client.Client[edgeClient.Ip] = edgeClient.VirtualPresenceIp
-		server.ClientVip = append(server.ClientVip, edgeClient.VirtualPresenceIp)
-	}
-
-	serverResource := fmt.Sprintf("site/%s/%s/%s", seObj.serviceSite.Name, seObj.service.Name, constants.ServiceServer)
-	serverMessage := beehiveModel.NewMessage("")
-	serverMessage.Content = server
-	serverMessage.BuildRouter(modules.ControllerModuleName, modules.MeshGroup, serverResource, constants.Insert)
-
-	clientResource := fmt.Sprintf("site/%s/%s/%s", seObj.clientSite.Name, seObj.service.Name, constants.ServiceClient)
-	clientMessage := beehiveModel.NewMessage("")
-	clientMessage.Content = client
-	clientMessage.BuildRouter(modules.ControllerModuleName, modules.MeshGroup, clientResource, constants.Insert)
-
-	if seObj.serviceSite.Name == constants.DefaultCloudSiteName {
-		beehiveContext.SendToGroup(modules.MeshGroup, *serverMessage)
-		beehiveContext.SendToGroup(modules.HubGroup, *clientMessage)
-	} else {
-		beehiveContext.SendToGroup(modules.MeshGroup, *clientMessage)
-		beehiveContext.SendToGroup(modules.HubGroup, *serverMessage)
-	}
+	h.handleServiceExpose(seObj, constants.Insert)
 }
 
 func (h *ServiceExposeHandler) getServiceExposeObj(tenant string, namespace string, expose *v1.ServiceExpose) (
@@ -378,6 +349,39 @@ func (h *ServiceExposeHandler) ObjectDeleted(tenant string, namespace string, ob
 
 func (h *ServiceExposeHandler) releaseServiceExpose(seObj *ServiceExposeObj) {
 	klog.V(4).Infof("Release service expose:%v", seObj)
+	// release the policy rules
+	h.handleServiceExpose(seObj, constants.Delete)
+}
 
-	// TODO(nkwangjun): release the policy rules
+func (h *ServiceExposeHandler) handleServiceExpose(seObj *ServiceExposeObj, operation string) {
+	var client proxy.ServiceClient
+	var server proxy.ServiceServer
+	client.Client = make(map[string]string)
+
+	client.Vip = seObj.serviceExpose.VirtualPresenceIp
+	server.Ip = seObj.service.Ip
+	server.Vip = seObj.serviceExpose.VirtualPresenceIp
+
+	for _, edgeClient := range seObj.serviceExpose.AllowedClients {
+		client.Client[edgeClient.Ip] = edgeClient.VirtualPresenceIp
+		server.ClientVip = append(server.ClientVip, edgeClient.VirtualPresenceIp)
+	}
+
+	serverResource := fmt.Sprintf("site/%s/%s/%s", seObj.serviceSite.Name, seObj.service.Name, constants.ServiceServer)
+	serverMessage := beehiveModel.NewMessage("")
+	serverMessage.Content = server
+	serverMessage.BuildRouter(modules.ControllerModuleName, modules.MeshGroup, serverResource, operation)
+
+	clientResource := fmt.Sprintf("site/%s/%s/%s", seObj.clientSite.Name, seObj.service.Name, constants.ServiceClient)
+	clientMessage := beehiveModel.NewMessage("")
+	clientMessage.Content = client
+	clientMessage.BuildRouter(modules.ControllerModuleName, modules.MeshGroup, clientResource, operation)
+
+	if seObj.serviceSite.Name == constants.DefaultCloudSiteName {
+		beehiveContext.SendToGroup(modules.MeshGroup, *serverMessage)
+		beehiveContext.SendToGroup(modules.HubGroup, *clientMessage)
+	} else {
+		beehiveContext.SendToGroup(modules.MeshGroup, *clientMessage)
+		beehiveContext.SendToGroup(modules.HubGroup, *serverMessage)
+	}
 }
