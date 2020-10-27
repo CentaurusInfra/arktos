@@ -1176,6 +1176,8 @@ ETCD_APISERVER_SERVER_KEY: $(yaml-quote ${ETCD_APISERVER_SERVER_KEY_BASE64:-})
 ETCD_APISERVER_SERVER_CERT: $(yaml-quote ${ETCD_APISERVER_SERVER_CERT_BASE64:-})
 ETCD_APISERVER_CLIENT_KEY: $(yaml-quote ${ETCD_APISERVER_CLIENT_KEY_BASE64:-})
 ETCD_APISERVER_CLIENT_CERT: $(yaml-quote ${ETCD_APISERVER_CLIENT_CERT_BASE64:-})
+ETCD_GRPC_PROXY_CLIENT_KEY: $(yaml-quote ${ETCD_GRPC_PROXY_CLIENT_KEY_BASE64:-})
+ETCD_GRPC_PROXY_CLIENT_CERT: $(yaml-quote ${ETCD_GRPC_PROXY_CLIENT_CERT_BASE64:-})
 EOF
 }
 
@@ -1484,6 +1486,11 @@ EOF
     if [ -n "${ETCD_SERVERS_OVERRIDES:-}" ]; then
     cat >>$file <<EOF
 ETCD_SERVERS_OVERRIDES: $(yaml-quote ${ETCD_SERVERS_OVERRIDES})
+EOF
+    fi
+    if [ -n "${START_ETCD_GRPC_PROXY:-}" ]; then
+    cat >>$file <<EOF
+START_ETCD_GRPC_PROXY: $(yaml-quote ${START_ETCD_GRPC_PROXY})
 EOF
     fi
     if [ -n "${APISERVER_TEST_ARGS:-}" ]; then
@@ -1899,6 +1906,8 @@ function parse-master-env() {
   ETCD_APISERVER_SERVER_CERT_BASE64=$(get-env-val "${master_env}" "ETCD_APISERVER_SERVER_CERT")
   ETCD_APISERVER_CLIENT_KEY_BASE64=$(get-env-val "${master_env}" "ETCD_APISERVER_CLIENT_KEY")
   ETCD_APISERVER_CLIENT_CERT_BASE64=$(get-env-val "${master_env}" "ETCD_APISERVER_CLIENT_CERT")
+  ETCD_GRPC_PROXY_CLIENT_KEY_BASE64=$(get-env-val "${master_env}" "ETCD_GRPC_PROXY_CLIENT_KEY")
+  ETCD_GRPC_PROXY_CLIENT_CERT_BASE64=$(get-env-val "${master_env}" "ETCD_GRPC_PROXY_CLIENT_CERT")
 }
 
 # Update or verify required gcloud components are installed
@@ -2684,6 +2693,7 @@ function create-etcd-apiserver-certs {
   GEN_ETCD_CA_CERT="${etcd_apiserver_ca_cert}" GEN_ETCD_CA_KEY="${etcd_apiserver_ca_key}" \
     generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certsServers}" "server" "etcd-apiserver-server"
     generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "client" "etcd-apiserver-client"
+    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "grpcproxy" "etcd-apiserver-grpc-proxy"
 
   pushd "${KUBE_TEMP}/cfssl"
   ETCD_APISERVER_CA_KEY_BASE64=$(cat "ca-key.pem" | base64 | tr -d '\r\n')
@@ -2692,6 +2702,8 @@ function create-etcd-apiserver-certs {
   ETCD_APISERVER_SERVER_CERT_BASE64=$(cat "etcd-apiserver-server.pem" | gzip | base64 | tr -d '\r\n')
   ETCD_APISERVER_CLIENT_KEY_BASE64=$(cat "etcd-apiserver-client-key.pem" | base64 | tr -d '\r\n')
   ETCD_APISERVER_CLIENT_CERT_BASE64=$(cat "etcd-apiserver-client.pem" | gzip | base64 | tr -d '\r\n')
+  ETCD_GRPC_PROXY_CLIENT_KEY_BASE64=$(cat "etcd-apiserver-grpc-proxy-key.pem" | base64 | tr -d '\r\n')
+  ETCD_GRPC_PROXY_CLIENT_CERT_BASE64=$(cat "etcd-apiserver-grpc-proxy.pem" | gzip | base64 | tr -d '\r\n')
   popd
 }
 
@@ -2718,6 +2730,15 @@ function create-master() {
       --network "${NETWORK}" \
       --source-tags "${MASTER_TAG}" \
       --allow "tcp:2380,tcp:2381" &
+  fi
+
+  # Create rule for etcd grpc proxy.
+  if [[ "${START_ETCD_GRPC_PROXY:-}" == "true" ]]; then
+    gcloud compute firewall-rules create "${MASTER_NAME}-etcd-grpc-proxy" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:23790 &
   fi
 
   # Generate a bearer token for this cluster. We push this separately

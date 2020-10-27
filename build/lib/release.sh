@@ -446,6 +446,7 @@ function kube::release::package_kube_manifests_tarball() {
   cp "${src_dir}/kube-proxy.manifest" "${dst_dir}/"
   cp "${src_dir}/cluster-autoscaler.manifest" "${dst_dir}/"
   cp "${src_dir}/etcd.manifest" "${dst_dir}"
+  cp "${src_dir}/etcd-grpc-proxy.manifest" "${dst_dir}"
   cp "${src_dir}/kube-scheduler.manifest" "${dst_dir}"
   cp "${src_dir}/kube-apiserver.manifest" "${dst_dir}"
   cp "${src_dir}/abac-authz-policy.jsonl" "${dst_dir}"

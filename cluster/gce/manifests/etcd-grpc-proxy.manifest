@@ -1,0 +1,73 @@
+{
+"apiVersion": "v1",
+"kind": "Pod",
+"metadata": {
+  "name":"etcd-grpc-proxy{{ suffix }}",
+  "namespace": "kube-system",
+  "annotations": {
+    "scheduler.alpha.kubernetes.io/critical-pod": "",
+    "seccomp.security.alpha.kubernetes.io/pod": "docker/default"
+  }
+},
+"spec":{
+"hostNetwork": true,
+"containers":[
+    {
+    "name": "etcd-grpc-proxy-container",
+    "image": "{{ pillar.get('etcd_docker_repository', 'gcr.io/{{ project_id }}/etcd-amd64') }}:{{ pillar.get('etcd_docker_tag', '3.4.3.0') }}",
+    "resources": {
+      "requests": {
+        "cpu": {{ cpulimit }}
+      }
+    },
+    "command": [
+              "/bin/sh",
+              "-c",
+              "exec /usr/local/bin/etcd grpc-proxy start --endpoints {{ etcd_protocol }}://{{ etcd_listen_client_ip }}:{{ etcd_port }} --listen-addr {{ etcd_listen_client_ip }}:{{ etcd_grpc_proxy_port }} {{ etcd_grpc_proxy_client_creds }} {{ etcd_grpc_proxy_server_creds }} 1>>/var/log/etcd-grpc-proxy{{ suffix }}.log 2>&1"
+          ],
+    "livenessProbe": {
+      "tcpSocket": {
+        "host": "127.0.0.1",
+        "port": {{  etcd_grpc_proxy_port }}
+      },
+      "initialDelaySeconds": {{ liveness_probe_initial_delay }},
+      "timeoutSeconds": 15
+    },
+    "ports": [
+      { "name": "grpcproxyport",
+        "containerPort": {{ etcd_grpc_proxy_port }},
+        "hostPort": {{ etcd_grpc_proxy_port }}
+      }
+        ],
+    "volumeMounts": [
+      { "name": "varetcd",
+        "mountPath": "/var/etcd",
+        "readOnly": false
+      },
+      { "name": "varlogetcd",
+        "mountPath": "/var/log/etcd-grpc-proxy{{ suffix }}.log",
+        "readOnly": false
+      },
+      { "name": "etc",
+        "mountPath": "/etc/srv/kubernetes",
+        "readOnly": false
+      }
+    ]
+    }
+],
+"volumes":[
+  { "name": "varetcd",
+    "hostPath": {
+        "path": "/mnt/master-pd/var/etcd"}
+  },
+  { "name": "varlogetcd",
+    "hostPath": {
+        "path": "/var/log/etcd-grpc-proxy{{ suffix }}.log",
+        "type": "FileOrCreate"}
+  },
+  { "name": "etc",
+    "hostPath": {
+        "path": "/etc/srv/kubernetes"}
+  }
+]
+}}

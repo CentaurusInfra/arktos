@@ -119,7 +119,13 @@ function main() {
     if [[ -z "${ETCD_SERVERS:-}" ]]; then
       start-etcd-servers
       start-etcd-empty-dir-cleanup-pod
+
+      echo "variable START_ETCD_GRPC_PROXY is ${START_ETCD_GRPC_PROXY:-}"
+      if [[ "${START_ETCD_GRPC_PROXY:-}" == "true" ]]; then
+        start-etcd-grpc-proxy
+      fi
     fi
+
     start-kube-apiserver
     start-kube-controller-manager
     start-kube-scheduler
