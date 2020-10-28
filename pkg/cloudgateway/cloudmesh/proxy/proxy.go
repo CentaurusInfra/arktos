@@ -16,16 +16,18 @@ import (
 )
 
 type ServiceClient struct {
-	Vip         string
-	Client      map[string]string
-	ServerTapIP string
+	Vip        string
+	Client     map[string]string
+	EdgeTapIP  string
+	CloudTapIP string
 }
 
 type ServiceServer struct {
-	Ip          string
-	Vip         string
-	ClientVip   []string
-	ClientTapIP string
+	Ip         string
+	Vip        string
+	ClientVip  []string
+	EdgeTapIP  string
+	CloudTapIP string
 }
 
 var (
@@ -61,7 +63,7 @@ func MeshHandler(message model.Message) {
 		ruleManager(utiliptables.ChainPrerouting, dNatRule, operation)
 		// set route
 		for _, vip := range serviceServer.ClientVip {
-			routeManager(vip, serviceServer.ClientTapIP, operation)
+			routeManager(vip, serviceServer.EdgeTapIP, operation)
 		}
 
 		return
@@ -78,7 +80,7 @@ func MeshHandler(message model.Message) {
 		ruleManager(utiliptables.ChainPostrouting, sNatRule, operation)
 	}
 	// set route
-	routeManager(serviceClient.Vip, serviceClient.ServerTapIP, operation)
+	routeManager(serviceClient.Vip, serviceClient.EdgeTapIP, operation)
 }
 
 func routeManager(ip string, tapIP string, operation string) {
