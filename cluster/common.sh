@@ -1132,10 +1132,8 @@ function registry-authentication() {
 function create-and-upload-etcd-image() {
 
   ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
-
   # Build+push the image through makefile.
   MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd"
-
   local os
   local arch
   os=$(kube::util::host_os)
