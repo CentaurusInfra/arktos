@@ -88,7 +88,7 @@ ifeq ($(ARCH),amd64)
 	# For each release create a tmp dir 'etcd_release_tmp_dir' and unpack the release tar there.
 	for version in $(BUNDLED_ETCD_VERSIONS); do \
 		etcd_release_tmp_dir=$(shell mktemp -d); \
-		curl -sSL --retry 5 https://github.com/futurewei-cloud/etcd/releases/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
+		curl -sSL --retry 5 https://github.com/centaurus-cloud/etcd/releases/download/v$$version/etcd-v$$version-linux-amd64.tar.gz | tar -xz -C $$etcd_release_tmp_dir --strip-components=1; \
 		cp $$etcd_release_tmp_dir/etcd $$etcd_release_tmp_dir/etcdctl $(TEMP_DIR)/; \
 		cp $(TEMP_DIR)/etcd $(TEMP_DIR)/etcd-$$version; \
 		cp $(TEMP_DIR)/etcdctl $(TEMP_DIR)/etcdctl-$$version; \
@@ -110,7 +110,7 @@ else
 			etcd_build_dir="/go/src/go.etcd.io/etcd"; \
 		fi; \
 		docker run --interactive -v $${etcd_release_tmp_dir}:/etcdbin golang:$(GOLANG_VERSION)$(DOCKER_VOL_OPTS) /bin/bash -c \
-			"git clone --single-branch --branch $(ETCD_BRANCH) https://github.com/futurewei-cloud/etcd.git $$etcd_build_dir \
+			"git clone --single-branch --branch $(ETCD_BRANCH) https://github.com/centaurus-cloud/etcd.git $$etcd_build_dir \
 			&& cd $$etcd_build_dir \
 			&& git checkout v$${version} \
 			&& $(arch_prefix) GOARCH=$(ARCH) ./build \

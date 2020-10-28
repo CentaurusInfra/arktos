@@ -27,7 +27,7 @@ clean:
 	rm -rf etcdctl etcd-v$(ETCD_VERSION)-linux-amd64 etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
 
 build: clean
-	curl -L -O https://github.com/futurewei-cloud/etcd/releases/download/v$(ETCD_VERSION)/etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
+	curl -L -O https://github.com/centaurus-cloud/etcd/releases/download/v$(ETCD_VERSION)/etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
 	tar xzf etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
 	cp etcd-v$(ETCD_VERSION)-linux-amd64/etcdctl .
 	docker build --pull -t $(REGISTRY)/etcd-empty-dir-cleanup:$(TAG) .
