@@ -1146,6 +1146,12 @@ function create-master-etcd-apiserver-auth {
 
      ETCD_APISERVER_CLIENT_CERT_PATH="${auth_dir}/etcd-apiserver-client.crt"
      echo "${ETCD_APISERVER_CLIENT_CERT}" | base64 --decode | gunzip > "${ETCD_APISERVER_CLIENT_CERT_PATH}"
+
+     ETCD_GRPC_PROXY_CLIENT_KEY_PATH="${auth_dir}/etcd-grpc-proxy-client.key"
+     echo "${ETCD_GRPC_PROXY_CLIENT_KEY}" | base64 --decode > "${ETCD_GRPC_PROXY_CLIENT_KEY_PATH}"
+
+     ETCD_GRPC_PROXY_CLIENT_CERT_PATH="${auth_dir}/etcd-grpc-proxy-client.crt"
+     echo "${ETCD_GRPC_PROXY_CLIENT_CERT}" | base64 --decode | gunzip > "${ETCD_GRPC_PROXY_CLIENT_CERT_PATH}"
    fi
 }
 
@@ -1461,6 +1467,52 @@ function prepare-etcd-manifest {
   mv "${temp_file}" /etc/kubernetes/manifests
 }
 
+function prepare-etcd-grpc-proxy-manifest {
+
+  local etcd_protocol="http"
+  local etcd_port=$2
+  local etcd_grpc_proxy_port=$3
+
+  # uncomment the following lines if need to connect to the etcd server via a secure protocol ( not it is "http")
+  #if [[ -n "${ETCD_APISERVER_CA_CERT:-}" && -n "${ETCD_GRPC_PROXY_CLIENT_CERT:-}" && -n "${ETCD_GRPC_PROXY_CLIENT_KEY:-}" ]]; then
+  #  etcd_grpc_proxy_client_creds=" --cacert ${ETCD_APISERVER_CA_CERT_PATH} --cert ${ETCD_GRPC_PROXY_CLIENT_CERT_PATH} -key ${ETCD_GRPC_PROXY_CLIENT_KEY_PATH} "
+  #fi
+
+  # uncomment the following lines if the proxy want the client to connect securely
+  #if [[ -n "${ETCD_APISERVER_CA_CERT:-}" && -n "${ETCD_APISERVER_SERVER_CERT:-}" && -n "${ETCD_APISERVER_SERVER_KEY_PATH:-}" ]]; then
+  #  etcd_grpc_proxy_server_creds=" --trusted-ca-file ${ETCD_APISERVER_CA_CERT_PATH} --cert-file ${ETCD_APISERVER_SERVER_CERT_PATH} --key-file ${ETCD_APISERVER_SERVER_KEY_PATH} "
+  #fi
+
+  local -r temp_file="/tmp/$5"
+  cp "${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd-grpc-proxy.manifest" "${temp_file}"
+  sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${temp_file}"
+  sed -i -e "s@{{ *suffix *}}@$1@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_protocol *}}@${etcd_protocol}@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_listen_client_ip *}}@${ETCD_LISTEN_CLIENT_IP:-127.0.0.1}@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_grpc_proxy_client_creds *}}@${etcd_grpc_proxy_client_creds:-}@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_grpc_proxy_server_creds *}}@${etcd_grpc_proxy_server_creds:-}@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_port *}}@${etcd_port}@g" "${temp_file}"
+  sed -i -e "s@{{ *etcd_grpc_proxy_port *}}@$etcd_grpc_proxy_port@g" "${temp_file}"
+  sed -i -e "s@{{ *cpulimit *}}@\"$4\"@g" "${temp_file}"
+  sed -i -e "s@{{ *liveness_probe_initial_delay *}}@${ETCD_LIVENESS_PROBE_INITIAL_DELAY_SEC:-15}@g" "${temp_file}"
+
+  if [[ -n "${ETCD_IMAGE:-}" ]]; then
+    sed -i -e "s@{{ *pillar\.get('etcd_docker_tag', '\(.*\)') *}}@${ETCD_IMAGE}@g" "${temp_file}"
+  else
+    sed -i -e "s@{{ *pillar\.get('etcd_docker_tag', '\(.*\)') *}}@\1@g" "${temp_file}"
+  fi
+  if [[ -n "${ETCD_DOCKER_REPOSITORY:-}" ]]; then
+    sed -i -e "s@{{ *pillar\.get('etcd_docker_repository', '\(.*\)') *}}@${ETCD_DOCKER_REPOSITORY}@g" "${temp_file}"
+  else
+    sed -i -e "s@{{ *pillar\.get('etcd_docker_repository', '\(.*\)') *}}@\1@g" "${temp_file}"
+  fi
+
+
+  # Replace the volume host path.
+  sed -i -e "s@/mnt/master-pd/var/etcd@/mnt/disks/master-pd/var/etcd@g" "${temp_file}"
+  mv "${temp_file}" /etc/kubernetes/manifests
+}
+
 function start-etcd-empty-dir-cleanup-pod {
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/etcd-empty-dir-cleanup.yaml"
   sed -i -e "s@{{ *project_id *}}@${PROJECT_ID}@g" "${src_file}"
@@ -1489,6 +1541,15 @@ function start-etcd-servers {
 
   prepare-log-file /var/log/etcd-events.log
   prepare-etcd-manifest "-events" "4002" "2381" "100m" "etcd-events.manifest"
+}
+
+function start-etcd-grpc-proxy {
+  echo "Start etcd grpc proxy pod..."
+
+  prepare-log-file /var/log/etcd-grpc-proxy.log
+  prepare-etcd-grpc-proxy-manifest "" "2379" "23790" "200m" "etcd-grpc-proxy.manifest"
+
+  ETCD_SERVERS=${ETCD_GRPC_PROXIES:-http://127.0.0.1:23790}
 }
 
 # Calculates the following variables based on env variables, which will be used

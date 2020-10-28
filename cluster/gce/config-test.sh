@@ -45,6 +45,7 @@ APISERVERS_EXTRA_NUM=${APISERVERS_EXTRA_NUM:-0}
 APISERVER_DATAPARTITION_CONFIG=${APISERVER_DATAPARTITION_CONFIG:-"abcdefghijklmnopqrstuvwxyz"}
 WORKLOADCONTROLLER_EXTRA_NUM=${WORKLOADCONTROLLER_EXTRA_NUM:-0}
 ETCD_EXTRA_NUM=${ETCD_EXTRA_NUM:-0}
+START_ETCD_GRPC_PROXY=${START_ETCD_GRPC_PROXY:-false}
 #switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
 ENABLE_KCM_LEADER_ELECT=${ENABLE_KCM_LEADER_ELECT:-true}
 #switch to enable/disable kube-scheduler leader-elect: --leader-elect=true/false
