@@ -100,7 +100,6 @@ func NewCloudGatewayConfig() *v1.CloudGatewayConfig {
 				Enable:       true,
 				Address:      "0.0.0.0",
 				Port:         10003,
-				TapInterface: "tap0",
 			},
 		},
 	}

@@ -14,6 +14,7 @@ var once sync.Once
 
 type Configure struct {
 	Server       string
+	TapName      string
 	TapInterface *taptun.Interface
 }
 
@@ -26,6 +27,7 @@ func InitConfigure(em *v1.EdgeMesh) {
 		}
 		Config = Configure{
 			Server:       em.Server,
+			TapName:      em.TapInterface,
 			TapInterface: tapInterface,
 		}
 	})
