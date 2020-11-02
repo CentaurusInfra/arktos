@@ -58,12 +58,11 @@ func MeshHandler(message model.Message) {
 			klog.Errorf("error to parse service server struct: %v", err)
 			return
 		}
-		// set iptables
-		dNatRule := "-p tcp -d " + serviceServer.Vip + " -j DNAT --to-destination " + serviceServer.Ip
-		ruleManager(utiliptables.ChainPrerouting, dNatRule, operation)
-		// set route
+		// set route and iptables
 		for _, vip := range serviceServer.ClientVip {
 			routeManager(vip, serviceServer.EdgeTapIP, operation)
+			dNatRule := "-p tcp -s " + vip + " -d " + serviceServer.Vip + " -j DNAT --to-destination " + serviceServer.Ip
+			ruleManager(utiliptables.ChainPrerouting, dNatRule, operation)
 		}
 
 		return
@@ -76,7 +75,7 @@ func MeshHandler(message model.Message) {
 	}
 	// set iptables
 	for ip, vip := range serviceClient.Client {
-		sNatRule := "-p tcp -s " + ip + " -j SNAT --to-source " + vip
+		sNatRule := "-p tcp -s " + ip + " -d " + serviceClient.Vip + " -j SNAT --to-source " + vip
 		ruleManager(utiliptables.ChainPostrouting, sNatRule, operation)
 	}
 	// set route
