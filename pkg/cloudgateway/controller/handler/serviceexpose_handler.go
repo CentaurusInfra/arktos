@@ -30,6 +30,7 @@ type ServiceExposeHandler struct {
 type VirtualPresenceInfo struct {
 	cidr         string
 	allocatedIps []string
+	ipNums       int
 }
 
 // ServiceExposeObj
@@ -69,6 +70,7 @@ func (h *ServiceExposeHandler) RequestVirtualPresence(site *v1.ESite, serviceExp
 		value = &VirtualPresenceInfo{
 			cidr:         site.VirtualPresenceIPCidr,
 			allocatedIps: ips,
+			ipNums:       len(ips),
 		}
 
 		h.virtualPresenceMap[siteName] = value
@@ -123,6 +125,10 @@ func (h *ServiceExposeHandler) ReleaseVirtualPresence(site *v1.ESite, serviceExp
 	if _, ok := h.virtualPresenceMap[site.Name]; ok {
 		h.virtualPresenceMap[site.Name].allocatedIps = append(h.virtualPresenceMap[site.Name].allocatedIps,
 			virtualPresenceIp)
+		// if allocatedIps is unused, delete virtual presence information from map
+		if h.virtualPresenceMap[site.Name].ipNums == len(h.virtualPresenceMap[site.Name].allocatedIps) {
+			delete(h.virtualPresenceMap, site.Name)
+		}
 	}
 }
 
