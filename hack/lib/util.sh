@@ -501,13 +501,14 @@ function kube::util::write_client_kubeconfig {
     local api_port=$5
     local client_id=$6
     local token=${7:-}
+    local scale_out_proxy=${SCALE_OUT_PROXY_ENDPOINT}
     cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
 apiVersion: v1
 kind: Config
 clusters:
   - cluster:
       certificate-authority: ${ca_file}
-      server: https://${api_host}:${api_port}/
+      server: ${scale_out_proxy} 
     name: local-up-cluster
 users:
   - user:
