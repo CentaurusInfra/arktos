@@ -22,7 +22,7 @@ export SCALE_OUT_PROXY_ENDPOINT="http://192.168.0.120:8888"
 
 Run 
 ```bash
-hack/arktos-up-tenant-partition.sh
+IS_RESOURCE_PARTITION=false arktos-up-scale-out-poc.sh
 ```
 
 This will start all the components except kubelet, kubeproxy, and nodelifecycle and nodeipam controllers are disabled
@@ -31,7 +31,7 @@ This will start all the components except kubelet, kubeproxy, and nodelifecycle 
 
 Run 
 ```bash
-hack/arktos-up-resource-partition.sh
+IS_RESOURCE_PARTITION=true arktos-up-scale-out-poc.sh
 ```
 
 This will start all the components except scheduler, and only nodelifecycle and nodeipam controllers are enabled
