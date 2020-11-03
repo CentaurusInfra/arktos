@@ -493,7 +493,8 @@ function kube::common::start_controller_manager {
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
       --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
+      --master="http://192.168.0.120:8888" >"${CTLRMGR_LOG}" 2>&1 &
+      #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }
 
@@ -509,7 +510,8 @@ function kube::common::start_kubescheduler {
       --leader-elect=false \
       --kubeconfig "${kubeconfigfilepaths}" \
       --feature-gates="${FEATURE_GATES}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
+      --master="http://192.168.0.120:8888" >"${SCHEDULER_LOG}" 2>&1 &
+      #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
     SCHEDULER_PID=$!
 }
 

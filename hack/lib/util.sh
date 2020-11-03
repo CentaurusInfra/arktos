@@ -507,7 +507,7 @@ kind: Config
 clusters:
   - cluster:
       certificate-authority: ${ca_file}
-      server: https://${api_host}:${api_port}/
+      server: http://192.168.0.120:8888/
     name: local-up-cluster
 users:
   - user:
