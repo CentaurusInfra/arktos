@@ -455,6 +455,11 @@ function kube::common::start_workload_controller_manager {
 }
 
 function kube::common::start_controller_manager {
+    local controller_opts="-nodelifecycle,-nodeipam"
+    if [ "${IS_RESOURCE_PARTITION}" = "true" ]; then
+       controller_opts="nodelifecycle,nodeipam"
+    fi
+
     CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
     kubeconfigfilepaths="${CERT_DIR}/controller.kubeconfig"
     if [[ $# -gt 1 ]] ; then
@@ -489,11 +494,11 @@ function kube::common::start_controller_manager {
       "${cloud_config_arg[@]}" \
       --kubeconfig "${kubeconfigfilepaths}" \
       --use-service-account-credentials \
-      --controllers="${KUBE_CONTROLLERS}" \
+      --controllers=${controller_opts} \
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
       --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master="http://192.168.0.120:8888" >"${CTLRMGR_LOG}" 2>&1 &
+      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${CTLRMGR_LOG}" 2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }
@@ -510,7 +515,7 @@ function kube::common::start_kubescheduler {
       --leader-elect=false \
       --kubeconfig "${kubeconfigfilepaths}" \
       --feature-gates="${FEATURE_GATES}" \
-      --master="http://192.168.0.120:8888" >"${SCHEDULER_LOG}" 2>&1 &
+      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${SCHEDULER_LOG}" 2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
     SCHEDULER_PID=$!
 }
@@ -657,7 +662,8 @@ EOF
     sudo "${GO_OUT}/hyperkube" kube-proxy \
       --v="${LOG_LEVEL}" \
       --config=/tmp/kube-proxy.yaml \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
+      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${PROXY_LOG}" 2>&1 &
+      #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
 }
 

@@ -112,7 +112,8 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
+    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy"
+    #make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
 else
     echo "skipped the build."
 fi
@@ -287,7 +288,8 @@ function start_cloud_controller_manager {
       --kubeconfig "${CERT_DIR}"/controller.kubeconfig \
       --use-service-account-credentials \
       --leader-elect=false \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
+      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
+      #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
     export CLOUD_CTLRMGR_PID=$!
 }
 
@@ -484,16 +486,16 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
 
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
+  export IS_RESOURCE_PARTITION=true
   kube::common::start_controller_manager
-  #kube::common::start_workload_controller_manager
+#  kube::common::start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
-    #kube::common::start_kubeproxy
-    echo "will not start kube-proxy"
+    kube::common::start_kubeproxy
   fi
-  kube::common::start_kubescheduler
+  #kube::common::start_kubescheduler
   start_kubedns
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
@@ -510,9 +512,7 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
         KUBELET_LOG=""
         ;;
       Linux)
-	echo "will not start kubelet"
-	KUBELET_LOG=/tmp/kubelet.log
-        #kube::common::start_kubelet
+        kube::common::start_kubelet
         ;;
       *)
         print_color "Unsupported host OS.  Must be Linux or Mac OS X, kubelet aborted."
