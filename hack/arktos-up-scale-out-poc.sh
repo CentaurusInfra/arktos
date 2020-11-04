@@ -285,7 +285,6 @@ function start_cloud_controller_manager {
       --cloud-provider="${CLOUD_PROVIDER}" \
       --cloud-config="${CLOUD_CONFIG}" \
       --kubeconfig "${CERT_DIR}"/controller.kubeconfig \
-      --use-service-account-credentials \
       --leader-elect=false \
       --master=${SCALE_OUT_PROXY_ENDPOINT} >"${CLOUD_CTLRMGR_LOG}" 2>&1 &
     export CLOUD_CTLRMGR_PID=$!
@@ -494,7 +493,9 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
        kube::common::start_kubeproxy
     fi
   fi
-  kube::common::start_kubescheduler
+  if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+     kube::common::start_kubescheduler
+  fi
   start_kubedns
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
