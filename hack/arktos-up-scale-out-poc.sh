@@ -14,12 +14,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
-  echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"
-  exit 1
-fi
-
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+
+if [[ "${INSTALL_SCALE_OUT_PROXY}" == "true" ]]; then
+  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+    RESOURCE_PARTITION_IP= TENANT_PARTITION_IP=${SECOND_PARTITION_IP} ${KUBE_ROOT}/hack/scale_out_poc/setup_nginx_proxy.sh
+  else 
+    RESOURCE_PARTITION_IP=${SECOND_PARTITION_IP} TENANT_PARTITION_IP=$(/bin/hostname -i) ${KUBE_ROOT}/hack/scale_out_poc/setup_nginx_proxy.sh
+  fi
+
+  if [[ $? != 0 ]]; then
+    echo "Scale-out proxy installation has failed. Exit."
+    exit 1
+  fi
+
+  SCALE_OUT_PROXY_ENDPOINT=http://$(/bin/hostname -i):8888
+
+else
+  if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
+    echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"
+    echo Or run with INSTALL_SCALE_OUT_PROXY=true and specify SECOND_PARTITION_IP=**.**.***.**. 
+    exit 1
+  fi
+fi
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -495,8 +512,8 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   fi
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
      kube::common::start_kubescheduler
-  fi
-  start_kubedns
+     start_kubedns
+  fi  
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
   fi
@@ -530,7 +547,9 @@ if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
 fi
 
 if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
-  create_storage_class
+  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+    create_storage_class
+  fi
 fi
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
@@ -540,25 +559,26 @@ echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
-while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
+if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+  while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
-
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
+fi 
 echo ""
 echo "Arktos Setup done."
-echo "*******************************************"
-echo "Setup Kata Containers components ..."
+#echo "*******************************************"
+#echo "Setup Kata Containers components ..."
 #KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
-echo "Kata Setup done."
-echo "*******************************************"
+#echo "Kata Setup done."
+#echo "*******************************************"
 
 print_success
 
