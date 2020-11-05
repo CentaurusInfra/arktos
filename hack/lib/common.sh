@@ -457,7 +457,7 @@ function kube::common::start_workload_controller_manager {
 function kube::common::start_controller_manager {
     local controller_opts="*,-nodelifecycle,-nodeipam"
     if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-       controller_opts="nodelifecycle,nodeipam"
+       controller_opts="nodelifecycle"
     fi
 
     CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
