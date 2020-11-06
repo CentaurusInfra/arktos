@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
+	"k8s.io/apiserver/pkg/storage"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
 	"k8s.io/kubernetes/pkg/kubelet/client"
@@ -89,7 +91,11 @@ func NewStorage(optsGetter generic.RESTOptionsGetter, kubeletClientConfig client
 
 		TableConvertor: printerstorage.TableConvertor{TableGenerator: printers.NewTableGenerator().With(printersinternal.AddHandlers)},
 	}
-	options := &generic.StoreOptions{RESTOptions: optsGetter, AttrFunc: node.GetAttrs, TriggerFunc: node.NodeNameTriggerFunc}
+	options := &generic.StoreOptions{
+		RESTOptions: optsGetter,
+		AttrFunc:    node.GetAttrs,
+		TriggerFunc: map[string]storage.TriggerPublisherFunc{"metadata.name": node.NodeNameTriggerFunc},
+	}
 	if err := store.CompleteWithOptions(options); err != nil {
 		return nil, err
 	}
