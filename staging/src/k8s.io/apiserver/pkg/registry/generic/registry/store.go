@@ -1455,6 +1455,7 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			e.NewListFunc,
 			attrFunc,
 			options.TriggerFunc,
+			options.Indexers,
 		)
 		e.StorageVersioner = opts.StorageConfig.EncodeVersioner
 
