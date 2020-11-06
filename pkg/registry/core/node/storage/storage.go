@@ -94,7 +94,7 @@ func NewStorage(optsGetter generic.RESTOptionsGetter, kubeletClientConfig client
 	options := &generic.StoreOptions{
 		RESTOptions: optsGetter,
 		AttrFunc:    node.GetAttrs,
-		TriggerFunc: map[string]storage.TriggerPublisherFunc{"metadata.name": node.NodeNameTriggerFunc},
+		TriggerFunc: map[string]storage.IndexerFunc{"metadata.name": node.NodeNameTriggerFunc},
 	}
 	if err := store.CompleteWithOptions(options); err != nil {
 		return nil, err
