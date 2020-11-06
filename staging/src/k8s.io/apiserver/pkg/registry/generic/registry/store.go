@@ -1429,11 +1429,6 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 		}
 	}
 
-	triggerFunc := options.TriggerFunc
-	if triggerFunc == nil {
-		triggerFunc = storage.NoTriggerPublisher
-	}
-
 	if e.DeleteCollectionWorkers == 0 {
 		e.DeleteCollectionWorkers = opts.DeleteCollectionWorkers
 	}
@@ -1459,7 +1454,7 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 			e.NewFunc,
 			e.NewListFunc,
 			attrFunc,
-			triggerFunc,
+			options.TriggerFunc,
 		)
 		e.StorageVersioner = opts.StorageConfig.EncodeVersioner
 

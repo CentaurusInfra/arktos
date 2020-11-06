@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,6 +48,6 @@ type RESTOptionsGetter interface {
 // StoreOptions is set of configuration options used to complete generic registries.
 type StoreOptions struct {
 	RESTOptions RESTOptionsGetter
-	TriggerFunc storage.TriggerPublisherFunc
+	TriggerFunc storage.TriggerPublisherFuncs
 	AttrFunc    storage.AttrFunc
 }
