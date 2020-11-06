@@ -48,6 +48,6 @@ type RESTOptionsGetter interface {
 // StoreOptions is set of configuration options used to complete generic registries.
 type StoreOptions struct {
 	RESTOptions RESTOptionsGetter
-	TriggerFunc storage.TriggerPublisherFuncs
+	TriggerFunc storage.IndexerFuncs
 	AttrFunc    storage.AttrFunc
 }

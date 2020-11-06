@@ -69,7 +69,7 @@ func NewREST(optsGetter generic.RESTOptionsGetter, ttl uint64) (*REST, *StatusRE
 	options := &generic.StoreOptions{
 		RESTOptions: opts,
 		AttrFunc:    action.GetAttrs,
-		TriggerFunc: map[string]storage.TriggerPublisherFunc{"spec.nodeName": action.NodeNameTriggerFunc},
+		TriggerFunc: map[string]storage.IndexerFunc{"spec.nodeName": action.NodeNameTriggerFunc},
 	}
 
 	if err := store.CompleteWithOptions(options); err != nil {
