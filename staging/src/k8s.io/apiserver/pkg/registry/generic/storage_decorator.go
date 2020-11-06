@@ -22,6 +22,7 @@ import (
 	"k8s.io/apiserver/pkg/storage"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
 )
 
@@ -34,7 +35,8 @@ type StorageDecorator func(
 	newFunc func() runtime.Object,
 	newListFunc func() runtime.Object,
 	getAttrsFunc storage.AttrFunc,
-	trigger storage.IndexerFuncs) (storage.Interface, factory.DestroyFunc)
+	trigger storage.IndexerFuncs,
+	indexers *cache.Indexers) (storage.Interface, factory.DestroyFunc)
 
 // UndecoratedStorage returns the given a new storage from the given config
 // without any decoration.
@@ -45,7 +47,8 @@ func UndecoratedStorage(
 	newFunc func() runtime.Object,
 	newListFunc func() runtime.Object,
 	getAttrsFunc storage.AttrFunc,
-	trigger storage.IndexerFuncs) (storage.Interface, factory.DestroyFunc) {
+	trigger storage.IndexerFuncs,
+	indexers *cache.Indexers) (storage.Interface, factory.DestroyFunc) {
 	return NewRawStorage(config)
 }
 
