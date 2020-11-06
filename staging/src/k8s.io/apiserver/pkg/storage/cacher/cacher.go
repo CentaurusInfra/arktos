@@ -318,7 +318,7 @@ func NewCacherFromConfig(config Config) *Cacher {
 			// https://github.com/kubernetes/kubernetes/commit/ee13be28845e8c55f6e2a2207ca4f46cd67fdb4e
 			// Propagate error from creating cacher and storage decorators up
 			// Jul 15, 2019
- 
+
 			//return nil, fmt.Errorf("cacher %s doesn't support more than one IndexerFuncs: ", reflect.TypeOf(obj).String())
 			return nil
 		}
