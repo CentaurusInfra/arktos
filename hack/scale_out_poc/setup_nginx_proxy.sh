@@ -100,8 +100,6 @@ config_nginx_proxy
 
 run_command_exit_if_failed sudo systemctl restart nginx
 
-printf "\033[0;32mNginx Proxy was configured and started.\033[0m\n"
+printf "\033[0;32mNginx Proxy was configured and started. Please check out /var/logs/nginx/ for logs. \033[0m\n"
 
 sudo systemctl status nginx
-
-

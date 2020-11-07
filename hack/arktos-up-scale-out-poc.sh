@@ -14,29 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-
-if [[ "${INSTALL_SCALE_OUT_PROXY}" == "true" ]]; then
-  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-    RESOURCE_PARTITION_IP= TENANT_PARTITION_IP=${SECOND_PARTITION_IP} ${KUBE_ROOT}/hack/scale_out_poc/setup_nginx_proxy.sh
-  else 
-    RESOURCE_PARTITION_IP=${SECOND_PARTITION_IP} TENANT_PARTITION_IP=$(/bin/hostname -i) ${KUBE_ROOT}/hack/scale_out_poc/setup_nginx_proxy.sh
-  fi
-
-  if [[ $? != 0 ]]; then
-    echo "Scale-out proxy installation has failed. Exit."
-    exit 1
-  fi
-
-  SCALE_OUT_PROXY_ENDPOINT=http://$(/bin/hostname -i):8888
-
-else
-  if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
-    echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"
-    echo Or run with INSTALL_SCALE_OUT_PROXY=true and specify SECOND_PARTITION_IP=**.**.***.**. 
-    exit 1
-  fi
+if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
+  echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"    
+  exit 1
 fi
+
+KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -427,6 +410,13 @@ Logs:
   ${KUBELET_LOG}
 EOF
 fi
+
+if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+  printf "\033[0;32mResource Partition Cluster is Running ... \033[0m\n"
+else
+  printf "\033[0;33mTenant Partition Cluster is Running ... \033[0m\n"
+fi
+
 }
 
 # install etcd if necessary
@@ -546,15 +536,15 @@ if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
   create_psp_policy
 fi
 
-if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
-  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-    create_storage_class
-  fi
+if [[ "${DEFAULT_STORAGE_CLASS}" == "true" && "${IS_RESOURCE_PARTITION}" != "true" ]]; then
+  create_storage_class
 fi
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
-# refresh the resource discovery cache after the CRD is created
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
+if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+  # refresh the resource discovery cache after the CRD is created
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
+fi
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
@@ -563,7 +553,9 @@ if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+fi
 
+if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
@@ -571,7 +563,8 @@ if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
-fi 
+fi
+ 
 echo ""
 echo "Arktos Setup done."
 #echo "*******************************************"
