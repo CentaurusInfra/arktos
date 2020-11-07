@@ -753,9 +753,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		klog.Warning(err)
 	}
 
-	// Start APIServerConfigManager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient, stopCh)
-
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
 	}
@@ -1138,6 +1135,9 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPodResources) {
 		go k.ListenAndServePodResources()
 	}
+
+	// start apiserver config manager
+	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient, wait.NeverStop)
 }
 
 func createAndInitKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
