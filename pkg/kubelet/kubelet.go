@@ -255,6 +255,7 @@ type Dependencies struct {
 	DockerClientConfig      *dockershim.ClientConfig
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
+	NodeStatusClient        clientset.Interface
 	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
 	ArktosExtClient         arktos.Interface

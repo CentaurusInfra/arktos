@@ -195,6 +195,8 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			}
 
 			// load kubelet config file, if provided
+			// hack:arktos-scaleout: use dynamic array of configs
+			//
 			if configFile := kubeletFlags.KubeletConfigFile; len(configFile) > 0 {
 				kubeletConfig, err = loadConfigFile(configFile)
 				if err != nil {
@@ -410,6 +412,7 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		KubeClient:          nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
+		NodeStatusClient:    nil,
 		EventClient:         nil,
 		Mounter:             mounter,
 		Subpather:           subpather,
@@ -565,10 +568,16 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.KubeClient = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
+		kubeDeps.NodeStatusClient = nil
 		klog.Warningf("standalone mode, no API client")
 
 	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
+		// hack: arktos-scaleout: different client config for tenant api server
+		clientConfigTenantAPI := *clientConfig
+		clientConfigTenantAPI.Host = "http://127.0.0.1:8080"
+		klog.Infof("debug: clientConfig.Host: %v, clientConfigTenantAPI.Host: %v", clientConfig.Host, clientConfigTenantAPI.Host)
+
 		if err != nil {
 			return err
 		}
@@ -577,7 +586,8 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
 
-		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfigs)
+		// hack: arktos-scaleout: different client config for tenant api server
+		kubeDeps.KubeClient, err = clientset.NewForConfig(&clientConfigTenantAPI)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet client: %v", err)
 		}
