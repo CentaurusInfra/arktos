@@ -455,11 +455,6 @@ function kube::common::start_workload_controller_manager {
 }
 
 function kube::common::start_controller_manager {
-    local controller_opts="*,-nodelifecycle,-nodeipam"
-    if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-       controller_opts="nodelifecycle,nodeipam"
-    fi
-
     CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
     kubeconfigfilepaths="${CERT_DIR}/controller.kubeconfig"
     if [[ $# -gt 1 ]] ; then
@@ -477,6 +472,18 @@ function kube::common::start_controller_manager {
       cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
       cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
     fi
+
+    if [[ -z "${IS_RESOURCE_PARTITION}" ]]; then
+       MASTER_ENDPOINT="https://${API_HOST}:${API_SECURE_PORT}"
+    else
+       MASTER_ENDPOINT=${SCALE_OUT_PROXY_ENDPOINT}
+       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+          KUBE_CONTROLLERS="nodelifecycle"
+       else
+          KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam"
+       fi
+    fi
+
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
       --v="${LOG_LEVEL}" \
@@ -493,11 +500,11 @@ function kube::common::start_controller_manager {
       --feature-gates="${FEATURE_GATES}" \
       "${cloud_config_arg[@]}" \
       --kubeconfig "${kubeconfigfilepaths}" \
-      --controllers=${controller_opts} \
+      --controllers=${KUBE_CONTROLLERS} \
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
       --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${CTLRMGR_LOG}" 2>&1 &
+      --master=${MASTER_ENDPOINT} >"${CTLRMGR_LOG}" 2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }
@@ -508,13 +515,20 @@ function kube::common::start_kubescheduler {
     if [[ $# -gt 1 ]] ; then
        kubeconfigfilepaths=$@
     fi
+  
+    if [[ -z "${IS_RESOURCE_PARTITION}" ]]; then
+       MASTER_ENDPOINT="https://${API_HOST}:${API_SECURE_PORT}"
+    else
+       MASTER_ENDPOINT=${SCALE_OUT_PROXY_ENDPOINT}
+    fi
+
     SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
       --v="${LOG_LEVEL}" \
       --leader-elect=false \
       --kubeconfig "${kubeconfigfilepaths}" \
       --feature-gates="${FEATURE_GATES}" \
-      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${SCHEDULER_LOG}" 2>&1 &
+      --master=${MASTER_ENDPOINT} >"${SCHEDULER_LOG}" 2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
     SCHEDULER_PID=$!
 }
@@ -656,12 +670,18 @@ EOF
     fi >>/tmp/kube-proxy.yaml
 
     kube::common::generate_kubeproxy_certs
+    
+    if [[ -z "${IS_RESOURCE_PARTITION}" ]]; then
+       MASTER_ENDPOINT="https://${API_HOST}:${API_SECURE_PORT}"
+    else
+       MASTER_ENDPOINT=${SCALE_OUT_PROXY_ENDPOINT}
+    fi
 
     # shellcheck disable=SC2024
     sudo "${GO_OUT}/hyperkube" kube-proxy \
       --v="${LOG_LEVEL}" \
       --config=/tmp/kube-proxy.yaml \
-      --master=${SCALE_OUT_PROXY_ENDPOINT} >"${PROXY_LOG}" 2>&1 &
+      --master=${MASTER_ENDPOINT} >"${PROXY_LOG}" 2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
 }
