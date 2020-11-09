@@ -20,12 +20,12 @@ Welcome to Arktos!
 
 ## Code of Conduct
 
-Please make sure to read and observe our [Code of Conduct](https://github.com/futurewei-cloud/arktos/blob/master/code-of-conduct.md).
+Please make sure to read and observe our [Code of Conduct](https://github.com/CentaurusInfra/arktos/blob/master/code-of-conduct.md).
 
 # Getting started
 
 - Fork the repository on GitHub
-- Visit [README](https://github.com/futurewei-cloud/arktos#build-arktos) for build instructions.
+- Visit [README](https://github.com/CentaurusInfra/arktos#build-arktos) for build instructions.
 
 
 # Your First Contribution
@@ -42,9 +42,9 @@ Here is how you get started.
 
 ### Find a good first topic
 
-There are multiple repositories ([Arktos](https://github.com/futurewei-cloud/arktos), [Arktos-vm-runtime](https://github.com/futurewei-cloud/arktos-vm-runtime), [Arktos-cniplugins](https://github.com/futurewei-cloud/arktos-cniplugins)) within the Arktos organization.
+There are multiple repositories ([Arktos](https://github.com/CentaurusInfra/arktos), [Arktos-vm-runtime](https://github.com/CentaurusInfra/arktos-vm-runtime), [Arktos-cniplugins](https://github.com/CentaurusInfra/arktos-cniplugins)) within the Arktos organization.
 Each repository has beginner-friendly issues that provide a good starting point.
-For example, [Arktos](https://github.com/futurewei-cloud/arktos) has [help wanted](https://github.com/futurewei-cloud/arktos/labels/help%20wanted) and [good first issue](https://github.com/futurewei-cloud/arktos/labels/good%20first%20issue) labels for issues that should not need deep knowledge of the system. We can help new contributors who wish to work on such issues.
+For example, [Arktos](https://github.com/CentaurusInfra/arktos) has [help wanted](https://github.com/CentaurusInfra/arktos/labels/help%20wanted) and [good first issue](https://github.com/CentaurusInfra/arktos/labels/good%20first%20issue) labels for issues that should not need deep knowledge of the system. We can help new contributors who wish to work on such issues.
 
 
 ### Work on an issue
@@ -57,7 +57,7 @@ then the robot will assign the issue to you and your name will present at `Assig
 While we encourage everyone to contribute code, it is also appreciated when someone reports an issue.
 Issues should be filed under the appropriate Arktos sub-repository.
 
-*Example:* An Arktos issue should be opened to [Arktos](https://github.com/futurewei-cloud/arktos). And the same should apply to [Arktos-vm-runtime](https://github.com/futurewei-cloud/arktos-vm-runtime) and [Arktos-cniplugins](https://github.com/futurewei-cloud/arktos-cniplugins).
+*Example:* An Arktos issue should be opened to [Arktos](https://github.com/CentaurusInfra/arktos). And the same should apply to [Arktos-vm-runtime](https://github.com/CentaurusInfra/arktos-vm-runtime) and [Arktos-cniplugins](https://github.com/CentaurusInfra/arktos-cniplugins).
 
 Please follow the prompted submission guidelines while opening an issue.
 
@@ -67,12 +67,12 @@ Please do not ever hesitate to ask a question or send a pull request.
 
 This is a rough outline of what a contributor's workflow looks like:
 
-- Fork [Arktos](https://github.com/futurewei-cloud/arktos).
+- Fork [Arktos](https://github.com/CentaurusInfra/arktos).
 - Create a topic branch in your forked repo from where to base the contribution. This is usually master.
 - Make commits of logical units.
 - Make sure commit messages are in the proper format (see below).
 - Push changes in a topic branch to a personal fork of the repository.
-- Submit a pull request to [Arktos](https://github.com/futurewei-cloud/arktos).
+- Submit a pull request to [Arktos](https://github.com/CentaurusInfra/arktos).
 - The PR must receive an approval from two team members including at least one maintainer.
 
 ## Creating Pull Requests
@@ -133,10 +133,10 @@ Continuous integration will run these tests on PRs.
 
 ## Documents and Support
 
-The [design document folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
+The [design document folder](https://github.com/CentaurusInfra/arktos/tree/master/docs/design-proposals) contains the detailed design of already implemented features, and also some thoughts for planned features.
 
-The [user guide folder](https://github.com/futurewei-cloud/arktos/tree/master/docs/user-guide) provides information about these features from users' perspective.
+The [user guide folder](https://github.com/CentaurusInfra/arktos/tree/master/docs/user-guide) provides information about these features from users' perspective.
 
-To report a problem, please [create an issue](https://github.com/futurewei-cloud/arktos/issues) in the project repo. 
+To report a problem, please [create an issue](https://github.com/CentaurusInfra/arktos/issues) in the project repo. 
 
-To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/futurewei-cloud/arktos/issues) of question type in the repo.
+To ask a question, you can either chat with project members in the [slack channel](https://app.slack.com/client/TMNECBVT5/CRRUU7137), post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/CentaurusInfra/arktos/issues) of question type in the repo.
