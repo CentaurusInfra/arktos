@@ -33,7 +33,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	"reflect"
 	"strconv"
@@ -339,9 +338,12 @@ func StartAPIServerConfigManager(endpointsInformer coreinformers.EndpointsInform
 }
 
 func StartAPIServerConfigManagerAndInformerFactory(client clientset.Interface, stopCh <-chan struct{}) {
+	fieldSelector := fields.Set{"metadata.name": types.KubernetesServiceName,
+		"metadata.namespace": v1.NamespaceDefault,
+		"metadata.tenant":    v1.TenantSystem}.AsSelector().String()
 	informerFactory := informers.NewSharedInformerFactoryWithOptions(client, 10*time.Minute,
 		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.FieldSelector = fields.OneTermEqualSelector(api.ObjectNameField, types.KubernetesServiceName).String()
+			options.FieldSelector = fieldSelector
 		}))
 	for {
 		apiServerConfigManager, err := NewAPIServerConfigManagerWithInformer(
