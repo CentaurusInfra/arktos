@@ -258,6 +258,7 @@ type Dependencies struct {
 	NodeStatusClient        clientset.Interface
 	OnHeartbeatFailure      []func()
 	KubeClient              clientset.Interface
+	KubeClient2             clientset.Interface
 	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -319,6 +320,15 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		}
 		config.NewSourceApiserver(kubeDeps.KubeClient, nodeName, updatechannel)
 	}
+
+	if kubeDeps.KubeClient2 != nil {
+		klog.Infof("Watching apiserver2")
+		if updatechannel == nil {
+			updatechannel = cfg.Channel(kubetypes.ApiserverSource)
+		}
+		config.NewSourceApiserver(kubeDeps.KubeClient2, nodeName, updatechannel)
+	}
+
 	return cfg, nil
 }
 
@@ -436,6 +446,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		PodCgroupRoot:            kubeDeps.ContainerManager.GetPodCgroupRoot(),
 	}
 
+	// TODO: arktos-scale-out: serviceIndexer for multiple tenant partitions
+	//
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if kubeDeps.KubeClient != nil {
 		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
@@ -447,7 +459,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 	if kubeDeps.KubeClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
-		nodeLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
+		nodeLW := cache.NewListWatchFromClient(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
@@ -490,6 +502,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		hostnameOverridden:                      len(hostnameOverride) > 0,
 		nodeName:                                nodeName,
 		kubeClient:                              kubeDeps.KubeClient,
+		kubeClient2:                             kubeDeps.KubeClient2,
 		heartbeatClient:                         kubeDeps.HeartbeatClient,
 		onRepeatedHeartbeatFailure:              kubeDeps.OnHeartbeatFailure,
 		rootDirectory:                           rootDirectory,
@@ -543,6 +556,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.cloudResourceSyncManager = cloudresource.NewSyncManager(klet.cloud, nodeName, klet.nodeStatusUpdateFrequency)
 	}
 
+	//TODO: secretManager and configMapManager to support multiple tenant partitions
+	//
 	var secretManager secret.Manager
 	var configMapManager configmap.Manager
 	switch kubeCfg.ConfigMapAndSecretChangeDetectionStrategy {
@@ -652,6 +667,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		return nil, fmt.Errorf("unsupported CRI runtime: %q", containerRuntime)
 	}
 
+	// TODO: runtimeClassManager to support multiple tenant partitions
+	//
 	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.KubeClient != nil {
 		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
 	}
@@ -780,6 +797,9 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		containerRefManager,
 		kubeDeps.Recorder)
 
+
+	// TODO: tokenManager to support multiple tenant partitions
+	//
 	tokenManager := token.NewManager(kubeDeps.KubeClient)
 
 	// NewInitializedVolumePluginMgr intializes some storageErrors on the Kubelet runtimeState (in csi_plugin.go init)
@@ -905,6 +925,7 @@ type Kubelet struct {
 	nodeName        types.NodeName
 	runtimeCache    kubecontainer.RuntimeCache
 	kubeClient      clientset.Interface
+	kubeClient2     clientset.Interface
 	heartbeatClient clientset.Interface
 	iptClient       utilipt.Interface
 	rootDirectory   string

@@ -566,6 +566,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	switch {
 	case standaloneMode:
 		kubeDeps.KubeClient = nil
+		kubeDeps.KubeClient2 = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
 		kubeDeps.NodeStatusClient = nil
@@ -574,9 +575,17 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
 		// hack: arktos-scaleout: different client config for tenant api server
-		clientConfigTenantAPI := *clientConfig
-		clientConfigTenantAPI.Host = "http://127.0.0.1:8080"
-		klog.Infof("debug: clientConfig.Host: %v, clientConfigTenantAPI.Host: %v", clientConfig.Host, clientConfigTenantAPI.Host)
+		clientConfigTenantAPI := *clientConfigs
+		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
+			cfg.Host = "http://127.0.0.1:8080"
+			klog.Infof("debug: clientConfig.Host: %v, clientConfigTenantAPI.Host: %v", cfg.Host, cfg.Host)
+		}
+
+		clientConfigTenantAPI2 := *clientConfigs
+		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
+			cfg.Host = "http://127.0.0.1:8081"
+			klog.Infof("debug: clientConfig2.Host: %v, clientConfigTenantAPI2.Host: %v", cfg.Host, cfg.Host)
+		}
 
 		if err != nil {
 			return err
@@ -590,6 +599,10 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.KubeClient, err = clientset.NewForConfig(&clientConfigTenantAPI)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet client: %v", err)
+		}
+		kubeDeps.KubeClient2, err = clientset.NewForConfig(&clientConfigTenantAPI2)
+		if err != nil {
+			return fmt.Errorf("failed to initialize kubelet client2: %v", err)
 		}
 
 		arktosExtClientConfig := *clientConfigs
