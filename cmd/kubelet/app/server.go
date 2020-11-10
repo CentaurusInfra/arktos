@@ -577,13 +577,13 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		// hack: arktos-scaleout: different client config for tenant api server
 		clientConfigTenantAPI := *clientConfigs
 		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
-			cfg.Host = "http://127.0.0.1:8080"
+			cfg.Host = "http://172.31.10.155:8080"
 			klog.Infof("debug: clientConfigTenantAPI.Host: %v", cfg.Host)
 		}
 
 		clientConfigTenantAPI2 := *clientConfigs
 		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
-			cfg.Host = "http://127.0.0.1:8081"
+			cfg.Host = "http://172.31.14.52:8080"
 			klog.Infof("debug: clientConfigTenantAPI2.Host: %v", cfg.Host)
 		}
 
@@ -638,7 +638,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-			heartbeatClientConfig.Host = "http://127.0.0.1:9091"
+			heartbeatClientConfig.Host = "http://172.31.8.177:8080"
 			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
