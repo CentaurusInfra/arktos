@@ -638,7 +638,8 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-			klog.Infof("debug: heartbeatClientConfig.Host: %v", cfg.Host)
+			heartbeatClientConfig.Host = "http://127.0.0.1:9091"
+			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
