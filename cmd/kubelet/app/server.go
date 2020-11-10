@@ -578,13 +578,13 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		clientConfigTenantAPI := *clientConfigs
 		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
 			cfg.Host = "http://127.0.0.1:8080"
-			klog.Infof("debug: clientConfig.Host: %v, clientConfigTenantAPI.Host: %v", cfg.Host, cfg.Host)
+			klog.Infof("debug: clientConfigTenantAPI.Host: %v", cfg.Host)
 		}
 
 		clientConfigTenantAPI2 := *clientConfigs
 		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
 			cfg.Host = "http://127.0.0.1:8081"
-			klog.Infof("debug: clientConfig2.Host: %v, clientConfigTenantAPI2.Host: %v", cfg.Host, cfg.Host)
+			klog.Infof("debug: clientConfigTenantAPI2.Host: %v", cfg.Host)
 		}
 
 		if err != nil {
@@ -638,6 +638,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
+			klog.Infof("debug: heartbeatClientConfig.Host: %v", cfg.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
