@@ -581,6 +581,8 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 			name := cm.Name
 			configMap, ok := configMaps[name]
 			if !ok {
+				// TODO: arktos-scale-out: this check ( and the 3 more below in the file) should be pod specific clientset check
+				//
 				if kl.kubeClient == nil {
 					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
@@ -1951,13 +1953,13 @@ func hasHostNamespace(pod *v1.Pod) bool {
 func (kl *Kubelet) hasHostMountPVC(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			pvc, err := kl.kubeClient.CoreV1().PersistentVolumeClaims(pod.Namespace).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
+			pvc, err := kl.kubeClient[0].CoreV1().PersistentVolumeClaims(pod.Namespace).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
 			if err != nil {
 				klog.Warningf("unable to retrieve pvc %s:%s - %v", pod.Namespace, volume.PersistentVolumeClaim.ClaimName, err)
 				continue
 			}
 			if pvc != nil {
-				referencedVolume, err := kl.kubeClient.CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+				referencedVolume, err := kl.kubeClient[0].CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
 				if err != nil {
 					klog.Warningf("unable to retrieve pv %s - %v", pvc.Spec.VolumeName, err)
 					continue

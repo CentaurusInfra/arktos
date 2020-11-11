@@ -236,9 +236,9 @@ func newTestKubeletWithImageList(
 	kubelet.machineInfo = machineInfo
 
 	fakeMirrorClient := podtest.NewFakeMirrorClient()
-	secretManager := secret.NewSimpleSecretManager(kubelet.kubeClient)
+	secretManager := secret.NewSimpleSecretManager(kubelet.kubeClient[0])
 	kubelet.secretManager = secretManager
-	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeClient)
+	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeClient[0])
 	kubelet.configMapManager = configMapManager
 	kubelet.podManager = kubepod.NewBasicPodManager(fakeMirrorClient, kubelet.secretManager, kubelet.configMapManager, podtest.NewMockCheckpointManager())
 	kubelet.statusManager = status.NewManager(fakeKubeClient, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
@@ -330,7 +330,7 @@ func newTestKubeletWithImageList(
 
 	var prober volume.DynamicPluginProber // TODO (#51147) inject mock
 	kubelet.volumePluginMgr, err =
-		NewInitializedVolumePluginMgr(kubelet, kubelet.secretManager, kubelet.configMapManager, token.NewManager(kubelet.kubeClient), allPlugins, prober)
+		NewInitializedVolumePluginMgr(kubelet, kubelet.secretManager, kubelet.configMapManager, token.NewManager(kubelet.kubeClient[0]), allPlugins, prober)
 	require.NoError(t, err, "Failed to initialize VolumePluginMgr")
 
 	kubelet.mounter = &mount.FakeMounter{}

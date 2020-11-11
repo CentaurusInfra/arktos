@@ -230,6 +230,8 @@ func (kl *Kubelet) getRuntime() kubecontainer.Runtime {
 
 // GetNode returns the node info for the configured node name of this Kubelet.
 func (kl *Kubelet) GetNode() (*v1.Node, error) {
+	// arktos scale-out. it is correct to use the tenant partition client here. since the kl.nodeInfo.GetNodeInfo() goes
+	//                   to the scheduler predicate functions
 	if kl.kubeClient == nil {
 		return kl.initialNode()
 	}

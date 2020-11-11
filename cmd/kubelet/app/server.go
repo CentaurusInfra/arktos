@@ -410,7 +410,6 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		ContainerManager:    nil,
 		DockerClientConfig:  dockerClientConfig,
 		KubeClient:          nil,
-		KubeClient2:         nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
 		NodeStatusClient:    nil,
@@ -570,7 +569,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	switch {
 	case standaloneMode:
 		kubeDeps.KubeClient = nil
-		kubeDeps.KubeClient2 = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
 		kubeDeps.NodeStatusClient = nil
@@ -581,17 +579,29 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 
 		klog.Infof("debug: built kubeconfig: %v", clientConfigs)
 
-		// hack: arktos-scaleout: different client config for tenant api server
-		clientConfigTenantAPI := *clientConfigs
-		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
-			cfg.Host = "http://172.31.10.155:8080"
-			klog.Infof("debug: clientConfigTenantAPI.Host: %v", cfg.Host)
+		// setup the kubeclient per the TenantServers
+		//
+		klog.Infof("debug: TenantServers args: %v", s.TenantServers)
+		if s.TenantServers == nil || len(s.TenantServers)==0 {
+			return errors.New("invalid TenantServers")
 		}
 
-		clientConfigTenantAPI2 := *clientConfigs
-		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
-			cfg.Host = "http://172.31.14.52:8080"
-			klog.Infof("debug: clientConfigTenantAPI2.Host: %v", cfg.Host)
+		kubeDeps.KubeClient = make([]clientset.Interface, len(s.TenantServers))
+
+		for i, tenantServer := range s.TenantServers {
+			// hack: arktos-scaleout: different client config for tenant api server
+			clientConfigTenantAPI := *clientConfigs
+			for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
+				cfg.Host = tenantServer
+				klog.Infof("debug: clientConfigTenantAPI.Host: %v", cfg.Host)
+			}
+
+			// hack: arktos-scaleout: different client config for tenant api server
+			kubeDeps.KubeClient[i], err = clientset.NewForConfig(&clientConfigTenantAPI)
+			if err != nil {
+				return fmt.Errorf("failed to initialize kubelet client: %v", err)
+			}
+
 		}
 
 		if err != nil {
@@ -601,16 +611,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			return errors.New("closeAllConns must be a valid function other than nil")
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
-
-		// hack: arktos-scaleout: different client config for tenant api server
-		kubeDeps.KubeClient, err = clientset.NewForConfig(&clientConfigTenantAPI)
-		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet client: %v", err)
-		}
-		kubeDeps.KubeClient2, err = clientset.NewForConfig(&clientConfigTenantAPI2)
-		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet client2: %v", err)
-		}
 
 		arktosExtClientConfig := *clientConfigs
 		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {
@@ -645,7 +645,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-			heartbeatClientConfig.Host = "http://172.31.8.177:8080"
 			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
@@ -655,15 +654,22 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
+	// TODO: arktos scale-out. should the config controller is on the local resource cluster ?
+	//       might need reconsider this.
+	//
+	// TODO: should separate the event api as well, i.e. one for workload and one for node resource?
+	//
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
 		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient, kubeDeps.EventClient, string(nodeName)); err != nil {
+		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient[0], kubeDeps.EventClient, string(nodeName)); err != nil {
 			return err
 		}
 	}
 
+	//TODO: auth for both Tenant and Resource servers
+	//
 	if kubeDeps.Auth == nil {
-		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient, s.KubeletConfiguration)
+		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient[0], s.KubeletConfiguration)
 		if err != nil {
 			return err
 		}
@@ -786,7 +792,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// Start APIServerConfigManager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient, stopCh)
+	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient[0], stopCh)
 
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
@@ -896,7 +902,8 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 		return nil, nil, err
 	}
 
-	klog.Infof("debug: return from NewNonInteractiveDeferredLoadingClientConfig(). clientConfig: %v", clientConfig)
+	klog.Infof("debug: return from NewNonInteractiveDeferredLoadingClientConfig(). clientConfig.host: %v, apipath: %v",
+		clientConfig.GetConfig().Host, clientConfig.GetConfig().APIPath)
 
 	return clientConfig, closeAllConns, nil
 }

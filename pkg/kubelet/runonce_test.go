@@ -99,7 +99,7 @@ func TestRunOnce(t *testing.T) {
 		kb.nodeName,
 		kb.podManager,
 		kb.statusManager,
-		kb.kubeClient,
+		kb.kubeClient[0],
 		kb.volumePluginMgr,
 		fakeRuntime,
 		kb.mounter,
