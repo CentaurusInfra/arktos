@@ -412,7 +412,6 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		KubeClient:          nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
-		NodeStatusClient:    nil,
 		EventClient:         nil,
 		Mounter:             mounter,
 		Subpather:           subpather,
@@ -491,9 +490,6 @@ func makeEventRecorder(kubeDeps *kubelet.Dependencies, nodeName types.NodeName) 
 }
 
 func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan struct{}) (err error) {
-	klog.Infof("debug: kubeconfig: %v, bootstrapkubeconfig: %v, kubeconfigfile: %v, kubeconfiguration: %v",
-		s.KubeConfig, s.BootstrapKubeconfig, s.KubeletConfigFile, s.KubeletConfiguration)
-
 	// Set global feature gates based on the value on the initial KubeletServer
 	err = utilfeature.DefaultMutableFeatureGate.SetFromMap(s.KubeletConfiguration.FeatureGates)
 	if err != nil {
@@ -571,13 +567,36 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.KubeClient = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
-		kubeDeps.NodeStatusClient = nil
 		klog.Warningf("standalone mode, no API client")
 
 	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
-
-		klog.Infof("debug: built kubeconfig: %v", clientConfigs)
+		if err != nil {
+			return err
+		}
+		if closeAllConns == nil {
+			return errors.New("closeAllConns must be a valid function other than nil")
+		}
+		kubeDeps.OnHeartbeatFailure = closeAllConns
+		
+		// make a separate client for heartbeat with throttling disabled and a timeout attached
+		heartbeatClientConfigs := *clientConfigs
+		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
+			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
+			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
+			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+				leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
+				if heartbeatClientConfig.Timeout > leaseTimeout {
+					heartbeatClientConfig.Timeout = leaseTimeout
+				}
+			}
+			heartbeatClientConfig.QPS = float32(-1)
+			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
+		}
+		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
+		if err != nil {
+			return fmt.Errorf("failed to initialize kubelet heartbeat client: %v", err)
+		}
 
 		// setup the kubeclient per the TenantServers
 		//
@@ -604,14 +623,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 
 		}
 
-		if err != nil {
-			return err
-		}
-		if closeAllConns == nil {
-			return errors.New("closeAllConns must be a valid function other than nil")
-		}
-		kubeDeps.OnHeartbeatFailure = closeAllConns
-
 		arktosExtClientConfig := *clientConfigs
 		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {
 			cfg.ContentType = "application/json"
@@ -631,25 +642,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.EventClient, err = v1core.NewForConfig(&eventClientConfigs)
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet event client: %v", err)
-		}
-
-		// make a separate client for heartbeat with throttling disabled and a timeout attached
-		heartbeatClientConfigs := *clientConfigs
-		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
-			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
-			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
-			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-				leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
-				if heartbeatClientConfig.Timeout > leaseTimeout {
-					heartbeatClientConfig.Timeout = leaseTimeout
-				}
-			}
-			heartbeatClientConfig.QPS = float32(-1)
-			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
-		}
-		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
-		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet heartbeat client: %v", err)
 		}
 	}
 

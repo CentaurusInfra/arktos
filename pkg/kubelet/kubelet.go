@@ -253,9 +253,9 @@ type Dependencies struct {
 	Cloud                   cloudprovider.Interface
 	ContainerManager        cm.ContainerManager
 	DockerClientConfig      *dockershim.ClientConfig
+	//TODO: Arktos-scale-out: event should be per Tenant partition and per Resource parition
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
-	NodeStatusClient        clientset.Interface
 	OnHeartbeatFailure      []func()
 	KubeClient              []clientset.Interface
 	ArktosExtClient         arktos.Interface
