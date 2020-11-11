@@ -410,6 +410,7 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		ContainerManager:    nil,
 		DockerClientConfig:  dockerClientConfig,
 		KubeClient:          nil,
+		KubeClient2:         nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
 		NodeStatusClient:    nil,
@@ -491,6 +492,9 @@ func makeEventRecorder(kubeDeps *kubelet.Dependencies, nodeName types.NodeName) 
 }
 
 func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan struct{}) (err error) {
+	klog.Infof("debug: kubeconfig: %v, bootstrapkubeconfig: %v, kubeconfigfile: %v, kubeconfiguration: %v",
+		s.KubeConfig, s.BootstrapKubeconfig, s.KubeletConfigFile, s.KubeletConfiguration)
+
 	// Set global feature gates based on the value on the initial KubeletServer
 	err = utilfeature.DefaultMutableFeatureGate.SetFromMap(s.KubeletConfiguration.FeatureGates)
 	if err != nil {
@@ -574,6 +578,9 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 
 	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
+
+		klog.Infof("debug: built kubeconfig: %v", clientConfigs)
+
 		// hack: arktos-scaleout: different client config for tenant api server
 		clientConfigTenantAPI := *clientConfigs
 		for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
@@ -873,6 +880,8 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 		}
 	}
 
+	klog.Infof("debug: build clientConfig from NewNonInteractiveDeferredLoadingClientConfig(), config file: %v", s.KubeConfig )
+
 	clientConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: s.KubeConfig},
 		&clientcmd.ConfigOverrides{},
@@ -886,6 +895,9 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	klog.Infof("debug: return from NewNonInteractiveDeferredLoadingClientConfig(). clientConfig: %v", clientConfig)
+
 	return clientConfig, closeAllConns, nil
 }
 
