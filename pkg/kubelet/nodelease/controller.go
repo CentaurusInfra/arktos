@@ -27,7 +27,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	coordclientset "k8s.io/client-go/kubernetes/typed/coordination/v1beta1"
 	"k8s.io/utils/pointer"
 
 	"k8s.io/klog"
@@ -54,7 +53,6 @@ type Controller interface {
 
 type controller struct {
 	client                     clientset.Interface
-	leaseClient                coordclientset.LeaseInterface
 	holderIdentity             string
 	leaseDurationSeconds       int32
 	renewInterval              time.Duration
@@ -64,13 +62,8 @@ type controller struct {
 
 // NewController constructs and returns a controller
 func NewController(clock clock.Clock, client clientset.Interface, holderIdentity string, leaseDurationSeconds int32, onRepeatedHeartbeatFailure []func()) Controller {
-	var leaseClient coordclientset.LeaseInterface
-	if client != nil {
-		leaseClient = client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
-	}
 	return &controller{
 		client:                     client,
-		leaseClient:                leaseClient,
 		holderIdentity:             holderIdentity,
 		leaseDurationSeconds:       leaseDurationSeconds,
 		renewInterval:              renewInterval,
@@ -81,7 +74,7 @@ func NewController(clock clock.Clock, client clientset.Interface, holderIdentity
 
 // Run runs the controller
 func (c *controller) Run(stopCh <-chan struct{}) {
-	if c.leaseClient == nil {
+	if c.client == nil {
 		klog.Infof("node lease controller has nil lease client, will not claim or renew leases")
 		return
 	}
@@ -123,10 +116,11 @@ func (c *controller) backoffEnsureLease() (*coordv1beta1.Lease, bool) {
 // ensureLease creates the lease if it does not exist. Returns the lease and
 // a bool (true if this call created the lease), or any error that occurs.
 func (c *controller) ensureLease() (*coordv1beta1.Lease, bool, error) {
-	lease, err := c.leaseClient.Get(c.holderIdentity, metav1.GetOptions{})
+	leaseClient := c.client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
+	lease, err := leaseClient.Get(c.holderIdentity, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
 		// lease does not exist, create it
-		lease, err := c.leaseClient.Create(c.newLease(nil))
+		lease, err := leaseClient.Create(c.newLease(nil))
 		if err != nil {
 			return nil, false, err
 		}
@@ -143,7 +137,8 @@ func (c *controller) ensureLease() (*coordv1beta1.Lease, bool, error) {
 // call this once you're sure the lease has been created
 func (c *controller) retryUpdateLease(base *coordv1beta1.Lease) {
 	for i := 0; i < maxUpdateRetries; i++ {
-		_, err := c.leaseClient.Update(c.newLease(base))
+		leaseClient := c.client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
+		_, err := leaseClient.Update(c.newLease(base))
 		if err == nil {
 			return
 		}
