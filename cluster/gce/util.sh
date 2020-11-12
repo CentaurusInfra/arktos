@@ -2792,7 +2792,6 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
-  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
   ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
 
