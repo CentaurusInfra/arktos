@@ -222,11 +222,27 @@ function start-hollow-nodes {
 
 detect-project &> /dev/null
 
-create-kubemark-master
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  export ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBERNETES_RESOURCE_PARTITION=true
+  export KUBERNETES_SCALEOUT_PROXY=true
+  create-kubemark-master
+  export KUBERNETES_RESOURCE_PARTITION=false
+  export KUBERNETES_SCALEOUT_PROXY=false
+else
+  create-kubemark-master
+fi
 
 MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
 
 start-hollow-nodes
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
+echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
+  export KUBERNETES_TENANT_PARTITION=true
+  create-kubemark-master
+fi
 
 echo ""
 if [ "${CLOUD_PROVIDER}" = "aws" ]; then

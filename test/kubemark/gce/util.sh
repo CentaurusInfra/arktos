@@ -40,8 +40,21 @@ function create-kubemark-master {
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
 
-    export KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
-    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+    fi
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp"
+    fi
+    export SCALEOUT_PROXY_NAME
+    export KUBECONFIG
+    export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_CREATE_NODES=false
 
@@ -78,6 +91,17 @@ function create-kubemark-master {
       export "${dst_var}"="${val}"
     done
     "${KUBE_ROOT}/hack/e2e-internal/e2e-up.sh"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      cp -f $KUBECONFIG $LOCAL_KUBECONFIG
+    fi
+    #if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    #  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    #    sed -i "s/server: https:*/server: http://${PROXY_RESERVED_IP}:8888/" ${KUBECONFIG}
+    #  else
+    #    sed -i "s/server: https:.*/&:8080/" ${KUBECONFIG}
+    #    sed -i "s/server: https:*/server: http:/" ${KUBECONFIG}
+    #  fi
+    #fi
     if [[ "${KUBEMARK_HA_MASTER:-}" == "true" && -n "${KUBEMARK_MASTER_ADDITIONAL_ZONES:-}" ]]; then
         for KUBE_GCE_ZONE in ${KUBEMARK_MASTER_ADDITIONAL_ZONES}; do
           KUBE_GCE_ZONE="${KUBE_GCE_ZONE}" KUBE_REPLICATE_EXISTING_MASTER=true \
@@ -92,7 +116,17 @@ function delete-kubemark-master {
   # shellcheck disable=SC2030,SC2031
   (
     ## reset CLUSTER_NAME to avoid multi kubemark added after e2e.
-    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+    fi
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp"
+    fi
+    export SCALEOUT_PROXY_NAME
+    export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_DELETE_NETWORK=false
     # Even if the "real cluster" is private, we shouldn't manage cloud nat.

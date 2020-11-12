@@ -522,3 +522,21 @@ WINDOWS_NODE_TAINTS="${WINDOWS_NODE_TAINTS:-node.kubernetes.io/os=win1809:NoSche
 
 # Whether to set up a private GCE cluster, i.e. a cluster where nodes have only private IPs.
 GCE_PRIVATE_CLUSTER="${KUBE_GCE_PRIVATE_CLUSTER:-false}"
+
+# ScaleOut arch vars
+PROXY_IMAGE_PROJECT=${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}
+PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}
+PROXY_NAME="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
+PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
+
+# true if this is a resource partition cluster
+KUBERNETES_RESOURCE_PARTITION="${KUBERNETES_RESOURCE_PARTITION:-false}"
+# true if this is a tenant partition cluster
+KUBERNETES_TENANT_PARTITION="${KUBERNETES_TENANT_PARTITION:-false}"
+
+if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == true ]]; then
+  ENABLE_APISERVER_INSECURE_PORT=true
+fi
+if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == true ]]; then
+  ENABLE_APISERVER_INSECURE_PORT=true
+fi
