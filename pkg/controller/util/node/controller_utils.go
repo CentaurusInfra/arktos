@@ -118,13 +118,29 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 	return updatedPod, nil
 }
 
+func MarkAllPodsNotReadyInMutliPartitions(kubeClients []*clientset.Interface, node *v1.Node) error {
+	errString := ""
+	for i, kubeClient := range kubeClients {
+		err := MarkAllPodsNotReady(*kubeClient, node)
+		if err != nil {
+			errString += fmt.Sprintf("Error in client #%d: %v", i, err)
+		}
+	}
+
+	if len(errString) != 0 {
+		return fmt.Errorf(errString)
+	}
+
+	return nil
+}
+
 // MarkAllPodsNotReady updates ready status of all pods running on
 // given node from master return true if success
 func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 	nodeName := node.Name
 	klog.V(2).Infof("Update ready status of pods on node [%v]", nodeName)
 	opts := metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector(api.PodHostField, nodeName).String()}
-	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(opts)
+	pods, err := kubeClient.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(opts)
 	if err != nil {
 		return err
 	}
