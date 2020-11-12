@@ -52,7 +52,7 @@ type HollowKubelet struct {
 func NewHollowKubelet(
 	flags *options.KubeletFlags,
 	config *kubeletconfig.KubeletConfiguration,
-	client *clientset.Clientset,
+	client []clientset.Interface,
 	arktosClient arktosCientset.Interface,
 	heartbeatClient *clientset.Clientset,
 	cadvisorInterface cadvisor.Interface,

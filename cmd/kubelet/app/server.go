@@ -578,7 +578,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			return errors.New("closeAllConns must be a valid function other than nil")
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
-		
+
 		// make a separate client for heartbeat with throttling disabled and a timeout attached
 		heartbeatClientConfigs := *clientConfigs
 		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
