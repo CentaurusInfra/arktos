@@ -1,40 +1,27 @@
-### Setup proxy
+### Brief 
 
-Please follow [these steps](https://github.com/futurewei-cloud/arktos-perftest/wiki/How-to-setup-and-config-nginx-proxy-for-scale-out-design#setting-up-proxy). 
+This introduces the tool to set up the the nginx proxy, tenant-partition cluster(s), and the resource-partition cluster(s).
 
-The proxy can run on a machine of your choice. Make sure to update the ip addresses in the Nginx config for your partition servers.
-
-This is a one-time setup and pretty straightforward so it's not included in this PR as a script. 
-
-Will automate this in another PR.
-
-### Set proxy endpoint:
-
-This to to be done on ***both tenant and resource partitions***.
-
-Set the proxy url like
+### nginx proxy setup
+On the machine to run nginx proxy (it could be the tenant partition machine, the resource partition machine, or a third machine), run:
 
 ```bash
-export SCALE_OUT_PROXY_ENDPOINT="http://192.168.0.120:8888"
+TENANT_PARTITION_IP=[tenant-partition-ip] RESOURCE_PARTITION_IP=[resource-partition-ip] setup_nginx_proxy.sh
 ```
 
 ### On the TENANT partition:
 
 Run 
 ```bash
-IS_RESOURCE_PARTITION=false arktos-up-scale-out-poc.sh
+SCALE_OUT_PROXY_ENDPOINT=http://[nginx-proxy-ip]:8888 IS_RESOURCE_PARTITION=false  arktos-up-scale-out-poc.sh
 ```
-
-This will start all the components except kubelet, kubeproxy, and nodelifecycle and nodeipam controllers are disabled
 
 ### On the RESOURCE partition:
 
 Run 
 ```bash
-IS_RESOURCE_PARTITION=true arktos-up-scale-out-poc.sh
+SCALE_OUT_PROXY_ENDPOINT=http://[nginx-proxy-ip]:8888 IS_RESOURCE_PARTITION=true  arktos-up-scale-out-poc.sh
 ```
 
-This will start all the components except scheduler, and only nodelifecycle and nodeipam controllers are enabled
-
 ### Tests done
-This is verified on my local setups with two VMs. Proxy running on one of the VMs.
+This is verified on my local setups with two AWS machines. 

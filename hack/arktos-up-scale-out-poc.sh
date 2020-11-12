@@ -15,7 +15,7 @@
 # limitations under the License.
 
 if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
-  echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"
+  echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"    
   exit 1
 fi
 
@@ -410,6 +410,13 @@ Logs:
   ${KUBELET_LOG}
 EOF
 fi
+
+if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+  printf "\033[0;32mResource Partition Cluster is Running ... \033[0m\n"
+else
+  printf "\033[0;33mTenant Partition Cluster is Running ... \033[0m\n"
+fi
+
 }
 
 # install etcd if necessary
@@ -495,8 +502,8 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   fi
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
      kube::common::start_kubescheduler
-  fi
-  start_kubedns
+     start_kubedns
+  fi  
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
   fi
@@ -529,36 +536,42 @@ if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
   create_psp_policy
 fi
 
-if [[ "${DEFAULT_STORAGE_CLASS}" = "true" ]]; then
+if [[ "${DEFAULT_STORAGE_CLASS}" == "true" && "${IS_RESOURCE_PARTITION}" != "true" ]]; then
   create_storage_class
 fi
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
-# refresh the resource discovery cache after the CRD is created
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
+if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+  # refresh the resource discovery cache after the CRD is created
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
+fi
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
-while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
+if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+  while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+fi
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
+if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
-${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
-
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
+fi
+ 
 echo ""
 echo "Arktos Setup done."
-echo "*******************************************"
-echo "Setup Kata Containers components ..."
+#echo "*******************************************"
+#echo "Setup Kata Containers components ..."
 #KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
-echo "Kata Setup done."
-echo "*******************************************"
+#echo "Kata Setup done."
+#echo "*******************************************"
 
 print_success
 
