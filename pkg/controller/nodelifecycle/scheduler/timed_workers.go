@@ -22,23 +22,26 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/types"
+	clientset "k8s.io/client-go/kubernetes"
 
 	"k8s.io/klog"
 )
 
 // WorkArgs keeps arguments that will be passed to the function executed by the worker.
 type WorkArgs struct {
-	NamespacedName types.NamespacedName
+	NamespacedName        types.NamespacedName
+	TenantPartitionClient *clientset.Interface
 }
 
 // KeyFromWorkArgs creates a key for the given `WorkArgs`
 func (w *WorkArgs) KeyFromWorkArgs() string {
+	// To consider: as different tenants belongs to different tenant-partitions, it is ok to use the namespaced name to identify a pod globally
 	return w.NamespacedName.String()
 }
 
 // NewWorkArgs is a helper function to create new `WorkArgs`
-func NewWorkArgs(name, namespace, tenant string) *WorkArgs {
-	return &WorkArgs{types.NamespacedName{Tenant: tenant, Namespace: namespace, Name: name}}
+func NewWorkArgs(name, namespace, tenant string, client *clientset.Interface) *WorkArgs {
+	return &WorkArgs{NamespacedName: types.NamespacedName{Tenant: tenant, Namespace: namespace, Name: name}, TenantPartitionClient: client}
 }
 
 // TimedWorker is a responsible for executing a function no earlier than at FireAt time.
