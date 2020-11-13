@@ -504,7 +504,7 @@ function kube::common::start_controller_manager {
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
       --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master=${MASTER_ENDPOINT} >"${CTLRMGR_LOG}" 2>&1 &
+      --master=${MASTER_ENDPOINT} ${CONTROLLER_MANAGER_EXTRA_FLAGS:-} >"${CTLRMGR_LOG}"  2>&1 &
       #--master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
     CTLRMGR_PID=$!
 }

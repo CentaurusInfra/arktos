@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 
@@ -31,10 +32,6 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-)
-
-const (
-	osEnvTenantPartitions = "SCALE_OUT_TENANT_PARTITIONS_IP"
 )
 
 type TenantPartitionManager struct {
@@ -59,13 +56,13 @@ func GetInsecureClient(ipAddr string) (clientset.Interface, error) {
 	return client, nil
 }
 
-func GetInsecureConfig(ipAddr string) (*rest.Config, error) {
+func GetInsecureConfig(tenantServerUrl string) (*rest.Config, error) {
 	template := `
 apiVersion: v1
 kind: Config
 clusters:
 - cluster:
-    server: http://%s:8080
+    server: %v
   name: tenant-partition-cluster
 contexts:
 - context:
@@ -74,7 +71,7 @@ contexts:
 current-context: node-controller-context
 `
 
-	content := fmt.Sprintf(template, ipAddr)
+	content := fmt.Sprintf(template, tenantServerUrl)
 
 	tmpfile, err := ioutil.TempFile("", "kubeconfig")
 	if err != nil {
@@ -89,23 +86,21 @@ current-context: node-controller-context
 	return clientcmd.BuildConfigFromFlags("", tmpfile.Name())
 }
 
-func GetTenantPartitionClientsFromOsEnv() ([]clientset.Interface, error) {
+func GetTenantPartitionClients(tenantServers []string) ([]clientset.Interface, error) {
 
-	tenant_partition_addresses := strings.Split(os.Getenv(osEnvTenantPartitions), ",")
-
-	for _, ipAddr := range tenant_partition_addresses {
-		if net.ParseIP(strings.TrimSpace(ipAddr)) == nil {
-			return nil, fmt.Errorf("invalid IP Address in environment variable %v : (%v) ", osEnvTenantPartitions, ipAddr)
+	for _, tenantServer := range tenantServers {
+		if err := validateUrl(tenantServer); err != nil {
+			return nil, err
 		}
 	}
 
 	clients := []clientset.Interface{}
 
-	for _, ipAddr := range tenant_partition_addresses {
-		ipAddress := strings.TrimSpace(ipAddr)
-		client, err := GetInsecureClient(ipAddress)
+	for _, tenantServer := range tenantServers {
+		tenantServerUrl := strings.TrimSpace(tenantServer)
+		client, err := GetInsecureClient(tenantServerUrl)
 		if err != nil {
-			return nil, fmt.Errorf("Error in getting client for tenant partition (%v) ： %v", ipAddress, err)
+			return nil, fmt.Errorf("Error in getting client for tenant partition (%v) ： %v", tenantServerUrl, err)
 		}
 
 		clients = append(clients, client)
@@ -114,8 +109,8 @@ func GetTenantPartitionClientsFromOsEnv() ([]clientset.Interface, error) {
 	return clients, nil
 }
 
-func GetTenantPartitionManagersFromOsEnv(stop <-chan struct{}) ([]*TenantPartitionManager, error) {
-	clients, err := GetTenantPartitionClientsFromOsEnv()
+func GetTenantPartitionManagers(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	clients, err := GetTenantPartitionClients(tenantServers)
 	if err != nil {
 		return nil, err
 	}
@@ -137,4 +132,29 @@ func GetTenantPartitionManagersFromOsEnv(stop <-chan struct{}) ([]*TenantPartiti
 	}
 
 	return tpAccessors, nil
+}
+
+func validateUrl(urlString string) error {
+	_, err := url.ParseRequestURI(urlString)
+	if err != nil {
+		return err
+	}
+
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return err
+	}
+	if u.Scheme == "" {
+		return fmt.Errorf("Invalid url (%v): missing scheme")
+	}
+	if u.Host == "" {
+		return fmt.Errorf("Invalid url (%v): missing host")
+	}
+
+	host, _, _ := net.SplitHostPort(u.Host)
+	if net.ParseIP(host) == nil {
+		return fmt.Errorf("Invalid url (%v): invalid host IP")
+	}
+
+	return nil
 }

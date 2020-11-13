@@ -129,7 +129,7 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
 
-	tpAccessors, err := lifecyclecontroller.GetTenantPartitionManagersFromOsEnv(ctx.Stop)
+	tpAccessors, err := lifecyclecontroller.GetTenantPartitionManagers(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
 	if err != nil {
 		return nil, true, err
 	}

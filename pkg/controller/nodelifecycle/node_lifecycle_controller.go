@@ -169,7 +169,7 @@ type nodeHealthData struct {
 // Controller is the controller that manages node's life cycle.
 type Controller struct {
 	taintManager            *scheduler.NoExecuteTaintManager
-	podInformersSynced       cache.InformerSynced
+	podInformersSynced      cache.InformerSynced
 	tenantPartitionManagers []*TenantPartitionManager
 	tenantPartitionClients  []*clientset.Interface
 	resourcePartitionClient clientset.Interface
