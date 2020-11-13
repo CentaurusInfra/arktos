@@ -248,11 +248,11 @@ type Dependencies struct {
 	Options []Option
 
 	// Injected Dependencies
-	Auth                    server.AuthInterface
-	CAdvisorInterface       cadvisor.Interface
-	Cloud                   cloudprovider.Interface
-	ContainerManager        cm.ContainerManager
-	DockerClientConfig      *dockershim.ClientConfig
+	Auth               server.AuthInterface
+	CAdvisorInterface  cadvisor.Interface
+	Cloud              cloudprovider.Interface
+	ContainerManager   cm.ContainerManager
+	DockerClientConfig *dockershim.ClientConfig
 	//TODO: Arktos-scale-out: event should be per Tenant partition and per Resource parition
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
@@ -791,7 +791,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.runner,
 		containerRefManager,
 		kubeDeps.Recorder)
-
 
 	// TODO: tokenManager to support multiple tenant partitions
 	//

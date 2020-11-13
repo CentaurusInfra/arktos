@@ -195,7 +195,7 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			}
 
 			// load kubelet config file, if provided
-			// hack:arktos-scaleout: use dynamic array of configs
+			// TODO: arktos-scaleout: use dynamic array of configs, to handle new tenant partitions
 			//
 			if configFile := kubeletFlags.KubeletConfigFile; len(configFile) > 0 {
 				kubeletConfig, err = loadConfigFile(configFile)
@@ -591,7 +591,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-			klog.Infof("debug: heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
+			klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
@@ -600,22 +600,20 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 
 		// setup the kubeclient per the TenantServers
 		//
-		klog.Infof("debug: TenantServers args: %v", s.TenantServers)
-		if s.TenantServers == nil || len(s.TenantServers)==0 {
+		klog.V(6).Infof("make kubeDeps.KubeClients based on TenantServers args: %v", s.TenantServers)
+		if s.TenantServers == nil || len(s.TenantServers) == 0 {
 			return errors.New("invalid TenantServers")
 		}
 
 		kubeDeps.KubeClient = make([]clientset.Interface, len(s.TenantServers))
 
 		for i, tenantServer := range s.TenantServers {
-			// hack: arktos-scaleout: different client config for tenant api server
 			clientConfigTenantAPI := *clientConfigs
 			for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
 				cfg.Host = tenantServer
-				klog.Infof("debug: clientConfigTenantAPI.Host: %v", cfg.Host)
+				klog.V(6).Infof("clientConfigTenantAPI.Host: %v", cfg.Host)
 			}
 
-			// hack: arktos-scaleout: different client config for tenant api server
 			kubeDeps.KubeClient[i], err = clientset.NewForConfig(&clientConfigTenantAPI)
 			if err != nil {
 				return fmt.Errorf("failed to initialize kubelet client: %v", err)
@@ -646,7 +644,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
-	// TODO: arktos scale-out. should the config controller is on the local resource cluster ?
+	// TODO: arktos scale-out. should the config controller be on the local resource cluster ?
 	//       might need reconsider this.
 	//
 	// TODO: should separate the event api as well, i.e. one for workload and one for node resource?
@@ -878,7 +876,7 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 		}
 	}
 
-	klog.Infof("debug: build clientConfig from NewNonInteractiveDeferredLoadingClientConfig(), config file: %v", s.KubeConfig )
+	klog.V(6).Infof("build clientConfig with config file: %v", s.KubeConfig)
 
 	clientConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: s.KubeConfig},
@@ -894,8 +892,8 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 		return nil, nil, err
 	}
 
-	klog.Infof("debug: return from NewNonInteractiveDeferredLoadingClientConfig(). clientConfig.host: %v, apipath: %v",
-		clientConfig.GetConfig().Host, clientConfig.GetConfig().APIPath)
+	klog.V(6).Infof("Got clientConfig from NewNonInteractiveDeferredLoadingClientConfig(): %v",
+		clientConfig.GetConfig())
 
 	return clientConfig, closeAllConns, nil
 }
