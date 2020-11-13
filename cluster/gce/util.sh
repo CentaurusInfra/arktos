@@ -2787,6 +2787,11 @@ function create-proxy-vm() {
 }
 
 function setup-proxy() {
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
   ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
@@ -2800,7 +2805,7 @@ pid /run/nginx.pid;
 include /etc/nginx/modules-enabled/*.conf;
 
 events {
-    worker_connections 768;
+    worker_connections 100000;
     # multi_accept on;
 }
 
