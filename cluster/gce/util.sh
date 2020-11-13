@@ -1384,6 +1384,10 @@ EOF
     # Master-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "true")
+KUBERNETES_RESOURCE_PARTITION: $(yaml-quote ${KUBERNETES_RESOURCE_PARTITION:-false})
+KUBERNETES_TENANT_PARTITION: $(yaml-quote ${KUBERNETES_TENANT_PARTITION:-false})
+PROXY_RESERVED_IP: $(yaml-quote ${PROXY_RESERVED_IP:-})
+PROXY_RESERVED_INTERNAL_IP: $(yaml-quote ${PROXY_RESERVED_INTERNAL_IP:-})
 KUBE_USER: $(yaml-quote ${KUBE_USER})
 KUBE_PASSWORD: $(yaml-quote ${KUBE_PASSWORD})
 KUBE_BEARER_TOKEN: $(yaml-quote ${KUBE_BEARER_TOKEN})
@@ -1411,6 +1415,7 @@ ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
 ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
@@ -1563,6 +1568,7 @@ EOF
     # Node-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "false")
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
 EXTRA_DOCKER_OPTS: $(yaml-quote ${EXTRA_DOCKER_OPTS:-})
 EOF
     if [ -n "${KUBEPROXY_TEST_ARGS:-}" ]; then
@@ -2223,9 +2229,9 @@ function create-node-template() {
   fi
 
   local address=""
-  if [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
-    address="no-address"
-  fi
+#  if [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
+#    address="no-address"
+#  fi
 
   local network=$(make-gcloud-network-argument \
     "${NETWORK_PROJECT}" \
@@ -2341,6 +2347,9 @@ function kube-up() {
     write-cluster-name
     write-controller-config
     create-autoscaler-config
+    if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+      create-proxy-vm
+    fi
     create-master
     create-nodes-firewall
     create-nodes-template
@@ -2350,6 +2359,11 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
+    if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+      echo "Scaleout proxy public IP: ${PROXY_RESERVED_IP}:8888"
+      echo "Scaleout proxy internal IP: ${PROXY_RESERVED_INTERNAL_IP}:8888"
+      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${KUBECONFIG}
+    fi
   fi
 }
 
@@ -2707,6 +2721,194 @@ function create-etcd-apiserver-certs {
   popd
 }
 
+function create-proxy-vm() {
+  echo "Starting proxy and configuring proxy firewalls"
+
+  gcloud compute firewall-rules create "${PROXY_NAME}-https" \
+    --project "${NETWORK_PROJECT}" \
+    --network "${NETWORK}" \
+    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888" &
+
+  # We have to make sure the disk is created before creating the master VM, so
+  # run this in the foreground.
+#  gcloud compute disks create "${MASTER_NAME}-pd" \
+#    --project "${PROJECT}" \
+#    --zone "${ZONE}" \
+#    --type "${MASTER_DISK_TYPE}" \
+#    --size "${MASTER_DISK_SIZE}"
+
+  # Reserve the master's IP so that it can later be transferred to another VM
+  # without disrupting the kubelets.
+  create-static-ip "${PROXY_NAME}-ip" "${REGION}"
+  create-static-internalip "${PROXY_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
+  PROXY_RESERVED_IP=$(gcloud compute addresses describe "${PROXY_NAME}-ip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  local enable_ip_aliases
+  if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
+    enable_ip_aliases=true
+  else
+    enable_ip_aliases=false
+  fi
+  local network=$(make-gcloud-network-argument \
+  "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
+  "${PROXY_RESERVED_IP:-}" "${PROXY_RESERVED_INTERNAL_IP:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
+
+  local retries=5
+  local sleep_sec=10
+  for attempt in $(seq 1 ${retries}); do
+    if result=$(gcloud compute instances create "${PROXY_NAME}" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --machine-type "${MASTER_SIZE}" \
+      --image-project="${PROXY_IMAGE_PROJECT}" \
+      --image "${PROXY_IMAGE}" \
+      --tags "${PROXY_TAG}" \
+      --scopes "storage-ro,compute-rw,monitoring,logging-write" \
+      --boot-disk-size "${MASTER_ROOT_DISK_SIZE}" \
+      ${network} 2>&1); then
+      echo "${result}" >&2
+      export PROXY_RESERVED_IP
+      export PROXY_RESERVED_INTERNAL_IP
+      return 0
+    else
+      echo "${result}" >&2
+      if [[ ! "${result}" =~ "try again later" ]]; then
+        echo "Failed to create master instance due to non-retryable error" >&2
+        return 1
+      fi
+      sleep $sleep_sec
+    fi
+  done
+
+  echo "Failed to create proxy instance despite ${retries} attempts" >&2
+  return 1
+}
+
+function setup-proxy() {
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
+  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
+  ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
+  ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
+
+  RESOURCE_MASTER_IP=${1}
+
+  cat >"${KUBE_TEMP}/nginx.conf" << EOF
+user www-data;
+worker_processes auto;
+pid /run/nginx.pid;
+include /etc/nginx/modules-enabled/*.conf;
+
+events {
+    worker_connections 100000;
+    # multi_accept on;
+}
+
+http {
+
+    ##
+    # Basic Settings
+    ##
+
+    sendfile on;
+    tcp_nopush on;
+    tcp_nodelay on;
+    keepalive_timeout 65;
+    types_hash_max_size 2048;
+    proxy_http_version 1.1;
+
+    # server_tokens off;
+
+    # server_names_hash_bucket_size 64;
+    # server_name_in_redirect off;
+
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+
+    ##
+    # SSL Settings
+    ##
+
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+    ssl_prefer_server_ciphers on;
+
+    ##
+    # Logging Settings
+    ##
+
+    access_log /var/log/nginx/access.log;
+    error_log /var/log/nginx/error.log;
+
+    ##
+    # Gzip Settings
+    ##
+
+    gzip on;
+
+    ##
+    # Virtual Host Configs
+    ##
+
+    include /etc/nginx/conf.d/*.conf;
+    include /etc/nginx/sites-enabled/*;
+
+    ##
+    # arktos cluster settings
+    #
+
+    server {
+        listen      8888;
+        server_name ${PROXY_NAME} ${PROXY_RESERVED_IP};
+
+        access_log /var/log/nginx/k8s_access.log;
+        error_log /var/log/nginx/k8s_error.log;
+
+        set \$RESOURCE_API http://${RESOURCE_MASTER_IP}:8080;
+        set \$TENANT_API http://${RESOURCE_MASTER_IP}:8080;
+
+        location ~ ^/[a-zA-Z0-9_.-]+$ {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location ~ ^/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location ~ ^/apis/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location ~ ^/api/v1/nodes?(.*) {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location ~ ^/apis/coordination.k8s.io/v1/leases?(.*) {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location ~ ^/apis/([^/])*/([^/])*/tenants/system/namespaces/kube-node-lease/leases?(.*) {
+            proxy_pass \$RESOURCE_API;
+        }
+
+        location / {
+            proxy_pass \$TENANT_API;
+        }
+    }
+}
+EOF
+
+  gcloud compute scp --zone="${ZONE}" "${KUBE_TEMP}/nginx.conf" "${PROXY_NAME}:~/nginx.conf"
+  ssh-to-node ${PROXY_NAME} "sudo mv ~/nginx.conf /etc/nginx/nginx.conf"
+  echo "VDBG ========================================"
+  cat ${KUBE_TEMP}/nginx.conf
+  echo "VDBG ========================================"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+}
 
 function create-master() {
   echo "Starting master and configuring firewalls"
@@ -2789,12 +2991,18 @@ function create-master() {
   ###set partition server name, ip
   set-partitionserver true    
   echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
-  
- 
-
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
+
+  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    setup-proxy ${MASTER_RESERVED_IP}
+  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    local sedarg="s/set \\\$TENANT_API http:.*/set \\\$TENANT_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
+    ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg}\" /etc/nginx/nginx.conf"
+    ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+  fi
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
@@ -3742,6 +3950,35 @@ function kube-down() {
         "${minions[@]::${batch}}"
       minions=( "${minions[@]:${batch}}" )
     done
+  fi
+
+  # Delete proxy-vm
+  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    if gcloud compute instances describe "${PROXY_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute instances delete \
+        --project "${PROJECT}" \
+        --quiet \
+        --delete-disks all \
+        --zone "${ZONE}" \
+        "${PROXY_NAME}"
+    fi
+    # Delete firewall rule for the proxy.
+    delete-firewall-rules "${PROXY_NAME}-https"
+    echo "Deleting proxy's reserved IP"
+    if gcloud compute addresses describe "${PROXY_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute addresses delete \
+        --project "${PROJECT}" \
+        --region "${REGION}" \
+        --quiet \
+        "${PROXY_NAME}-ip"
+    fi
+    if gcloud compute addresses describe "${PROXY_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute addresses delete \
+        --project "${PROJECT}" \
+        --region "${REGION}" \
+        --quiet \
+        "${PROXY_NAME}-internalip"
+    fi
   fi
 
   # If there are no more remaining master replicas: delete routes, pd for influxdb and update kubeconfig

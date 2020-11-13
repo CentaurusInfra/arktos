@@ -95,7 +95,11 @@ function main() {
     gke-master-start
   else
     create-node-pki
-    create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
+      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
+    else
+      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME} "8080" "http"
+    fi
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       create-kubeproxy-user-kubeconfig
     fi
@@ -128,7 +132,10 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
-    start-kube-scheduler
+
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
+      start-kube-scheduler
+    fi
     wait-till-apiserver-ready
     start-workload-controller-manager
     start-kube-addons
