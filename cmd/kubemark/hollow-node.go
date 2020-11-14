@@ -173,14 +173,23 @@ func run(config *hollowNodeConfig) {
 		klog.Fatalf("Failed to create a ClientConfig: %v. Exiting.", err)
 	}
 
-	client, err := clientset.NewForConfig(clientConfigs)
+	//TODO: arktos-scale-out: hollowNode should have the same args for Tenant servers as well
+	//      fixme when moving to this step running in perf test env
+	client := make([]clientset.Interface, 2)
+	clientFromConfig, err := clientset.NewForConfig(clientConfigs)
 	if err != nil {
 		klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 	}
 
+	for i := 0; i < len(client); i++ {
+		client[i] = clientFromConfig
+	}
+
 	if config.Morph == "kubelet" {
 		// Start APIServerConfigManager
-		go datapartition.StartAPIServerConfigManagerAndInformerFactory(client, wait.NeverStop)
+		// TODO: Arktos-scale-out: evaluate this function and see if this needs to be done on all tenant partitions
+		//
+		go datapartition.StartAPIServerConfigManagerAndInformerFactory(client[0], wait.NeverStop)
 
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
