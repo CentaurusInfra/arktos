@@ -195,6 +195,8 @@ HTTP server: The kubelet can also listen for HTTP and respond to a simple API
 			}
 
 			// load kubelet config file, if provided
+			// TODO: arktos-scaleout: use dynamic array of configs, to handle new tenant partitions
+			//
 			if configFile := kubeletFlags.KubeletConfigFile; len(configFile) > 0 {
 				kubeletConfig, err = loadConfigFile(configFile)
 				if err != nil {
@@ -577,9 +579,46 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
 
-		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfigs)
+		// make a separate client for heartbeat with throttling disabled and a timeout attached
+		heartbeatClientConfigs := *clientConfigs
+		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
+			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
+			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
+			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+				leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
+				if heartbeatClientConfig.Timeout > leaseTimeout {
+					heartbeatClientConfig.Timeout = leaseTimeout
+				}
+			}
+			heartbeatClientConfig.QPS = float32(-1)
+			klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
+		}
+		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet client: %v", err)
+			return fmt.Errorf("failed to initialize kubelet heartbeat client: %v", err)
+		}
+
+		// setup the kubeclient per the TenantServers
+		//
+		klog.V(6).Infof("make kubeDeps.KubeClients based on TenantServers args: %v", s.TenantServers)
+		if s.TenantServers == nil || len(s.TenantServers) == 0 {
+			return errors.New("invalid TenantServers")
+		}
+
+		kubeDeps.KubeClient = make([]clientset.Interface, len(s.TenantServers))
+
+		for i, tenantServer := range s.TenantServers {
+			clientConfigTenantAPI := *clientConfigs
+			for _, cfg := range clientConfigTenantAPI.GetAllConfigs() {
+				cfg.Host = tenantServer
+				klog.V(6).Infof("clientConfigTenantAPI.Host: %v", cfg.Host)
+			}
+
+			kubeDeps.KubeClient[i], err = clientset.NewForConfig(&clientConfigTenantAPI)
+			if err != nil {
+				return fmt.Errorf("failed to initialize kubelet client: %v", err)
+			}
+
 		}
 
 		arktosExtClientConfig := *clientConfigs
@@ -602,36 +641,25 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		if err != nil {
 			return fmt.Errorf("failed to initialize kubelet event client: %v", err)
 		}
-
-		// make a separate client for heartbeat with throttling disabled and a timeout attached
-		heartbeatClientConfigs := *clientConfigs
-		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
-			heartbeatClientConfig.Timeout = s.KubeletConfiguration.NodeStatusUpdateFrequency.Duration
-			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
-			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-				leaseTimeout := time.Duration(s.KubeletConfiguration.NodeLeaseDurationSeconds) * time.Second
-				if heartbeatClientConfig.Timeout > leaseTimeout {
-					heartbeatClientConfig.Timeout = leaseTimeout
-				}
-			}
-			heartbeatClientConfig.QPS = float32(-1)
-		}
-		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
-		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet heartbeat client: %v", err)
-		}
 	}
 
 	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
+	// TODO: arktos scale-out. should the config controller be on the local resource cluster ?
+	//       might need reconsider this.
+	//
+	// TODO: should separate the event api as well, i.e. one for workload and one for node resource?
+	//
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
 		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient, kubeDeps.EventClient, string(nodeName)); err != nil {
+		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient[0], kubeDeps.EventClient, string(nodeName)); err != nil {
 			return err
 		}
 	}
 
+	//TODO: auth for both Tenant and Resource servers
+	//
 	if kubeDeps.Auth == nil {
-		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient, s.KubeletConfiguration)
+		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient[0], s.KubeletConfiguration)
 		if err != nil {
 			return err
 		}
@@ -754,7 +782,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// Start APIServerConfigManager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient, stopCh)
+	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient[0], stopCh)
 
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
@@ -848,6 +876,8 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 		}
 	}
 
+	klog.V(6).Infof("build clientConfig with config file: %v", s.KubeConfig)
+
 	clientConfig, err := clientcmd.NewNonInteractiveDeferredLoadingClientConfig(
 		&clientcmd.ClientConfigLoadingRules{ExplicitPath: s.KubeConfig},
 		&clientcmd.ConfigOverrides{},
@@ -861,6 +891,10 @@ func buildKubeletClientConfig(s *options.KubeletServer, nodeName types.NodeName)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	klog.V(6).Infof("Got clientConfig from NewNonInteractiveDeferredLoadingClientConfig(): %v",
+		clientConfig.GetConfig())
+
 	return clientConfig, closeAllConns, nil
 }
 
