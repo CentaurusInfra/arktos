@@ -31,6 +31,18 @@ echo ${KUBELET_FLAGS}
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
+if [[ -z "${TENANT_SERVERS}" ]]; then
+  TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
+fi
+
+# for POC, the kubelet_flags is used for the new temporary kubelet commandline args
+KUBELET_FLAGS="--tenant-servers="${TENANT_SERVERS}
+# --tenant-servers set the tenant server urls for node-lifecycle controller
+CONTROLLER_MANAGER_EXTRA_FLAGS="--tenant-servers="${TENANT_SERVERS}
+
+echo KUBELET_FLAGS for new kubelet commandline --tenant-servers
+echo ${KUBELET_FLAGS}
+
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
 # sanity check for OpenStack provider

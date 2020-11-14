@@ -128,11 +128,18 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 }
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
+
+	tpAccessors, err := lifecyclecontroller.GetTenantPartitionManagers(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
+	if err != nil {
+		return nil, true, err
+	}
+
 	lifecycleController, err := lifecyclecontroller.NewNodeLifecycleController(
+		tpAccessors,
 		ctx.InformerFactory.Coordination().V1beta1().Leases(),
-		ctx.InformerFactory.Core().V1().Pods(),
+		//ctx.InformerFactory.Core().V1().Pods(),
 		ctx.InformerFactory.Core().V1().Nodes(),
-		ctx.InformerFactory.Apps().V1().DaemonSets(),
+		//ctx.InformerFactory.Apps().V1().DaemonSets(),
 		// node lifecycle controller uses existing cluster role from node-controller
 		ctx.ClientBuilder.ClientOrDie("node-controller"),
 		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,

@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,6 +22,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	unsafe "unsafe"
+
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	conversion "k8s.io/apimachinery/pkg/conversion"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -101,6 +104,7 @@ func autoConvert_v1alpha1_NodeLifecycleControllerConfiguration_To_config_NodeLif
 	out.PodEvictionTimeout = in.PodEvictionTimeout
 	out.LargeClusterSizeThreshold = in.LargeClusterSizeThreshold
 	out.UnhealthyZoneThreshold = in.UnhealthyZoneThreshold
+	out.TenantServers = *(*[]string)(unsafe.Pointer(&in.TenantServers))
 	return nil
 }
 
@@ -115,5 +119,6 @@ func autoConvert_config_NodeLifecycleControllerConfiguration_To_v1alpha1_NodeLif
 	out.PodEvictionTimeout = in.PodEvictionTimeout
 	out.LargeClusterSizeThreshold = in.LargeClusterSizeThreshold
 	out.UnhealthyZoneThreshold = in.UnhealthyZoneThreshold
+	out.TenantServers = *(*[]string)(unsafe.Pointer(&in.TenantServers))
 	return nil
 }
