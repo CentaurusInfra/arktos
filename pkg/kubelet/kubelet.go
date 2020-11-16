@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"sort"
+        "strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -312,11 +313,9 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		}
 	}
 
-	for _, client := range kubeDeps.KubeClient {
+	for i, client := range kubeDeps.KubeClient {
 		klog.Infof("Watching apiserver")
-		if updatechannel == nil {
-			updatechannel = cfg.Channel(kubetypes.ApiserverSource)
-		}
+		updatechannel = cfg.Channel(kubetypes.ApiserverSource + strconv.Itoa(i))
 		config.NewSourceApiserver(client, nodeName, updatechannel)
 	}
 
