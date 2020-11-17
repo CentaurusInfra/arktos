@@ -1,7 +1,7 @@
 site_name: Arktos
 docs_dir: 'docs'
 site_dir: '.tmp/documentation'
-repo_url: https://github.com/futurewei-cloud/arktos
+repo_url: https://github.com/CentaurusInfra/arktos
 theme:
     name: readthedocs
     highlightjs: true
