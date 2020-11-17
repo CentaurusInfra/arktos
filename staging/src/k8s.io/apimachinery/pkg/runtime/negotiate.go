@@ -129,7 +129,7 @@ type simpleNegotiatedSerializer struct {
 	info SerializerInfo
 }
 
-func NewSimpleNegotiatedSerializer(info SerializerInfo) NegotiatedSerializer { 
+func NewSimpleNegotiatedSerializer(info SerializerInfo) NegotiatedSerializer {
 	return &simpleNegotiatedSerializer{info: info}
 }
 
