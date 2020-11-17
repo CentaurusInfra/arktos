@@ -45,6 +45,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	example "k8s.io/apiserver/pkg/apis/example"
 	"k8s.io/apiserver/pkg/endpoints/handlers"
+	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
 	apitesting "k8s.io/apiserver/pkg/endpoints/testing"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/client-go/dynamic"
@@ -609,6 +610,21 @@ func (t *fakeTimeoutFactory) TimeoutCh() (<-chan time.Time, func() bool) {
 	}
 }
 
+// serveWatch will serve a watch response according to the watcher and watchServer.
+// Before watchServer.ServeHTTP, an error may occur like k8s.io/apiserver/pkg/endpoints/handlers/watch.go#serveWatch does.
+func serveWatch(watcher watch.Interface, watchServer *handlers.WatchServer, preServeErr error) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		defer watcher.Stop()
+
+		if preServeErr != nil {
+			responsewriters.ErrorNegotiated(preServeErr, watchServer.Scope.Serializer, watchServer.Scope.Kind.GroupVersion(), w, req)
+			return
+		}
+
+		watchServer.ServeHTTP(w, req)
+	}
+}
+
 func TestWatchHTTPErrors(t *testing.T) {
 	watcher := watch.NewFake()
 	timeoutCh := make(chan time.Time)
@@ -634,9 +650,7 @@ func TestWatchHTTPErrors(t *testing.T) {
 		TimeoutFactory: &fakeTimeoutFactory{timeoutCh, done},
 	}
 
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		watchServer.ServeHTTP(w, req)
-	}))
+	s := httptest.NewServer(serveWatch(watcher, watchServer, nil))
 	defer s.Close()
 
 	// Setup a client
@@ -667,6 +681,68 @@ func TestWatchHTTPErrors(t *testing.T) {
 	}
 	if status.Kind != "Status" || status.APIVersion != "v1" || status.Code != 500 || status.Status != "Failure" || !strings.Contains(status.Message, "we got an error") {
 		t.Fatalf("error: %#v", status)
+	}
+}
+
+func TestWatchHTTPErrorsBeforeServe(t *testing.T) {
+	watcher := watch.NewFake()
+	timeoutCh := make(chan time.Time)
+	done := make(chan struct{})
+
+	info, ok := runtime.SerializerInfoForMediaType(codecs.SupportedMediaTypes(), runtime.ContentTypeJSON)
+	if !ok || info.StreamSerializer == nil {
+		t.Fatal(info)
+	}
+	serializer := info.StreamSerializer
+
+	// Setup a new watchserver
+	watchServer := &handlers.WatchServer{
+		Scope: &handlers.RequestScope{
+			Serializer: runtime.NewSimpleNegotiatedSerializer(info),
+			Kind:       testGroupVersion.WithKind("test"),
+		},
+		Watching: watcher,
+
+		MediaType:       "testcase/json",
+		Framer:          serializer.Framer,
+		Encoder:         newCodec,
+		EmbeddedEncoder: newCodec,
+
+		Fixup:          func(obj runtime.Object) runtime.Object { return obj },
+		TimeoutFactory: &fakeTimeoutFactory{timeoutCh, done},
+	}
+
+	errStatus := errors.NewInternalError(fmt.Errorf("we got an error"))
+
+	s := httptest.NewServer(serveWatch(watcher, watchServer, errStatus))
+	defer s.Close()
+
+	// Setup a client
+	dest, _ := url.Parse(s.URL)
+	dest.Path = "/" + prefix + "/" + newGroupVersion.Group + "/" + newGroupVersion.Version + "/simple"
+	dest.RawQuery = "watch=true"
+
+	req, _ := http.NewRequest("GET", dest.String(), nil)
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// We had already got an error before watch serve started
+	decoder := json.NewDecoder(resp.Body)
+	var status *metav1.Status
+	err = decoder.Decode(&status)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+	if status.Kind != "Status" || status.APIVersion != "v1" || status.Code != 500 || status.Status != "Failure" || !strings.Contains(status.Message, "we got an error") {
+		t.Fatalf("error: %#v", status)
+	}
+
+	// check for leaks
+	if !watcher.IsStopped() {
+		t.Errorf("Leaked watcher goruntine after request done")
 	}
 }
 
@@ -759,9 +835,7 @@ func TestWatchHTTPTimeout(t *testing.T) {
 		TimeoutFactory: &fakeTimeoutFactory{timeoutCh, done},
 	}
 
-	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		watchServer.ServeHTTP(w, req)
-	}))
+	s := httptest.NewServer(serveWatch(watcher, watchServer, nil))
 	defer s.Close()
 
 	// Setup a client
@@ -786,7 +860,7 @@ func TestWatchHTTPTimeout(t *testing.T) {
 	close(timeoutCh)
 	select {
 	case <-done:
-		if !watcher.Stopped {
+		if !watcher.IsStopped() {
 			t.Errorf("Leaked watch on timeout")
 		}
 	case <-time.After(wait.ForeverTestTimeout):
