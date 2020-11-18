@@ -2137,7 +2137,9 @@ function start-kube-controller-manager {
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  params+=" --use-service-account-credentials"
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
+    params+=" --use-service-account-credentials"
+  fi
   params+=" --cloud-provider=gce"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
@@ -2198,6 +2200,9 @@ function start-kube-controller-manager {
   fi
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     RUN_CONTROLLERS="nodeipam,nodelifecycle"
+  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
