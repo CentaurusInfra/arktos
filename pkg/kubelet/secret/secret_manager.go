@@ -19,6 +19,7 @@ package secret
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -111,6 +112,19 @@ const (
 	defaultTTL = time.Minute
 )
 
+func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
+	var client clientset.Interface
+	pick := 0
+	if tenant[0] <= 'm' {
+		client = kubeClients[0]
+	} else {
+		client = kubeClients[1]
+		pick = 1
+	}
+	klog.Infof("tenant %s using client # %d", tenant, pick)
+	return client
+}
+
 // NewCachingSecretManager creates a manager that keeps a cache of all secrets
 // necessary for registered pods.
 // It implements the following logic:
@@ -135,12 +149,14 @@ func NewCachingSecretManager(kubeClient clientset.Interface, getTTL manager.GetO
 // - whenever a pod is created or updated, we start individual watches for all
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
-func NewWatchingSecretManager(kubeClient clientset.Interface) Manager {
+func NewWatchingSecretManager(kubeClients []clientset.Interface) Manager {
 	listSecret := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
+		client := getTPClient(kubeClients, tenant)
+		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
 	watchSecret := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
+		client := getTPClient(kubeClients, tenant)
+		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newSecret := func() runtime.Object {
 		return &v1.Secret{}
