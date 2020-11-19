@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Copyright 2015 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -130,7 +131,7 @@ process_content () {
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
-export GO111MODULE=on
+export GO111MODULE=off
 
 # Check bash version
 if (( BASH_VERSINFO[0] < 4 )); then

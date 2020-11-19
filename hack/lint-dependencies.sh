@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2019 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +23,7 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source "${KUBE_ROOT}/hack/lib/init.sh"
 
 # Explicitly opt into go modules, even though we're inside a GOPATH directory
-export GO111MODULE=on
+export GO111MODULE=off
 # Explicitly clear GOFLAGS, since GOFLAGS=-mod=vendor breaks dependency resolution while rebuilding vendor
 export GOFLAGS=
 # Detect problematic GOPROXY settings that prevent lookup of dependencies
@@ -56,7 +57,7 @@ unused=$(comm -23 \
 if [[ -n "${unused}" ]]; then
   echo ""
   echo "Pinned module versions that aren't actually used:"
-  echo "${unused}" | xargs -L 1 echo 'GO111MODULE=on go mod edit -dropreplace'
+  echo "${unused}" | xargs -L 1 echo 'GO111MODULE=off go mod edit -dropreplace'
 fi
 
 if [[ -n "${unused}${outdated}" ]]; then

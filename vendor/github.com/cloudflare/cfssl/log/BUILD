@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
@@ -6,6 +6,13 @@ go_library(
     importmap = "k8s.io/kubernetes/vendor/github.com/cloudflare/cfssl/log",
     importpath = "github.com/cloudflare/cfssl/log",
     visibility = ["//visibility:public"],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["log_test.go"],
+    embed = [":go_default_library"],
+    tags = ["manual"],
 )
 
 filegroup(

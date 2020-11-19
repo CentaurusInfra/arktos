@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2019 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +29,7 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 #   hack/pin-dependency.sh github.com/docker/docker 501cb131a7b7
 
 # Explicitly opt into go modules, even though we're inside a GOPATH directory
-export GO111MODULE=on
+export GO111MODULE=off
 # Explicitly clear GOFLAGS, since GOFLAGS=-mod=vendor breaks dependency resolution while rebuilding vendor
 export GOFLAGS=
 # Detect problematic GOPROXY settings that prevent lookup of dependencies

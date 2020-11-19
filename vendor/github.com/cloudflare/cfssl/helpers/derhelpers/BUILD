@@ -1,18 +1,28 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library")
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "go_default_library",
     srcs = [
         "derhelpers.go",
+        "derhelpers-legacy.go",
         "ed25519.go",
     ],
     importmap = "k8s.io/kubernetes/vendor/github.com/cloudflare/cfssl/helpers/derhelpers",
     importpath = "github.com/cloudflare/cfssl/helpers/derhelpers",
     visibility = ["//visibility:public"],
     deps = [
+        "//vendor/crypto/ed25519:go_default_library",
         "//vendor/github.com/cloudflare/cfssl/errors:go_default_library",
-        "//vendor/golang.org/x/crypto/ed25519:go_default_library",
+        "//vendor/github.com/cloudflare/cfssl/vendor/golang.org/x/crypto/ed25519:go_default_library",
     ],
+)
+
+go_test(
+    name = "go_default_test",
+    srcs = ["ed25519_test.go"],
+    embed = [":go_default_library"],
+    tags = ["manual"],
+    deps = ["//vendor/github.com/cloudflare/cfssl/vendor/golang.org/x/crypto/ed25519:go_default_library"],
 )
 
 filegroup(

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2015 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,7 +52,7 @@ git archive --format=tar --prefix=kubernetes/ "$(git write-tree)" | (cd "${_kube
 _kubetmp="${_kubetmp}/kubernetes"
 
 # Do all our work in module mode
-export GO111MODULE=on
+export GO111MODULE=off
 
 pushd "${_kubetmp}" > /dev/null 2>&1
   # Destroy deps in the copy of the kube tree

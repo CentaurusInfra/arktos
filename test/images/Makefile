@@ -1,4 +1,5 @@
 # Copyright 2017 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +18,7 @@ include  ../../hack/make-rules/Makefile.manifest
 REGISTRY ?= gcr.io/kubernetes-e2e-test-images
 GOARM=7
 QEMUVERSION=v2.9.1
-GOLANG_VERSION=1.12.5
+GOLANG_VERSION=1.13.4
 export
 
 ifndef WHAT
