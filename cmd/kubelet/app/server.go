@@ -591,7 +591,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-			klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
+		        klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
