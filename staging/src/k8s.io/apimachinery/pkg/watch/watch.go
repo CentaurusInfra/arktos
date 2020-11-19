@@ -195,11 +195,16 @@ func (a *AggregatedWatcher) Stop() {
 	if !a.stopped {
 		a.stopped = true
 		a.allowWatcherReset = false
+
+		a.mapLock.RLock()
 		for _, stopCh := range a.stopChans {
-			go func(stopCh chan int) {
-				stopCh <- 1
+			a.mapLock.RUnlock()
+			go func(ch chan int) {
+				ch <- 1
 			}(stopCh)
+			a.mapLock.RLock()
 		}
+		a.mapLock.RUnlock()
 	}
 	a.stopLock.Unlock()
 }
