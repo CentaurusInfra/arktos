@@ -2893,12 +2893,12 @@ http {
             proxy_pass http://\$remote_addr:8080;
         }
 
-        location ~ ^/api/v1/nodes?(.*) {
+        location ~ ^/api/([^/])*/nodes?(.*) {
             proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
 
-        location ~ ^/apis/coordination.k8s.io/v1/leases?(.*) {
+        location ~ ^/apis/coordination.k8s.io/([^/])*/leases?(.*) {
             proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
