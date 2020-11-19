@@ -2883,11 +2883,11 @@ http {
             proxy_pass \$RESOURCE_API;
         }
 
-        location ~ ^/api/v1/nodes?(.*) {
+        location ~ ^/api/([^/])*/nodes?(.*) {
             proxy_pass \$RESOURCE_API;
         }
 
-        location ~ ^/apis/coordination.k8s.io/v1/leases?(.*) {
+        location ~ ^/apis/coordination.k8s.io/([^/])*/leases?(.*) {
             proxy_pass \$RESOURCE_API;
         }
 
