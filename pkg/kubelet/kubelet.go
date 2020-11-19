@@ -551,7 +551,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	var configMapManager configmap.Manager
 	switch kubeCfg.ConfigMapAndSecretChangeDetectionStrategy {
 	case kubeletconfiginternal.WatchChangeDetectionStrategy:
-		secretManager = secret.NewWatchingSecretManager(kubeDeps.KubeClient[0])
+		secretManager = secret.NewWatchingSecretManager(kubeDeps.KubeClient)
 		configMapManager = configmap.NewWatchingConfigMapManager(kubeDeps.KubeClient[0])
 	case kubeletconfiginternal.TTLCacheChangeDetectionStrategy:
 		secretManager = secret.NewCachingSecretManager(
