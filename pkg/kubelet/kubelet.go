@@ -596,7 +596,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	// podManager is also responsible for keeping secretManager and configMapManager contents up-to-date.
 	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient[0]), secretManager, configMapManager, checkpointManager)
 
-	klet.statusManager = status.NewManager(klet.kubeClient[0], klet.podManager, klet)
+	klet.statusManager = status.NewManager(klet.kubeClient, klet.podManager, klet)
 
 	if remoteRuntimeEndpoint != "" {
 		// remoteImageEndpoint is same as remoteRuntimeEndpoint if not explicitly specified
@@ -1809,8 +1809,9 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 	defer kl.podResizeMutex.Unlock()
 	// TODO: arktos scale-out. patch POD should be per tenant partition
 	//
+	tenantClient := kl.getTPClient(pod.Tenant)
 	if fit, patchBytes := kl.canResizePod(pod); fit {
-		_, patchError := kl.kubeClient[0].CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
+		_, patchError := tenantClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
 			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
 		}
@@ -2172,6 +2173,19 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	}
 }
 
+func (kl *Kubelet) getTPClient(tenant string) clientset.Interface {
+	var client clientset.Interface
+        pick := 0
+	if tenant[0] <= 'm' {
+		client = kl.kubeClient[0]
+	} else {
+		client = kl.kubeClient[1]
+		pick = 1
+	}
+	klog.Infof("tenant %s using client # %d", tenant, pick)
+	return client
+}
+
 // HandlePodActions is the callback in SyncHandler for actions
 func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 	start := kl.clock.Now()
@@ -2191,7 +2205,8 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 			}
 			// TODO: arktos-scaleout. UpdateStatus of PodAction should be per Tenant partition, using desired clientset.
 			//
-			if _, err := kl.kubeClient[0].CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
+			tenantClient := kl.getTPClient(action.Tenant)
+			if _, err := tenantClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 			}
 			continue

@@ -2792,7 +2792,6 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
-  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
   ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
 
@@ -2818,7 +2817,6 @@ http {
     sendfile on;
     tcp_nopush on;
     tcp_nodelay on;
-    keepalive_timeout 65;
     types_hash_max_size 2048;
     proxy_http_version 1.1;
 
@@ -2860,6 +2858,12 @@ http {
     ##
     # arktos cluster settings
     #
+    keepalive_timeout 10m;
+    proxy_connect_timeout 600s;
+    proxy_send_timeout 600s;
+    proxy_read_timeout 600s;
+    fastcgi_send_timeout 600s;
+    fastcgi_read_timeout 600s;
 
     server {
         listen      8888;
@@ -2872,30 +2876,37 @@ http {
         set \$TENANT_API http://${RESOURCE_MASTER_IP}:8080;
 
         location ~ ^/[a-zA-Z0-9_.-]+$ {
-            proxy_pass \$RESOURCE_API;
+            proxy_read_timeout 3600;
+            proxy_pass http://\$remote_addr:8080;
         }
 
         location ~ ^/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
-            proxy_pass \$RESOURCE_API;
+            proxy_read_timeout 3600;
+            proxy_pass http://\$remote_addr:8080;
         }
 
         location ~ ^/apis/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
-            proxy_pass \$RESOURCE_API;
+            proxy_read_timeout 3600;
+            proxy_pass http://\$remote_addr:8080;
         }
 
         location ~ ^/api/v1/nodes?(.*) {
+            proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
 
         location ~ ^/apis/coordination.k8s.io/v1/leases?(.*) {
+            proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
 
         location ~ ^/apis/([^/])*/([^/])*/tenants/system/namespaces/kube-node-lease/leases?(.*) {
+            proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
 
         location / {
+            proxy_read_timeout 3600;
             proxy_pass \$TENANT_API;
         }
     }
