@@ -88,12 +88,18 @@ function create-kube-hollow-node-resources {
   # Create kubemark namespace.
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
 
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS}" == "true" ]]; then
+    export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
+  else
+    export TENANT_SERVERS="${TENANT_SERVER_1}"
+  fi
+
   # Create configmap for configuring hollow- kubelet, proxy and npd.
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
     --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
     --from-literal=resource.server="${RESOURCE_SERVER}" \
-    --from-literal=tenant.servers="${TENANT_SERVER_1},${TENANT_SERVER_2}"
+    --from-literal=tenant.servers="${TENANT_SERVERS}"
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
@@ -248,8 +254,10 @@ echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   create-kubemark-master
   export TENANT_SERVER_1="http://"$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
 
-  create-kubemark-master
-  export TENANT_SERVER_2="http://"$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    create-kubemark-master
+    export TENANT_SERVER_2="http://"$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+  fi
 fi
 
 # start hollow nodes with multiple tenant partition parameters
