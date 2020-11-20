@@ -108,12 +108,6 @@ type Reflector struct {
 	// clientSetUpdateChan is the channel to get client set updates
 	clientSetUpdateChan *bcast.Member
 
-	// listFromResourceVersion is the resource version that list should start from
-	// Default is "0" so that it only reads from cache. After encounter "too old resource version",
-	// it will be set to "" to get all data from storage; and then reset to "0" to get from cache in
-	// later list and watch
-	listFromResourceVersion string
-
 	// There are some watch that can only happen to certain api servers
 	allowPartialWatch bool
 }
@@ -167,8 +161,10 @@ func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, 
 		filterBounds:            make([]filterBound, 0),
 		aggChan:                 make(chan interface{}),
 		clientSetUpdateChan:     apiserverupdate.WatchClientSetUpdate(),
-		listFromResourceVersion: "0",
 		allowPartialWatch:       allowPartialWatch,
+		// We set lastSyncResourceVersion to "0", because it's the value which
+		// we set as ResourceVersion to the first List() request.
+		lastSyncResourceVersion: "0",
 	}
 	r.setExpectedType(expectedType)
 	return r
@@ -280,11 +276,16 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		r.expectedTypeName, r.filterBounds, r.name, r.WatchListPageSize, r.resyncPeriod)
 	var resourceVersion string
 
-	// Explicitly set "0" as resource version - it's fine for the List()
-	// to be served from cache and potentially be delayed relative to
-	// etcd contents. Reflector framework will catch up via Watch() eventually.
-	// When ResourceVersion is empty, list will get from api server cache
-	options := metav1.ListOptions{ResourceVersion: r.listFromResourceVersion}
+	// Explicitly set resource version to have it list from cache for
+	// performance reasons.
+	// It's fine for the returned state to be stale (we will catch up via
+	// Watch() eventually), but can't set "0" to avoid going back in time
+	// if we hit apiserver that is significantly delayed compared to the
+	// state we already had.
+	// TODO: There is still a potential to go back in time after component
+	// restart when we set ResourceVersion: "0". For more details see:
+	// https://github.com/kubernetes/kubernetes/issues/59848
+	options := metav1.ListOptions{ResourceVersion: r.LastSyncResourceVersion()}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
@@ -456,15 +457,6 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 				case apierrs.IsResourceExpired(err):
 					klog.V(4).Infof("%s: watch of %v ended with: %v", r.name, r.expectedTypeName, err)
 				default:
-					if strings.Contains(err.Error(), "too old resource version") {
-						// Watching stopped because it trying to get older resource
-						// version that api server can provide, set listFromResourceVersion
-						// to allow temporary list from storage directly and avoid too old
-						// resource version in follow up watch
-						r.listFromResourceVersion = ""
-						err1 := fmt.Errorf("Error [%v] from watch type %v", err.Error(), r.expectedTypeName)
-						return err1
-					}
 					klog.Warningf("%s: watch of %v ended with: %v", r.name, r.expectedTypeName, err)
 				}
 			}
@@ -600,9 +592,6 @@ func (r *Reflector) watchHandlerHelper(event watch.Event, resourceVersion *strin
 	}
 	*resourceVersion = newResourceVersion
 	r.setLastSyncResourceVersion(newResourceVersion)
-	if r.listFromResourceVersion == "" {
-		r.listFromResourceVersion = "0"
-	}
 	eventCount++
 	return nil, eventCount
 }
