@@ -2362,7 +2362,8 @@ function kube-up() {
     if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
       echo "Scaleout proxy public IP: ${PROXY_RESERVED_IP}:8888"
       echo "Scaleout proxy internal IP: ${PROXY_RESERVED_INTERNAL_IP}:8888"
-      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${KUBECONFIG}
+      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG}
+      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${LOCAL_KUBECONFIG}
     fi
   fi
 }
