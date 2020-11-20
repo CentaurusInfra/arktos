@@ -2199,7 +2199,10 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="nodeipam,nodelifecycle"
+    RUN_CONTROLLERS="nodelifecycle"
+  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle"
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
     RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle"
