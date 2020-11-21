@@ -115,7 +115,7 @@ const (
 func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
 	var client clientset.Interface
 	pick := 0
-	if tenant[0] <= 'm' {
+	if len(kubeClients)==1 || tenant[0] <= 'm' {
 		client = kubeClients[0]
 	} else {
 		client = kubeClients[1]
