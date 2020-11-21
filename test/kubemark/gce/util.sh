@@ -46,6 +46,7 @@ function create-kubemark-master {
       SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
       KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+      export LOCAL_KUBECONFIG
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
       SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
@@ -91,17 +92,6 @@ function create-kubemark-master {
       export "${dst_var}"="${val}"
     done
     "${KUBE_ROOT}/hack/e2e-internal/e2e-up.sh"
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      cp -f $KUBECONFIG $LOCAL_KUBECONFIG
-    fi
-    #if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
-    #  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-    #    sed -i "s/server: https:*/server: http://${PROXY_RESERVED_IP}:8888/" ${KUBECONFIG}
-    #  else
-    #    sed -i "s/server: https:.*/&:8080/" ${KUBECONFIG}
-    #    sed -i "s/server: https:*/server: http:/" ${KUBECONFIG}
-    #  fi
-    #fi
     if [[ "${KUBEMARK_HA_MASTER:-}" == "true" && -n "${KUBEMARK_MASTER_ADDITIONAL_ZONES:-}" ]]; then
         for KUBE_GCE_ZONE in ${KUBEMARK_MASTER_ADDITIONAL_ZONES}; do
           KUBE_GCE_ZONE="${KUBE_GCE_ZONE}" KUBE_REPLICATE_EXISTING_MASTER=true \
