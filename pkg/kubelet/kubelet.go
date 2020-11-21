@@ -2176,7 +2176,7 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 func (kl *Kubelet) getTPClient(tenant string) clientset.Interface {
 	var client clientset.Interface
         pick := 0
-	if tenant[0] <= 'm' {
+	if len(kl.kubeClient)==1 || tenant[0] <= 'm' {
 		client = kl.kubeClient[0]
 	} else {
 		client = kl.kubeClient[1]

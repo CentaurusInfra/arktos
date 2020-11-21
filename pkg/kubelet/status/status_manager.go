@@ -474,7 +474,7 @@ func (m *manager) syncBatch() {
 func (m *manager) getTPClient(tenant string) clientset.Interface {
 	var client clientset.Interface
 	pick := 0
-	if tenant[0] <= 'm' {
+	if len(m.kubeClient)==1 || tenant[0] <= 'm' {
 		client = m.kubeClient[0]
 	} else {
 		client = m.kubeClient[1]
