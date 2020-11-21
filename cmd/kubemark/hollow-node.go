@@ -179,11 +179,11 @@ func run(config *hollowNodeConfig) {
 		klog.Fatalf("Failed to create a ClientConfig: %v. Exiting.", err)
 	}
 
-	if len(config.ResourceServer) == 0 {
+	if len(config.TenantServers) == 0 {
 		klog.Fatalf("Missing TenantServers. Exiting.")
 	}
 
-	numberTenantPartitions := len(config.ResourceServer)
+	numberTenantPartitions := len(config.TenantServers)
 	client := make([]clientset.Interface, numberTenantPartitions)
 	for i := 0; i < len(client); i++ {
 		tenantCfg := restclient.CopyConfigs(clientConfigs)
