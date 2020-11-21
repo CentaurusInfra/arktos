@@ -152,19 +152,18 @@ func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Sto
 // NewNamedReflector same as NewReflector, but with a specified name for logging
 func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, allowPartialWatch bool) *Reflector {
 	r := &Reflector{
-		name:                    name,
-		listerWatcher:           lw,
-		store:                   store,
-		period:                  time.Second,
-		resyncPeriod:            resyncPeriod,
-		clock:                   &clock.RealClock{},
-		filterBounds:            make([]filterBound, 0),
-		aggChan:                 make(chan interface{}),
-		clientSetUpdateChan:     apiserverupdate.WatchClientSetUpdate(),
-		allowPartialWatch:       allowPartialWatch,
+		name:                name,
+		listerWatcher:       lw,
+		store:               store,
+		period:              time.Second,
+		resyncPeriod:        resyncPeriod,
+		clock:               &clock.RealClock{},
+		filterBounds:        make([]filterBound, 0),
+		aggChan:             make(chan interface{}),
+		clientSetUpdateChan: apiserverupdate.WatchClientSetUpdate(),
+		allowPartialWatch:   allowPartialWatch,
 		// We set lastSyncResourceVersion to "0", because it's the value which
 		// we set as ResourceVersion to the first List() request.
-		lastSyncResourceVersion: "0",
 	}
 	r.setExpectedType(expectedType)
 	return r
@@ -276,16 +275,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		r.expectedTypeName, r.filterBounds, r.name, r.WatchListPageSize, r.resyncPeriod)
 	var resourceVersion string
 
-	// Explicitly set resource version to have it list from cache for
-	// performance reasons.
-	// It's fine for the returned state to be stale (we will catch up via
-	// Watch() eventually), but can't set "0" to avoid going back in time
-	// if we hit apiserver that is significantly delayed compared to the
-	// state we already had.
-	// TODO: There is still a potential to go back in time after component
-	// restart when we set ResourceVersion: "0". For more details see:
-	// https://github.com/kubernetes/kubernetes/issues/59848
-	options := metav1.ListOptions{ResourceVersion: r.LastSyncResourceVersion()}
+	options := metav1.ListOptions{ResourceVersion: r.relistResourceVersion()}
 
 	if len(r.filterBounds) > 0 {
 		if r.hasInitBounds() {
@@ -327,13 +317,22 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			if r.WatchListPageSize != 0 {
 				pager.PageSize = r.WatchListPageSize
 			}
-			// Pager falls back to full list if paginated list calls fail due to an "Expired" error.
-			// Set resource version to "" as it cannot be limited to the cached ones due to the introduction of
-			// 	api server data partition
+			// Pager falls back to full list if paginated list calls fail due to an "Expired" error on the 2nd page or later,
+			// but still my return an "Expired" error if the 1st page fails with "Expired" or the full list fails with "Expired".
 			list, err = pager.List(context.Background(), options)
+			if apierrs.IsResourceExpired(err) {
+				// For Kubernetes 1.16 and earlier, if the watch cache is disabled for a resource, list requests
+				// with LastSyncResourceVersion set to a non-zero ResourceVersion will fail if the exact ResourceVersion
+				// requested is expired (e.g. an etcd compaction has remove it).
+				// To prevent the reflector from getting stuck retrying a list for an expired resource version in this
+				// case, we set ResourceVersion="" and list again to re-establish reflector to the latest available
+				// ResourceVersion, using a consistent read from etcd. This is also safe to do if watch cache is enabled
+				// and the list request returned a "Expired" error.
+				options = metav1.ListOptions{ResourceVersion: ""}
+				list, err = pager.List(context.Background(), options)
+			}
 			close(listCh)
 		}()
-
 		select {
 		case <-stopCh:
 			return nil
@@ -608,6 +607,20 @@ func (r *Reflector) setLastSyncResourceVersion(v string) {
 	r.lastSyncResourceVersionMutex.Lock()
 	defer r.lastSyncResourceVersionMutex.Unlock()
 	r.lastSyncResourceVersion = v
+}
+
+// relistResourceVersion is the resource version the reflector should list or relist from.
+func (r *Reflector) relistResourceVersion() string {
+	lastSyncRV := r.LastSyncResourceVersion()
+	if lastSyncRV == "" {
+		// Explicitly set resource version to have it list from cache for
+		// performance reasons.
+		// It's fine for the returned state to be stale (we will catch up via Watch()
+		// eventually), but we need to be at least as new as the last resource version we
+		// synced to avoid going back in time.
+		return "0"
+	}
+	return lastSyncRV
 }
 
 func (r *Reflector) ListerWatcher() ListerWatcher {
