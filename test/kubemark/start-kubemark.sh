@@ -89,7 +89,7 @@ function create-kube-hollow-node-resources {
   # Create kubemark namespace.
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
 
-  if [[ "${SCALEOUT_CLUSTER_TWO_TPS}" == "true" ]]; then
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
     export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
   else
     export TENANT_SERVERS="${TENANT_SERVER_1}"
