@@ -39,6 +39,7 @@ function create-kubemark-master {
     # All calls to e2e-grow-cluster must share temp dir with initial e2e-up.sh.
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
+    export LOCAL_KUBECONFIG_TMP
 
     KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
