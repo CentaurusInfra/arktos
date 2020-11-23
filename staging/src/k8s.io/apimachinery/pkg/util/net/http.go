@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,6 +54,12 @@ func JoinPreservingTrailingSlash(elem ...string) string {
 	}
 
 	return result
+}
+
+// IsTimeout returns true if the given error is a network timeout error
+func IsTimeout(err error) bool {
+	neterr, ok := err.(net.Error)
+	return ok && neterr != nil && neterr.Timeout()
 }
 
 // IsProbableEOF returns true if the given error resembles a connection termination

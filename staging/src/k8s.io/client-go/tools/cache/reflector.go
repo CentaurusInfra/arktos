@@ -165,9 +165,9 @@ func NewReflectorWithReset(lw ListerWatcher, expectedType interface{}, store Sto
 func NewNamedReflector(name string, lw ListerWatcher, expectedType interface{}, store Store, resyncPeriod time.Duration, allowPartialWatch bool) *Reflector {
 	realClock := &clock.RealClock{}
 	r := &Reflector{
-		name:                name,
-		listerWatcher:       lw,
-		store:               store,
+		name:          name,
+		listerWatcher: lw,
+		store:         store,
 
 		// We used to make the call every 1sec (1 QPS), the goal here is to achieve ~98% traffic reduction when
 		// API server is not healthy. With these parameters, backoff will stop at [30,60) sec interval which is
@@ -472,6 +472,8 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 		if len(r.filterBounds) > 0 {
 			options = appendFieldSelector(options, r.createHashkeyListOptions())
 		}
+		// start the clock before sending the request, since some proxies won't flush headers until after the first watch event is sent
+		start := r.clock.Now()
 		w, err := r.listerWatcher.Watch(options)
 		if err != nil {
 			switch {
@@ -498,7 +500,7 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			return nil
 		}
 
-		if err := r.watchHandler(w, &resourceVersion, resyncerrc, stopCh); err != nil {
+		if err := r.watchHandler(start, w, &resourceVersion, resyncerrc, stopCh); err != nil {
 			if err == errorResetFilterBoundRequested || err == errorClientSetResetRequested {
 				select {
 				case cancelCh <- struct{}{}:
@@ -534,8 +536,7 @@ func (r *Reflector) syncWith(items []runtime.Object, resourceVersion string) err
 }
 
 // watchHandler watches w and keeps *resourceVersion up to date.
-func (r *Reflector) watchHandler(w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
-	start := r.clock.Now()
+func (r *Reflector) watchHandler(start time.Time, w watch.Interface, resourceVersion *string, errc chan error, stopCh <-chan struct{}) error {
 	eventCount := 0
 
 	// Stopping the watcher should be idempotent and if we return from this function there's no way
