@@ -6,6 +6,7 @@ go_test(
     srcs = [
         "main_test.go",
         "watch_restart_test.go",
+        "watch_timeout_test.go",
     ],
     tags = [
         "etcd",
@@ -13,6 +14,7 @@ go_test(
     ],
     deps = [
         "//pkg/api/testapi:go_default_library",
+        "//pkg/kubectl/proxy:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/fields:go_default_library",

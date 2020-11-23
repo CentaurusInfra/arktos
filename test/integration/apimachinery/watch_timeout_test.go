@@ -17,7 +17,6 @@ limitations under the License.
 package apimachinery
 
 import (
-	"context"
 	"net/http/httptest"
 	"net/http/httputil"
 	"net/url"
@@ -31,7 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	kubectlproxy "k8s.io/kubectl/pkg/proxy"
+	kubectlproxy "k8s.io/kubernetes/pkg/kubectl/proxy"
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
@@ -57,7 +56,8 @@ func TestWatchClientTimeout(t *testing.T) {
 	})
 
 	t.Run("kubectl proxy", func(t *testing.T) {
-		kubectlProxyServer, err := kubectlproxy.NewServer("", "/", "/static/", nil, &restclient.Config{Host: s.URL, Timeout: 2 * time.Second}, 0)
+		kubeConfig := &restclient.KubeConfig{Host: s.URL, Timeout: 2 * time.Second}
+		kubectlProxyServer, err := kubectlproxy.NewServer("", "/", "/static/", nil, restclient.NewAggregatedConfig(kubeConfig), 0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -87,7 +87,8 @@ func testWatchClientTimeouts(t *testing.T, url string) {
 
 func testWatchClientTimeout(t *testing.T, serverURL string, timeout, timeoutSeconds time.Duration) {
 	// client
-	client, err := kubernetes.NewForConfig(&restclient.Config{Host: serverURL, Timeout: timeout})
+	kubeConfig := &restclient.KubeConfig{Host: serverURL, Timeout: timeout}
+	client, err := kubernetes.NewForConfig(restclient.NewAggregatedConfig(kubeConfig))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +104,7 @@ func testWatchClientTimeout(t *testing.T, serverURL string, timeout, timeoutSeco
 				t.Errorf("listed more than once")
 				close(stopCh)
 			}
-			return client.CoreV1().ConfigMaps(metav1.NamespaceAll).List(context.TODO(), options)
+			return client.CoreV1().ConfigMaps(metav1.NamespaceAll).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			t.Logf("watching (version=%s)", options.ResourceVersion)
@@ -116,7 +117,7 @@ func testWatchClientTimeout(t *testing.T, serverURL string, timeout, timeoutSeco
 				// success, restarted watch
 				close(stopCh)
 			}
-			return client.CoreV1().ConfigMaps(metav1.NamespaceAll).Watch(context.TODO(), options)
+			return client.CoreV1().ConfigMaps(metav1.NamespaceAll).Watch(options)
 		},
 	}
 	_, informer := cache.NewIndexerInformer(listWatch, &corev1.ConfigMap{}, 30*time.Minute, cache.ResourceEventHandlerFuncs{}, cache.Indexers{})
