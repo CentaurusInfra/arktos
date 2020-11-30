@@ -198,11 +198,9 @@ func (a *AggregatedWatcher) Stop() {
 
 		a.mapLock.RLock()
 		for _, stopCh := range a.stopChans {
-			a.mapLock.RUnlock()
 			go func(ch chan int) {
 				ch <- 1
 			}(stopCh)
-			a.mapLock.RLock()
 		}
 		a.mapLock.RUnlock()
 	}
