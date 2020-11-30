@@ -19,6 +19,16 @@ if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
   exit 1
 fi
 
+if [[ -z "${TENANT_SERVERS}" ]]; then
+  TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
+fi
+
+# for POC, the kubelet_flags is used for the new temporary kubelet commandline args
+KUBELET_FLAGS="--tenant-servers="${TENANT_SERVERS}
+
+echo KUBELET_FLAGS for new kubelet commandline --tenant-servers
+echo ${KUBELET_FLAGS}
+
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"

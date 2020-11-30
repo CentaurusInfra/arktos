@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"sort"
+        "strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -248,15 +249,16 @@ type Dependencies struct {
 	Options []Option
 
 	// Injected Dependencies
-	Auth                    server.AuthInterface
-	CAdvisorInterface       cadvisor.Interface
-	Cloud                   cloudprovider.Interface
-	ContainerManager        cm.ContainerManager
-	DockerClientConfig      *dockershim.ClientConfig
+	Auth               server.AuthInterface
+	CAdvisorInterface  cadvisor.Interface
+	Cloud              cloudprovider.Interface
+	ContainerManager   cm.ContainerManager
+	DockerClientConfig *dockershim.ClientConfig
+	//TODO: Arktos-scale-out: event should be per Tenant partition and per Resource parition
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      []func()
-	KubeClient              clientset.Interface
+	KubeClient              []clientset.Interface
 	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -311,13 +313,12 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		}
 	}
 
-	if kubeDeps.KubeClient != nil {
+	for i, client := range kubeDeps.KubeClient {
 		klog.Infof("Watching apiserver")
-		if updatechannel == nil {
-			updatechannel = cfg.Channel(kubetypes.ApiserverSource)
-		}
-		config.NewSourceApiserver(kubeDeps.KubeClient, nodeName, updatechannel)
+		updatechannel = cfg.Channel(kubetypes.ApiserverSource + strconv.Itoa(i))
+		config.NewSourceApiserver(client, nodeName, updatechannel)
 	}
+
 	return cfg, nil
 }
 
@@ -435,18 +436,20 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		PodCgroupRoot:            kubeDeps.ContainerManager.GetPodCgroupRoot(),
 	}
 
+	// TODO: arktos-scale-out: serviceIndexer for multiple tenant partitions
+	//
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	if kubeDeps.KubeClient != nil {
-		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
+		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient[0].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
 		r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
 	serviceLister := corelisters.NewServiceLister(serviceIndexer)
 
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-	if kubeDeps.KubeClient != nil {
+	if kubeDeps.HeartbeatClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
-		nodeLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
+		nodeLW := cache.NewListWatchFromClient(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
@@ -542,20 +545,22 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.cloudResourceSyncManager = cloudresource.NewSyncManager(klet.cloud, nodeName, klet.nodeStatusUpdateFrequency)
 	}
 
+	//TODO: secretManager and configMapManager to support multiple tenant partitions
+	//
 	var secretManager secret.Manager
 	var configMapManager configmap.Manager
 	switch kubeCfg.ConfigMapAndSecretChangeDetectionStrategy {
 	case kubeletconfiginternal.WatchChangeDetectionStrategy:
 		secretManager = secret.NewWatchingSecretManager(kubeDeps.KubeClient)
-		configMapManager = configmap.NewWatchingConfigMapManager(kubeDeps.KubeClient)
+		configMapManager = configmap.NewWatchingConfigMapManager(kubeDeps.KubeClient[0])
 	case kubeletconfiginternal.TTLCacheChangeDetectionStrategy:
 		secretManager = secret.NewCachingSecretManager(
-			kubeDeps.KubeClient, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
+			kubeDeps.KubeClient[0], manager.GetObjectTTLFromNodeFunc(klet.GetNode))
 		configMapManager = configmap.NewCachingConfigMapManager(
-			kubeDeps.KubeClient, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
+			kubeDeps.KubeClient[0], manager.GetObjectTTLFromNodeFunc(klet.GetNode))
 	case kubeletconfiginternal.GetChangeDetectionStrategy:
-		secretManager = secret.NewSimpleSecretManager(kubeDeps.KubeClient)
-		configMapManager = configmap.NewSimpleConfigMapManager(kubeDeps.KubeClient)
+		secretManager = secret.NewSimpleSecretManager(kubeDeps.KubeClient[0])
+		configMapManager = configmap.NewSimpleConfigMapManager(kubeDeps.KubeClient[0])
 	default:
 		return nil, fmt.Errorf("unknown configmap and secret manager mode: %v", kubeCfg.ConfigMapAndSecretChangeDetectionStrategy)
 	}
@@ -585,8 +590,11 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			return nil, fmt.Errorf("failed to initialize checkpoint manager: %+v", err)
 		}
 	}
+
+	// TODO: pod manager associated with each tenant partitions
+	//
 	// podManager is also responsible for keeping secretManager and configMapManager contents up-to-date.
-	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient), secretManager, configMapManager, checkpointManager)
+	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient[0]), secretManager, configMapManager, checkpointManager)
 
 	klet.statusManager = status.NewManager(klet.kubeClient, klet.podManager, klet)
 
@@ -651,8 +659,10 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		return nil, fmt.Errorf("unsupported CRI runtime: %q", containerRuntime)
 	}
 
+	// TODO: runtimeClassManager to support multiple tenant partitions
+	//
 	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.KubeClient != nil {
-		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
+		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient[0])
 	}
 
 	runtimeRegistry, err := runtimeregistry.NewKubeRuntimeRegistry(remoteRuntimeEndpoint)
@@ -758,8 +768,10 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		klet.containerLogManager = logs.NewStubContainerLogManager()
 	}
 
+	// TODO: arktos-scaleout: cert manager should be per Tenant partition
+	//
 	if kubeCfg.ServerTLSBootstrap && kubeDeps.TLSOptions != nil && utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) {
-		klet.serverCertificateManager, err = kubeletcertificate.NewKubeletServerCertificateManager(klet.kubeClient, kubeCfg, klet.nodeName, klet.getLastObservedNodeAddresses, certDirectory)
+		klet.serverCertificateManager, err = kubeletcertificate.NewKubeletServerCertificateManager(klet.kubeClient[0], kubeCfg, klet.nodeName, klet.getLastObservedNodeAddresses, certDirectory)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize certificate manager: %v", err)
 		}
@@ -779,7 +791,9 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		containerRefManager,
 		kubeDeps.Recorder)
 
-	tokenManager := token.NewManager(kubeDeps.KubeClient)
+	// TODO: tokenManager to support multiple tenant partitions
+	//
+	tokenManager := token.NewManager(kubeDeps.KubeClient[0])
 
 	// NewInitializedVolumePluginMgr intializes some storageErrors on the Kubelet runtimeState (in csi_plugin.go init)
 	// which affects node ready status. This function must be called before Kubelet is initialized so that the Node
@@ -812,7 +826,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		nodeName,
 		klet.podManager,
 		klet.statusManager,
-		klet.kubeClient,
+		klet.kubeClient[0],
 		klet.volumePluginMgr,
 		klet.containerRuntime,
 		kubeDeps.Mounter,
@@ -903,7 +917,7 @@ type Kubelet struct {
 
 	nodeName        types.NodeName
 	runtimeCache    kubecontainer.RuntimeCache
-	kubeClient      clientset.Interface
+	kubeClient      []clientset.Interface
 	heartbeatClient clientset.Interface
 	iptClient       utilipt.Interface
 	rootDirectory   string
@@ -1793,8 +1807,11 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 
 	kl.podResizeMutex.Lock()
 	defer kl.podResizeMutex.Unlock()
+	// TODO: arktos scale-out. patch POD should be per tenant partition
+	//
+	tenantClient := kl.getTPClient(pod.Tenant)
 	if fit, patchBytes := kl.canResizePod(pod); fit {
-		_, patchError := kl.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
+		_, patchError := tenantClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
 			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
 		}
@@ -2156,6 +2173,19 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	}
 }
 
+func (kl *Kubelet) getTPClient(tenant string) clientset.Interface {
+	var client clientset.Interface
+        pick := 0
+	if len(kl.kubeClient)==1 || tenant[0] <= 'm' {
+		client = kl.kubeClient[0]
+	} else {
+		client = kl.kubeClient[1]
+		pick = 1
+	}
+	klog.Infof("tenant %s using client # %d", tenant, pick)
+	return client
+}
+
 // HandlePodActions is the callback in SyncHandler for actions
 func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 	start := kl.clock.Now()
@@ -2173,7 +2203,10 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 				PodName:  action.Spec.PodName,
 				Error:    errStr,
 			}
-			if _, err := kl.kubeClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
+			// TODO: arktos-scaleout. UpdateStatus of PodAction should be per Tenant partition, using desired clientset.
+			//
+			tenantClient := kl.getTPClient(action.Tenant)
+			if _, err := tenantClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 			}
 			continue

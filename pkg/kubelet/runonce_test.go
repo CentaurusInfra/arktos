@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,7 +100,7 @@ func TestRunOnce(t *testing.T) {
 		kb.nodeName,
 		kb.podManager,
 		kb.statusManager,
-		kb.kubeClient,
+		kb.kubeClient[0],
 		kb.volumePluginMgr,
 		fakeRuntime,
 		kb.mounter,

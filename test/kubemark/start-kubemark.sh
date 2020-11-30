@@ -39,6 +39,7 @@ KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
@@ -88,10 +89,18 @@ function create-kube-hollow-node-resources {
   # Create kubemark namespace.
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
 
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
+  else
+    export TENANT_SERVERS="${TENANT_SERVER_1}"
+  fi
+
   # Create configmap for configuring hollow- kubelet, proxy and npd.
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
-    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json"
+    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
+    --from-literal=resource.server="${RESOURCE_SERVER}" \
+    --from-literal=tenant.servers="${TENANT_SERVERS}"
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
@@ -233,16 +242,28 @@ else
   create-kubemark-master
 fi
 
-MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
-start-hollow-nodes
-
+# Start two tenant partition clusters and perseve their master url
+# Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
+#
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
 echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   export KUBERNETES_TENANT_PARTITION=true
   create-kubemark-master
+  export TENANT_SERVER_1="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
+
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    create-kubemark-master
+    export TENANT_SERVER_2="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
+  fi
 fi
+
+# start hollow nodes with multiple tenant partition parameters
+#
+start-hollow-nodes
 
 echo ""
 if [ "${CLOUD_PROVIDER}" = "aws" ]; then
@@ -253,6 +274,8 @@ else
 fi
 echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"
 
+# all kubectl OPs go via the proxy
+#
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
 echo -e "Getting total nodes number:" >&2
