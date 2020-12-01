@@ -29,6 +29,7 @@ import (
 	"k8s.io/apiserver/pkg/storage/etcd3"
 	"k8s.io/apiserver/pkg/storage/storagebackend"
 	"k8s.io/apiserver/pkg/storage/storagebackend/factory"
+	"k8s.io/client-go/tools/cache"
 )
 
 // Creates a cacher based given storageConfig.
@@ -40,7 +41,8 @@ func StorageWithCacher(capacity int) generic.StorageDecorator {
 		newFunc func() runtime.Object,
 		newListFunc func() runtime.Object,
 		getAttrsFunc storage.AttrFunc,
-		triggerFunc storage.TriggerPublisherFunc) (storage.Interface, factory.DestroyFunc) {
+		triggerFuncs storage.IndexerFuncs,
+		indexers *cache.Indexers) (storage.Interface, factory.DestroyFunc) {
 
 		s, d := generic.NewRawStorage(storageConfig)
 		if capacity <= 0 {
@@ -54,16 +56,17 @@ func StorageWithCacher(capacity int) generic.StorageDecorator {
 		// TODO: we would change this later to make storage always have cacher and hide low level KV layer inside.
 		// Currently it has two layers of same storage interface -- cacher and low level kv.
 		cacherConfig := cacherstorage.Config{
-			CacheCapacity:        capacity,
-			Storage:              s,
-			Versioner:            etcd3.APIObjectVersioner{},
-			ResourcePrefix:       resourcePrefix,
-			KeyFunc:              keyFunc,
-			NewFunc:              newFunc,
-			NewListFunc:          newListFunc,
-			GetAttrsFunc:         getAttrsFunc,
-			TriggerPublisherFunc: triggerFunc,
-			Codec:                storageConfig.Codec,
+			CacheCapacity:  capacity,
+			Storage:        s,
+			Versioner:      etcd3.APIObjectVersioner{},
+			ResourcePrefix: resourcePrefix,
+			KeyFunc:        keyFunc,
+			NewFunc:        newFunc,
+			NewListFunc:    newListFunc,
+			GetAttrsFunc:   getAttrsFunc,
+			IndexerFuncs:   triggerFuncs,
+			Indexers:       indexers,
+			Codec:          storageConfig.Codec,
 		}
 		cacher := cacherstorage.NewCacherFromConfig(cacherConfig)
 		destroyFunc := func() {
