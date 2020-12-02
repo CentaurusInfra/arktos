@@ -33,11 +33,8 @@ import (
 )
 
 const (
-	// renewInterval is the interval at which the lease is renewed
-	// TODO(mtaufen): 10s was the decision in the KEP, to keep the behavior as close to the
-	// current default behavior as possible. In the future, we should determine a reasonable
-	// fraction of the lease duration at which to renew, and use that instead.
-	renewInterval = 10 * time.Second
+	// renewIntervalFraction is the fraction of lease duration to renew the lease
+	renewIntervalFraction = 0.25
 	// maxUpdateRetries is the number of immediate, successive retries the Kubelet will attempt
 	// when renewing the lease before it waits for the renewal interval before trying again,
 	// similar to what we do for node status retries
@@ -58,15 +55,19 @@ type controller struct {
 	renewInterval              time.Duration
 	clock                      clock.Clock
 	onRepeatedHeartbeatFailure []func()
+
+	// latestLease is the latest node lease which Kubelet updated or created
+	latestLease *coordv1beta1.Lease
 }
 
 // NewController constructs and returns a controller
 func NewController(clock clock.Clock, client clientset.Interface, holderIdentity string, leaseDurationSeconds int32, onRepeatedHeartbeatFailure []func()) Controller {
+	leaseDuration := time.Duration(leaseDurationSeconds) * time.Second
 	return &controller{
 		client:                     client,
 		holderIdentity:             holderIdentity,
 		leaseDurationSeconds:       leaseDurationSeconds,
-		renewInterval:              renewInterval,
+		renewInterval:              time.Duration(float64(leaseDuration) * renewIntervalFraction),
 		clock:                      clock,
 		onRepeatedHeartbeatFailure: onRepeatedHeartbeatFailure,
 	}
@@ -82,7 +83,26 @@ func (c *controller) Run(stopCh <-chan struct{}) {
 }
 
 func (c *controller) sync() {
+	if c.latestLease != nil {
+		// As long as node lease is not (or very rarely) updated by any other agent than Kubelet,
+		// we can optimistically assume it didn't change since our last update and try updating
+		// based on the version from that time. Thanks to it we avoid GET call and reduce load
+		// on etcd and kube-apiserver.
+		// If at some point other agents will also be frequently updating the Lease object, this
+		// can result in performance degradation, because we will end up with calling additional
+		// GET/PUT - at this point this whole "if" should be removed.
+		leaseClient := c.client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
+		lease, err := leaseClient.Update(c.newLease(c.latestLease))
+		if err == nil {
+			c.latestLease = lease
+			return
+		}
+
+		klog.Infof("failed to update lease using latest lease, fallback to ensure lease, err: %v", err)
+	}
+
 	lease, created := c.backoffEnsureLease()
+	c.latestLease = lease
 	// we don't need to update the lease if we just created it
 	if !created {
 		c.retryUpdateLease(lease)
@@ -138,8 +158,9 @@ func (c *controller) ensureLease() (*coordv1beta1.Lease, bool, error) {
 func (c *controller) retryUpdateLease(base *coordv1beta1.Lease) {
 	for i := 0; i < maxUpdateRetries; i++ {
 		leaseClient := c.client.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
-		_, err := leaseClient.Update(c.newLease(base))
+		lease, err := leaseClient.Update(c.newLease(base))
 		if err == nil {
+			c.latestLease = lease
 			return
 		}
 		klog.Errorf("failed to update node lease, error: %v", err)
