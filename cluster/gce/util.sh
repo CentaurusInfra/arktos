@@ -2359,10 +2359,14 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
+    cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+    grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+
     if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
       echo "Scaleout proxy public IP: ${PROXY_RESERVED_IP}:8888"
       echo "Scaleout proxy internal IP: ${PROXY_RESERVED_INTERNAL_IP}:8888"
-      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${KUBECONFIG}
+      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG}
+      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${LOCAL_KUBECONFIG}
     fi
   fi
 }
@@ -2890,12 +2894,12 @@ http {
             proxy_pass http://\$remote_addr:8080;
         }
 
-        location ~ ^/api/v1/nodes?(.*) {
+        location ~ ^/api/([^/])*/nodes?(.*) {
             proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }
 
-        location ~ ^/apis/coordination.k8s.io/v1/leases?(.*) {
+        location ~ ^/apis/coordination.k8s.io/([^/])*/leases?(.*) {
             proxy_read_timeout 3600;
             proxy_pass \$RESOURCE_API;
         }

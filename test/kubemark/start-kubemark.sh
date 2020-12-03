@@ -39,6 +39,7 @@ KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
@@ -88,7 +89,7 @@ function create-kube-hollow-node-resources {
   # Create kubemark namespace.
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
 
-  if [[ "${SCALEOUT_CLUSTER_TWO_TPS}" == "true" ]]; then
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
     export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
   else
     export TENANT_SERVERS="${TENANT_SERVER_1}"
@@ -241,8 +242,8 @@ else
   create-kubemark-master
 fi
 
-MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
-export RESOURCE_SERVER="http://"${MASTER_IP}
+MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
 # Start two tenant partition clusters and perseve their master url
 # Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
@@ -252,11 +253,11 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   export KUBERNETES_TENANT_PARTITION=true
   create-kubemark-master
-  export TENANT_SERVER_1="http://"$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+  export TENANT_SERVER_1="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
   if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
     create-kubemark-master
-    export TENANT_SERVER_2="http://"$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+    export TENANT_SERVER_2="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
   fi
 fi
 
