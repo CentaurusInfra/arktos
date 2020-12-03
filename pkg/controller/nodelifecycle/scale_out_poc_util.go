@@ -109,29 +109,38 @@ func GetTenantPartitionClients(tenantServers []string) ([]clientset.Interface, e
 	return clients, nil
 }
 
-func GetTenantPartitionManagers(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan struct{}) *TenantPartitionManager {
+	tpInformer := informers.NewSharedInformerFactory(client, 0)
+	go tpInformer.Core().V1().Pods().Informer().Run(stop)
+	go tpInformer.Apps().V1().DaemonSets().Informer().Run(stop)
+	tpAccessor := &TenantPartitionManager{
+		Client:            client,
+		PodInformer:       tpInformer.Core().V1().Pods(),
+		PodGetter:         tpInformer.Core().V1().Pods().Lister(),
+		DaemonSetInformer: tpInformer.Apps().V1().DaemonSets(),
+		DaemonSetStore:    tpInformer.Apps().V1().DaemonSets().Lister(),
+	}
+
+	return tpAccessor
+}
+
+func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	tpAccessors := []*TenantPartitionManager{}
+
+	for _, client := range clients {
+		tpAccessors = append(tpAccessors, getTenantPartitionManagerFromClient(client, stop))
+	}
+
+	return tpAccessors, nil
+}
+
+func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
 	clients, err := GetTenantPartitionClients(tenantServers)
 	if err != nil {
 		return nil, err
 	}
 
-	tpAccessors := []*TenantPartitionManager{}
-
-	for _, client := range clients {
-		tpInformer := informers.NewSharedInformerFactory(client, 0)
-		go tpInformer.Core().V1().Pods().Informer().Run(stop)
-		go tpInformer.Apps().V1().DaemonSets().Informer().Run(stop)
-		tpAccessor := &TenantPartitionManager{
-			Client:            client,
-			PodInformer:       tpInformer.Core().V1().Pods(),
-			PodGetter:         tpInformer.Core().V1().Pods().Lister(),
-			DaemonSetInformer: tpInformer.Apps().V1().DaemonSets(),
-			DaemonSetStore:    tpInformer.Apps().V1().DaemonSets().Lister(),
-		}
-		tpAccessors = append(tpAccessors, tpAccessor)
-	}
-
-	return tpAccessors, nil
+	return GetTenantPartitionManagersFromKubeClients(clients, stop)
 }
 
 func validateUrl(urlString string) error {
