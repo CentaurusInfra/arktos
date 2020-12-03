@@ -54,16 +54,17 @@ type Manager interface {
 // simpleSecretManager implements SecretManager interfaces with
 // simple operations to apiserver.
 type simpleSecretManager struct {
-	kubeClient clientset.Interface
+	kubeClients []clientset.Interface
 }
 
 // NewSimpleSecretManager creates a new SecretManager instance.
-func NewSimpleSecretManager(kubeClient clientset.Interface) Manager {
-	return &simpleSecretManager{kubeClient: kubeClient}
+func NewSimpleSecretManager(kubeClients []clientset.Interface) Manager {
+	return &simpleSecretManager{kubeClients: kubeClients}
 }
 
 func (s *simpleSecretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
-	return s.kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
+	client := getTPClient(s.kubeClients, tenant)
+	return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
 func (s *simpleSecretManager) RegisterPod(pod *v1.Pod) {
@@ -133,9 +134,10 @@ func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Int
 // - every GetObject() call tries to fetch the value from local cache; if it is
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
-func NewCachingSecretManager(kubeClient clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
+func NewCachingSecretManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
 	getSecret := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		return kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
+		client := getTPClient(kubeClients, tenant)
+		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	secretStore := manager.NewObjectStore(getSecret, clock.RealClock{}, getTTL, defaultTTL)
 	return &secretManager{

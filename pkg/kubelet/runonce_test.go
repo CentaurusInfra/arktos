@@ -47,6 +47,7 @@ import (
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
+	clientset "k8s.io/client-go/kubernetes"
 )
 
 func TestRunOnce(t *testing.T) {
@@ -82,7 +83,7 @@ func TestRunOnce(t *testing.T) {
 		containerRuntime: fakeRuntime,
 		reasonCache:      NewReasonCache(),
 		clock:            clock.RealClock{},
-		kubeClient:       &fake.Clientset{},
+		kubeClient:       []clientset.Interface{&fake.Clientset{}, &fake.Clientset{}},	// scale out poc hacking
 		hostname:         testKubeletHostname,
 		nodeName:         testKubeletHostname,
 		runtimeState:     newRuntimeState(time.Second),

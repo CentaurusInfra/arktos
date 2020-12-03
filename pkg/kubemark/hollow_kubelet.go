@@ -65,7 +65,7 @@ func NewHollowKubelet(
 	volumePlugins = append(volumePlugins, secret.ProbeVolumePlugins()...)
 	volumePlugins = append(volumePlugins, projected.ProbeVolumePlugins()...)
 	d := &kubelet.Dependencies{
-		KubeClient:         client,
+		KubeClients:        client,
 		ArktosExtClient:    arktosClient,
 		HeartbeatClient:    heartbeatClient,
 		DockerClientConfig: dockerClientConfig,

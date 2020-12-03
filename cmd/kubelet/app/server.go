@@ -409,7 +409,7 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		Cloud:               nil, // cloud provider might start background processes
 		ContainerManager:    nil,
 		DockerClientConfig:  dockerClientConfig,
-		KubeClient:          nil,
+		KubeClients:         nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
 		EventClient:         nil,
@@ -564,12 +564,12 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	// if in standalone mode, indicate as much by setting all clients to nil
 	switch {
 	case standaloneMode:
-		kubeDeps.KubeClient = nil
+		kubeDeps.KubeClients = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
 		klog.Warningf("standalone mode, no API client")
 
-	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
+	case kubeDeps.KubeClients == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
 		if err != nil {
 			return err
@@ -605,7 +605,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			return errors.New("invalid TenantServers")
 		}
 
-		kubeDeps.KubeClient = make([]clientset.Interface, len(s.TenantServers))
+		kubeDeps.KubeClients = make([]clientset.Interface, len(s.TenantServers))
 
 		for i, tenantServer := range s.TenantServers {
 			clientConfigTenantAPI := *clientConfigs
@@ -614,7 +614,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				klog.V(6).Infof("clientConfigTenantAPI.Host: %v", cfg.Host)
 			}
 
-			kubeDeps.KubeClient[i], err = clientset.NewForConfig(&clientConfigTenantAPI)
+			kubeDeps.KubeClients[i], err = clientset.NewForConfig(&clientConfigTenantAPI)
 			if err != nil {
 				return fmt.Errorf("failed to initialize kubelet client: %v", err)
 			}
@@ -651,7 +651,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	//
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
 		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient[0], kubeDeps.EventClient, string(nodeName)); err != nil {
+		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClients[0], kubeDeps.EventClient, string(nodeName)); err != nil {
 			return err
 		}
 	}
@@ -659,7 +659,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	//TODO: auth for both Tenant and Resource servers
 	//
 	if kubeDeps.Auth == nil {
-		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient[0], s.KubeletConfiguration)
+		auth, err := BuildAuth(nodeName, kubeDeps.KubeClients[0], s.KubeletConfiguration)
 		if err != nil {
 			return err
 		}
@@ -782,7 +782,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	}
 
 	// Start APIServerConfigManager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClient[0], stopCh)
+	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClients[0], stopCh)
 
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
