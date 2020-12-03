@@ -129,7 +129,16 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
 
-	tpAccessors, err := lifecyclecontroller.GetTenantPartitionManagers(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
+	kubeclient := ctx.ClientBuilder.ClientOrDie("node-controller")
+	
+	var tpAccessors []*lifecyclecontroller.TenantPartitionManager
+	var err error	
+	if len(ctx.ComponentConfig.NodeLifecycleController.TenantServers) > 0 {
+		tpAccessors, err = lifecyclecontroller.GetTenantPartitionManagersFromServerNames(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
+	} else {
+		tpAccessors, err = lifecyclecontroller.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeclient}, ctx.Stop)
+	}
+
 	if err != nil {
 		return nil, true, err
 	}
@@ -141,7 +150,7 @@ func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, er
 		ctx.InformerFactory.Core().V1().Nodes(),
 		//ctx.InformerFactory.Apps().V1().DaemonSets(),
 		// node lifecycle controller uses existing cluster role from node-controller
-		ctx.ClientBuilder.ClientOrDie("node-controller"),
+		kubeclient,
 		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,
 		ctx.ComponentConfig.NodeLifecycleController.NodeStartupGracePeriod.Duration,
 		ctx.ComponentConfig.NodeLifecycleController.NodeMonitorGracePeriod.Duration,
