@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -39,6 +40,7 @@ func TestCoercingMultiGroupVersioner(t *testing.T) {
 		preferredKinds []schema.GroupKind
 		kinds          []schema.GroupVersionKind
 		expectKind     schema.GroupVersionKind
+		expectedId     string
 	}{
 		{
 			name:           "matched preferred group/kind",
@@ -46,6 +48,7 @@ func TestCoercingMultiGroupVersioner(t *testing.T) {
 			preferredKinds: []schema.GroupKind{gk("mygroup", "Foo"), gk("anothergroup", "Bar")},
 			kinds:          []schema.GroupVersionKind{gvk("yetanother", "v1", "Baz"), gvk("anothergroup", "v1", "Bar")},
 			expectKind:     gvk("mygroup", "__internal", "Bar"),
+			expectedId:     "{\"accepted\":\"Foo.mygroup,Bar.anothergroup\",\"coerce\":\"true\",\"name\":\"multi\",\"target\":\"mygroup/__internal\"}",
 		},
 		{
 			name:           "matched preferred group",
@@ -53,6 +56,7 @@ func TestCoercingMultiGroupVersioner(t *testing.T) {
 			preferredKinds: []schema.GroupKind{gk("mygroup", ""), gk("anothergroup", "")},
 			kinds:          []schema.GroupVersionKind{gvk("yetanother", "v1", "Baz"), gvk("anothergroup", "v1", "Bar")},
 			expectKind:     gvk("mygroup", "__internal", "Bar"),
+			expectedId:     "{\"accepted\":\".mygroup,.anothergroup\",\"coerce\":\"true\",\"name\":\"multi\",\"target\":\"mygroup/__internal\"}",
 		},
 		{
 			name:           "no preferred group/kind match, uses first kind in list",
@@ -60,6 +64,7 @@ func TestCoercingMultiGroupVersioner(t *testing.T) {
 			preferredKinds: []schema.GroupKind{gk("mygroup", ""), gk("anothergroup", "")},
 			kinds:          []schema.GroupVersionKind{gvk("yetanother", "v1", "Baz"), gvk("yetanother", "v1", "Bar")},
 			expectKind:     gvk("mygroup", "__internal", "Baz"),
+			expectedId:     "{\"accepted\":\".mygroup,.anothergroup\",\"coerce\":\"true\",\"name\":\"multi\",\"target\":\"mygroup/__internal\"}",
 		},
 	}
 
@@ -72,6 +77,9 @@ func TestCoercingMultiGroupVersioner(t *testing.T) {
 			}
 			if kind != tc.expectKind {
 				t.Errorf("expected %#v, got %#v", tc.expectKind, kind)
+			}
+			if e, a := tc.expectedId, v.Identifier(); e != a {
+				t.Errorf("unexpected identifier: %s, expected: %s", a, e)
 			}
 		})
 	}
