@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -257,21 +258,6 @@ type disabledGroupVersioner struct{}
 
 // KindForGroupVersionKinds returns false for any input.
 func (disabledGroupVersioner) KindForGroupVersionKinds(kinds []schema.GroupVersionKind) (schema.GroupVersionKind, bool) {
-	return schema.GroupVersionKind{}, false
-}
-
-// GroupVersioners implements GroupVersioner and resolves to the first exact match for any kind.
-type GroupVersioners []GroupVersioner
-
-// KindForGroupVersionKinds returns the first match of any of the group versioners, or false if no match occurred.
-func (gvs GroupVersioners) KindForGroupVersionKinds(kinds []schema.GroupVersionKind) (schema.GroupVersionKind, bool) {
-	for _, gv := range gvs {
-		target, ok := gv.KindForGroupVersionKinds(kinds)
-		if !ok {
-			continue
-		}
-		return target, true
-	}
 	return schema.GroupVersionKind{}, false
 }
 
