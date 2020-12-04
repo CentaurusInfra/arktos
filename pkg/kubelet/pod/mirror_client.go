@@ -43,16 +43,16 @@ type MirrorClient interface {
 // the kubelet directly because they need to be in sync with the internal
 // pods.
 type basicMirrorClient struct {
-	apiserverClient clientset.Interface
+	apiserverClients []clientset.Interface
 }
 
 // NewBasicMirrorClient returns a new MirrorClient.
-func NewBasicMirrorClient(apiserverClient clientset.Interface) MirrorClient {
-	return &basicMirrorClient{apiserverClient: apiserverClient}
+func NewBasicMirrorClient(apiserverClients []clientset.Interface) MirrorClient {
+	return &basicMirrorClient{apiserverClients: apiserverClients}
 }
 
 func (mc *basicMirrorClient) CreateMirrorPod(pod *v1.Pod) error {
-	if mc.apiserverClient == nil {
+	if mc.apiserverClients == nil {
 		return nil
 	}
 	// Make a copy of the pod.
@@ -64,7 +64,8 @@ func (mc *basicMirrorClient) CreateMirrorPod(pod *v1.Pod) error {
 	}
 	hash := getPodHash(pod)
 	copyPod.Annotations[kubetypes.ConfigMirrorAnnotationKey] = hash
-	apiPod, err := mc.apiserverClient.CoreV1().PodsWithMultiTenancy(copyPod.Namespace, copyPod.Tenant).Create(&copyPod)
+	client := getTPClient(mc.apiserverClients, copyPod.Tenant)
+	apiPod, err := client.CoreV1().PodsWithMultiTenancy(copyPod.Namespace, copyPod.Tenant).Create(&copyPod)
 	if err != nil && errors.IsAlreadyExists(err) {
 		// Check if the existing pod is the same as the pod we want to create.
 		if h, ok := apiPod.Annotations[kubetypes.ConfigMirrorAnnotationKey]; ok && h == hash {
@@ -74,8 +75,21 @@ func (mc *basicMirrorClient) CreateMirrorPod(pod *v1.Pod) error {
 	return err
 }
 
+func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
+	var client clientset.Interface
+	pick := 0
+	if len(kubeClients)==1 || tenant[0] <= 'm' {
+		client = kubeClients[0]
+	} else {
+		client = kubeClients[1]
+		pick = 1
+	}
+	klog.Infof("tenant %s using client # %d", tenant, pick)
+	return client
+}
+
 func (mc *basicMirrorClient) DeleteMirrorPod(podFullName string) error {
-	if mc.apiserverClient == nil {
+	if mc.apiserverClients == nil {
 		return nil
 	}
 	name, namespace, tenant, err := kubecontainer.ParsePodFullName(podFullName)
@@ -85,7 +99,8 @@ func (mc *basicMirrorClient) DeleteMirrorPod(podFullName string) error {
 	}
 	klog.V(2).Infof("Deleting a mirror pod %q", podFullName)
 	// TODO(random-liu): Delete the mirror pod with uid precondition in mirror pod manager
-	if err := mc.apiserverClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, metav1.NewDeleteOptions(0)); err != nil && !errors.IsNotFound(err) {
+	client := getTPClient(mc.apiserverClients, tenant)
+	if err := client.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, metav1.NewDeleteOptions(0)); err != nil && !errors.IsNotFound(err) {
 		klog.Errorf("Failed deleting a mirror pod %q: %v", podFullName, err)
 	}
 	return nil
