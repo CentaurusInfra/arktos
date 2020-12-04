@@ -18,6 +18,8 @@ staging/src/k8s.io/apimachinery/pkg/runtime/serializer/versioning/versioning.go
 staging/src/k8s.io/apiserver/pkg/endpoints/discovery/util.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers_test.go
+staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object.go
+staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/compact.go
