@@ -885,7 +885,8 @@ func (c *Cacher) startDispatchingBookmarkEvents() {
 	// as we don't delete watcher from bookmarkWatchers when it is stopped.
 	for _, watchers := range c.bookmarkWatchers.popExpiredWatchers() {
 		for _, watcher := range watchers {
-			// watcher.stop() is protected by c.Lock()
+			// c.Lock() is held here.
+			// watcher.stopThreadUnsafe() is protected by c.Lock()
 			if watcher.stopped {
 				continue
 			}
@@ -958,7 +959,7 @@ func (c *Cacher) finishDispatching() {
 	defer c.Unlock()
 	c.dispatching = false
 	for _, watcher := range c.watchersToStop {
-		watcher.stop()
+		watcher.stopThreadUnsafe()
 	}
 	c.watchersToStop = c.watchersToStop[:0]
 }
@@ -973,7 +974,7 @@ func (c *Cacher) stopWatcherThreadUnsafe(watcher *cacheWatcher) {
 	if c.dispatching {
 		c.watchersToStop = append(c.watchersToStop, watcher)
 	} else {
-		watcher.stop()
+		watcher.stopThreadUnsafe()
 	}
 }
 
@@ -1003,7 +1004,7 @@ func forgetWatcher(c *Cacher, index int, triggerValue string, triggerSupported b
 		defer c.Unlock()
 
 		// It's possible that the watcher is already not in the structure (e.g. in case of
-		// simultaneous Stop() and terminateAllWatchers(), but it is safe to call stop()
+		// simultaneous Stop() and terminateAllWatchers(), but it is safe to call stopThreadUnsafe()
 		// on a watcher multiple times.
 		c.watchers.deleteWatcher(index, triggerValue, triggerSupported, c.stopWatcherThreadUnsafe)
 	}
@@ -1109,8 +1110,8 @@ func (c *errWatcher) Stop() {
 }
 
 // cacheWatcher implements watch.Interface
+// this is not thread-safe
 type cacheWatcher struct {
-	sync.Mutex
 	input     chan *watchCacheEvent
 	result    chan watch.Event
 	done      chan struct{}
@@ -1151,12 +1152,8 @@ func (c *cacheWatcher) Stop() {
 	c.forget()
 }
 
-// TODO(#73958)
-// stop() is protected by Cacher.Lock(), rename it to
-// stopThreadUnsafe and remove the sync.Mutex.
-func (c *cacheWatcher) stop() {
-	c.Lock()
-	defer c.Unlock()
+// we rely on the fact that stopThredUnsafe is actually protected by Cacher.Lock()
+func (c *cacheWatcher) stopThreadUnsafe() {
 	if !c.stopped {
 		c.stopped = true
 		close(c.done)
