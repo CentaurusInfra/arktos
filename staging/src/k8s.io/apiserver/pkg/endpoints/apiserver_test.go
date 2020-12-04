@@ -72,7 +72,6 @@ import (
 	genericapitesting "k8s.io/apiserver/pkg/endpoints/testing"
 	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/registry/rest"
-	"k8s.io/apiserver/pkg/server/filters"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 )
@@ -1872,7 +1871,12 @@ func TestListCompression(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		storage := map[string]rest.Storage{}
-		simpleStorage := SimpleRESTStorage{expectedResourceNamespace: testCase.namespace}
+		simpleStorage := SimpleRESTStorage{
+			expectedResourceNamespace: testCase.namespace,
+			list: []genericapitesting.Simple{
+				{Other: strings.Repeat("0123456789abcdef", (128*1024/16)+1)},
+			},
+		}
 		storage["simple"] = &simpleStorage
 		selfLinker := &setTestSelfLinker{
 			t:           t,
@@ -1881,7 +1885,6 @@ func TestListCompression(t *testing.T) {
 		}
 		var handler = handleInternal(storage, admissionControl, selfLinker, nil)
 
-		handler = filters.WithCompression(handler)
 		handler = genericapifilters.WithRequestInfo(handler, newTestRequestInfoResolver())
 
 		server := httptest.NewServer(handler)
@@ -2727,11 +2730,52 @@ func BenchmarkGetWithMultiTenancy(b *testing.B) {
 	b.StopTimer()
 }
 
-func TestGetCompression(t *testing.T) {
+func BenchmarkGetNoCompression(b *testing.B) {
 	storage := map[string]rest.Storage{}
 	simpleStorage := SimpleRESTStorage{
 		item: genericapitesting.Simple{
 			Other: "foo",
+		},
+	}
+	selfLinker := &setTestSelfLinker{
+		expectedSet: "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/default/simple/id",
+		name:        "id",
+		namespace:   "default",
+	}
+	storage["simple"] = &simpleStorage
+	handler := handleLinker(storage, selfLinker)
+	server := httptest.NewServer(handler)
+	defer server.Close()
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			DisableCompression: true,
+		},
+	}
+
+	u := server.URL + "/" + prefix + "/" + testGroupVersion.Group + "/" + testGroupVersion.Version + "/namespaces/default/simple/id"
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		resp, err := client.Get(u)
+		if err != nil {
+			b.Fatalf("unexpected error: %v", err)
+		}
+		if resp.StatusCode != http.StatusOK {
+			b.Fatalf("unexpected response: %#v", resp)
+		}
+		if _, err := io.Copy(ioutil.Discard, resp.Body); err != nil {
+			b.Fatalf("unable to read body")
+		}
+	}
+	b.StopTimer()
+}
+
+func TestGetCompression(t *testing.T) {
+	storage := map[string]rest.Storage{}
+	simpleStorage := SimpleRESTStorage{
+		item: genericapitesting.Simple{
+			Other: strings.Repeat("0123456789abcdef", (128*1024/16)+1),
 		},
 	}
 	selfLinker := &setTestSelfLinker{
@@ -2743,7 +2787,6 @@ func TestGetCompression(t *testing.T) {
 
 	storage["simple"] = &simpleStorage
 	handler := handleLinker(storage, selfLinker)
-	handler = filters.WithCompression(handler)
 	handler = genericapifilters.WithRequestInfo(handler, newTestRequestInfoResolver())
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -2758,7 +2801,7 @@ func TestGetCompression(t *testing.T) {
 	for _, test := range tests {
 		req, err := http.NewRequest("GET", server.URL+"/"+prefix+"/"+testGroupVersion.Group+"/"+testGroupVersion.Version+"/namespaces/default/simple/id", nil)
 		if err != nil {
-			t.Fatalf("unexpected error cretaing request: %v", err)
+			t.Fatalf("unexpected error creating request: %v", err)
 		}
 		// It's necessary to manually set Accept-Encoding here
 		// to prevent http.DefaultClient from automatically
