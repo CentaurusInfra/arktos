@@ -15,6 +15,7 @@ staging/src/k8s.io/apimachinery/pkg/runtime/negotiate.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/json/json.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/protobuf/protobuf.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/versioning/versioning.go
+staging/src/k8s.io/apimachinery/pkg/runtime/testing/cacheable_object.go
 staging/src/k8s.io/apiserver/pkg/endpoints/discovery/util.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers_test.go
