@@ -1,5 +1,5 @@
 /*
-Copyright 2020 Authors of Arktos.
+Copyright 2016 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -285,6 +285,10 @@ func (e *fakeEncoder) Encode(obj runtime.Object, w io.Writer) error {
 	}
 	_, err := w.Write(e.buf)
 	return err
+}
+
+func (e *fakeEncoder) Identifier() runtime.Identifier {
+	return runtime.Identifier("fake")
 }
 
 func gzipContent(data []byte, level int) []byte {
