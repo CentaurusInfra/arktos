@@ -856,7 +856,7 @@ func TestNotFound(t *testing.T) {
 // Many test cases below in this test file have two versions. One for backward compatibility with the API server befor Multi-Teanacy change, and the other
 // (with WithMultiTenancy in the test case names) is for the behavior in a Multi-Tenancy cluster.
 // The legacy test cases should be removed when we no longer support the legacy apis.
-func TestNotFoundWithMulitTenancy(t *testing.T) {
+func TestNotFoundWithMultiTenancy(t *testing.T) {
 	type T struct {
 		Method string
 		Path   string
@@ -1979,7 +1979,12 @@ func TestListCompressionWithMultiTenancy(t *testing.T) {
 	}
 	for i, testCase := range testCases {
 		storage := map[string]rest.Storage{}
-		simpleStorage := SimpleRESTStorage{expectedResourceNamespace: testCase.namespace, expectedResourceTenant: testCase.tenant}
+		simpleStorage := SimpleRESTStorage{
+			expectedResourceNamespace: testCase.namespace,
+			list: []genericapitesting.Simple{
+				{Other: strings.Repeat("0123456789abcdef", (128*1024/16)+1)},
+			},
+		}
 		storage["simple"] = &simpleStorage
 		selfLinker := &setTestSelfLinker{
 			t:           t,
@@ -1989,7 +1994,6 @@ func TestListCompressionWithMultiTenancy(t *testing.T) {
 		}
 		var handler = handleInternal(storage, admissionControl, selfLinker, nil)
 
-		handler = filters.WithCompression(handler)
 		handler = genericapifilters.WithRequestInfo(handler, newTestRequestInfoResolver())
 
 		server := httptest.NewServer(handler)
@@ -2847,7 +2851,7 @@ func TestGetCompressionWithMultiTenancy(t *testing.T) {
 	storage := map[string]rest.Storage{}
 	simpleStorage := SimpleRESTStorage{
 		item: genericapitesting.Simple{
-			Other: "foo",
+			Other: strings.Repeat("0123456789abcdef", (128*1024/16)+1),
 		},
 	}
 	selfLinker := &setTestSelfLinker{
@@ -2860,7 +2864,6 @@ func TestGetCompressionWithMultiTenancy(t *testing.T) {
 
 	storage["simple"] = &simpleStorage
 	handler := handleLinker(storage, selfLinker)
-	handler = filters.WithCompression(handler)
 	handler = genericapifilters.WithRequestInfo(handler, newTestRequestInfoResolver())
 	server := httptest.NewServer(handler)
 	defer server.Close()
@@ -3000,7 +3003,7 @@ func TestGetPretty(t *testing.T) {
 	}
 }
 
-func TestGetPrettyWithMulitTenancy(t *testing.T) {
+func TestGetPrettyWithMultiTenancy(t *testing.T) {
 	storage := map[string]rest.Storage{}
 	simpleStorage := SimpleRESTStorage{
 		item: genericapitesting.Simple{

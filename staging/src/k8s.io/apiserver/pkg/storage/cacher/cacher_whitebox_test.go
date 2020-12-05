@@ -20,7 +20,9 @@ package cacher
 import (
 	"context"
 	"fmt"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"reflect"
+	goruntime "runtime"
 	"strconv"
 	"sync"
 	"testing"
@@ -579,10 +581,7 @@ func TestTimeBucketWatchersBasic(t *testing.T) {
 func TestCacherNoLeakWithMultipleWatchers(t *testing.T) {
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.WatchBookmark, true)()
 	backingStorage := &dummyStorage{}
-	cacher, _, err := newTestCacher(backingStorage, 1000)
-	if err != nil {
-		t.Fatalf("Couldn't create cacher: %v", err)
-	}
+	cacher, _ := newTestCacher(backingStorage, 1000)
 	defer cacher.Stop()
 
 	// Wait until cacher is initialized.
@@ -916,10 +915,7 @@ func verifyEvents(t *testing.T, w watch.Interface, events []watch.Event) {
 
 func TestCachingDeleteEvents(t *testing.T) {
 	backingStorage := &dummyStorage{}
-	cacher, _, err := newTestCacher(backingStorage, 1000)
-	if err != nil {
-		t.Fatalf("Couldn't create cacher: %v", err)
-	}
+	cacher, _ := newTestCacher(backingStorage, 1000)
 	defer cacher.Stop()
 
 	// Wait until cacher is initialized.
@@ -996,10 +992,7 @@ func TestCachingDeleteEvents(t *testing.T) {
 
 func testCachingObjects(t *testing.T, watchersCount int) {
 	backingStorage := &dummyStorage{}
-	cacher, _, err := newTestCacher(backingStorage, 10)
-	if err != nil {
-		t.Fatalf("Couldn't create cacher: %v", err)
-	}
+	cacher, _ := newTestCacher(backingStorage, 10)
 	defer cacher.Stop()
 
 	// Wait until cacher is initialized.
@@ -1043,6 +1036,7 @@ func testCachingObjects(t *testing.T, watchersCount int) {
 	verifyEvents := func(w watch.Interface) {
 		var event watch.Event
 		for index := range dispatchedEvents {
+			i := uint64(index)
 			select {
 			case event = <-w.ResultChan():
 			case <-time.After(wait.ForeverTestTimeout):
@@ -1063,7 +1057,7 @@ func testCachingObjects(t *testing.T, watchersCount int) {
 			}
 
 			if event.Type == watch.Deleted {
-				resourceVersion, err := cacher.versioner.ObjectResourceVersion(cacher.watchCache.cache[index].PrevObject)
+				resourceVersion, err := cacher.versioner.ObjectResourceVersion(cacher.watchCache.cache[i].PrevObject)
 				if err != nil {
 					t.Fatalf("Failed to parse resource version: %v", err)
 				}
@@ -1073,9 +1067,9 @@ func testCachingObjects(t *testing.T, watchersCount int) {
 			var e runtime.Object
 			switch event.Type {
 			case watch.Added, watch.Modified:
-				e = cacher.watchCache.cache[index].Object
+				e = cacher.watchCache.cache[i].Object
 			case watch.Deleted:
-				e = cacher.watchCache.cache[index].PrevObject
+				e = cacher.watchCache.cache[i].PrevObject
 			default:
 				t.Errorf("unexpected watch event: %#v", event)
 			}
