@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -145,7 +146,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	ValidateProxyRedirects:  {Default: true, PreRelease: featuregate.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: featuregate.GA},
 	DynamicAuditing:         {Default: false, PreRelease: featuregate.Alpha},
-	APIResponseCompression:  {Default: false, PreRelease: featuregate.Alpha},
+	APIResponseCompression:  {Default: true, PreRelease: featuregate.Beta},
 	APIListChunking:         {Default: true, PreRelease: featuregate.Beta},
 	DryRun:                  {Default: true, PreRelease: featuregate.Beta},
 	RemainingItemCount:      {Default: false, PreRelease: featuregate.Alpha},
