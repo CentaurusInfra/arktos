@@ -129,9 +129,9 @@ function main() {
   if [[ "${ENABLE_KUBESCHEDULER}" == "true" ]]; then
     start-kube-scheduler
   fi
-  if [[ "${ENABLE_WORKLOADCONTROLLER}" == "true" ]]; then
-    start-workload-controller-manager ${KUBERNETES_MASTER_INTERNAL_IP}
-  fi
+  #if [[ "${ENABLE_WORKLOADCONTROLLER}" == "true" ]]; then
+  #  start-workload-controller-manager ${KUBERNETES_MASTER_INTERNAL_IP}
+  #fi
 
   reset-motd
   prepare-mounter-rootfs

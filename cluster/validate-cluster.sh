@@ -133,6 +133,9 @@ while true; do
   # Use grep || true so that empty result doesn't return nonzero exit code.
   ready=$(echo -n "${node}" | grep -c -v "NotReady" || true)
 
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    EXPECTED_NUM_NODES=0
+  fi
   if (( "${found}" == "${EXPECTED_NUM_NODES}" )) && (( "${ready}" == "${EXPECTED_NUM_NODES}")); then
     break
   elif (( "${found}" > "${EXPECTED_NUM_NODES}" )); then

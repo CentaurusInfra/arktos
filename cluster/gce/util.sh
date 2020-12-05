@@ -2863,12 +2863,12 @@ http {
     ##
     # arktos cluster settings
     #
-    keepalive_timeout 10m;
-    proxy_connect_timeout 600s;
-    proxy_send_timeout 600s;
-    proxy_read_timeout 600s;
-    fastcgi_send_timeout 600s;
-    fastcgi_read_timeout 600s;
+    keepalive_timeout 120m;
+    proxy_connect_timeout 3600s;
+    proxy_send_timeout 3600s;
+    proxy_read_timeout 3600s;
+    fastcgi_send_timeout 3600s;
+    fastcgi_read_timeout 3600s;
 
     server {
         listen      8888;
@@ -2882,21 +2882,31 @@ http {
 
         location ~ ^/[a-zA-Z0-9_.-]+$ {
             proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
+            if ( \$remote_addr ~* ${RESOURCE_MASTER_IP} ) {
+                proxy_pass \$RESOURCE_API;
+            }
+            proxy_pass \$TENANT_API;
         }
 
         location ~ ^/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
             proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
+            if ( \$remote_addr ~* ${RESOURCE_MASTER_IP} ) {
+                proxy_pass \$RESOURCE_API;
+            }
+            proxy_pass \$TENANT_API;
         }
 
         location ~ ^/apis/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
             proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
+            if ( \$remote_addr ~* ${RESOURCE_MASTER_IP} ) {
+                proxy_pass \$RESOURCE_API;
+            }
+            proxy_pass \$TENANT_API;
         }
 
         location ~ ^/api/([^/])*/nodes?(.*) {
             proxy_read_timeout 3600;
+            #TENANT_POINTER_RULE
             proxy_pass \$RESOURCE_API;
         }
 
@@ -3015,8 +3025,10 @@ function create-master() {
     setup-proxy ${MASTER_RESERVED_IP}
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    local sedarg="s/set \\\$TENANT_API http:.*/set \\\$TENANT_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
-    ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg}\" /etc/nginx/nginx.conf"
+    local sedarg1="s/set \\\$TENANT_API http:.*/set \\\$TENANT_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
+    ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg1}\" /etc/nginx/nginx.conf"
+    #local sedarg2="s/#TENANT_POINTER_RULE/if ( \\\$remote_addr ~* ${MASTER_RESERVED_IP} ) { proxy_pass \\\$TENANT_API; }/"
+    #ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg2}\" /etc/nginx/nginx.conf"
     ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
   fi
 

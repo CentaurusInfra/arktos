@@ -1075,7 +1075,11 @@ function create-master-kubelet-auth {
   if [[ -n "${KUBELET_APISERVER:-}" && -n "${KUBELET_CERT:-}" && -n "${KUBELET_KEY:-}" ]]; then
     REGISTER_MASTER_KUBELET="true"
     if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
-      create-kubelet-kubeconfig ${KUBELET_APISERVER} "8080" "http"
+      if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+        create-kubelet-kubeconfig ${PROXY_RESERVED_IP} "8888" "http"
+      else
+        create-kubelet-kubeconfig ${KUBELET_APISERVER} "8080" "http"
+      fi
     else
       create-kubelet-kubeconfig ${KUBELET_APISERVER}
     fi
