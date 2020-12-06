@@ -89,12 +89,6 @@ function create-kube-hollow-node-resources {
   # Create kubemark namespace.
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
 
-  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
-    export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
-  else
-    export TENANT_SERVERS="${TENANT_SERVER_1}"
-  fi
-
   # Create configmap for configuring hollow- kubelet, proxy and npd.
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
@@ -231,10 +225,46 @@ function start-hollow-nodes {
 
 detect-project &> /dev/null
 
+# Start two tenant partition clusters and perseve their master url
+# Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
+#
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export ENABLE_APISERVER_INSECURE_PORT=true
-  export KUBERNETES_RESOURCE_PARTITION=true
+  export KUBERNETES_TENANT_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
+  create-kubemark-master
+
+  MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+
+  export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
+  echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
+
+  export TENANT_SERVER_1="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
+
+  export KUBERNETES_SCALEOUT_PROXY=false
+
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    create-kubemark-master
+    export TENANT_SERVER_2="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
+  fi
+fi
+
+echo "DBG: set tenant partition flag false"
+export KUBERNETES_TENANT_PARTITION=false
+
+## TODO: add validation of TP cluster here
+##
+
+if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+  export TENANT_SERVERS="${TENANT_SERVER_1},${TENANT_SERVER_2}"
+else
+  export TENANT_SERVERS="${TENANT_SERVER_1}"
+fi
+
+echo "DBG: tenant-servers: " ${TENANT_SERVERS}
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  export KUBERNETES_RESOURCE_PARTITION=true
   create-kubemark-master
   export KUBERNETES_RESOURCE_PARTITION=false
   export KUBERNETES_SCALEOUT_PROXY=false
@@ -242,24 +272,8 @@ else
   create-kubemark-master
 fi
 
-MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
 export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
-
-# Start two tenant partition clusters and perseve their master url
-# Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
-#
-if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
-echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
-  export KUBERNETES_TENANT_PARTITION=true
-  create-kubemark-master
-  export TENANT_SERVER_1="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
-
-  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
-    create-kubemark-master
-    export TENANT_SERVER_2="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
-  fi
-fi
+echo "DBG: resource-server: " ${RESOURCE_SERVER}
 
 # start hollow nodes with multiple tenant partition parameters
 #

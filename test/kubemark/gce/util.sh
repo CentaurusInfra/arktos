@@ -40,6 +40,7 @@ function create-kubemark-master {
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
     export LOCAL_KUBECONFIG_TMP
+    export LOCAL_KUBECONFIG
 
     KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
@@ -47,7 +48,6 @@ function create-kubemark-master {
       SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
       KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
-      export LOCAL_KUBECONFIG
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
       SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
