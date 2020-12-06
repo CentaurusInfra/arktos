@@ -2359,8 +2359,12 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
-    cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-    grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+    if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
+      echo "Local_kubeconfig_tmp not set"
+    else
+      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+      echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+    fi
 
     if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
       echo "Scaleout proxy public IP: ${PROXY_RESERVED_IP}:8888"
