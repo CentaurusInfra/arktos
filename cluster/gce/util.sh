@@ -3017,8 +3017,16 @@ function create-master() {
   if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
     setup-proxy ${MASTER_RESERVED_IP}
   fi
+
+  ### TODO: for multiple TP cases, replace the TP address accordingly
+  ###
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
     local sedarg="s/set \\\$TENANT_API http:.*/set \\\$TENANT_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
+    ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg}\" /etc/nginx/nginx.conf"
+    ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+  fi
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    local sedarg="s/set \\\$RESOURCE_API http:.*/set \\\$RESOURCE_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
     ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg}\" /etc/nginx/nginx.conf"
     ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
   fi
