@@ -2207,7 +2207,7 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
-  echo "DBG: #########################################################################"
+ 
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     echo "DBG:Set tenant-servers parameters: " ${TENANT_SERVERS}
     params+=" --tenant-servers=${TENANT_SERVERS}"
