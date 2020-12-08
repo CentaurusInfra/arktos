@@ -41,6 +41,21 @@ RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
 LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 
+export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+
+if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" != "haproxy" && "${KUBERNETES_SCALEOUT_PROXY_APP}" != "nginx" ]] ; then
+  echo "Error: unknown KUBERNETES_SCALEOUT_PROXY_APP ${KUBERNETES_SCALEOUT_PROXY_APP}, must be nginx or haproxy. "
+  exut 1
+fi
+
+if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" == "haproxy" ]] ; then
+  export PROXY_CONFIG_FILE="haproxy.cfg"
+else
+  export PROXY_CONFIG_FILE="nginx.conf"
+fi
+
+export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
+
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
 KUBEMARK_IMAGE_TAG=$(head /dev/urandom | tr -dc 'a-z0-9' | fold -w 6 | head -n 1)
@@ -106,12 +121,12 @@ function create-kube-hollow-node-resources {
   # It's bad that all component shares the same kubeconfig.
   # TODO(https://github.com/kubernetes/kubernetes/issues/79883): Migrate all components to separate credentials.
   "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" \
-    --from-file=kubelet.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=kubeproxy.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=npd.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=heapster.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=cluster_autoscaler.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=dns.kubeconfig="${LOCAL_KUBECONFIG}"
+    --from-file=kubelet.kubeconfig="${LOCAL_KUBECONFIG_TMP}" \
+    --from-file=kubeproxy.kubeconfig="${LOCAL_KUBECONFIG_TMP}" \
+    --from-file=npd.kubeconfig="${LOCAL_KUBECONFIG_TMP}" \
+    --from-file=heapster.kubeconfig="${LOCAL_KUBECONFIG_TMP}" \
+    --from-file=cluster_autoscaler.kubeconfig="${LOCAL_KUBECONFIG_TMP}" \
+    --from-file=dns.kubeconfig="${LOCAL_KUBECONFIG_TMP}"
 
   # Create addon pods.
   # Heapster.
@@ -178,7 +193,7 @@ function create-kube-hollow-node-resources {
 function wait-for-hollow-nodes-to-run-or-timeout {
   echo -n "Waiting for all hollow-nodes to become Running"
   start=$(date +%s)
-  nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node 2> /dev/null) || true
+  nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get node 2> /dev/null) || true
   ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
 
   until [[ "${ready}" -ge "${NUM_REPLICAS}" ]]; do
@@ -191,7 +206,7 @@ function wait-for-hollow-nodes-to-run-or-timeout {
       # shellcheck disable=SC2154 # Color defined in sourced script
       echo -e "${color_red} Timeout waiting for all hollow-nodes to become Running. ${color_norm}"
       # Try listing nodes again - if it fails it means that API server is not responding
-      if "${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node &> /dev/null; then
+      if "${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get node &> /dev/null; then
         echo "Found only ${ready} ready hollow-nodes while waiting for ${NUM_NODES}."
       else
         echo "Got error while trying to list hollow-nodes. Probably API server is down."
@@ -204,7 +219,7 @@ function wait-for-hollow-nodes-to-run-or-timeout {
       echo "${pods}" | grep -v Running
       exit 1
     fi
-    nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node 2> /dev/null) || true
+    nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get node 2> /dev/null) || true
     ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
   done
   # shellcheck disable=SC2154 # Color defined in sourced script
@@ -235,6 +250,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export ENABLE_APISERVER_INSECURE_PORT=true
   export KUBERNETES_RESOURCE_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
+  export PARTITION_TO_UPDATE="resource_partition"
   create-kubemark-master
   export KUBERNETES_RESOURCE_PARTITION=false
   export KUBERNETES_SCALEOUT_PROXY=false
@@ -242,7 +258,7 @@ else
   create-kubemark-master
 fi
 
-MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+MASTER_IP=$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
 export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
 # Start two tenant partition clusters and perseve their master url
@@ -252,10 +268,13 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
 echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   export KUBERNETES_TENANT_PARTITION=true
+  export PARTITION_TO_UPDATE="tenant_partition_one"
   create-kubemark-master
   export TENANT_SERVER_1="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
+
   if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    export PARTITION_TO_UPDATE="tenant_partition_two"
     create-kubemark-master
     export TENANT_SERVER_2="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
   fi
@@ -272,27 +291,27 @@ if [ "${CLOUD_PROVIDER}" = "aws" ]; then
 else
   echo "Master IP: ${MASTER_IP}"
 fi
-echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"
+echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG_TMP}"
 
 # all kubectl OPs go via the proxy
 #
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
 echo -e "Getting total nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | wc -l
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get node | wc -l
 echo
 echo -e "Getting total hollow-nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | grep "hollow-node" | wc -l
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get node | grep "hollow-node" | wc -l
 echo
 echo -e "Getting endpoints status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get endpoints -A
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get endpoints -A
 echo
 echo -e "Getting workload controller co status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get co
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get co
 echo
 echo -e "Getting apiserver data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get datapartition
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get datapartition
 echo
 echo -e "Getting ETCD data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get etcd
+"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG_TMP}" get etcd
 echo
