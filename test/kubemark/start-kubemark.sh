@@ -40,6 +40,7 @@ KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
 LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
+TENANT_SERVERS=""
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
