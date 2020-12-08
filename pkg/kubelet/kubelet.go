@@ -255,20 +255,20 @@ type Dependencies struct {
 	ContainerManager   cm.ContainerManager
 	DockerClientConfig *dockershim.ClientConfig
 	//TODO: Arktos-scale-out: event should be per Tenant partition and per Resource parition
-	EventClient         v1core.EventsGetter
-	HeartbeatClient     clientset.Interface
-	OnHeartbeatFailure  []func()
-	KubeClients         []clientset.Interface
-	ArktosExtClient     arktos.Interface
-	Mounter             mount.Interface
-	OOMAdjuster         *oom.OOMAdjuster
-	OSInterface         kubecontainer.OSInterface
-	PodConfig           *config.PodConfig
-	Recorder            record.EventRecorder
-	Subpather           subpath.Interface
-	VolumePlugins       []volume.VolumePlugin
-	DynamicPluginProber volume.DynamicPluginProber
-	TLSOptions          *server.TLSOptions
+	EventClient             v1core.EventsGetter
+	HeartbeatClient         clientset.Interface
+	OnHeartbeatFailure      []func()
+	KubeClients             []clientset.Interface
+	ArktosExtClient         arktos.Interface
+	Mounter                 mount.Interface
+	OOMAdjuster             *oom.OOMAdjuster
+	OSInterface             kubecontainer.OSInterface
+	PodConfig               *config.PodConfig
+	Recorder                record.EventRecorder
+	Subpather               subpath.Interface
+	VolumePlugins           []volume.VolumePlugin
+	DynamicPluginProber     volume.DynamicPluginProber
+	TLSOptions              *server.TLSOptions
 	KubeletConfigController *kubeletconfig.Controller
 }
 
@@ -826,7 +826,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		nodeName,
 		klet.podManager,
 		klet.statusManager,
-		klet.kubeClient[0],
+		klet.kubeClient,
 		klet.volumePluginMgr,
 		klet.containerRuntime,
 		kubeDeps.Mounter,
@@ -2176,7 +2176,7 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 func (kl *Kubelet) getTPClient(tenant string) clientset.Interface {
 	var client clientset.Interface
 	pick := 0
-	if len(kl.kubeClient)==1 || tenant[0] <= 'm' {
+	if len(kl.kubeClient) == 1 || tenant[0] <= 'm' {
 		client = kl.kubeClient[0]
 	} else {
 		client = kl.kubeClient[1]

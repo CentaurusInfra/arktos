@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -813,7 +814,7 @@ func Test_GenerateMapVolumeFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-				nil, /* kubeClient */
+                               nil, /* kubeClients */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */
@@ -867,7 +868,7 @@ func Test_GenerateUnmapVolumeFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-				nil, /* kubeClient */
+                               nil, /* kubeClients */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */
@@ -913,7 +914,7 @@ func Test_GenerateUnmapDeviceFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-				nil, /* kubeClient */
+                               nil, /* kubeClients */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */

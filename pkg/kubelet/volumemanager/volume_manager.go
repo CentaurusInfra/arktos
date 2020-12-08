@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -147,7 +148,7 @@ func NewVolumeManager(
 	nodeName k8stypes.NodeName,
 	podManager pod.Manager,
 	podStatusProvider status.PodStatusProvider,
-	kubeClient clientset.Interface,
+	kubeClient []clientset.Interface,
 	volumePluginMgr *volume.VolumePluginMgr,
 	kubeContainerRuntime container.Runtime,
 	mounter mount.Interface,
@@ -162,7 +163,7 @@ func NewVolumeManager(
 		desiredStateOfWorld: cache.NewDesiredStateOfWorld(volumePluginMgr),
 		actualStateOfWorld:  cache.NewActualStateOfWorld(nodeName, volumePluginMgr),
 		operationExecutor: operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-			kubeClient,
+			kubeClient[0],
 			volumePluginMgr,
 			recorder,
 			checkNodeCapabilitiesBeforeMount,
@@ -200,7 +201,7 @@ func NewVolumeManager(
 type volumeManager struct {
 	// kubeClient is the kube API client used by DesiredStateOfWorldPopulator to
 	// communicate with the API server to fetch PV and PVC objects
-	kubeClient clientset.Interface
+	kubeClient []clientset.Interface
 
 	// volumePluginMgr is the volume plugin manager used to access volume
 	// plugins. It must be pre-initialized.

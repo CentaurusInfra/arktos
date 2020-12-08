@@ -785,7 +785,7 @@ func createDswpWithVolume(t *testing.T, pv *v1.PersistentVolume, pvc *v1.Persist
 	fakeStatusManager := status.NewManager(fakeClient, fakePodManager, &statustest.FakePodDeletionSafetyProvider{})
 
 	dswp := &desiredStateOfWorldPopulator{
-		kubeClient:                fakeClient,
+               kubeClients:               fakeClient,
 		loopSleepDuration:         100 * time.Millisecond,
 		getPodStatusRetryDuration: 2 * time.Second,
 		podManager:                fakePodManager,
