@@ -2208,6 +2208,11 @@ function start-kube-controller-manager {
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
 
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    echo "DBG:Set tenant-servers parameters:  ${TENANT_SERVERS}"
+    params+=" --tenant-servers=${TENANT_SERVERS}"
+  fi
+
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then

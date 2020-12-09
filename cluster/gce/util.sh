@@ -1610,6 +1610,11 @@ EOF
 MAX_PODS_PER_NODE: $(yaml-quote ${MAX_PODS_PER_NODE})
 EOF
   fi
+  if [ -n "${TENANT_SERVERS:-}" ]; then
+      cat >>$file <<EOF
+TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+EOF
+    fi
 }
 
 
@@ -2359,15 +2364,14 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
-    cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-    grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
-
-    if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-      echo "Scaleout proxy public IP: ${PROXY_RESERVED_IP}:8888"
-      echo "Scaleout proxy internal IP: ${PROXY_RESERVED_INTERNAL_IP}:8888"
-      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG}
-      sed -i "s/server: https:\/\/.*/server: http:\/\/${PROXY_RESERVED_IP}:8888/" ${LOCAL_KUBECONFIG}
+      
+    if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
+      echo "Local_kubeconfig_tmp not set"
+    else
+      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+      echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
     fi
+
   fi
 }
 
@@ -2790,139 +2794,58 @@ function create-proxy-vm() {
   return 1
 }
 
+function init-proxy-cfg() {
+
+  if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" == "haproxy" ]]; then
+    cp -f "${KUBE_ROOT}/hack/scale_out_poc/haproxy_2T1R/haproxy.cfg" "${PROXY_CONFIG_FILE_TMP}" 
+  else
+    cp -f "${KUBE_ROOT}/hack/scale_out_poc/two_TP/nginx.conf" "${PROXY_CONFIG_FILE_TMP}" 
+  fi
+    
+  sed -i -e "s@{{ *proxy_port *}}@8888@g" "${PROXY_CONFIG_FILE_TMP}" 
+
+  sed -i -e "s@{{ *arktos_api_protocol *}}@http@g" "${PROXY_CONFIG_FILE_TMP}" 
+  sed -i -e "s@{{ *arktos_api_port *}}@8080@g" "${PROXY_CONFIG_FILE_TMP}" 
+
+  sed -i -e "s@{{ *connection_timeout *}}@10m@g" "${PROXY_CONFIG_FILE_TMP}" 
+}
+
+function update-proxy() {
+  macro_name=$1
+  macro_value=$2
+
+  sed -i -e "s@{{ *${macro_name} *}}@${macro_value}@g" "${PROXY_CONFIG_FILE_TMP}"
+
+  cp -f "${PROXY_CONFIG_FILE_TMP}" "${PROXY_CONFIG_FILE_TMP}.interim"
+
+  # proxy config files do not know macros, so we trick it with the current master IP temporarily.
+  # real replacement will happen when the master of the partition happens
+  sed -i -e "s@{{ *resource_partition_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
+  sed -i -e "s@{{ *tenant_partition_one_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
+  sed -i -e "s@{{ *tenant_partition_two_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
+
+  load-proxy-cfg
+}
+
+function load-proxy-cfg {
+  gcloud compute scp --zone="${ZONE}" "${PROXY_CONFIG_FILE_TMP}.interim" "${PROXY_NAME}:~/${PROXY_CONFIG_FILE}"
+  ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
+  ssh-to-node ${PROXY_NAME} "sudo mv ~/${PROXY_CONFIG_FILE} /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
+  echo "VDBG ========================================"
+  cat ${PROXY_CONFIG_FILE_TMP}.interim
+  echo "VDBG ========================================"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
+}
+
 function setup-proxy() {
+  init-proxy-cfg
+
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
   ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
-  ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
-  ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
-
-  RESOURCE_MASTER_IP=${1}
-
-  cat >"${KUBE_TEMP}/nginx.conf" << EOF
-user www-data;
-worker_processes auto;
-pid /run/nginx.pid;
-include /etc/nginx/modules-enabled/*.conf;
-
-events {
-    worker_connections 100000;
-    # multi_accept on;
-}
-
-http {
-
-    ##
-    # Basic Settings
-    ##
-
-    sendfile on;
-    tcp_nopush on;
-    tcp_nodelay on;
-    types_hash_max_size 2048;
-    proxy_http_version 1.1;
-
-    # server_tokens off;
-
-    # server_names_hash_bucket_size 64;
-    # server_name_in_redirect off;
-
-    include /etc/nginx/mime.types;
-    default_type application/octet-stream;
-
-    ##
-    # SSL Settings
-    ##
-
-    ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
-    ssl_prefer_server_ciphers on;
-
-    ##
-    # Logging Settings
-    ##
-
-    access_log /var/log/nginx/access.log;
-    error_log /var/log/nginx/error.log;
-
-    ##
-    # Gzip Settings
-    ##
-
-    gzip on;
-
-    ##
-    # Virtual Host Configs
-    ##
-
-    include /etc/nginx/conf.d/*.conf;
-    include /etc/nginx/sites-enabled/*;
-
-    ##
-    # arktos cluster settings
-    #
-    keepalive_timeout 10m;
-    proxy_connect_timeout 600s;
-    proxy_send_timeout 600s;
-    proxy_read_timeout 600s;
-    fastcgi_send_timeout 600s;
-    fastcgi_read_timeout 600s;
-
-    server {
-        listen      8888;
-        server_name ${PROXY_NAME} ${PROXY_RESERVED_IP};
-
-        access_log /var/log/nginx/k8s_access.log;
-        error_log /var/log/nginx/k8s_error.log;
-
-        set \$RESOURCE_API http://${RESOURCE_MASTER_IP}:8080;
-        set \$TENANT_API http://${RESOURCE_MASTER_IP}:8080;
-
-        location ~ ^/[a-zA-Z0-9_.-]+$ {
-            proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
-        }
-
-        location ~ ^/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
-            proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
-        }
-
-        location ~ ^/apis/[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ {
-            proxy_read_timeout 3600;
-            proxy_pass http://\$remote_addr:8080;
-        }
-
-        location ~ ^/api/([^/])*/nodes?(.*) {
-            proxy_read_timeout 3600;
-            proxy_pass \$RESOURCE_API;
-        }
-
-        location ~ ^/apis/coordination.k8s.io/([^/])*/leases?(.*) {
-            proxy_read_timeout 3600;
-            proxy_pass \$RESOURCE_API;
-        }
-
-        location ~ ^/apis/([^/])*/([^/])*/tenants/system/namespaces/kube-node-lease/leases?(.*) {
-            proxy_read_timeout 3600;
-            proxy_pass \$RESOURCE_API;
-        }
-
-        location / {
-            proxy_read_timeout 3600;
-            proxy_pass \$TENANT_API;
-        }
-    }
-}
-EOF
-
-  gcloud compute scp --zone="${ZONE}" "${KUBE_TEMP}/nginx.conf" "${PROXY_NAME}:~/nginx.conf"
-  ssh-to-node ${PROXY_NAME} "sudo mv ~/nginx.conf /etc/nginx/nginx.conf"
-  echo "VDBG ========================================"
-  cat ${KUBE_TEMP}/nginx.conf
-  echo "VDBG ========================================"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+  ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
 
 function create-master() {
@@ -2973,6 +2896,8 @@ function create-master() {
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  
+  echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
@@ -3011,13 +2936,21 @@ function create-master() {
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
 
   if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-    setup-proxy ${MASTER_RESERVED_IP}
+    setup-proxy
   fi
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    local sedarg="s/set \\\$TENANT_API http:.*/set \\\$TENANT_API http:\/\/${MASTER_RESERVED_IP}:8080;/"
-    ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg}\" /etc/nginx/nginx.conf"
-    ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "resource_partition" ]]; then 
+    update-proxy "resource_partition_ip" "${MASTER_RESERVED_IP}"
   fi
+
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_one" ]]; then 
+    update-proxy "tenant_partition_one_ip" "${MASTER_RESERVED_IP}"
+  fi
+
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_two" ]]; then 
+    update-proxy "tenant_partition_two_ip" "${MASTER_RESERVED_IP}"
+  fi
+
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
