@@ -35,6 +35,13 @@ fi
 
 source "${KUBE_ROOT}/cluster/kubemark/util.sh"
 
+KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
+KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
+RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
+LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
+TP_ONE_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
+
 ### files to explicitly save the kubeconfig to different cluster or proxy
 ### those are used for targeted operations such as tenant creation etc on
 ### desired cluster directly
@@ -48,13 +55,6 @@ RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
 ###
 TENANT1_YAML="${KUBE_ROOT}/perf-tests/arktos/tenant1.yaml"
 TENANT2_YAML="${KUBE_ROOT}/perf-tests/arktos/tenant2.yaml"
-
-KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
-KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
-RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
-LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
-LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
-TP_ONE_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
 
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
 
