@@ -1953,13 +1953,14 @@ func hasHostNamespace(pod *v1.Pod) bool {
 func (kl *Kubelet) hasHostMountPVC(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			pvc, err := kl.kubeClient[0].CoreV1().PersistentVolumeClaims(pod.Namespace).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
+			tenantClient := kl.getTPClient(pod.Tenant)
+			pvc, err := tenantClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
 			if err != nil {
 				klog.Warningf("unable to retrieve pvc %s:%s - %v", pod.Namespace, volume.PersistentVolumeClaim.ClaimName, err)
 				continue
 			}
 			if pvc != nil {
-				referencedVolume, err := kl.kubeClient[0].CoreV1().PersistentVolumes().Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+				referencedVolume, err := tenantClient.CoreV1().PersistentVolumesWithMultiTenancy(pod.Tenant).Get(pvc.Spec.VolumeName, metav1.GetOptions{})
 				if err != nil {
 					klog.Warningf("unable to retrieve pv %s - %v", pvc.Spec.VolumeName, err)
 					continue

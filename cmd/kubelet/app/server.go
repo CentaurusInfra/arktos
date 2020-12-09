@@ -605,7 +605,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			klog.V(3).Infof("TenantServers is not set. Default to single tenant partition and clientConfig setting")
 			s.TenantServers = make ([]string, 1)
 			s.TenantServers[0] = clientConfigs.GetConfig().Host
-
 		}
 
 		kubeDeps.KubeClients = make([]clientset.Interface, len(s.TenantServers))
