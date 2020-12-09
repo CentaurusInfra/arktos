@@ -42,6 +42,20 @@ LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
 LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 TP_ONE_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
 
+### files to explicitly save the kubeconfig to different cluster or proxy
+### those are used for targeted operations such as tenant creation etc on
+### desired cluster directly
+###
+TP1_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp1.saved"
+TP2_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp2.saved"
+PROXY_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy.saved"
+RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
+
+### POC tenant yaml files
+###
+TENANT1_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant1.yaml"
+TENANT2_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant2.yaml"
+
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
 
 if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" != "haproxy" && "${KUBERNETES_SCALEOUT_PROXY_APP}" != "nginx" ]] ; then
@@ -257,13 +271,14 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
   echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   export TENANT_SERVER_1="http://$(cat /tmp/master_reserved_ip.txt):8080"
-
+  cp -f ${LOCAL_KUBECONFIG_TMP} ${TP1_KUBECONFIG_SAVED}
   export KUBERNETES_SCALEOUT_PROXY=false
 
   if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
     export PARTITION_TO_UPDATE="tenant_partition_two"
     create-kubemark-master
     export TENANT_SERVER_2="http://$(cat /tmp/master_reserved_ip.txt):8080"
+    cp -f ${LOCAL_KUBECONFIG_TMP} ${TP2_KUBECONFIG_SAVED}
   fi
 fi
 
@@ -286,13 +301,14 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export PARTITION_TO_UPDATE="resource_partition"
   create-kubemark-master
   export KUBERNETES_RESOURCE_PARTITION=false
-  export KUBERNETES_SCALEOUT_PROXY=false  
+  export KUBERNETES_SCALEOUT_PROXY=false
+
+  export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
+  echo "DBG: resource-server: " ${RESOURCE_SERVER}
+  cp -f ${LOCAL_KUBECONFIG_TMP} ${RP_KUBECONFIG_SAVED}
 else
   create-kubemark-master
 fi
-
-export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
-echo "DBG: resource-server: " ${RESOURCE_SERVER}
 
 # start hollow nodes with multiple tenant partition parameters
 #
@@ -309,6 +325,10 @@ echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG_TMP}"
 
 # all kubectl OPs go via the proxy
 #
+### internally the TP configures are set with proxy URL, simply copy for POC phase for now
+###
+cp -f ${TP_ONE_KUBECONFIG} ${RP_KUBECONFIG_SAVED}
+
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
 echo -e "Getting total nodes number:" >&2
@@ -329,3 +349,22 @@ echo
 echo -e "Getting ETCD data partition status:" >&2
 "${KUBECTL}" --kubeconfig="${TP_ONE_KUBECONFIG}" get etcd
 echo
+
+### for multiple tenant tests, set up the tenants on desired TP clusters
+###
+if [[ "${CREATE_TEST_TENANTS:-false}" == "true" ]]; then
+  ### create tenant1 on TP1 cluster
+  echo -e "Create tenant1 on TP1 cluster"
+  "${KUBECTL}" --kubeconfig="${TP1_KUBECONFIG_SAVED}" create -f ${TENANT1_YAML}
+
+  ### create tenant2 on TP2 cluster
+  echo -e "Create tenant2 on TP2 cluster"
+  "${KUBECTL}" --kubeconfig="${TP2_KUBECONFIG_SAVED}" create -f ${TENANT2_YAML}
+
+  echo -e "Getting test tenants from TP1:" >&2
+  "${KUBECTL}" --kubeconfig="${TP_ONE_KUBECONFIG}" get tenants
+  echo
+  echo -e "Getting test tenants from TP2:" >&2
+  "${KUBECTL}" --kubeconfig="${TP_ONE_KUBECONFIG}" get tenants
+  echo
+fi
