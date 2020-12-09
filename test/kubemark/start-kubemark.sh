@@ -53,8 +53,8 @@ RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
 
 ### POC tenant yaml files
 ###
-TENANT1_YAML="${KUBE_ROOT}/perf-tests/arktos/tenant1.yaml"
-TENANT2_YAML="${KUBE_ROOT}/perf-tests/arktos/tenant2.yaml"
+TENANT1_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant1.yaml"
+TENANT2_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant2.yaml"
 
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
 
