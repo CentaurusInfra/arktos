@@ -1610,6 +1610,11 @@ EOF
 MAX_PODS_PER_NODE: $(yaml-quote ${MAX_PODS_PER_NODE})
 EOF
   fi
+  if [ -n "${TENANT_SERVERS:-}" ]; then
+      cat >>$file <<EOF
+TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+EOF
+    fi
 }
 
 
@@ -2359,8 +2364,13 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
-    cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-    grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+      
+    if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
+      echo "Local_kubeconfig_tmp not set"
+    else
+      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+      echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+    fi
 
   fi
 }
@@ -2886,6 +2896,8 @@ function create-master() {
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  
+  echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
@@ -2927,15 +2939,15 @@ function create-master() {
     setup-proxy
   fi
 
-  if [[ "${PARTITION_TO_UPDATE}" == "resource_partition" ]]; then 
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "resource_partition" ]]; then 
     update-proxy "resource_partition_ip" "${MASTER_RESERVED_IP}"
   fi
 
-  if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_one" ]]; then 
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_one" ]]; then 
     update-proxy "tenant_partition_one_ip" "${MASTER_RESERVED_IP}"
   fi
 
-  if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_two" ]]; then 
+  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_two" ]]; then 
     update-proxy "tenant_partition_two_ip" "${MASTER_RESERVED_IP}"
   fi
 

@@ -63,7 +63,7 @@ spec:
         command:
         - /bin/sh
         - -c
-        - /kubemark --morph=kubelet --tenant-servers=${TENANT_SERVERS} --resource-server=${RESOURCE_SERVER} --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
+        - /kubemark --morph=kubelet --tenant-servers={{tenant_servers}} --resource-server={{resource_server}} --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
         volumeMounts:
         - name: kubeconfig-volume
           mountPath: /kubeconfig

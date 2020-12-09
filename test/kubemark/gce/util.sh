@@ -40,20 +40,26 @@ function create-kubemark-master {
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
     export LOCAL_KUBECONFIG_TMP
+    export LOCAL_KUBECONFIG
 
     KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+    SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then     
       KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
-      export LOCAL_KUBECONFIG
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
-      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp"
+      if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_one" ]]; then 
+        KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
+        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-1"
+      fi
+      if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_two" ]]; then 
+        KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-2"
+        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-2"
+      fi
     fi
+
     export SCALEOUT_PROXY_NAME
     export KUBECONFIG
     export KUBE_GCE_INSTANCE_PREFIX
@@ -113,8 +119,14 @@ function delete-kubemark-master {
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp"
+      if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_one" ]]; then 
+        KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
+        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-1"
+      fi
+      if [[ "${PARTITION_TO_UPDATE}" == "tenant_partition_two" ]]; then 
+        KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-2"
+        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-2"
+      fi
     fi
     export SCALEOUT_PROXY_NAME
     export KUBE_GCE_INSTANCE_PREFIX

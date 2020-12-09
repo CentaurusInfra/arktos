@@ -90,6 +90,24 @@ function create-kubeconfig() {
   local cluster_args=(
       "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}"
   )
+
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      if [[ "${PROXY_RESERVED_IP}" == "" ]]; then
+        echo "Fatal Error: proxy IP is empty!"
+        exit 1
+      fi
+      cluster_args=(
+          "--server=${KUBE_SERVER:-http://${PROXY_RESERVED_IP}}:8888"
+       )
+    fi
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      cluster_args=(
+          "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
+       )
+    fi
+  fi    
+
   if [[ -z "${CA_CERT:-}" ]]; then
     cluster_args+=("--insecure-skip-tls-verify=true")
   else
@@ -934,6 +952,11 @@ EOF
 ETCD_QUORUM_READ: $(yaml-quote ${ETCD_QUORUM_READ})
 EOF
     fi
+    if [ -n "${TENANT_SERVERS:-}" ]; then
+      cat >>$file <<EOF
+TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+EOF
+    fi
 
   else
     # Node-only env vars.
@@ -1052,6 +1075,24 @@ function create-kubeconfig() {
   local cluster_args=(
       "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}"
   )
+
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      if [[ "${PROXY_RESERVED_IP}" == "" ]]; then
+        echo "Fatal Error: proxy IP is empty!"
+        exit 1
+      fi
+      cluster_args=(
+          "--server=${KUBE_SERVER:-http://${PROXY_RESERVED_IP}}:8888"
+       )
+    fi
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      cluster_args=(
+          "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
+       )
+    fi
+  fi
+    
   if [[ -z "${CA_CERT:-}" ]]; then
     cluster_args+=("--insecure-skip-tls-verify=true")
   else
