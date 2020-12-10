@@ -102,7 +102,7 @@ func (ste *simpleTestExecutor) ExecuteTestSteps(ctx Context, conf *api.Config) *
 		return errors.NewErrorList(fmt.Errorf("automanaged namespaces listing failed: %v", err))
 	}
 	if len(automanagedNamespacesList) > 0 {
-		return errors.NewErrorList(fmt.Errorf("pre-existing automanaged namespaces found"))
+		return errors.NewErrorList(fmt.Errorf("pre-existing automanaged namespaces found %v   | %v ", automanagedNamespacesList, staleNamespaces))
 	}
 	var deleteStaleNS = ctx.GetClusterFramework().GetClusterConfig().DeleteStaleNamespaces
 	if len(staleNamespaces) > 0 && deleteStaleNS {
@@ -307,15 +307,15 @@ func (ste *simpleTestExecutor) ExecuteObject(ctx Context, object *api.Object, na
 	gvk := obj.GroupVersionKind()
 	switch operation {
 	case CREATE_OBJECT:
-		if err := ctx.GetClusterFramework().CreateObject(namespace, objName, obj); err != nil {
+		if err := ctx.GetClusterFramework().CreateObject(util.GetTenant(), namespace, objName, obj); err != nil {
 			errList.Append(fmt.Errorf("namespace %v object %v creation error: %v", namespace, objName, err))
 		}
 	case PATCH_OBJECT:
-		if err := ctx.GetClusterFramework().PatchObject(namespace, objName, obj); err != nil {
+		if err := ctx.GetClusterFramework().PatchObject(util.GetTenant(), namespace, objName, obj); err != nil {
 			errList.Append(fmt.Errorf("namespace %v object %v updating error: %v", namespace, objName, err))
 		}
 	case DELETE_OBJECT:
-		if err := ctx.GetClusterFramework().DeleteObject(gvk, namespace, objName); err != nil {
+		if err := ctx.GetClusterFramework().DeleteObject(gvk, util.GetTenant(), namespace, objName); err != nil {
 			errList.Append(fmt.Errorf("namespace %v object %v deletion error: %v", namespace, objName, err))
 		}
 	}
