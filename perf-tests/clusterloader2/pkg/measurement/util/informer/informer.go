@@ -28,6 +28,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 
 	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	perfutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 // NewInformer creates a new informer
@@ -62,7 +63,7 @@ func NewDynamicInformer(
 		options.LabelSelector = selector.LabelSelector
 	}
 	tweakListOptions := dynamicinformer.TweakListOptionsFunc(optionsModifier)
-	dInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactory(c, 0, selector.Namespace, tweakListOptions)
+	dInformerFactory := dynamicinformer.NewFilteredDynamicSharedInformerFactoryWithMultiTenancy(c, 0, selector.Namespace, tweakListOptions, perfutil.GetTenant())
 
 	informer := dInformerFactory.ForResource(gvr).Informer()
 	addEventHandler(informer, handleObj)

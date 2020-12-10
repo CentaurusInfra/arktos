@@ -112,7 +112,7 @@ func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
 	if f.clusterConfig.Apiserverextranum == 0 {
 		for i := 1; i <= namespaceCount; i++ {
 			name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedNamespacePrefix)
-			if err := client.CreateNamespace(f.clientSets.GetClient(), name); err != nil {
+			if err := client.CreateNamespace(f.clientSets.GetClient(), name, util.GetTenant()); err != nil {
 				return err
 			}
 			f.automanagedNamespaceCount++
@@ -129,7 +129,7 @@ func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
 			endpos = startpos + (26 / apiservernum)
 			for i := 1; i <= namespaceinterval; i++ {
 				name := fmt.Sprintf("%s-%v", util.RandomDNS1123String(6, startpos, endpos), f.automanagedNamespacePrefix)
-				if err := client.CreateNamespace(f.clientSets.GetClient(), name); err != nil {
+				if err := client.CreateNamespace(f.clientSets.GetClient(), name, util.GetTenant()); err != nil {
 					return err
 				}
 				f.automanagedNamespaceCount++
@@ -149,7 +149,7 @@ func (f *Framework) CreateAutomanagedNamespaces(namespaceCount int) error {
 // ListAutomanagedNamespaces returns all existing automanged namespace names.
 func (f *Framework) ListAutomanagedNamespaces() ([]string, []string, error) {
 	var automanagedNamespacesList, staleNamespaces []string
-	namespacesList, err := client.ListNamespaces(f.clientSets.GetClient())
+	namespacesList, err := client.ListNamespaces(f.clientSets.GetClient(), util.GetTenant())
 	if err != nil {
 		return automanagedNamespacesList, staleNamespaces, err
 	}
@@ -175,10 +175,10 @@ func (f *Framework) ListAutomanagedNamespaces() ([]string, []string, error) {
 
 func (f *Framework) deleteNamespace(namespace string) error {
 	clientSet := f.clientSets.GetClient()
-	if err := client.DeleteNamespace(clientSet, namespace); err != nil {
+	if err := client.DeleteNamespace(clientSet, namespace, util.GetTenant()); err != nil {
 		return err
 	}
-	if err := client.WaitForDeleteNamespace(clientSet, namespace); err != nil {
+	if err := client.WaitForDeleteNamespace(clientSet, namespace, util.GetTenant()); err != nil {
 		return err
 	}
 	return nil
@@ -240,23 +240,23 @@ func (f *Framework) DeleteNamespaces(namespaces []string) *errors.ErrorList {
 }
 
 // CreateObject creates object base on given object description.
-func (f *Framework) CreateObject(namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
-	return client.CreateObject(f.dynamicClients.GetClient(), namespace, name, obj, options...)
+func (f *Framework) CreateObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	return client.CreateObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj, options...)
 }
 
 // PatchObject updates object (using patch) with given name using given object description.
-func (f *Framework) PatchObject(namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
-	return client.PatchObject(f.dynamicClients.GetClient(), namespace, name, obj)
+func (f *Framework) PatchObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	return client.PatchObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj)
 }
 
 // DeleteObject deletes object with given name and group-version-kind.
-func (f *Framework) DeleteObject(gvk schema.GroupVersionKind, namespace string, name string, options ...*client.ApiCallOptions) error {
-	return client.DeleteObject(f.dynamicClients.GetClient(), gvk, namespace, name)
+func (f *Framework) DeleteObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) error {
+	return client.DeleteObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
 // GetObject retrieves object with given name and group-version-kind.
-func (f *Framework) GetObject(gvk schema.GroupVersionKind, namespace string, name string, options ...*client.ApiCallOptions) (*unstructured.Unstructured, error) {
-	return client.GetObject(f.dynamicClients.GetClient(), gvk, namespace, name)
+func (f *Framework) GetObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) (*unstructured.Unstructured, error) {
+	return client.GetObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
 // ApplyTemplatedManifests finds and applies all manifest template files matching the provided
@@ -288,7 +288,7 @@ func (f *Framework) ApplyTemplatedManifests(manifestGlob string, templateMapping
 			objList = list.Items
 		}
 		for _, item := range objList {
-			if err := f.CreateObject(item.GetNamespace(), item.GetName(), &item, options...); err != nil {
+			if err := f.CreateObject(util.GetTenant(), item.GetNamespace(), item.GetName(), &item, options...); err != nil {
 				return fmt.Errorf("error while applying (%s): %v", manifest, err)
 			}
 		}

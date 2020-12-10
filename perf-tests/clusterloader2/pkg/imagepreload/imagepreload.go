@@ -32,6 +32,7 @@ import (
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/informer"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
+	perfutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (
@@ -106,7 +107,7 @@ func (c *controller) PreloadImages() error {
 	}
 
 	klog.Infof("Creating namespace %s...", namespace)
-	if err := client.CreateNamespace(kclient, namespace); err != nil {
+	if err := client.CreateNamespace(kclient, namespace, perfutil.GetTenant()); err != nil {
 		return err
 	}
 
@@ -137,10 +138,10 @@ func (c *controller) PreloadImages() error {
 	klog.Info("Waiting... done")
 
 	klog.Infof("Deleting namespace %s...", namespace)
-	if err := client.DeleteNamespace(kclient, namespace); err != nil {
+	if err := client.DeleteNamespace(kclient, namespace, perfutil.GetTenant()); err != nil {
 		return err
 	}
-	if err := client.WaitForDeleteNamespace(kclient, namespace); err != nil {
+	if err := client.WaitForDeleteNamespace(kclient, namespace, perfutil.GetTenant()); err != nil {
 		return err
 	}
 	return nil
