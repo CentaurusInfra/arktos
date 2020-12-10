@@ -70,8 +70,11 @@ func (m *metricsForE2EMeasurement) Execute(config *measurement.MeasurementConfig
 		config.ClusterFramework.GetClientSets().GetClient(),
 		nil, /*external client*/
 		grabMetricsFromKubelets,
-		true, /*grab metrics from scheduler*/
-		true, /*grab metrics from controller manager*/
+		//temporarily disable the metric collection on scheduler and controller manager for scale-out tests as they are in the TP sides
+		//true, /*grab metrics from scheduler*/
+		false,
+		//true, /*grab metrics from controller manager*/
+		false,
 		true, /*grab metrics from apiserver*/
 		false /*grab metrics from cluster autoscaler*/)
 	if err != nil {
