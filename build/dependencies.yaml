@@ -6,7 +6,7 @@ dependencies:
       match: etcd_docker_tag|etcd_version
   
   - name: "golang"
-    version: 1.13.4
+    version: 1.13.9
     refPaths:
     - path: build/build-image/cross/Dockerfile
       match: "golang:"
