@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -57,7 +58,7 @@ func TestAddGlobalFlags(t *testing.T) {
 	}{
 		{
 			// Happy case
-			expectedFlag:  []string{"alsologtostderr", "help", "log-backtrace-at", "log-dir", "log-file", "log-file-max-size", "log-flush-frequency", "logtostderr", "skip-headers", "skip-log-headers", "stderrthreshold", "v", "vmodule"},
+			expectedFlag:  []string{"add-dir-header", "alsologtostderr", "help", "log-backtrace-at", "log-dir", "log-file", "log-file-max-size", "log-flush-frequency", "logtostderr", "skip-headers", "skip-log-headers", "stderrthreshold", "v", "vmodule"},
 			matchExpected: false,
 		},
 		{
