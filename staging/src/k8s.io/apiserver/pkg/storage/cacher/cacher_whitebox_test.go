@@ -644,8 +644,7 @@ func TestCacherNoLeakWithMultipleWatchers(t *testing.T) {
 	}
 }
 
-func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBookmarks, expectedBookmarks bool) {
-	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.WatchBookmark, watchCacheEnabled)()
+func testCacherSendBookmarkEvents(t *testing.T, allowWatchBookmarks, expectedBookmarks bool) {
 	backingStorage := &dummyStorage{}
 	cacher, _ := newTestCacher(backingStorage, 1000)
 	defer cacher.Stop()
@@ -712,34 +711,21 @@ func testCacherSendBookmarkEvents(t *testing.T, watchCacheEnabled, allowWatchBoo
 
 func TestCacherSendBookmarkEvents(t *testing.T) {
 	testCases := []struct {
-		watchCacheEnabled   bool
 		allowWatchBookmarks bool
 		expectedBookmarks   bool
 	}{
 		{
-			watchCacheEnabled:   true,
 			allowWatchBookmarks: true,
 			expectedBookmarks:   true,
 		},
 		{
-			watchCacheEnabled:   true,
-			allowWatchBookmarks: false,
-			expectedBookmarks:   false,
-		},
-		{
-			watchCacheEnabled:   false,
-			allowWatchBookmarks: true,
-			expectedBookmarks:   false,
-		},
-		{
-			watchCacheEnabled:   false,
 			allowWatchBookmarks: false,
 			expectedBookmarks:   false,
 		},
 	}
 
 	for _, tc := range testCases {
-		testCacherSendBookmarkEvents(t, tc.watchCacheEnabled, tc.allowWatchBookmarks, tc.expectedBookmarks)
+		testCacherSendBookmarkEvents(t, tc.allowWatchBookmarks, tc.expectedBookmarks)
 	}
 }
 
