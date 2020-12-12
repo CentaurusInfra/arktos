@@ -109,6 +109,7 @@ func newETCD3Client(c storagebackend.TransportConfig, servers []string) (*client
 		DialKeepAliveTime:    keepaliveTime,
 		DialKeepAliveTimeout: keepaliveTimeout,
 		DialOptions: []grpc.DialOption{
+			grpc.WithBlock(), // block until the underlying connection is up
 			grpc.WithUnaryInterceptor(grpcprom.UnaryClientInterceptor),
 			grpc.WithStreamInterceptor(grpcprom.StreamClientInterceptor),
 		},

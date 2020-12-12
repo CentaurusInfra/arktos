@@ -22,9 +22,11 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"go.etcd.io/etcd/clientv3"
 	"go.etcd.io/etcd/pkg/transport"
+	"google.golang.org/grpc"
 
 	"sigs.k8s.io/yaml"
 
@@ -332,8 +334,12 @@ func TestPruningFromStorage(t *testing.T) {
 		t.Fatal(err)
 	}
 	etcdConfig := clientv3.Config{
-		Endpoints: restOptions.StorageConfig.Transport.SystemClusterServerList,
-		TLS:       tlsConfig,
+		Endpoints:   restOptions.StorageConfig.Transport.SystemClusterServerList,
+		DialTimeout: 20 * time.Second,
+		DialOptions: []grpc.DialOption{
+			grpc.WithBlock(), // block until the underlying connection is up
+		},
+		TLS: tlsConfig,
 	}
 	etcdclient, err := clientv3.New(etcdConfig)
 	if err != nil {
