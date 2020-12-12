@@ -38,6 +38,7 @@ staging/src/k8s.io/apiserver/pkg/storage/etcd3/metrics/metrics.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/test_server.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/testingcert/certificates.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/utils.go
+staging/src/k8s.io/apiserver/pkg/storage/value/encrypt/envelope/grpc_service.go
 staging/src/k8s.io/cli-runtime/pkg/resource/scheme.go
 test/e2e/node/node_problem_detector.go
 
