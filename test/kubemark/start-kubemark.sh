@@ -41,13 +41,14 @@ RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
 LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 TP_ONE_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-1"
+TP_TWO_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-2"
 
 ### files to explicitly save the kubeconfig to different cluster or proxy
 ### those are used for targeted operations such as tenant creation etc on
 ### desired cluster directly
 ###
-TP1_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp1.saved"
-TP2_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp2.saved"
+TP1_KUBECONFIG_DIRECT="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-1.direct"
+TP2_KUBECONFIG_DIRECT="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-2.direct"
 PROXY_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy.saved"
 RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
 
@@ -271,14 +272,16 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
   echo "VDBGG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
   export TENANT_SERVER_1="http://$(cat /tmp/master_reserved_ip.txt):8080"
-  cp -f ${LOCAL_KUBECONFIG_TMP} ${TP1_KUBECONFIG_SAVED}
+  cp -f ${LOCAL_KUBECONFIG_TMP} ${TP1_KUBECONFIG_DIRECT}
+  sed -i -e "s@http://${PROXY_RESERVED_IP}:8888@${TENANT_SERVER_1}@g" ${TP1_KUBECONFIG_DIRECT}
   export KUBERNETES_SCALEOUT_PROXY=false
 
   if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
     export PARTITION_TO_UPDATE="tenant_partition_two"
     create-kubemark-master
     export TENANT_SERVER_2="http://$(cat /tmp/master_reserved_ip.txt):8080"
-    cp -f ${LOCAL_KUBECONFIG_TMP} ${TP2_KUBECONFIG_SAVED}
+    cp -f ${LOCAL_KUBECONFIG_TMP} ${TP2_KUBECONFIG_DIRECT}
+    sed -i -e "s@http://${PROXY_RESERVED_IP}:8888@${TENANT_SERVER_2}@g" ${TP2_KUBECONFIG_DIRECT}
   fi
 fi
 
@@ -355,11 +358,11 @@ echo
 if [[ "${CREATE_TEST_TENANTS:-false}" == "true" ]]; then
   ### create tenant1 on TP1 cluster
   echo -e "Create tenant1 on TP1 cluster"
-  "${KUBECTL}" --kubeconfig="${TP1_KUBECONFIG_SAVED}" create -f ${TENANT1_YAML}
+  "${KUBECTL}" --kubeconfig="${TP1_KUBECONFIG_DIRECT}" create -f ${TENANT1_YAML}
 
   ### create tenant2 on TP2 cluster
   echo -e "Create tenant2 on TP2 cluster"
-  "${KUBECTL}" --kubeconfig="${TP2_KUBECONFIG_SAVED}" create -f ${TENANT2_YAML}
+  "${KUBECTL}" --kubeconfig="${TP2_KUBECONFIG_DIRECT}" create -f ${TENANT2_YAML}
 
   echo -e "Getting test tenants from TP1:" >&2
   "${KUBECTL}" --kubeconfig="${TP_ONE_KUBECONFIG}" get tenants
