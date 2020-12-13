@@ -528,7 +528,7 @@ loop:
 
 	watchDuration := r.clock.Since(start)
 	if watchDuration < 1*time.Second && eventCount == 0 {
-		return fmt.Errorf("very short watch: %s: Unexpected watch close - watch lasted less than a second and no items received", r.name)
+		klog.V(4).Infof("very short watch: %s: Unexpected watch close - watch lasted less than a second and no items received", r.name)
 	}
 	klog.V(4).Infof("%s: Watch close - %v total %v items received", r.name, r.expectedType, eventCount)
 	return nil
