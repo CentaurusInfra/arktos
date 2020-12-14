@@ -814,7 +814,7 @@ func Test_GenerateMapVolumeFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-                               nil, /* kubeClients */
+                               nil, /* kubeClient */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */
@@ -868,7 +868,7 @@ func Test_GenerateUnmapVolumeFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-                               nil, /* kubeClients */
+                               nil, /* kubeClient */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */
@@ -914,7 +914,7 @@ func Test_GenerateUnmapDeviceFunc_Plugin_Not_Found(t *testing.T) {
 			volumePluginMgr.InitPlugins(tc.volumePlugins, nil, nil)
 			asw := cache.NewActualStateOfWorld(nodeName, volumePluginMgr)
 			oex := operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-                               nil, /* kubeClients */
+                               nil, /* kubeClient */
 				volumePluginMgr,
 				nil,   /* fakeRecorder */
 				false, /* checkNodeCapabilitiesBeforeMount */

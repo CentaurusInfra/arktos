@@ -148,7 +148,8 @@ func NewVolumeManager(
 	nodeName k8stypes.NodeName,
 	podManager pod.Manager,
 	podStatusProvider status.PodStatusProvider,
-	kubeClient []clientset.Interface,
+	rpKubeClient clientset.Interface,
+	tpKubeClients []clientset.Interface,
 	volumePluginMgr *volume.VolumePluginMgr,
 	kubeContainerRuntime container.Runtime,
 	mounter mount.Interface,
@@ -158,12 +159,12 @@ func NewVolumeManager(
 	keepTerminatedPodVolumes bool) VolumeManager {
 
 	vm := &volumeManager{
-		kubeClient:          kubeClient,
+		kubeClient:          tpKubeClients,
 		volumePluginMgr:     volumePluginMgr,
 		desiredStateOfWorld: cache.NewDesiredStateOfWorld(volumePluginMgr),
 		actualStateOfWorld:  cache.NewActualStateOfWorld(nodeName, volumePluginMgr),
 		operationExecutor: operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-			kubeClient[0],
+			rpKubeClient,
 			volumePluginMgr,
 			recorder,
 			checkNodeCapabilitiesBeforeMount,
@@ -171,7 +172,7 @@ func NewVolumeManager(
 	}
 
 	vm.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
-		kubeClient,
+		tpKubeClients,
 		desiredStateOfWorldPopulatorLoopSleepPeriod,
 		desiredStateOfWorldPopulatorGetPodStatusRetryDuration,
 		podManager,
@@ -181,7 +182,7 @@ func NewVolumeManager(
 		kubeContainerRuntime,
 		keepTerminatedPodVolumes)
 	vm.reconciler = reconciler.NewReconciler(
-		kubeClient,
+		rpKubeClient,
 		controllerAttachDetachEnabled,
 		reconcilerLoopSleepPeriod,
 		waitForAttachTimeout,
@@ -199,6 +200,9 @@ func NewVolumeManager(
 
 // volumeManager implements the VolumeManager interface
 type volumeManager struct {
+	// rpKubeClient is the kube API client used to  
+	// communicate with the resource partition API server
+	rpKubeClient clientset.Interface
 	// kubeClient is the kube API client used by DesiredStateOfWorldPopulator to
 	// communicate with the API server to fetch PV and PVC objects
 	kubeClient []clientset.Interface
