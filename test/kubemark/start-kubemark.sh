@@ -371,3 +371,15 @@ if [[ "${CREATE_TEST_TENANTS:-false}" == "true" ]]; then
   "${KUBECTL}" --kubeconfig="${TP_ONE_KUBECONFIG}" get tenants
   echo
 fi
+
+### for multiple TP tests, apply network crd on each TP
+###
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then  
+  echo -e "Apply network CRD on TP1 cluster"
+  ${KUBECTL} --kubeconfig=${TP1_KUBECONFIG_DIRECT} apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+
+  if [[ "${SCALEOUT_CLUSTER_TWO_TPS:-false}" == "true" ]]; then
+    echo -e "Apply network CRD on TP2 cluster"
+    ${KUBECTL} --kubeconfig=${TP2_KUBECONFIG_DIRECT} apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+  fi
+fi
