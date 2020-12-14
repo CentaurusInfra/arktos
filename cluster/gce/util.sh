@@ -2844,6 +2844,10 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       soft    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
