@@ -330,7 +330,7 @@ echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG_TMP}"
 #
 ### internally the TP configures are set with proxy URL, simply copy for POC phase for now
 ###
-cp -f ${TP_ONE_KUBECONFIG} ${RP_KUBECONFIG_SAVED}
+cp -f ${TP_ONE_KUBECONFIG} ${PROXY_KUBECONFIG_SAVED}
 
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
