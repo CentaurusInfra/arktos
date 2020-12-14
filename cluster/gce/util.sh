@@ -2791,14 +2791,20 @@ function create-proxy-vm() {
 }
 
 function setup-proxy() {
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -w net.ipv4.ip_local_port_range='12000 65000'"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 500000' /etc/sysctl.conf"
   ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*           hard    nofile          500000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*           soft    nofile          500000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$anginx       hard    nofile          500000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$anginx       soft    nofile          500000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$awww-data    hard    nofile          500000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$awww-data    soft    nofile          500000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y nginx"
   ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/nginx/nginx.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof nginx); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/nginx.service"
 
   RESOURCE_MASTER_IP=${1}
 
@@ -2812,6 +2818,7 @@ events {
     worker_connections 100000;
     # multi_accept on;
 }
+worker_rlimit_nofile 500000;
 
 http {
 
@@ -2934,6 +2941,8 @@ EOF
   cat ${KUBE_TEMP}/nginx.conf
   echo "VDBG ========================================"
   ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+  sleep 30
+  ssh-to-node ${PROXY_NAME} "for npid in $(pidof nginx) ; do sudo prlimit --pid \$npid --nofile=500000:500000 ; done"
 }
 
 function create-master() {
@@ -3030,6 +3039,8 @@ function create-master() {
     #local sedarg2="s/#TENANT_POINTER_RULE/if ( \\\$remote_addr ~* ${MASTER_RESERVED_IP} ) { proxy_pass \\\$TENANT_API; }/"
     #ssh-to-node ${PROXY_NAME} "sudo sed -i \"${sedarg2}\" /etc/nginx/nginx.conf"
     ssh-to-node ${PROXY_NAME} "sudo systemctl restart nginx"
+    sleep 30
+    ssh-to-node ${PROXY_NAME} "for npid in $(pidof nginx) ; do sudo prlimit --pid \$npid --nofile=500000:500000 ; done"
   fi
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
