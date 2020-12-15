@@ -64,7 +64,7 @@ cd $GOPATH/src/github.com/arktos
 cluster/kubectl.sh get nodes
 ```
 
-To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](https://github.com/CentaurusInfra/arktos/blob/master/docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
+To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
 
 ## Documents and Support
 
