@@ -196,8 +196,8 @@ func (a *AggregatedWatcher) Stop() {
 		a.stopped = true
 		a.allowWatcherReset = false
 		for _, stopCh := range a.stopChans {
-			go func(stopCh chan int) {
-				stopCh <- 1
+			go func(ch chan int) {
+				ch <- 1
 			}(stopCh)
 		}
 	}

@@ -91,7 +91,7 @@ type Reconciler interface {
 // mounter - mounter passed in from kubelet, passed down unmount path
 // volumePluginMgr - volume plugin manager passed from kubelet
 func NewReconciler(
-	kubeClients []clientset.Interface,
+	kubeClient clientset.Interface,
 	controllerAttachDetachEnabled bool,
 	loopSleepDuration time.Duration,
 	waitForAttachTimeout time.Duration,
@@ -104,7 +104,7 @@ func NewReconciler(
 	volumePluginMgr *volumepkg.VolumePluginMgr,
 	kubeletPodsDir string) Reconciler {
 	return &reconciler{
-		kubeClients:                   kubeClients,
+		kubeClient:                    kubeClient,
 		controllerAttachDetachEnabled: controllerAttachDetachEnabled,
 		loopSleepDuration:             loopSleepDuration,
 		waitForAttachTimeout:          waitForAttachTimeout,
@@ -121,7 +121,7 @@ func NewReconciler(
 }
 
 type reconciler struct {
-	kubeClients                   []clientset.Interface
+	kubeClient                    clientset.Interface
 	controllerAttachDetachEnabled bool
 	loopSleepDuration             time.Duration
 	syncDuration                  time.Duration
@@ -560,7 +560,7 @@ func (rc *reconciler) reconstructVolume(volume podVolume) (*reconstructedVolume,
 
 // updateDevicePath gets the node status to retrieve volume device path information.
 func (rc *reconciler) updateDevicePath(volumesNeedUpdate map[v1.UniqueVolumeName]*reconstructedVolume) {
-	node, fetchErr := rc.kubeClients[0].CoreV1().Nodes().Get(string(rc.nodeName), metav1.GetOptions{})
+	node, fetchErr := rc.kubeClient.CoreV1().Nodes().Get(string(rc.nodeName), metav1.GetOptions{})
 	if fetchErr != nil {
 		klog.Errorf("updateStates in reconciler: could not get node status with error %v", fetchErr)
 	} else {
