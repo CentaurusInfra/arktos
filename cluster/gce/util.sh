@@ -2840,6 +2840,7 @@ function load-proxy-cfg {
 function setup-proxy() {
   init-proxy-cfg
 
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -w net.ipv4.ip_local_port_range='12000 65000'"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
   ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
@@ -2850,6 +2851,10 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       soft    nofile          1000000' /etc/security/limits.conf"
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
+
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
 
 function create-master() {
