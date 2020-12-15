@@ -196,11 +196,6 @@ func run(config *hollowNodeConfig) {
 	}
 
 	if config.Morph == "kubelet" {
-		// Start APIServerConfigManager
-		for _, clt := range client {
-			go datapartition.StartAPIServerConfigManagerAndInformerFactory(clt, wait.NeverStop)
-		}
-
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
 		heartbeatClientConfigs := restclient.CopyConfigs(clientConfigs)
