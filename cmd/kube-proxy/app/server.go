@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/datapartition"
 	"net/http"
 	"os"
 	goruntime "runtime"
@@ -640,6 +641,9 @@ func (s *ProxyServer) Run() error {
 	endpointsConfig := config.NewEndpointsConfig(informerFactory.Core().V1().Endpoints(), s.ConfigSyncPeriod)
 	endpointsConfig.RegisterEventHandler(s.Proxier)
 	go endpointsConfig.Run(wait.NeverStop)
+
+	// Create API Server Config Manager
+	datapartition.StartAPIServerConfigManager(informerFactory.Core().V1().Endpoints(), s.Client, wait.NeverStop)
 
 	// This has to start after the calls to NewServiceConfig and NewEndpointsConfig because those
 	// functions must configure their shared informer event handlers first.

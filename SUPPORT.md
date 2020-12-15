@@ -6,8 +6,8 @@ This isn't the right place to get support for using Arktos, but the following re
 
 ### Documentation
 
-* [User Guide](https://github.com/futurewei-cloud/arktos/tree/master/docs/user-guide/)
-* [Design Documents](https://github.com/futurewei-cloud/arktos/tree/master/docs/design-proposals/)
+* [User Guide](https://github.com/CentaurusInfra/arktos/tree/master/docs/user-guide/)
+* [Design Documents](https://github.com/CentaurusInfra/arktos/tree/master/docs/design-proposals/)
 
 ### Slack Channels
 

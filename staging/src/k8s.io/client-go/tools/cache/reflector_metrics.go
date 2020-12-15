@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,19 +47,6 @@ func (noopMetric) Inc()            {}
 func (noopMetric) Dec()            {}
 func (noopMetric) Observe(float64) {}
 func (noopMetric) Set(float64)     {}
-
-type reflectorMetrics struct {
-	numberOfLists       CounterMetric
-	listDuration        SummaryMetric
-	numberOfItemsInList SummaryMetric
-
-	numberOfWatches      CounterMetric
-	numberOfShortWatches CounterMetric
-	watchDuration        SummaryMetric
-	numberOfItemsInWatch SummaryMetric
-
-	lastResourceVersion GaugeMetric
-}
 
 // MetricsProvider generates various metrics used by the reflector.
 type MetricsProvider interface {

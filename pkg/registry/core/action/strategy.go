@@ -120,10 +120,8 @@ func MatchAction(label labels.Selector, field fields.Selector) storage.Selection
 	}
 }
 
-func NodeNameTriggerFunc(obj runtime.Object) []storage.MatchValue {
-	action := obj.(*api.Action)
-	result := storage.MatchValue{IndexName: "spec.nodeName", Value: action.Spec.NodeName}
-	return []storage.MatchValue{result}
+func NodeNameTriggerFunc(obj runtime.Object) string {
+	return obj.(*api.Action).Spec.NodeName
 }
 
 // ActionToSelectableFields returns a field set that represents the object

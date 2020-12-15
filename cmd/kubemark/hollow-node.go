@@ -21,8 +21,6 @@ import (
 	"errors"
 	goflag "flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/datapartition"
 	"math/rand"
 	"os"
 	"time"

@@ -1173,15 +1173,13 @@ function registry-authentication() {
 function create-and-upload-etcd-image() {
 
   ETCD_IMAGE_REGISTRY="${ETCD_IMAGE_REGISTRY:-${CONTAINER_REGISTRY}/${PROJECT}}"
-
   # Build+push the image through makefile.
   MAKE_DIR="${KUBE_ROOT}/cluster/images/etcd"
-
   local os
   local arch
   os=$(kube::util::host_os)
   arch=$(kube::util::host_arch)
-  url="https://github.com/futurewei-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+  url="https://github.com/centaurus-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
   download_file="etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
   kube::util::download_file "${url}" "${download_file}"
   tar xzf "${download_file}"

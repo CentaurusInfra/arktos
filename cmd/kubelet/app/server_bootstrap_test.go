@@ -265,6 +265,7 @@ func (s *csrSimulator) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	q := req.URL.Query()
 	q.Del("timeout")
 	q.Del("timeoutSeconds")
+	q.Del("allowWatchBookmarks")
 	req.URL.RawQuery = q.Encode()
 
 	t.Logf("Request %q %q %q", req.Method, req.URL, req.UserAgent())

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -50,6 +51,23 @@ func IsConnectionReset(err error) bool {
 		err = osErr.Err
 	}
 	if errno, ok := err.(syscall.Errno); ok && errno == syscall.ECONNRESET {
+		return true
+	}
+	return false
+}
+
+// Returns if the given err is "connection refused" error
+func IsConnectionRefused(err error) bool {
+	if urlErr, ok := err.(*url.Error); ok {
+		err = urlErr.Err
+	}
+	if opErr, ok := err.(*net.OpError); ok {
+		err = opErr.Err
+	}
+	if osErr, ok := err.(*os.SyscallError); ok {
+		err = osErr.Err
+	}
+	if errno, ok := err.(syscall.Errno); ok && errno == syscall.ECONNREFUSED {
 		return true
 	}
 	return false

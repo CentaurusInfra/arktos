@@ -19,7 +19,6 @@ package cacher
 
 import (
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/diff"
 	"sort"
 	"sync"
 	"time"
@@ -80,6 +79,35 @@ func storeElementKey(obj interface{}) (string, error) {
 	return elem.Key, nil
 }
 
+func storeElementObject(obj interface{}) (runtime.Object, error) {
+	elem, ok := obj.(*storeElement)
+	if !ok {
+		return nil, fmt.Errorf("not a storeElement: %v", obj)
+	}
+	return elem.Object, nil
+}
+
+func storeElementIndexFunc(objIndexFunc cache.IndexFunc) cache.IndexFunc {
+	return func(obj interface{}) (strings []string, e error) {
+		seo, err := storeElementObject(obj)
+		if err != nil {
+			return nil, err
+		}
+		return objIndexFunc(seo)
+	}
+}
+
+func storeElementIndexers(indexers *cache.Indexers) cache.Indexers {
+	if indexers == nil {
+		return cache.Indexers{}
+	}
+	ret := cache.Indexers{}
+	for indexName, indexFunc := range *indexers {
+		ret[indexName] = storeElementIndexFunc(indexFunc)
+	}
+	return ret
+}
+
 // watchCache implements a Store interface.
 // However, it depends on the elements implementing runtime.Object interface.
 //
@@ -101,16 +129,12 @@ type watchCache struct {
 	// getAttrsFunc is used to get labels and fields of an object.
 	getAttrsFunc func(runtime.Object) (labels.Set, fields.Set, error)
 
-	// cache is from revision # to event
-	// size of the cache is limited by capacity
-	cache map[uint64]*watchCacheEvent
-
-	// revCache is used a cyclic buffer - its first element (with the smallest
+	// cache is used a cyclic buffer - its first element (with the smallest
 	// resourceVersion) is defined by startIndex, its last element is defined
 	// by endIndex (if cache is full it will be startIndex + capacity).
 	// Both startIndex and endIndex can be greater than buffer capacity -
 	// you should always apply modulo capacity to get an index in cache array.
-	revCache   []uint64
+	cache      []*watchCacheEvent
 	startIndex int
 	endIndex   int
 
@@ -118,7 +142,7 @@ type watchCache struct {
 	// history" i.e. from the moment just after the newest cached watched event.
 	// It is necessary to effectively allow clients to start watching at now.
 	// NOTE: We assume that <store> is thread-safe.
-	store cache.Store
+	store cache.Indexer
 
 	// ResourceVersion up to which the watchCache is propagated.
 	resourceVersion uint64
@@ -145,19 +169,16 @@ func newWatchCache(
 	keyFunc func(runtime.Object) (string, error),
 	eventHandler func(*watchCacheEvent),
 	getAttrsFunc func(runtime.Object) (labels.Set, fields.Set, error),
-	versioner storage.Versioner) *watchCache {
+	versioner storage.Versioner,
+	indexers *cache.Indexers) *watchCache {
 	wc := &watchCache{
-		capacity:     capacity,
-		keyFunc:      keyFunc,
-		getAttrsFunc: getAttrsFunc,
-
-		// One extra slot is needed because we delete old item after
-		// inserting new item.
-		cache:               make(map[uint64]*watchCacheEvent, capacity+1),
-		revCache:            make([]uint64, capacity),
+		capacity:            capacity,
+		keyFunc:             keyFunc,
+		getAttrsFunc:        getAttrsFunc,
+		cache:               make([]*watchCacheEvent, capacity),
 		startIndex:          0,
 		endIndex:            0,
-		store:               cache.NewStore(storeElementKey),
+		store:               cache.NewIndexer(storeElementKey, storeElementIndexers(indexers)),
 		resourceVersion:     0,
 		listResourceVersion: 0,
 		eventHandler:        eventHandler,
@@ -277,22 +298,12 @@ func (w *watchCache) processEvent(event watch.Event, resourceVersion uint64, upd
 
 // Assumes that lock is already held for write.
 func (w *watchCache) updateCache(event *watchCacheEvent) {
-	var toRemove bool
-	var revToRemove uint64
-
 	if w.endIndex == w.startIndex+w.capacity {
 		// Cache is full - remove the oldest element.
-		revToRemove = w.revCache[w.startIndex%w.capacity]
-		toRemove = true
 		w.startIndex++
 	}
-	w.cache[event.ResourceVersion] = event
-	w.revCache[w.endIndex%w.capacity] = event.ResourceVersion
+	w.cache[w.endIndex%w.capacity] = event
 	w.endIndex++
-
-	if toRemove {
-		delete(w.cache, revToRemove)
-	}
 }
 
 // List returns list of pointers to <storeElement> objects.
@@ -335,11 +346,18 @@ func (w *watchCache) waitUntilFreshAndBlock(resourceVersion uint64, trace *utilt
 }
 
 // WaitUntilFreshAndList returns list of pointers to <storeElement> objects.
-func (w *watchCache) WaitUntilFreshAndList(resourceVersion uint64, trace *utiltrace.Trace) ([]interface{}, uint64, error) {
+func (w *watchCache) WaitUntilFreshAndList(resourceVersion uint64, matchValues []storage.MatchValue, trace *utiltrace.Trace) ([]interface{}, uint64, error) {
 	err := w.waitUntilFreshAndBlock(resourceVersion, trace)
 	defer w.RUnlock()
 	if err != nil {
 		return nil, 0, err
+	}
+
+	// TODO: use the smallest key size index.
+	for _, matchValue := range matchValues {
+		if result, err := w.store.ByIndex(matchValue.IndexName, matchValue.Value); err == nil {
+			return result, w.resourceVersion, nil
+		}
 	}
 	return w.store.List(), w.resourceVersion, nil
 }
@@ -439,7 +457,7 @@ func (w *watchCache) GetAllEventsSinceThreadUnsafe(resourceVersion uint64) ([]*w
 	case size >= w.capacity:
 		// Once the watch event buffer is full, the oldest watch event we can deliver
 		// is the first one in the buffer.
-		oldest = w.revCache[w.startIndex%w.capacity]
+		oldest = w.cache[w.startIndex%w.capacity].ResourceVersion
 	case w.listResourceVersion > 0:
 		// If the watch event buffer isn't full, the oldest watch event we can deliver
 		// is one greater than the resource version of the last full list.
@@ -449,7 +467,7 @@ func (w *watchCache) GetAllEventsSinceThreadUnsafe(resourceVersion uint64) ([]*w
 		// in the buffer.
 		// This should only happen in unit tests that populate the buffer without
 		// performing list/replace operations.
-		oldest = w.revCache[w.startIndex%w.capacity]
+		oldest = w.cache[w.startIndex%w.capacity].ResourceVersion
 	default:
 		return nil, fmt.Errorf("watch cache isn't correctly initialized")
 	}
@@ -484,25 +502,19 @@ func (w *watchCache) GetAllEventsSinceThreadUnsafe(resourceVersion uint64) ([]*w
 		return result, nil
 	}
 	if resourceVersion < oldest-1 {
-		return nil, errors.NewGone(fmt.Sprintf("too old resource version: %d (%d)", resourceVersion, oldest-1))
+		return nil, errors.NewResourceExpired(fmt.Sprintf("too old resource version: %d (%d)", resourceVersion, oldest-1))
 	}
 
 	// Binary search the smallest index at which resourceVersion is greater than the given one.
 	f := func(i int) bool {
-		return diff.RevisionIsNewer(w.revCache[(w.startIndex+i)%w.capacity], resourceVersion)
+		return w.cache[(w.startIndex+i)%w.capacity].ResourceVersion > resourceVersion
 	}
 	first := sort.Search(size, f)
-	results := make([]*watchCacheEvent, size-first)
+	result := make([]*watchCacheEvent, size-first)
 	for i := 0; i < size-first; i++ {
-		rev := w.revCache[(w.startIndex+first+i)%w.capacity]
-		result, isOK := w.cache[rev]
-		if !isOK {
-			return nil, fmt.Errorf("Expected event not found in cache. Rev %v", rev)
-		} else {
-			results[i] = result
-		}
+		result[i] = w.cache[(w.startIndex+first+i)%w.capacity]
 	}
-	return results, nil
+	return result, nil
 }
 
 func (w *watchCache) GetAllEventsSince(resourceVersion uint64) ([]*watchCacheEvent, error) {
