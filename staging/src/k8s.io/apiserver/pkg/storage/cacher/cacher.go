@@ -90,9 +90,13 @@ type Config struct {
 	// GetAttrsFunc is used to get object labels, fields
 	GetAttrsFunc func(runtime.Object) (label labels.Set, field fields.Set, err error)
 
-	// TriggerPublisherFunc is used for optimizing amount of watchers that
+	// IndexerFuncs is used for optimizing amount of watchers that
 	// needs to process an incoming event.
-	TriggerPublisherFunc storage.TriggerPublisherFunc
+	IndexerFuncs storage.IndexerFuncs
+
+	// Indexers is used to accelerate the list operation, falls back to regular list
+	// operation if no indexer found.
+	Indexers *cache.Indexers
 
 	// NewFunc is a function that creates new empty object storing a object of type Type.
 	NewFunc func() runtime.Object
@@ -156,10 +160,10 @@ func (i *indexedWatchers) terminateAll(objectType reflect.Type, done func(*cache
 		klog.Warningf("Terminating all watchers from cacher %v", objectType)
 	}
 	i.allWatchers.terminateAll(done)
-	for index, watchers := range i.valueWatchers {
+	for _, watchers := range i.valueWatchers {
 		watchers.terminateAll(done)
-		delete(i.valueWatchers, index)
 	}
+	i.valueWatchers = map[string]watchersMap{}
 }
 
 // As we don't need a high precision here, we keep all watchers timeout within a
@@ -211,6 +215,11 @@ func (t *watcherBookmarkTimeBuckets) popExpiredWatchers() [][]*cacheWatcher {
 
 type filterWithAttrsFunc func(key string, l labels.Set, f fields.Set) bool
 
+type indexedTriggerFunc struct {
+	indexName   string
+	indexerFunc storage.IndexerFunc
+}
+
 // Cacher is responsible for serving WATCH and LIST requests for a given
 // resource from its internal cache and updating its cache in the background
 // based on the underlying storage contents.
@@ -250,9 +259,9 @@ type Cacher struct {
 	// newFunc is a function that creates new empty object storing a object of type Type.
 	newFunc func() runtime.Object
 
-	// triggerFunc is used for optimizing amount of watchers that needs to process
+	// indexedTrigger is used for optimizing amount of watchers that needs to process
 	// an incoming event.
-	triggerFunc storage.TriggerPublisherFunc
+	indexedTrigger *indexedTriggerFunc
 	// watchers is mapping from the value of trigger function that a
 	// watcher is interested into the watchers
 	watcherIdx int
@@ -300,15 +309,38 @@ func NewCacherFromConfig(config Config) *Cacher {
 		panic("storage codec doesn't seem to match given type: " + err.Error())
 	}
 
+	var indexedTrigger *indexedTriggerFunc
+	if config.IndexerFuncs != nil {
+		// For now, we don't support multiple trigger functions defined
+		// for a given resource.
+		if len(config.IndexerFuncs) > 1 {
+			// community changed NewCacherFromConfig signature in
+			// https://github.com/kubernetes/kubernetes/commit/ee13be28845e8c55f6e2a2207ca4f46cd67fdb4e
+			// Propagate error from creating cacher and storage decorators up
+			// Jul 15, 2019
+
+			//return nil, fmt.Errorf("cacher %s doesn't support more than one IndexerFuncs: ", reflect.TypeOf(obj).String())
+			return nil
+		}
+		for key, value := range config.IndexerFuncs {
+			if value != nil {
+				indexedTrigger = &indexedTriggerFunc{
+					indexName:   key,
+					indexerFunc: value,
+				}
+			}
+		}
+	}
+
 	clock := clock.RealClock{}
 	cacher := &Cacher{
-		ready:       newReady(),
-		storage:     config.Storage,
-		objectType:  reflect.TypeOf(obj),
-		versioner:   config.Versioner,
-		newFunc:     config.NewFunc,
-		triggerFunc: config.TriggerPublisherFunc,
-		watcherIdx:  0,
+		ready:          newReady(),
+		storage:        config.Storage,
+		objectType:     reflect.TypeOf(obj),
+		versioner:      config.Versioner,
+		newFunc:        config.NewFunc,
+		indexedTrigger: indexedTrigger,
+		watcherIdx:     0,
 		watchers: indexedWatchers{
 			allWatchers:   make(map[int]*cacheWatcher),
 			valueWatchers: make(map[string]watchersMap),
@@ -336,7 +368,7 @@ func NewCacherFromConfig(config Config) *Cacher {
 	}
 
 	watchCache := newWatchCache(
-		config.CacheCapacity, config.KeyFunc, cacher.processEvent, config.GetAttrsFunc, config.Versioner)
+		config.CacheCapacity, config.KeyFunc, cacher.processEvent, config.GetAttrsFunc, config.Versioner, config.Indexers)
 	listerWatcher := NewCacherListerWatcher(config.Storage, config.ResourcePrefix, config.NewListFunc)
 	reflectorName := "storage/cacher.go:" + config.ResourcePrefix
 
@@ -420,23 +452,27 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 	c.ready.wait()
 
 	triggerValue, triggerSupported := "", false
-	// TODO: Currently we assume that in a given Cacher object, any <predicate> that is
-	// passed here is aware of exactly the same trigger (at most one).
-	// Thus, either 0 or 1 values will be returned.
-	if matchValues := pred.MatcherIndex(); len(matchValues) > 0 {
-		triggerValue, triggerSupported = matchValues[0].Value, true
+	if c.indexedTrigger != nil {
+		for _, field := range pred.IndexFields {
+			if field == c.indexedTrigger.indexName {
+				if value, ok := pred.Field.RequiresExactMatch(field); ok {
+					triggerValue, triggerSupported = value, true
+				}
+			}
+		}
 	}
 
-	// If there is triggerFunc defined, but triggerSupported is false,
+	// If there is indexedTrigger defined, but triggerSupported is false,
 	// we can't narrow the amount of events significantly at this point.
 	//
-	// That said, currently triggerFunc is defined only for Pods and Nodes,
-	// and there is only constant number of watchers for which triggerSupported
-	// is false (excluding those issues explicitly by users).
+	// That said, currently indexedTrigger is defined only for couple resources:
+	// Pods, Nodes, Secrets and ConfigMaps and there is only a constant
+	// number of watchers for which triggerSupported is false (excluding those
+	// issued explicitly by users).
 	// Thus, to reduce the risk of those watchers blocking all watchers of a
 	// given resource in the system, we increase the sizes of buffers for them.
 	chanSize := 10
-	if c.triggerFunc != nil && !triggerSupported {
+	if c.indexedTrigger != nil && !triggerSupported {
 		// TODO: We should tune this value and ideally make it dependent on the
 		// number of objects of a given type and/or their churn.
 		chanSize = 1000
@@ -662,7 +698,7 @@ func (c *Cacher) List(ctx context.Context, key string, resourceVersion string, p
 	}
 	filter := filterWithAttrsFunction(key, pred)
 
-	objs, readResourceVersion, err := c.watchCache.WaitUntilFreshAndList(listRV, trace)
+	objs, readResourceVersion, err := c.watchCache.WaitUntilFreshAndList(listRV, pred.MatcherIndex(), trace)
 	if err != nil {
 		return err
 	}
@@ -713,29 +749,20 @@ func (c *Cacher) Count(pathPrefix string) (int64, error) {
 }
 
 func (c *Cacher) triggerValues(event *watchCacheEvent) ([]string, bool) {
-	// TODO: Currently we assume that in a given Cacher object, its <c.triggerFunc>
-	// is aware of exactly the same trigger (at most one). Thus calling:
-	//   c.triggerFunc(<some object>)
-	// can return only 0 or 1 values.
-	// That means, that triggerValues itself may return up to 2 different values.
-	if c.triggerFunc == nil {
+	if c.indexedTrigger == nil {
 		return nil, false
 	}
+
 	result := make([]string, 0, 2)
-	matchValues := c.triggerFunc(event.Object)
-	if len(matchValues) > 0 {
-		result = append(result, matchValues[0].Value)
-	}
+	result = append(result, c.indexedTrigger.indexerFunc(event.Object))
 	if event.PrevObject == nil {
-		return result, len(result) > 0
+		return result, true
 	}
-	prevMatchValues := c.triggerFunc(event.PrevObject)
-	if len(prevMatchValues) > 0 {
-		if len(result) == 0 || result[0] != prevMatchValues[0].Value {
-			result = append(result, prevMatchValues[0].Value)
-		}
+	prevTriggerValue := c.indexedTrigger.indexerFunc(event.PrevObject)
+	if result[0] != prevTriggerValue {
+		result = append(result, prevTriggerValue)
 	}
-	return result, len(result) > 0
+	return result, true
 }
 
 func (c *Cacher) processEvent(event *watchCacheEvent) {

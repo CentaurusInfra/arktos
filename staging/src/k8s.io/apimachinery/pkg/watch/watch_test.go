@@ -350,3 +350,33 @@ func TestAggregatedWatchOnError(t *testing.T) {
 	t.Logf("Failure times %d", failureTimes)
 	assert.True(t, 10 >= failureTimes) // 90% pass
 }
+
+func TestAggregatedWatcher_Stop(t *testing.T) {
+	sleepTime := 30 * time.Millisecond
+	triedTimes := 1
+
+	for {
+		aggW := NewAggregatedWatcher()
+		for m := 0; m < 5000; m++ {
+			ch := make(chan Event)
+			w := NewProxyWatcher(ch)
+			aggW.AddWatchInterface(w, nil)
+		}
+		aggW.Stop()
+		time.Sleep(sleepTime)
+		if aggW.stopped && len(aggW.stopChans) == 0 && len(aggW.watchers) == 0 && len(aggW.errs) == 0 {
+			aggW.mapLock.Lock()
+			aggW.mapLock.Unlock()
+			break
+		}
+
+		if triedTimes > 10 {
+			t.Logf("Failed after %d trials", triedTimes)
+			t.Fail()
+		}
+		triedTimes++
+		sleepTime = sleepTime * 2
+	}
+
+	t.Logf("Succeed in %d trial", triedTimes)
+}

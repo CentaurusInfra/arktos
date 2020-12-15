@@ -11,6 +11,7 @@ pkg/cloudfabric-controller/replicaset/doc.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils_test.go
 pkg/cloudfabric-controller/testutil/test_utils.go
+staging/src/k8s.io/apimachinery/pkg/runtime/negotiate.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/compact.go

@@ -1174,6 +1174,9 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 	if utilfeature.DefaultFeatureGate.Enabled(features.KubeletPodResources) {
 		go k.ListenAndServePodResources()
 	}
+
+	// start apiserver config manager
+	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClients[0], wait.NeverStop)
 }
 
 func createAndInitKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,

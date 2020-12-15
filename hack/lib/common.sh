@@ -370,6 +370,8 @@ EOF
       --proxy-client-key-file="${CERT_DIR}/client-auth-proxy.key" \
       ${service_group_id} \
       --partition-config="${configfilepath}" \
+      --profiling=true \
+      --contention-profiling=true \
       --cors-allowed-origins="${API_CORS_ALLOWED_ORIGINS}" >"${APISERVER_LOG}" 2>&1 &
     APISERVER_PID=$!
     APISERVER_PID_ARRAY+=($APISERVER_PID)

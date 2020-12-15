@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -537,13 +538,6 @@ func (f *DeltaFIFO) Resync() error {
 		}
 	}
 	return nil
-}
-
-func (f *DeltaFIFO) syncKey(key string) error {
-	f.lock.Lock()
-	defer f.lock.Unlock()
-
-	return f.syncKeyLocked(key)
 }
 
 func (f *DeltaFIFO) syncKeyLocked(key string) error {

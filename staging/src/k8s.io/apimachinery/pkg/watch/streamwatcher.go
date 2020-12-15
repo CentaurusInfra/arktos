@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -113,7 +114,7 @@ func (sw *StreamWatcher) receive() {
 			case io.ErrUnexpectedEOF:
 				klog.V(1).Infof("Unexpected EOF during watch stream event decoding: %v", err)
 			default:
-				if net.IsProbableEOF(err) {
+				if net.IsProbableEOF(err) || net.IsTimeout(err) {
 					klog.V(5).Infof("Unable to decode an event from the watch stream: %v", err)
 				} else {
 					sw.result <- Event{

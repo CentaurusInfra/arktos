@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -166,6 +167,18 @@ func TestIsCriticalPod(t *testing.T) {
 					Namespace: "kube-system",
 					Annotations: map[string]string{
 						"scheduler.alpha.kubernetes.io/critical-pod": "",
+					},
+				},
+			},
+			expected: true,
+		},
+		{
+			pod: v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod5",
+					Namespace: "kube-system",
+					Annotations: map[string]string{
+						ConfigSourceAnnotationKey: "abc",
 					},
 				},
 			},

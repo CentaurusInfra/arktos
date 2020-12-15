@@ -21,8 +21,6 @@ import (
 	"errors"
 	goflag "flag"
 	"fmt"
-	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/datapartition"
 	"math/rand"
 	"os"
 	"time"
@@ -198,11 +196,6 @@ func run(config *hollowNodeConfig) {
 	}
 
 	if config.Morph == "kubelet" {
-		// Start APIServerConfigManager
-		for _, clt := range client {
-			go datapartition.StartAPIServerConfigManagerAndInformerFactory(clt, wait.NeverStop)
-		}
-
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
 		heartbeatClientConfigs := restclient.CopyConfigs(clientConfigs)
