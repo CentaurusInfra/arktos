@@ -912,6 +912,12 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 	if err != nil {
 		klog.V(3).Infof("Pod %q is terminated, Error getting runtimeStatus from the podCache: %s",
 			format.PodWithDeletionTimestampAndResourceVersion(pod), err)
+			// hack, verify the cause of terminating pod issue in perf
+			//
+			if strings.Contains(err.Error(), "not found") {
+				klog.V(1).Infof("VDEBUG: Ignore container not found errors")
+			return true
+		}
 		return false
 	}
 	if len(runtimeStatus.ContainerStatuses) > 0 {

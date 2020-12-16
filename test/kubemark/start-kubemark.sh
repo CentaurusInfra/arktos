@@ -165,7 +165,7 @@ function create-kube-hollow-node-resources {
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_tag}}@${KUBEMARK_IMAGE_TAG}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{master_ip}}@${MASTER_IP}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{rp_master_ip}}@${RP_MASTER_IP}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_kubelet_params}}@${HOLLOW_KUBELET_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_proxy_params}}@${HOLLOW_PROXY_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_mig_config}}@${KUBEMARK_MIG_CONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
@@ -243,6 +243,8 @@ else
 fi
 
 MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+export RP_MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}-rp" | awk -F "/" '{print $3}')
+echo "VDBGGG: RP_MASTER_IP=$RP_MASTER_IP"
 export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}'):8080
 
 # Start two tenant partition clusters and perseve their master url
