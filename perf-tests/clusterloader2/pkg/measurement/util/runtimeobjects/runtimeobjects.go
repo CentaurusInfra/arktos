@@ -390,10 +390,10 @@ func CreateMetaNamespaceKey(obj runtime.Object) (string, error) {
 }
 
 // GetNumObjectsMatchingSelector returns number of objects matching the given selector.
-func GetNumObjectsMatchingSelector(c dynamic.Interface, namespace string, resource schema.GroupVersionResource, labelSelector labels.Selector) (int, error) {
+func GetNumObjectsMatchingSelector(c dynamic.Interface, tenant, namespace string, resource schema.GroupVersionResource, labelSelector labels.Selector) (int, error) {
 	var numObjects int
 	listFunc := func() error {
-		list, err := c.Resource(resource).Namespace(namespace).List(metav1.ListOptions{LabelSelector: labelSelector.String()})
+		list, err := c.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{LabelSelector: labelSelector.String()})
 		numObjects = len(list.Items)
 		return err
 	}

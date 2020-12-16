@@ -111,7 +111,7 @@ func (k *NodeKiller) pickNodes() ([]v1.Node, error) {
 		return nil, err
 	}
 
-	prometheusPods, err := client.ListPodsWithOptions(k.client, monitoringNamespace, metav1.ListOptions{
+	prometheusPods, err := client.ListPodsWithOptions(k.client, util.GetTenant(), monitoringNamespace, metav1.ListOptions{
 		LabelSelector: prometheusLabel,
 	})
 	if err != nil {
