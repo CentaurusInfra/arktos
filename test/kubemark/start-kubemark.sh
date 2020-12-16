@@ -133,7 +133,7 @@ function create-kube-hollow-node-resources {
   "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" \
     --from-file=kubelet.kubeconfig="${TP_ONE_KUBECONFIG}" \
     --from-file=kubeproxy.kubeconfig="${TP_ONE_KUBECONFIG}" \
-    --from-file=npd.kubeconfig="${TP_ONE_KUBECONFIG}" \
+    --from-file=npd.kubeconfig="${RP_KUBECONFIG_SAVED}" \
     --from-file=heapster.kubeconfig="${TP_ONE_KUBECONFIG}" \
     --from-file=cluster_autoscaler.kubeconfig="${TP_ONE_KUBECONFIG}" \
     --from-file=dns.kubeconfig="${TP_ONE_KUBECONFIG}"
@@ -190,7 +190,7 @@ function create-kube-hollow-node-resources {
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_tag}}@${KUBEMARK_IMAGE_TAG}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{master_ip}}@${MASTER_IP}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_kubelet_params}}@${HOLLOW_KUBELET_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_proxy_params}}@${HOLLOW_PROXY_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_mig_config}}@${KUBEMARK_MIG_CONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"

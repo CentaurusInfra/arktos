@@ -112,7 +112,11 @@ spec:
         command:
         - /bin/sh
         - -c
-        - /node-problem-detector --system-log-monitors=/config/kernel.monitor --apiserver-override="https://{{master_ip}}:443?inClusterConfig=false&auth=/kubeconfig/npd.kubeconfig" --alsologtostderr 1>>/var/log/npd-$(NODE_NAME).log 2>&1
+      # For Arktos scaleout POC only
+      # simply use master_ip for the Resource cluster master URL
+      # perviously hardcoded 443 as port could break the replacement logic currently in POC with insecure ports
+      #
+        - /node-problem-detector --system-log-monitors=/config/kernel.monitor --apiserver-override="{{master_ip}}?inClusterConfig=false&auth=/kubeconfig/npd.kubeconfig" --alsologtostderr 1>>/var/log/npd-$(NODE_NAME).log 2>&1
         volumeMounts:
         - name: kubeconfig-volume
           mountPath: /kubeconfig
