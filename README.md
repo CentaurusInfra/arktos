@@ -1,7 +1,6 @@
 # Arktos
 
 
-
 [![Go Report Card](https://goreportcard.com/badge/github.com/CentaurusInfra/arktos)](https://goreportcard.com/report/github.com/CentaurusInfra/arktos)
 [![LICENSE](https://img.shields.io/badge/license-apache%202.0-green)](https://github.com/CentaurusInfra/arktos/blob/master/LICENSE)
 
