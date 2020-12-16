@@ -200,7 +200,7 @@ func NewVolumeManager(
 
 // volumeManager implements the VolumeManager interface
 type volumeManager struct {
-	// rpKubeClient is the kube API client used to  
+	// rpKubeClient is the kube API client used to
 	// communicate with the resource partition API server
 	rpKubeClient clientset.Interface
 	// kubeClient is the kube API client used by DesiredStateOfWorldPopulator to

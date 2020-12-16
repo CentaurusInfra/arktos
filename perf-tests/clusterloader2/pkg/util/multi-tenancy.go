@@ -20,23 +20,21 @@ import (
 	"os"
 	"strings"
 
+	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
-	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
 )
 
 func GetTenant() string {
 	tenantName := os.Getenv("SCALEOUT_TEST_TENANT")
-    if len(tenantName) == 0 {
-        return metav1.TenantSystem
+	if len(tenantName) == 0 {
+		return metav1.TenantSystem
 	}
-	
+
 	errs := apimachineryvalidation.ValidateTenantName(tenantName, false)
 	if len(errs) > 0 {
 		klog.Fatalf("Invalide tenant name %v: %v", tenantName, errs)
 	}
 
-    return strings.ToLower(tenantName)
+	return strings.ToLower(tenantName)
 }
-
-

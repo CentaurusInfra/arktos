@@ -130,9 +130,9 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
 
 	kubeclient := ctx.ClientBuilder.ClientOrDie("node-controller")
-	
+
 	var tpAccessors []*lifecyclecontroller.TenantPartitionManager
-	var err error	
+	var err error
 	if len(ctx.ComponentConfig.NodeLifecycleController.TenantServers) > 0 {
 		tpAccessors, err = lifecyclecontroller.GetTenantPartitionManagersFromServerNames(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
 	} else {

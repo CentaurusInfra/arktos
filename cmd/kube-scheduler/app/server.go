@@ -22,7 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"k8s.io/client-go/datapartition"
+	//"k8s.io/client-go/datapartition"
 	"net/http"
 	"os"
 	goruntime "runtime"
@@ -155,7 +155,7 @@ func runCommand(cmd *cobra.Command, args []string, opts *options.Options) error 
 		return fmt.Errorf("unable to register configz: %s", err)
 	}
 
-	datapartition.StartAPIServerConfigManager(cc.InformerFactory.Core().V1().Endpoints(), cc.Client, stopCh)
+	//datapartition.StartAPIServerConfigManager(cc.InformerFactory.Core().V1().Endpoints(), cc.Client, stopCh)
 	return Run(cc, stopCh)
 }
 
