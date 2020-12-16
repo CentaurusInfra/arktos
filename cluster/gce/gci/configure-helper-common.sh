@@ -1704,17 +1704,22 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
-  if [[ -n "${NUM_NODES:-}" ]]; then
-    # If the cluster is large, increase max-requests-inflight limit in apiserver.
-    if [[ "${NUM_NODES}" -gt 3000 ]]; then
-      params+=" --max-requests-inflight=3000 --max-mutating-requests-inflight=1000"
-    elif [[ "${NUM_NODES}" -gt 500 ]]; then
-      params+=" --max-requests-inflight=1500 --max-mutating-requests-inflight=500"
+  if [[ -n "${NO_THROTTLE_APISERVER:-}" == "true" ]]; then
+    # 0 means there is not constraint
+    params+=" --max-requests-inflight=0 --max-mutating-requests-inflight=0"
+  else
+    if [[ -n "${NUM_NODES:-}" ]]; then
+      # If the cluster is large, increase max-requests-inflight limit in apiserver.
+      if [[ "${NUM_NODES}" -gt 3000 ]]; then
+        params+=" --max-requests-inflight=3000 --max-mutating-requests-inflight=1000"
+      elif [[ "${NUM_NODES}" -gt 500 ]]; then
+        params+=" --max-requests-inflight=1500 --max-mutating-requests-inflight=500"
+      fi
+      # Set amount of memory available for apiserver based on number of nodes.
+      # TODO: Once we start setting proper requests and limits for apiserver
+      # we should reuse the same logic here instead of current heuristic.
+      params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
     fi
-    # Set amount of memory available for apiserver based on number of nodes.
-    # TODO: Once we start setting proper requests and limits for apiserver
-    # we should reuse the same logic here instead of current heuristic.
-    params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
   fi
   if [[ -n "${SERVICE_CLUSTER_IP_RANGE:-}" ]]; then
     params+=" --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE}"
