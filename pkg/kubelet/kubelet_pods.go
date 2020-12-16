@@ -916,7 +916,7 @@ func (kl *Kubelet) PodResourcesAreReclaimed(pod *v1.Pod, status v1.PodStatus) bo
 		// hack, verify the cause of terminating pod issue in perf
 		//
 		if strings.Contains(err.Error(), "not found") {
-                        klog.V(4).Infof("DEBUG: Ignore container not found errors")
+			klog.V(4).Infof("DEBUG: Ignore container not found errors")
 			return true
 		}
 

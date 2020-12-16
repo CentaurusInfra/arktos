@@ -30,7 +30,7 @@ import (
 	"os"
 	"time"
 
-	"k8s.io/client-go/datapartition"
+	//"k8s.io/client-go/datapartition"
 
 	"github.com/spf13/cobra"
 
@@ -242,10 +242,10 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		}
 
 		// start API Server Config Manager
-		client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
-		klog.Infof("rest client QPS %v, client config [%#v]", rootClientBuilder.ClientConfig.GetConfig().QPS, rootClientBuilder.ClientConfig)
-		datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
-			client, controllerContext.Stop)
+		//client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
+		//klog.Infof("rest client QPS %v, client config [%#v]", rootClientBuilder.ClientConfig.GetConfig().QPS, rootClientBuilder.ClientConfig)
+		//datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
+		//	client, controllerContext.Stop)
 
 		controllerContext.InformerFactory.Start(controllerContext.Stop)
 		controllerContext.GenericInformerFactory.Start(controllerContext.Stop)

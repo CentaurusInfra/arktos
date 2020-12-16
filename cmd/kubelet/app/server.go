@@ -24,7 +24,7 @@ import (
 	"errors"
 	"fmt"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
-	"k8s.io/client-go/datapartition"
+	//"k8s.io/client-go/datapartition"
 	"math/rand"
 	"net"
 	"net/http"
@@ -591,7 +591,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				}
 			}
 			heartbeatClientConfig.QPS = float32(-1)
-		        klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
+			klog.V(6).Infof("heartbeatClientConfig.Host: %v", heartbeatClientConfig.Host)
 		}
 		kubeDeps.HeartbeatClient, err = clientset.NewForConfig(&heartbeatClientConfigs)
 		if err != nil {
@@ -603,7 +603,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		klog.V(6).Infof("make kubeDeps.KubeClients based on TenantServers args: %v", s.TenantServers)
 		if s.TenantServers == nil || len(s.TenantServers) == 0 {
 			klog.V(3).Infof("TenantServers is not set. Default to single tenant partition and clientConfig setting")
-			s.TenantServers = make ([]string, 1)
+			s.TenantServers = make([]string, 1)
 			s.TenantServers[0] = clientConfigs.GetConfig().Host
 		}
 
@@ -782,9 +782,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	if err := oomAdjuster.ApplyOOMScoreAdj(0, int(s.OOMScoreAdj)); err != nil {
 		klog.Warning(err)
 	}
-
-	// Start APIServerConfigManager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClients[0], stopCh)
 
 	if err = RunKubelet(s, kubeDeps, s.RunOnce); err != nil {
 		return err
@@ -1176,7 +1173,7 @@ func startKubelet(k kubelet.Bootstrap, podCfg *config.PodConfig, kubeCfg *kubele
 	}
 
 	// start apiserver config manager
-	go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClients[0], wait.NeverStop)
+	//go datapartition.StartAPIServerConfigManagerAndInformerFactory(kubeDeps.KubeClients[0], wait.NeverStop)
 }
 
 func createAndInitKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
