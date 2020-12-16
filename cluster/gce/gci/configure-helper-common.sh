@@ -2215,7 +2215,7 @@ function start-kube-controller-manager {
     params+=" --tenant-servers=${TENANT_SERVERS}"
   fi
 
-  if [[ "$KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
     ARKTOS_NETWORK_TEMPLATE="/etc/srv/kubernetes/default_flat_network.json"
     echo "DBG:Generating default network template:  ${ARKTOS_NETWORK_TEMPLATE}"
       cat > "${ARKTOS_NETWORK_TEMPLATE}" <<EOF
