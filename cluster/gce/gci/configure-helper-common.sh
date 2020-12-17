@@ -2215,23 +2215,6 @@ function start-kube-controller-manager {
     params+=" --tenant-servers=${TENANT_SERVERS}"
   fi
 
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    ARKTOS_NETWORK_TEMPLATE="/etc/srv/kubernetes/default_flat_network.json"
-    echo "DBG:Generating default network template:  ${ARKTOS_NETWORK_TEMPLATE}"
-      cat > "${ARKTOS_NETWORK_TEMPLATE}" <<EOF
-{
-    "metadata": {
-        "name": "default",
-        "finalizers": ["arktos.futurewei.com/network"]
-    },
-    "spec": {
-        "type": "flat"
-    }
-}
-EOF
-    params+=" --default-network-template-path=${ARKTOS_NETWORK_TEMPLATE}"
-  fi
-
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
