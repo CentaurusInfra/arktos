@@ -156,6 +156,7 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
+  start-prometheus &  #####start prometheus
   echo "Done for the configuration for kubernetes"
 }
 

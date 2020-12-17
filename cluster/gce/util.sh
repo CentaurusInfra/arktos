@@ -1415,10 +1415,10 @@ ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
 ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT})
 ENABLE_ETCD: $(yaml-quote ${ENABLE_ETCD})
 ETCD_CA_KEY: $(yaml-quote ${ETCD_CA_KEY_BASE64:-})
 ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
@@ -1568,7 +1568,7 @@ EOF
     # Node-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "false")
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-true})
 EXTRA_DOCKER_OPTS: $(yaml-quote ${EXTRA_DOCKER_OPTS:-})
 EOF
     if [ -n "${KUBEPROXY_TEST_ARGS:-}" ]; then
@@ -2863,6 +2863,12 @@ function create-master() {
     --project "${NETWORK_PROJECT}" \
     --network "${NETWORK}" \
     --allow tcp:443 &
+
+  gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
+    --project "${NETWORK_PROJECT}" \
+    --network "${NETWORK}" \
+    --source-ranges "0.0.0.0/0" \
+    --allow tcp:9090 &
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
