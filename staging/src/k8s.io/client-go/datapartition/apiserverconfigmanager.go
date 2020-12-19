@@ -18,6 +18,11 @@ package datapartition
 
 import (
 	"fmt"
+	"reflect"
+	"strconv"
+	"sync"
+	"time"
+
 	"github.com/grafov/bcast"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -33,11 +38,6 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/util/metrics"
-	"reflect"
-	"strconv"
-	"sync"
-	"time"
 )
 
 const (
@@ -112,9 +112,10 @@ func NewAPIServerConfigManagerWithInformer(epInformer coreinformers.EndpointsInf
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
-	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+	/*if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("api_server_config_manager", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
+	*/
 
 	manager := &APIServerConfigManager{
 		kubeClient:                   kubeClient,
