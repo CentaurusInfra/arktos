@@ -2735,7 +2735,7 @@ function create-proxy-vm() {
   gcloud compute firewall-rules create "${PROXY_NAME}-https" \
     --project "${NETWORK_PROJECT}" \
     --network "${NETWORK}" \
-    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888" &
+    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888,tcp:8404" &
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
@@ -2852,9 +2852,24 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo apt update -y"
   ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
 
+  patch-haproxy-prometheus
+
   ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
   ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
+}
+
+function patch-haproxy-prometheus {
+  # based on https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint
+  echo 'Patching Haproxy to expose prometheus...'
+  ssh-to-node ${PROXY_NAME} "sudo apt install -y git ca-certificates gcc libc6-dev liblua5.3-dev libpcre3-dev libssl-dev libsystemd-dev make wget zlib1g-dev"
+  ssh-to-node ${PROXY_NAME} "git clone https://github.com/haproxy/haproxy.git /tmp/haproxy"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=\"contrib/prometheus-exporter/service-prometheus.o\" -j4"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;sudo make install-bin"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl stop haproxy"
+  ssh-to-node ${PROXY_NAME} "sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl start haproxy"
+  ssh-to-node ${PROXY_NAME} "haproxy -vv|grep Prometheus"
 }
 
 function create-master() {
