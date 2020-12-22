@@ -1393,7 +1393,7 @@ func (az *azStorageAccountClient) GetProperties(ctx context.Context, resourceGro
 	}()
 
 	mc := newMetricContext("storage_account", "get_properties", resourceGroupName, az.client.SubscriptionID, "")
-	result, err = az.client.GetProperties(ctx, resourceGroupName, accountName)
+	result, err = az.client.GetProperties(ctx, resourceGroupName, accountName, "")
 	mc.Observe(err)
 	return
 }
