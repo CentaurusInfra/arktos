@@ -185,7 +185,7 @@ type Cloud struct {
 	DisksClient             DisksClient
 	SnapshotsClient         *compute.SnapshotsClient
 	FileClient              FileClient
-	resourceRequestBackoff  wait.Backoff
+	ResourceRequestBackoff  wait.Backoff
 	metadata                *InstanceMetadataService
 	vmSet                   VMSet
 
@@ -406,7 +406,7 @@ func (az *Cloud) InitializeCloudFromConfig(config *Config, fromSecret bool) erro
 
 	az.Config = *config
 	az.Environment = *env
-	az.resourceRequestBackoff = resourceRequestBackoff
+	az.ResourceRequestBackoff = resourceRequestBackoff
 	az.metadata, err = NewInstanceMetadataService(metadataURL)
 	if err != nil {
 		return err
