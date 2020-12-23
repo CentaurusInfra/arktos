@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,7 +35,7 @@ import (
 
 const (
 	// The version number is taken from "github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-06-01/network".
-	azureNetworkAPIVersion = "2019-06-01"
+	azureNetworkAPIVersion              = "2019-06-01"
 	virtualMachineScaleSetsDeallocating = "Deallocating"
 )
 
@@ -1365,7 +1366,7 @@ func (az *azStorageAccountClient) ListKeys(ctx context.Context, resourceGroupNam
 	}()
 
 	mc := newMetricContext("storage_account", "list_keys", resourceGroupName, az.client.SubscriptionID, "")
-	result, err = az.client.ListKeys(ctx, resourceGroupName, accountName)
+	result, err = az.client.ListKeys(ctx, resourceGroupName, accountName, storage.Kerb)
 	mc.Observe(err)
 	return
 }
