@@ -59,7 +59,7 @@ func reassignControllerKeys(instances []controllerInstanceLocal) []controllerIns
 		return instances
 	}
 
-	interval := int64(math.MaxInt64 / len(instances))
+	interval := math.MaxInt64 / int64(len(instances))
 	startKey := int64(math.MaxInt64)
 	instances[0].lowerboundKey = 0
 	for i := len(instances) - 1; i >= 0; i-- {
