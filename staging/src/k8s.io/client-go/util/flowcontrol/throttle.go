@@ -17,10 +17,13 @@ limitations under the License.
 package flowcontrol
 
 import (
+	"runtime/debug"
 	"sync"
 	"time"
 
 	"golang.org/x/time/rate"
+
+	"k8s.io/klog"
 )
 
 type RateLimiter interface {
@@ -74,6 +77,10 @@ func NewTokenBucketRateLimiterWithClock(qps float32, burst int, c Clock) RateLim
 }
 
 func newTokenBucketRateLimiter(limiter *rate.Limiter, c Clock, qps float32) RateLimiter {
+	if qps > 100 {
+		klog.Errorf("Unexpected large QPS: %v", qps)
+		debug.PrintStack()
+	}
 	return &tokenBucketRateLimiter{
 		limiter: limiter,
 		clock:   c,

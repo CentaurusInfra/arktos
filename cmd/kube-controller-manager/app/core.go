@@ -353,16 +353,33 @@ func startResourceQuotaController(ctx ControllerContext) (http.Handler, bool, er
 	return nil, true, nil
 }
 
+func increaseControllerRateLimit(config *restclient.Config, QPSCoefficient float32, BurstCoefficient float32) *restclient.Config {
+	newConfig := restclient.NewAggregatedConfig()
+	for _, kubeConfig := range config.GetAllConfigs() {
+		newKubeConfig := restclient.CopyConfig(kubeConfig)
+		newKubeConfig.QPS *= QPSCoefficient
+		newKubeConfig.Burst = int(BurstCoefficient * float32(newKubeConfig.Burst))
+		newKubeConfig.RateLimiter = nil
+		newConfig.AddConfig(newKubeConfig)
+	}
+
+	return newConfig
+}
+
 func startNamespaceController(ctx ControllerContext) (http.Handler, bool, error) {
 	// the namespace cleanup controller is very chatty.  It makes lots of discovery calls and then it makes lots of delete calls
 	// the ratelimiter negatively affects its speed.  Deleting 100 total items in a namespace (that's only a few of each resource
 	// including events), takes ~10 seconds by default.
-	nsKubeconfigs := ctx.ClientBuilder.ConfigOrDie("namespace-controller")
-	for _, nsKubeconfig := range nsKubeconfigs.GetAllConfigs() {
-		nsKubeconfig.QPS *= 20
-		nsKubeconfig.Burst *= 100
-	}
+	nsKubeconfigs := increaseControllerRateLimit(ctx.ClientBuilder.ConfigOrDie("namespace-controller"), 20, 100)
 	namespaceKubeClient := clientset.NewForConfigOrDie(nsKubeconfigs)
+
+	//add some logs to track the rate limit setting 
+	if namespaceKubeClient != nil && namespaceKubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+		klog.V(2).Infof("starting namepsace controller: RateLimiter QPS: %v ", namespaceKubeClient.CoreV1().RESTClient().GetRateLimiter().QPS())
+	} else {
+		klog.V(2).Infof("starting namepsace controller: RateLimiter is nil ")
+	}
+
 	return startModifiedNamespaceController(ctx, namespaceKubeClient, nsKubeconfigs)
 }
 
@@ -371,12 +388,15 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 	// but tenant deletion probably doesn't have to be very quick. For now we keep the same
 	// QPS/Burst settings as namespace controller. After we implement tenant cleanup, We will
 	// adjust these if there are feedback on the duration of tenant cleanup
-	tnKubeConfigs := ctx.ClientBuilder.ConfigOrDie("tenant-controller")
-	for _, tnKubeConfig := range tnKubeConfigs.GetAllConfigs() {
-		tnKubeConfig.QPS *= 20
-		tnKubeConfig.Burst *= 100
-	}
+	tnKubeConfigs := increaseControllerRateLimit(ctx.ClientBuilder.ConfigOrDie("tenant-controller"), 20, 100)
 	tenantKubeClient := clientset.NewForConfigOrDie(tnKubeConfigs)
+
+	//add some logs to track the rate limit setting 
+	if tenantKubeClient != nil && tenantKubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+		klog.V(2).Infof("starting tenant controller: RateLimiter QPS: %v ", tenantKubeClient.CoreV1().RESTClient().GetRateLimiter().QPS())
+	} else {
+		klog.V(2).Infof("starting tenant controller: RateLimiter is nil ")
+	}
 
 	crConfigs := *tnKubeConfigs
 	for _, cfg := range crConfigs.GetAllConfigs() {

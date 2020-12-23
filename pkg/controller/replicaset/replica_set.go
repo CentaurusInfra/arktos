@@ -111,6 +111,14 @@ func NewReplicaSetController(rsInformer appsinformers.ReplicaSetInformer, podInf
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
+
+	//add some logs to track the rate limit setting 
+	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+		klog.V(2).Infof("starting replicaset controller: RateLimiter QPS: %v ", kubeClient.CoreV1().RESTClient().GetRateLimiter().QPS())
+	} else {
+		klog.V(2).Infof("starting replicaset controller: RateLimiter is nil ")
+	}
+
 	return NewBaseController(rsInformer, podInformer, kubeClient, burstReplicas,
 		apps.SchemeGroupVersion.WithKind("ReplicaSet"),
 		"replicaset_controller",
