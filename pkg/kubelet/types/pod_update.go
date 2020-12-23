@@ -19,6 +19,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -212,5 +213,5 @@ func IsCriticalPodBasedOnPriority(priority int32) bool {
 // IsStaticPod returns true if the pod is a static pod.
 func IsStaticPod(pod *v1.Pod) bool {
 	source, err := GetPodSource(pod)
-	return err == nil && source != ApiserverSource
+	return err == nil && !strings.HasPrefix(source, ApiserverSource)
 }

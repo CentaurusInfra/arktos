@@ -25,6 +25,7 @@ import (
 	"k8s.io/klog"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
+	"strings"
 )
 
 // MirrorClient knows how to create/delete a mirror pod in the API server.
@@ -109,7 +110,7 @@ func (mc *basicMirrorClient) DeleteMirrorPod(podFullName string) error {
 // IsStaticPod returns true if the pod is a static pod.
 func IsStaticPod(pod *v1.Pod) bool {
 	source, err := kubetypes.GetPodSource(pod)
-	return err == nil && source != kubetypes.ApiserverSource
+	return err == nil && !strings.HasPrefix(source, kubetypes.ApiserverSource)
 }
 
 // IsMirrorPod returns true if the pod is a mirror pod.
