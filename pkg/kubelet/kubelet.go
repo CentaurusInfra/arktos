@@ -303,6 +303,8 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 	// NOTE: This MUST happen before creating the apiserver source
 	// below, or the checkpoint would override the source of truth.
 
+	// TODO: for multiple TP support, bootstrapcheckpointPath for multiple API servers to avoid conflicts
+	//
 	var updatechannel chan<- interface{}
 	if bootstrapCheckpointPath != "" {
 		klog.Infof("Adding checkpoint path: %v", bootstrapCheckpointPath)
@@ -1667,6 +1669,8 @@ func (kl *Kubelet) syncPod(o syncPodOptions) error {
 	// Create Mirror Pod for Static Pod if it doesn't already exist
 	if kubetypes.IsStaticPod(pod) {
 		podFullName := kubecontainer.GetPodFullName(pod)
+		klog.V(4).Infof("Handle static pod: %v", podFullName)
+
 		deleted := false
 		if mirrorPod != nil {
 			if mirrorPod.DeletionTimestamp != nil || !kl.podManager.IsMirrorPodOf(mirrorPod, pod) {
