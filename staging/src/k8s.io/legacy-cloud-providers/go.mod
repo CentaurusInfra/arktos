@@ -15,7 +15,6 @@ require (
 	github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20190822182118-27a4ced34534
 	github.com/aws/aws-sdk-go v1.28.2
 	github.com/dnaeon/go-vcr v1.0.1 // indirect
-	github.com/marstr/guid v0.0.0-20170427235115-8bdf7d1a087c // indirect
 	github.com/prometheus/client_golang v1.1.0
 	github.com/prometheus/client_model v0.2.0 // indirect
 	github.com/prometheus/common v0.4.1 // indirect
@@ -40,7 +39,6 @@ require (
 )
 
 replace (
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v21.4.0+incompatible
 	github.com/GoogleCloudPlatform/k8s-cloud-provider => github.com/GoogleCloudPlatform/k8s-cloud-provider v0.0.0-20181220005116-f8e995905100
 	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.16.26
 	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v0.0.0-20160705203006-01aeca54ebda

@@ -198,7 +198,7 @@ require (
 replace (
 	bitbucket.org/bertimus9/systemstat => bitbucket.org/bertimus9/systemstat v0.0.0-20180207000608-0eeff89b0690
 	cloud.google.com/go => cloud.google.com/go v0.34.0
-	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v21.4.0+incompatible
+	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v35.0.0+incompatible
 	github.com/Azure/go-ansiterm => github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
 
 	github.com/Azure/go-autorest/autorest => github.com/Azure/go-autorest/autorest v0.9.0
