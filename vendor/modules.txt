@@ -594,8 +594,6 @@ github.com/marstr/guid
 github.com/mattn/go-shellwords
 # github.com/matttproud/golang_protobuf_extensions v1.0.1 => github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/mholt/caddy v0.0.0-20180213163048-2de495001514 => github.com/mholt/caddy v0.0.0-20180213163048-2de495001514
-github.com/mholt/caddy/caddyfile
 # github.com/miekg/dns v1.1.4 => github.com/miekg/dns v0.0.0-20160614162101-5d001d020961
 github.com/miekg/dns
 # github.com/mindprince/gonvml v0.0.0-20171110221305-fee913ce8fb2 => github.com/mindprince/gonvml v0.0.0-20171110221305-fee913ce8fb2

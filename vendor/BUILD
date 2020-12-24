@@ -250,7 +250,7 @@ filegroup(
         "//vendor/github.com/marstr/guid:all-srcs",
         "//vendor/github.com/mattn/go-shellwords:all-srcs",
         "//vendor/github.com/matttproud/golang_protobuf_extensions/pbutil:all-srcs",
-        "//vendor/github.com/mholt/caddy/caddyfile:all-srcs",
+        "//vendor/github.com/caddyserver/caddy/caddyfile:all-srcs",
         "//vendor/github.com/miekg/dns:all-srcs",
         "//vendor/github.com/mindprince/gonvml:all-srcs",
         "//vendor/github.com/mistifyio/go-zfs:all-srcs",
