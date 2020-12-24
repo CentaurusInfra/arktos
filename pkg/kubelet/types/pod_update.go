@@ -19,6 +19,8 @@ package types
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -209,8 +211,24 @@ func IsCriticalPodBasedOnPriority(priority int32) bool {
 	return false
 }
 
+func IsValidApiSource(source string) bool {
+	if !strings.HasPrefix(source, ApiserverSource) {
+		return false
+	}
+	
+	substring := source[len(ApiserverSource):]
+	// that is the backward-compatible case, where the source is api
+	if len(substring) == 0 {
+		return true
+	}
+
+	// in scale-out design, the source should api0, api1 ...
+	_, err := strconv.Atoi(substring)
+	return err == nil
+}
+
 // IsStaticPod returns true if the pod is a static pod.
 func IsStaticPod(pod *v1.Pod) bool {
 	source, err := GetPodSource(pod)
-	return err == nil && source != ApiserverSource
+	return err == nil && !IsValidApiSource(source)
 }
