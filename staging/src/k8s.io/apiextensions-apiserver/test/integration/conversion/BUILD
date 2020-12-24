@@ -4,9 +4,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_test(
     name = "go_default_test",
-    srcs = [
-        "conversion_test.go",
-    ],
+    srcs = ["conversion_test.go"],
     embed = [":go_default_library"],
     tags = ["integration"],
     deps = [

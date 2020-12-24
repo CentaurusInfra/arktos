@@ -85,8 +85,6 @@ type ContainerReference struct {
 	// Namespace under which the aliases of a container are unique.
 	// An example of a namespace is "docker" for Docker containers.
 	Namespace string `json:"namespace,omitempty"`
-	
-	Tenant string `json:"tenant,omitempty"`
 }
 
 // Sorts by container name.
