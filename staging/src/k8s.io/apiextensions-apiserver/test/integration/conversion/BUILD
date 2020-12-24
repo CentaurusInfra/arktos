@@ -6,7 +6,6 @@ go_test(
     name = "go_default_test",
     srcs = [
         "conversion_test.go",
-        "main_test.go",
     ],
     embed = [":go_default_library"],
     tags = ["integration"],
@@ -30,7 +29,6 @@ go_test(
         "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//staging/src/k8s.io/component-base/featuregate/testing:go_default_library",
-        "//test/integration/framework:go_default_library",
         "//vendor/github.com/google/go-cmp/cmp:go_default_library",
         "//vendor/k8s.io/utils/pointer:go_default_library",
     ],
