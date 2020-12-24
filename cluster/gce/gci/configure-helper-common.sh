@@ -2229,7 +2229,7 @@ function start-kube-controller-manager {
     RUN_CONTROLLERS="nodelifecycle"
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar,-network"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
