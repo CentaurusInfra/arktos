@@ -2864,10 +2864,11 @@ function patch-haproxy-prometheus {
   echo 'Patching Haproxy to expose prometheus...'
   ssh-to-node ${PROXY_NAME} "sudo apt install -y git ca-certificates gcc libc6-dev liblua5.3-dev libpcre3-dev libssl-dev libsystemd-dev make wget zlib1g-dev"
   ssh-to-node ${PROXY_NAME} "git clone https://github.com/haproxy/haproxy.git /tmp/haproxy"
-  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=\"contrib/prometheus-exporter/service-prometheus.o\" -j4"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=contrib/prometheus-exporter/service-prometheus.o -j4"
   ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;sudo make install-bin"
   ssh-to-node ${PROXY_NAME} "sudo systemctl stop haproxy"
   ssh-to-node ${PROXY_NAME} "sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl reset-failed haproxy.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl start haproxy"
   ssh-to-node ${PROXY_NAME} "haproxy -vv|grep Prometheus"
 }
