@@ -11,7 +11,7 @@ require (
 	cloud.google.com/go v0.34.0
 	github.com/Azure/azure-sdk-for-go v35.0.0+incompatible
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
-	github.com/Azure/go-autorest v11.1.2+incompatible
+
 	github.com/Azure/go-autorest/autorest v0.9.0
 	github.com/Azure/go-autorest/autorest/adal v0.5.0
 	github.com/Azure/go-autorest/autorest/azure/auth v0.1.0
@@ -336,6 +336,10 @@ require (
 	gotest.tools v2.2.0+incompatible
 	gotest.tools/gotestsum v0.3.5
 	honnef.co/go/tools v0.0.1-2019.2.2
+	k8s.io/api v0.0.0
+	k8s.io/apimachinery v0.0.0
+	k8s.io/client-go v0.0.0
+	k8s.io/component-base v0.0.0
 	k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
 	k8s.io/heapster v1.2.0-beta.1
 	k8s.io/klog v1.0.0
@@ -358,7 +362,7 @@ replace (
 	cloud.google.com/go => cloud.google.com/go v0.34.0
 	github.com/Azure/azure-sdk-for-go => github.com/Azure/azure-sdk-for-go v21.4.0+incompatible
 	github.com/Azure/go-ansiterm => github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78
-	github.com/Azure/go-autorest => github.com/Azure/go-autorest v11.1.2+incompatible
+
 	github.com/Azure/go-autorest/autorest => github.com/Azure/go-autorest/autorest v0.9.0
 	github.com/Azure/go-autorest/autorest/adal => github.com/Azure/go-autorest/autorest/adal v0.5.0
 	github.com/Azure/go-autorest/autorest/azure/auth => github.com/Azure/go-autorest/autorest/azure/auth v0.1.0
