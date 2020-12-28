@@ -74,6 +74,9 @@ config_haproxy() {
 
         sed -i -e "s@{{ *connection_timeout *}}@${connection_timeout}@g" "${temp_file}"
 
+        sed -i -e "/^KUBEMARK_ONLY:/d"  "${temp_file}"
+        sed -i -e "s/ONEBOX_ONLY://g" "${temp_file}"
+
         run_command_exit_if_failed sudo cp "${temp_file}" "/etc/haproxy/haproxy.cfg"
 }
 

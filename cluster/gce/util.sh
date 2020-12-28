@@ -2808,6 +2808,9 @@ function init-proxy-cfg() {
   sed -i -e "s@{{ *arktos_api_port *}}@8080@g" "${PROXY_CONFIG_FILE_TMP}" 
 
   sed -i -e "s@{{ *connection_timeout *}}@10m@g" "${PROXY_CONFIG_FILE_TMP}" 
+
+  sed -i -e "/^ONEBOX_ONLY:/d"  "${PROXY_CONFIG_FILE_TMP}"
+  sed -i -e "s/KUBEMARK_ONLY://g" "${PROXY_CONFIG_FILE_TMP}"
 }
 
 function update-proxy() {
