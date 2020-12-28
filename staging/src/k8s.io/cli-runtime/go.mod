@@ -2,7 +2,7 @@
 
 module k8s.io/cli-runtime
 
-go 1.12
+go 1.13
 
 require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect

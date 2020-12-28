@@ -2,6 +2,6 @@
 
 module k8s.io/kubectl
 
-go 1.12
+go 1.13
 
 replace k8s.io/kubectl => ../kubectl
