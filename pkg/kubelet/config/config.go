@@ -19,7 +19,10 @@ package config
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 	"reflect"
+	"strconv"
+	"strings"
 	"sync"
 
 	"k8s.io/api/core/v1"
@@ -260,6 +263,14 @@ func (s *podStorage) merge(source string, change interface{}) (adds, updates, de
 			if ref.Annotations == nil {
 				ref.Annotations = make(map[string]string)
 			}
+
+			if strings.HasPrefix(source, kubetypes.ApiserverSource) {
+				if _, ok := util.Tenant2api[ref.Tenant]; !ok {
+					clientId, _ := strconv.Atoi(source[(len(source) - 1):])
+					util.Tenant2api[ref.Tenant] = clientId
+				}
+			}
+
 			ref.Annotations[kubetypes.ConfigSourceAnnotationKey] = source
 			if existing, found := oldPods[ref.UID]; found {
 				pods[ref.UID] = existing

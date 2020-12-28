@@ -23,6 +23,7 @@ package populator
 
 import (
 	"fmt"
+	kutil "k8s.io/kubernetes/pkg/kubelet/util"
 	"sync"
 	"time"
 
@@ -557,7 +558,7 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, 
 // it is pointing to and returns it.
 // An error is returned if the PVC object's phase is not "Bound".
 func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(tenant string, namespace string, claimName string) (*v1.PersistentVolumeClaim, error) {
-	client := getTPClient(dswp.kubeClients, tenant)
+	client := kutil.GetTPClient(dswp.kubeClients, tenant)
 	pvc, err :=
 		client.CoreV1().PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(claimName, metav1.GetOptions{})
 	if err != nil || pvc == nil {
@@ -598,24 +599,11 @@ func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(tenant string, namespa
 	return pvc, nil
 }
 
-func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
-	var client clientset.Interface
-	pick := 0
-	if len(kubeClients) == 1 || tenant[0] <= 'm' {
-		client = kubeClients[0]
-	} else {
-		client = kubeClients[1]
-		pick = 1
-	}
-	klog.Infof("tenant %s using client # %d", tenant, pick)
-	return client
-}
-
 // getPVSpec fetches the PV object with the given name from the API server
 // and returns a volume.Spec representing it.
 // An error is returned if the call to fetch the PV object fails.
 func (dswp *desiredStateOfWorldPopulator) getPVSpec(tenant string, name string, pvcReadOnly bool, expectedClaimUID types.UID) (*volume.Spec, string, error) {
-	client := getTPClient(dswp.kubeClients, tenant)
+	client := kutil.GetTPClient(dswp.kubeClients, tenant)
 	pv, err := client.CoreV1().PersistentVolumesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil || pv == nil {
 		return nil, "", fmt.Errorf(

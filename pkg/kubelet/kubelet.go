@@ -357,6 +357,9 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	seccompProfileRoot string,
 	bootstrapCheckpointPath string,
 	nodeStatusMaxImages int32) (*Kubelet, error) {
+
+	util.Tenant2api = make(map[string]int)
+
 	if rootDirectory == "" {
 		return nil, fmt.Errorf("invalid root directory %q", rootDirectory)
 	}
@@ -1814,7 +1817,7 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 	defer kl.podResizeMutex.Unlock()
 	// TODO: arktos scale-out. patch POD should be per tenant partition
 	//
-	tenantClient := kl.getTPClient(pod.Tenant)
+	tenantClient := util.GetTPClient(kl.kubeClient, pod.Tenant)
 	if fit, patchBytes := kl.canResizePod(pod); fit {
 		_, patchError := tenantClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
@@ -2178,19 +2181,6 @@ func (kl *Kubelet) handleMirrorPod(mirrorPod *v1.Pod, start time.Time) {
 	}
 }
 
-func (kl *Kubelet) getTPClient(tenant string) clientset.Interface {
-	var client clientset.Interface
-	pick := 0
-	if len(kl.kubeClient) == 1 || tenant[0] <= 'm' {
-		client = kl.kubeClient[0]
-	} else {
-		client = kl.kubeClient[1]
-		pick = 1
-	}
-	klog.Infof("tenant %s using client # %d", tenant, pick)
-	return client
-}
-
 // HandlePodActions is the callback in SyncHandler for actions
 func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 	start := kl.clock.Now()
@@ -2210,7 +2200,7 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 			}
 			// TODO: arktos-scaleout. UpdateStatus of PodAction should be per Tenant partition, using desired clientset.
 			//
-			tenantClient := kl.getTPClient(action.Tenant)
+			tenantClient := util.GetTPClient(kl.kubeClient, action.Tenant)
 			if _, err := tenantClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 			}
