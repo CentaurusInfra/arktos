@@ -44,7 +44,7 @@ func (plugin *cniNetworkPlugin) GetPodNetworkStatus(tenant, namespace string, na
 		return nil, fmt.Errorf("CNI failed to retrieve network namespace path: %v", err)
 	}
 
-	result, err := plugin.addToNetwork(plugin.getDefaultNetwork(), name, namespace, id, netnsPath, nil, nil)
+	result, err := plugin.addToNetwork(plugin.getDefaultNetwork(), name, namespace, tenant, id, netnsPath, nil, nil)
 
 	klog.V(5).Infof("GetPodNetworkStatus result %+v", result)
 	if err != nil {

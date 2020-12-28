@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2019 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -90,7 +91,7 @@ echo "Running: go mod edit -replace ${dep}=${dep}@${rev}"
 go mod edit -replace "${dep}=${dep}@${rev}"
 
 # Propagate pinned version to staging repos that also have that dependency
-for repo in $(ls staging/src/k8s.io | sort); do
+for repo in $(kube::util::list_staging_repos); do
   pushd "staging/src/k8s.io/${repo}" >/dev/null 2>&1
     if go mod edit -json | jq -e -r ".Require[] | select(.Path == \"${dep}\")" > /dev/null 2>&1; then
       go mod edit -require "${dep}@${rev}"

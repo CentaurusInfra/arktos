@@ -1,4 +1,4 @@
-load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
 
 go_library(
     name = "go_default_library",
@@ -11,14 +11,6 @@ go_library(
     visibility = ["//visibility:public"],
 )
 
-go_test(
-    name = "go_default_test",
-    srcs = ["bcast_test.go"],
-    embed = [":go_default_library"],
-    tags = ["manual"],
-    deps = ["//vendor/github.com/grafov/bcast/vendor/gopkg.in/fatih/set.v0:go_default_library"],
-)
-
 filegroup(
     name = "package-srcs",
     srcs = glob(["**"]),
@@ -28,10 +20,7 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [
-        ":package-srcs",
-        "//vendor/github.com/grafov/bcast/vendor/gopkg.in/fatih/set.v0:all-srcs",
-    ],
+    srcs = [":package-srcs"],
     tags = ["automanaged"],
     visibility = ["//visibility:public"],
 )

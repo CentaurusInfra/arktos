@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,8 +35,8 @@ import (
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/legacy-cloud-providers/azure/auth"
 
-	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-03-01/compute"
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-07-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-06-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 	"github.com/stretchr/testify/assert"
 )
@@ -711,7 +712,7 @@ func TestServiceDefaultsToNoSessionPersistence(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.Default {
+	if lbRule.LoadDistribution != network.LoadDistributionDefault {
 		t.Errorf("Expected LB rule to have default load distribution but was %s", lbRule.LoadDistribution)
 	}
 }
@@ -734,7 +735,7 @@ func TestServiceRespectsNoSessionAffinity(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.Default {
+	if lbRule.LoadDistribution != network.LoadDistributionDefault {
 		t.Errorf("Expected LB rule to have default load distribution but was %s", lbRule.LoadDistribution)
 	}
 }
@@ -757,7 +758,7 @@ func TestServiceRespectsClientIPSessionAffinity(t *testing.T) {
 		t.Error(err)
 	}
 
-	if lbRule.LoadDistribution != network.SourceIP {
+	if lbRule.LoadDistribution != network.LoadDistributionSourceIP {
 		t.Errorf("Expected LB rule to have SourceIP load distribution but was %s", lbRule.LoadDistribution)
 	}
 }

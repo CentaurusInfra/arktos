@@ -38,7 +38,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/serializer"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/version"
-	apifilters "k8s.io/apiserver/pkg/endpoints/filters"
 	"k8s.io/client-go/kubernetes/scheme"
 	restclient "k8s.io/client-go/rest"
 )
@@ -51,6 +50,8 @@ const (
 	// defaultTimeout is the maximum amount of time per request when no timeout has been set on a RESTClient.
 	// Defaults to 32s in order to have a distinguishable length of time, relative to other timeouts that exist.
 	defaultTimeout = 32 * time.Second
+
+	TenantParam = "tenant"
 )
 
 // DiscoveryInterface holds the methods that discover server-supported API groups,
@@ -213,7 +214,7 @@ func (d *DiscoveryClient) ServerResourcesForGroupVersion(tenantGroupVersion stri
 	if !tenantedFormat {
 		err = d.RESTClient().Get().AbsPath(url.String()).Do().Into(resources)
 	} else {
-		err = d.RESTClient().Get().AbsPath(url.String()).Param(apifilters.TenantParam, parts[0]).Do().Into(resources)
+		err = d.RESTClient().Get().AbsPath(url.String()).Param(TenantParam, parts[0]).Do().Into(resources)
 	}
 
 	if err != nil {

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,13 +25,13 @@ import (
 	"strconv"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 	cloudprovider "k8s.io/cloud-provider"
 	servicehelpers "k8s.io/cloud-provider/service/helpers"
 	"k8s.io/klog"
 
-	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2018-07-01/network"
+	"github.com/Azure/azure-sdk-for-go/services/network/mgmt/2019-06-01/network"
 	"github.com/Azure/go-autorest/autorest/to"
 )
 
@@ -947,9 +948,9 @@ func (az *Cloud) reconcileLoadBalancerRule(
 				})
 			}
 
-			loadDistribution := network.Default
+			loadDistribution := network.LoadDistributionDefault
 			if service.Spec.SessionAffinity == v1.ServiceAffinityClientIP {
-				loadDistribution = network.SourceIP
+				loadDistribution = network.LoadDistributionSourceIP
 			}
 
 			expectedRule := network.LoadBalancingRule{
