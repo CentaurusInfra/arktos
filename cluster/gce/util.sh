@@ -2997,6 +2997,10 @@ function create-master() {
   create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #fi
   
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    echo "VDBG: in ${MASTER_NAME}: sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
+    ssh-to-node ${MASTER_NAME} "sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
+  fi
   ENABLE_KUBESCHEDULER=false
   ENABLE_KUBECONTROLLER=false
   create-partitionserver

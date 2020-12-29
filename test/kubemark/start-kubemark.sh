@@ -58,6 +58,7 @@ TENANT1_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant1.yaml
 TENANT2_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant2.yaml"
 
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+export SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
 
 if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" != "haproxy" && "${KUBERNETES_SCALEOUT_PROXY_APP}" != "nginx" ]] ; then
   echo "Error: unknown KUBERNETES_SCALEOUT_PROXY_APP ${KUBERNETES_SCALEOUT_PROXY_APP}, must be nginx or haproxy. "
