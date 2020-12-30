@@ -34,6 +34,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 // ListRuntimeObjectsForKind returns objects of given kind that satisfy given namespace, labelSelector and fieldSelector.
@@ -45,7 +46,7 @@ func ListRuntimeObjectsForKind(d dynamic.Interface, gvr schema.GroupVersionResou
 		FieldSelector: fieldSelector,
 	}
 	listFunc = func() error {
-		list, err := d.Resource(gvr).List(listOpts)
+		list, err := d.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).List(listOpts)
 		if err != nil {
 			return err
 		}
