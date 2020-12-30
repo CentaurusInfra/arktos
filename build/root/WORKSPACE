@@ -71,9 +71,7 @@ go_download_sdk(
     },
 )
 
-go_register_toolchains(
-    go_version = "1.13.9",
-)
+go_register_toolchains()
 
 http_archive(
     name = "io_bazel_rules_docker",
