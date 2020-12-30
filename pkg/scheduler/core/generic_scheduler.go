@@ -1199,6 +1199,7 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 		pvc, err := pvcLister.PersistentVolumeClaimsWithMultiTenancy(namespace, pod.Tenant).Get(pvcName)
 		if err != nil {
 			// The error has already enough context ("persistentvolumeclaim "myclaim" not found")
+			klog.V(2).Infof("Qian AAAAAAAAAAAAAA 1: %v %v %v %v", pvcName, namespace, pod.Tenant, err)
 			return err
 		}
 

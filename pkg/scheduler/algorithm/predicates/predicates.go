@@ -23,6 +23,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"runtime/debug"
 
 	"k8s.io/klog"
 
@@ -197,7 +198,12 @@ type CachedPersistentVolumeClaimInfo struct {
 
 // GetPersistentVolumeClaimInfo fetches the claim in specified namespace with specified name
 func (c *CachedPersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(tenant, namespace, name string) (*v1.PersistentVolumeClaim, error) {
-	return c.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
+	a, b := c.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(name)
+	if b != nil {		
+		klog.V(2).Infof("Qian AAAAAAAAAAAAAA 2: %v %v %v %v", name, namespace, tenant, b)
+		debug.PrintStack()
+	}
+	return a, b
 }
 
 // CachedNodeInfo implements NodeInfo
