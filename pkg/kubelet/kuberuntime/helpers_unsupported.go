@@ -2,6 +2,7 @@
 
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,5 +21,13 @@ package kuberuntime
 
 // milliCPUToShares converts milliCPU to CPU shares
 func milliCPUToShares(milliCPU int64) int64 {
+	return 0
+}
+
+func sharesToMilliCPU(shares int64) int64 {
+	return 0
+}
+
+func quotaToMilliCPU(quota int64, period int64) int64 {
 	return 0
 }
