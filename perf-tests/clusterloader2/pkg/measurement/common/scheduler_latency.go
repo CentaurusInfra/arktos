@@ -34,6 +34,7 @@ import (
 	"k8s.io/kubernetes/pkg/master/ports"
 	schedulermetric "k8s.io/kubernetes/pkg/scheduler/metrics"
 	"k8s.io/kubernetes/pkg/util/system"
+	perfutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (
@@ -254,8 +255,9 @@ func (s *schedulerLatencyMeasurement) sendRequestToScheduler(c clientset.Interfa
 
 		body, err := c.CoreV1().RESTClient().Verb(opUpper).
 			Context(ctx).
+			Tenant(perfutil.GetTenant()).
 			Namespace(metav1.NamespaceSystem).
-			Resource("pods").
+			Resource("pods").			
 			Name(fmt.Sprintf("kube-scheduler-%v:%v", masterName, ports.InsecureSchedulerPort)).
 			SubResource("proxy").
 			Suffix("metrics").
