@@ -118,7 +118,7 @@ func (c *controller) PreloadImages() error {
 	}
 
 	klog.Infof("Getting %s/%s deamonset size...", namespace, daemonsetName)
-	ds, err := kclient.AppsV1().DaemonSets(namespace).Get(daemonsetName, metav1.GetOptions{})
+	ds, err := kclient.AppsV1().DaemonSetsWithMultiTenancy(namespace, perfutil.GetTenant()).Get(daemonsetName, metav1.GetOptions{})
 	if err != nil {
 		return err
 	}
