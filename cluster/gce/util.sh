@@ -2794,55 +2794,42 @@ function create-proxy-vm() {
   return 1
 }
 
-function init-proxy-cfg() {
+function update-proxy() {
+  local -r TP_IP=$1
+  local -r RP_IP=$2
 
-  if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" == "haproxy" ]]; then
-    cp -f "${KUBE_ROOT}/hack/scale_out_poc/haproxy_2T1R/haproxy.cfg" "${PROXY_CONFIG_FILE_TMP}" 
-  else
-    cp -f "${KUBE_ROOT}/hack/scale_out_poc/two_TP/nginx.conf" "${PROXY_CONFIG_FILE_TMP}" 
+  local -r proxy_template=${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
+
+  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}" 
+
+  if [[ $? != 0 ]] 
+  then
+          printf "\033[0;31mhaproxy_cfg_generator Failed\n"
+          exit 1
   fi
-    
-  sed -i -e "s@{{ *proxy_port *}}@8888@g" "${PROXY_CONFIG_FILE_TMP}" 
-
-  sed -i -e "s@{{ *arktos_api_protocol *}}@http@g" "${PROXY_CONFIG_FILE_TMP}" 
-  sed -i -e "s@{{ *arktos_api_port *}}@8080@g" "${PROXY_CONFIG_FILE_TMP}" 
-
-  sed -i -e "s@{{ *connection_timeout *}}@10m@g" "${PROXY_CONFIG_FILE_TMP}" 
 
   sed -i -e "/^ONEBOX_ONLY:/d"  "${PROXY_CONFIG_FILE_TMP}"
   sed -i -e "s/KUBEMARK_ONLY://g" "${PROXY_CONFIG_FILE_TMP}"
-}
-
-function update-proxy() {
-  macro_name=$1
-  macro_value=$2
-
-  sed -i -e "s@{{ *${macro_name} *}}@${macro_value}@g" "${PROXY_CONFIG_FILE_TMP}"
-
-  cp -f "${PROXY_CONFIG_FILE_TMP}" "${PROXY_CONFIG_FILE_TMP}.interim"
-
-  # proxy config files do not know macros, so we trick it with the current master IP temporarily.
-  # real replacement will happen when the master of the partition happens
-  sed -i -e "s@{{ *resource_partition_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
-  sed -i -e "s@{{ *tenant_partition_one_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
-  sed -i -e "s@{{ *tenant_partition_two_ip *}}@${MASTER_RESERVED_IP}@g" "${PROXY_CONFIG_FILE_TMP}.interim"
-
+        
   load-proxy-cfg
 }
 
 function load-proxy-cfg {
-  gcloud compute scp --zone="${ZONE}" "${PROXY_CONFIG_FILE_TMP}.interim" "${PROXY_NAME}:~/${PROXY_CONFIG_FILE}"
+  gcloud compute scp --zone="${ZONE}" "${PROXY_CONFIG_FILE_TMP}" "${PROXY_NAME}:~/${PROXY_CONFIG_FILE}"
   ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
   ssh-to-node ${PROXY_NAME} "sudo mv ~/${PROXY_CONFIG_FILE} /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
   echo "VDBG ========================================"
-  cat ${PROXY_CONFIG_FILE_TMP}.interim
+  cat ${PROXY_CONFIG_FILE_TMP}
   echo "VDBG ========================================"
   ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
 
-function setup-proxy() {
-  init-proxy-cfg
+function build_haproxy_cfg_generator() {
+  export GO111MODULE=on
+  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/cfg_generator/"
+}
 
+function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo sysctl -w net.ipv4.ip_local_port_range='12000 65000'"
   ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
   ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
@@ -2974,18 +2961,27 @@ function create-master() {
 
   if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
     setup-proxy
+    build_haproxy_cfg_generator
   fi
 
-  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "resource_partition" ]]; then 
-    update-proxy "resource_partition_ip" "${MASTER_RESERVED_IP}"
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then 
+    update-proxy "$(cat /tmp/saved_tenant_ips.txt)" "${MASTER_RESERVED_IP}"
   fi
 
-  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_one" ]]; then 
-    update-proxy "tenant_partition_one_ip" "${MASTER_RESERVED_IP}"
-  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then 
+    if [[ -f /tmp/saved_tenant_ips.txt ]]; then
+      TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
+    fi
+    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then 
+      TP_IP_CONCAT="${MASTER_RESERVED_IP}"
+    else
+      TP_IP_CONCAT="${TP_IP_CONCAT},${MASTER_RESERVED_IP}"
+    fi
 
-  if [[ "${PARTITION_TO_UPDATE:-unknown}" == "tenant_partition_two" ]]; then 
-    update-proxy "tenant_partition_two_ip" "${MASTER_RESERVED_IP}"
+    echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
+         
+    # as TP are built before RP, so when updating the proxy.cfg before RP is ready, we use IP of TP to replace RP_IP temporarily
+    update-proxy "${TP_IP_CONCAT}" "${MASTER_RESERVED_IP}"
   fi
 
 

@@ -23,6 +23,7 @@ filegroup(
         "//hack/e2e-internal:all-srcs",
         "//hack/lib:all-srcs",
         "//hack/make-rules:all-srcs",
+        "//hack/scale_out_poc/config_haproxy/cfg_generator:all-srcs",
     ],
     tags = ["automanaged"],
 )
