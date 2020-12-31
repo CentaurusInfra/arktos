@@ -34,6 +34,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 // ListRuntimeObjectsForKind returns objects of given kind that satisfy given namespace, labelSelector and fieldSelector.
@@ -45,7 +46,7 @@ func ListRuntimeObjectsForKind(d dynamic.Interface, gvr schema.GroupVersionResou
 		FieldSelector: fieldSelector,
 	}
 	listFunc = func() error {
-		list, err := d.Resource(gvr).List(listOpts)
+		list, err := d.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).List(listOpts)
 		if err != nil {
 			return err
 		}
@@ -390,10 +391,10 @@ func CreateMetaNamespaceKey(obj runtime.Object) (string, error) {
 }
 
 // GetNumObjectsMatchingSelector returns number of objects matching the given selector.
-func GetNumObjectsMatchingSelector(c dynamic.Interface, namespace string, resource schema.GroupVersionResource, labelSelector labels.Selector) (int, error) {
+func GetNumObjectsMatchingSelector(c dynamic.Interface, tenant, namespace string, resource schema.GroupVersionResource, labelSelector labels.Selector) (int, error) {
 	var numObjects int
 	listFunc := func() error {
-		list, err := c.Resource(resource).Namespace(namespace).List(metav1.ListOptions{LabelSelector: labelSelector.String()})
+		list, err := c.Resource(resource).NamespaceWithMultiTenancy(namespace, tenant).List(metav1.ListOptions{LabelSelector: labelSelector.String()})
 		numObjects = len(list.Items)
 		return err
 	}

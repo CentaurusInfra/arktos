@@ -181,7 +181,7 @@ func (p *podStartupLatencyMeasurement) gatherScheduleTimes(c clientset.Interface
 		"source":              corev1.DefaultSchedulerName,
 	}.AsSelector().String()
 	options := metav1.ListOptions{FieldSelector: selector}
-	schedEvents, err := c.CoreV1().Events(p.selector.Namespace).List(options)
+	schedEvents, err := c.CoreV1().EventsWithMultiTenancy(p.selector.Namespace, util.GetTenant()).List(options)
 	if err != nil {
 		return err
 	}

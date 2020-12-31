@@ -402,6 +402,7 @@ func getReplicaCountOfNewObject(ctx Context, namespace string, object *api.Objec
 	gvr, _ := meta.UnsafeGuessKindToResource(gvk)
 	replicaCount, err := runtimeobjects.GetNumObjectsMatchingSelector(
 		ctx.GetClusterFramework().GetDynamicClients().GetClient(),
+		util.GetTenant(),
 		namespace,
 		gvr,
 		selector)
