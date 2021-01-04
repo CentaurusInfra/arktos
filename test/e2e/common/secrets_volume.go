@@ -376,43 +376,43 @@ var _ = ginkgo.Describe("[sig-storage] Secrets", func() {
 		name := "immutable"
 		secret := secretForTest(f.Namespace.Name, name)
 
-		currentSecret, err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(context.TODO(), secret, metav1.CreateOptions{})
+		currentSecret, err := f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Create(secret)
 		framework.ExpectNoError(err, "Failed to create secret %q in namespace %q", secret.Name, secret.Namespace)
 
 		currentSecret.Data["data-4"] = []byte("value-4\n")
-		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(context.TODO(), currentSecret, metav1.UpdateOptions{})
+		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(currentSecret)
 		framework.ExpectNoError(err, "Failed to update secret %q in namespace %q", secret.Name, secret.Namespace)
 
 		// Mark secret as immutable.
 		trueVal := true
 		currentSecret.Immutable = &trueVal
-		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(context.TODO(), currentSecret, metav1.UpdateOptions{})
+		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(currentSecret)
 		framework.ExpectNoError(err, "Failed to mark secret %q in namespace %q as immutable", secret.Name, secret.Namespace)
 
 		// Ensure data can't be changed now.
 		currentSecret.Data["data-5"] = []byte("value-5\n")
-		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(context.TODO(), currentSecret, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(currentSecret)
 		framework.ExpectEqual(apierrors.IsInvalid(err), true)
 
 		// Ensure secret can't be switched from immutable to mutable.
-		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Get(name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Failed to get secret %q in namespace %q", secret.Name, secret.Namespace)
 		framework.ExpectEqual(*currentSecret.Immutable, true)
 
 		falseVal := false
 		currentSecret.Immutable = &falseVal
-		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(context.TODO(), currentSecret, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(currentSecret)
 		framework.ExpectEqual(apierrors.IsInvalid(err), true)
 
 		// Ensure that metadata can be changed.
-		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		currentSecret, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Get(name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Failed to get secret %q in namespace %q", secret.Name, secret.Namespace)
 		currentSecret.Labels = map[string]string{"label1": "value1"}
-		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(context.TODO(), currentSecret, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Update(currentSecret)
 		framework.ExpectNoError(err, "Failed to update secret %q in namespace %q", secret.Name, secret.Namespace)
 
 		// Ensure that immutable secret can be deleted.
-		err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		err = f.ClientSet.CoreV1().Secrets(f.Namespace.Name).Delete(name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "Failed to delete secret %q in namespace %q", secret.Name, secret.Namespace)
 	})
 

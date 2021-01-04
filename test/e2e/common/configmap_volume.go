@@ -552,43 +552,43 @@ var _ = ginkgo.Describe("[sig-storage] ConfigMap", func() {
 		name := "immutable"
 		configMap := newConfigMap(f, name)
 
-		currentConfigMap, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
+		currentConfigMap, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(configMap)
 		framework.ExpectNoError(err, "Failed to create config map %q in namespace %q", configMap.Name, configMap.Namespace)
 
 		currentConfigMap.Data["data-4"] = "value-4"
-		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(currentConfigMap)
 		framework.ExpectNoError(err, "Failed to update config map %q in namespace %q", configMap.Name, configMap.Namespace)
 
 		// Mark config map as immutable.
 		trueVal := true
 		currentConfigMap.Immutable = &trueVal
-		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(currentConfigMap)
 		framework.ExpectNoError(err, "Failed to mark config map %q in namespace %q as immutable", configMap.Name, configMap.Namespace)
 
 		// Ensure data can't be changed now.
 		currentConfigMap.Data["data-5"] = "value-5"
-		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(currentConfigMap)
 		framework.ExpectEqual(apierrors.IsInvalid(err), true)
 
 		// Ensure config map can't be switched from immutable to mutable.
-		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Failed to get config map %q in namespace %q", configMap.Name, configMap.Namespace)
 		framework.ExpectEqual(*currentConfigMap.Immutable, true)
 
 		falseVal := false
 		currentConfigMap.Immutable = &falseVal
-		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(currentConfigMap)
 		framework.ExpectEqual(apierrors.IsInvalid(err), true)
 
 		// Ensure that metadata can be changed.
-		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(name, metav1.GetOptions{})
 		framework.ExpectNoError(err, "Failed to get config map %q in namespace %q", configMap.Name, configMap.Namespace)
 		currentConfigMap.Labels = map[string]string{"label1": "value1"}
-		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(currentConfigMap)
 		framework.ExpectNoError(err, "Failed to update config map %q in namespace %q", configMap.Name, configMap.Namespace)
 
 		// Ensure that immutable config map can be deleted.
-		err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(name, &metav1.DeleteOptions{})
 		framework.ExpectNoError(err, "Failed to delete config map %q in namespace %q", configMap.Name, configMap.Namespace)
 	})
 
