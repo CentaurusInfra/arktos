@@ -18,6 +18,7 @@ package common
 
 import (
 	"fmt"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"path"
 
 	"github.com/onsi/ginkgo"
@@ -545,9 +546,55 @@ var _ = ginkgo.Describe("[sig-storage] ConfigMap", func() {
 
 	})
 
-	//The pod is in pending during volume creation until the configMap objects are available
-	//or until mount the configMap volume times out. There is no configMap object defined for the pod, so it should return timout exception unless it is marked optional.
-	//Slow (~5 mins)
+	// It should be forbidden to change data for configmaps marked as immutable, but
+	// allowed to modify its metadata independently of its state.
+	ginkgo.It("should be immutable if `immutable` field is set", func() {
+		name := "immutable"
+		configMap := newConfigMap(f, name)
+
+		currentConfigMap, err := f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Create(context.TODO(), configMap, metav1.CreateOptions{})
+		framework.ExpectNoError(err, "Failed to create config map %q in namespace %q", configMap.Name, configMap.Namespace)
+
+		currentConfigMap.Data["data-4"] = "value-4"
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		framework.ExpectNoError(err, "Failed to update config map %q in namespace %q", configMap.Name, configMap.Namespace)
+
+		// Mark config map as immutable.
+		trueVal := true
+		currentConfigMap.Immutable = &trueVal
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		framework.ExpectNoError(err, "Failed to mark config map %q in namespace %q as immutable", configMap.Name, configMap.Namespace)
+
+		// Ensure data can't be changed now.
+		currentConfigMap.Data["data-5"] = "value-5"
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		framework.ExpectEqual(apierrors.IsInvalid(err), true)
+
+		// Ensure config map can't be switched from immutable to mutable.
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Failed to get config map %q in namespace %q", configMap.Name, configMap.Namespace)
+		framework.ExpectEqual(*currentConfigMap.Immutable, true)
+
+		falseVal := false
+		currentConfigMap.Immutable = &falseVal
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		framework.ExpectEqual(apierrors.IsInvalid(err), true)
+
+		// Ensure that metadata can be changed.
+		currentConfigMap, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Get(context.TODO(), name, metav1.GetOptions{})
+		framework.ExpectNoError(err, "Failed to get config map %q in namespace %q", configMap.Name, configMap.Namespace)
+		currentConfigMap.Labels = map[string]string{"label1": "value1"}
+		_, err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Update(context.TODO(), currentConfigMap, metav1.UpdateOptions{})
+		framework.ExpectNoError(err, "Failed to update config map %q in namespace %q", configMap.Name, configMap.Namespace)
+
+		// Ensure that immutable config map can be deleted.
+		err = f.ClientSet.CoreV1().ConfigMaps(f.Namespace.Name).Delete(context.TODO(), name, metav1.DeleteOptions{})
+		framework.ExpectNoError(err, "Failed to delete config map %q in namespace %q", configMap.Name, configMap.Namespace)
+	})
+
+	// The pod is in pending during volume creation until the configMap objects are available
+	// or until mount the configMap volume times out. There is no configMap object defined for the pod, so it should return timout exception unless it is marked optional.
+	// Slow (~5 mins)
 	ginkgo.It("Should fail non-optional pod creation due to configMap object does not exist [Slow]", func() {
 		volumeMountPath := "/etc/configmap-volumes"
 		podName := "pod-configmaps-" + string(uuid.NewUUID())
