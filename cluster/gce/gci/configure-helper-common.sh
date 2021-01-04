@@ -1953,6 +1953,10 @@ function start-kube-apiserver {
   authorization_mode="Node,${authorization_mode}"
   params+=" --authorization-mode=${authorization_mode}"
 
+  if [[ -n "${KUBE_APISERVER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_APISERVER_EXTRA_ARGS"
+  fi
+
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
     container_env+="{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}"
@@ -2240,6 +2244,10 @@ function start-kube-controller-manager {
     params+=" --tenant-servers=${TENANT_SERVERS}"
   fi
 
+  if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_CONTROLLER_EXTRA_ARGS"
+  fi
+
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
@@ -2361,6 +2369,11 @@ function start-kube-scheduler {
     params+=" --use-legacy-policy-config"
     params+=" --policy-config-file=/etc/srv/kubernetes/kube-scheduler/policy-config"
   fi
+
+  if [[ -n "${KUBE_SCHEDULER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_SCHEDULER_EXTRA_ARGS"
+  fi
+
   local -r kube_scheduler_docker_tag=$(cat "${KUBE_HOME}/kube-docker-files/kube-scheduler.docker_tag")
 
   # Remove salt comments and replace variables with values.
