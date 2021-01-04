@@ -2,6 +2,7 @@
 
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -68,6 +69,22 @@ func (m *unsupportedCgroupManager) CgroupName(name string) CgroupName {
 
 func (m *unsupportedCgroupManager) ReduceCPULimits(cgroupName CgroupName) error {
 	return nil
+}
+
+func (m *unsupportedCgroupManager) GetCgroupCpuConfig(name CgroupName) (int64, uint64, uint64, error) {
+	return 0, 0, 0, fmt.Errorf("Cgroup Manager is not supported in this build")
+}
+
+func (m *unsupportedCgroupManager) GetCgroupMemoryConfig(name CgroupName) (uint64, error) {
+	return 0, fmt.Errorf("Cgroup Manager is not supported in this build")
+}
+
+func (m *unsupportedCgroupManager) SetCgroupCpuConfig(name CgroupName, cpuQuota *int64, cpuPeriod, cpuShares *uint64) error {
+	return fmt.Errorf("Cgroup Manager is not supported in this build")
+}
+
+func (m *unsupportedCgroupManager) SetCgroupMemoryConfig(name CgroupName, memoryLimit int64) error {
+	return fmt.Errorf("Cgroup Manager is not supported in this build")
 }
 
 var RootCgroupName = CgroupName([]string{})

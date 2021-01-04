@@ -1,4 +1,5 @@
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,8 +30,7 @@ ENV KUBE_CROSSPLATFORMS \
   linux/arm linux/arm64 \
   linux/ppc64le \
   linux/s390x \
-  darwin/amd64 darwin/386 \
-  windows/amd64 windows/386
+  darwin/amd64 darwin/386
 
 # Pre-compile the standard go library when cross-compiling. This is much easier now when we have go1.5+
 RUN for platform in ${KUBE_CROSSPLATFORMS}; do GOOS=${platform%/*} GOARCH=${platform##*/} go install std; done \

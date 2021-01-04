@@ -2,6 +2,7 @@
 
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,6 +30,7 @@ const (
 	MilliCPUToCPU = 0
 
 	MinQuotaPeriod = 0
+	QuotaPeriod    = 0
 )
 
 // MilliCPUToQuota converts milliCPU and period to CFS quota values.
