@@ -24,9 +24,11 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/storage/names"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 // strategy implements behavior for ConfigMap objects
@@ -55,7 +57,8 @@ func (strategy) TenantScoped() bool {
 }
 
 func (strategy) PrepareForCreate(ctx context.Context, obj runtime.Object) {
-	_ = obj.(*api.ConfigMap)
+	configMap := obj.(*api.ConfigMap)
+	dropDisabledFields(configMap, nil)
 }
 
 func (strategy) Validate(ctx context.Context, obj runtime.Object) field.ErrorList {
@@ -73,16 +76,27 @@ func (strategy) AllowCreateOnUpdate() bool {
 }
 
 func (strategy) PrepareForUpdate(ctx context.Context, newObj, oldObj runtime.Object) {
-	_ = oldObj.(*api.ConfigMap)
-	_ = newObj.(*api.ConfigMap)
-}
-
-func (strategy) AllowUnconditionalUpdate() bool {
-	return true
+	oldConfigMap := oldObj.(*api.ConfigMap)
+	newConfigMap := newObj.(*api.ConfigMap)
+	dropDisabledFields(newConfigMap, oldConfigMap)
 }
 
 func (strategy) ValidateUpdate(ctx context.Context, newObj, oldObj runtime.Object) field.ErrorList {
 	oldCfg, newCfg := oldObj.(*api.ConfigMap), newObj.(*api.ConfigMap)
 
 	return validation.ValidateConfigMapUpdate(newCfg, oldCfg)
+}
+
+func isImmutableInUse(configMap *api.ConfigMap) bool {
+	return configMap != nil && configMap.Immutable != nil
+}
+
+func dropDisabledFields(configMap *api.ConfigMap, oldConfigMap *api.ConfigMap) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.ImmutableEphemeralVolumes) && !isImmutableInUse(oldConfigMap) {
+		configMap.Immutable = nil
+	}
+}
+
+func (strategy) AllowUnconditionalUpdate() bool {
+	return true
 }

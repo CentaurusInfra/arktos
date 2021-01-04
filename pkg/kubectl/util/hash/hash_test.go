@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -164,8 +165,8 @@ not their metadata (e.g. the Data of a ConfigMap, but nothing in ObjectMeta).
 		obj      interface{}
 		expect   int
 	}{
-		{"ConfigMap", v1.ConfigMap{}, 4},
-		{"Secret", v1.Secret{}, 5},
+		{"ConfigMap", v1.ConfigMap{}, 5},
+		{"Secret", v1.Secret{}, 6},
 	}
 	for _, c := range cases {
 		val := reflect.ValueOf(c.obj)
