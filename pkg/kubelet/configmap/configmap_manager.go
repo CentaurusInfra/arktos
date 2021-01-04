@@ -19,7 +19,7 @@ package configmap
 
 import (
 	"fmt"
-	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -63,7 +63,7 @@ func NewSimpleConfigMapManager(kubeClients []clientset.Interface) Manager {
 }
 
 func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
-	client := getTPClient(s.kubeClients, tenant)
+	client := util.GetTPClient(s.kubeClients, tenant)
 	return client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
@@ -113,19 +113,6 @@ const (
 	defaultTTL = time.Minute
 )
 
-func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
-	var client clientset.Interface
-	pick := 0
-	if len(kubeClients) == 1 || tenant[0] <= 'm' {
-		client = kubeClients[0]
-	} else {
-		client = kubeClients[1]
-		pick = 1
-	}
-	klog.Infof("tenant %s using client # %d", tenant, pick)
-	return client
-}
-
 // NewCachingConfigMapManager creates a manager that keeps a cache of all configmaps
 // necessary for registered pods.
 // It implement the following logic:
@@ -136,7 +123,7 @@ func getTPClient(kubeClients []clientset.Interface, tenant string) clientset.Int
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingConfigMapManager(kubeClient []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
 	getConfigMap := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		client := getTPClient(kubeClient, tenant)
+		client := util.GetTPClient(kubeClient, tenant)
 		return client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	configMapStore := manager.NewObjectStore(getConfigMap, clock.RealClock{}, getTTL, defaultTTL)
@@ -153,11 +140,11 @@ func NewCachingConfigMapManager(kubeClient []clientset.Interface, getTTL manager
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingConfigMapManager(kubeClients []clientset.Interface) Manager {
 	listConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		client := getTPClient(kubeClients, tenant)
+		client := util.GetTPClient(kubeClients, tenant)
 		return client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).List(opts)
 	}
 	watchConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		client := getTPClient(kubeClients, tenant)
+		client := util.GetTPClient(kubeClients, tenant)
 		return client.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newConfigMap := func() runtime.Object {

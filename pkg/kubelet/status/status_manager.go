@@ -19,6 +19,7 @@ package status
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 	"sort"
 	"sync"
 	"time"
@@ -471,19 +472,6 @@ func (m *manager) syncBatch() {
 	}
 }
 
-func (m *manager) getTPClient(tenant string) clientset.Interface {
-	var client clientset.Interface
-	pick := 0
-	if len(m.kubeClient) == 1 || tenant[0] <= 'm' {
-		client = m.kubeClient[0]
-	} else {
-		client = m.kubeClient[1]
-		pick = 1
-	}
-	klog.Infof("tenant %s using kube client #%d", tenant, pick)
-	return client
-}
-
 // syncPod syncs the given status with the API server. The caller must not hold the lock.
 func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	if !m.needsUpdate(uid, status) {
@@ -492,7 +480,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	// TODO: make me easier to express from client code
-	tenantClient := m.getTPClient(status.podTenant)
+	tenantClient := util.GetTPClient(m.kubeClient, status.podTenant)
 	pod, err := tenantClient.CoreV1().PodsWithMultiTenancy(status.podNamespace, status.podTenant).Get(status.podName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		klog.V(3).Infof("Pod %q (%s) does not exist on the server", status.podName, uid)

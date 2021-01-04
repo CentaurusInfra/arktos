@@ -19,6 +19,7 @@ package config
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/kubelet/util"
 	"reflect"
 	"sync"
 
@@ -260,6 +261,10 @@ func (s *podStorage) merge(source string, change interface{}) (adds, updates, de
 			if ref.Annotations == nil {
 				ref.Annotations = make(map[string]string)
 			}
+
+			// Bookkeeping mapping between tenant and its origin apiserver
+			util.RegisterTenantSourceServer(source, ref)
+
 			ref.Annotations[kubetypes.ConfigSourceAnnotationKey] = source
 			if existing, found := oldPods[ref.UID]; found {
 				pods[ref.UID] = existing
