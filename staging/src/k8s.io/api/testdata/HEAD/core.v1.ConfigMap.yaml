@@ -1,8 +1,9 @@
 apiVersion: v1
 binaryData:
-  "27": /Q==
+  "27": 9Q==
 data:
   "25": "26"
+immutable: false
 kind: ConfigMap
 metadata:
   annotations:
