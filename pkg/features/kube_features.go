@@ -504,6 +504,13 @@ const (
 	//
 	// Enables WorkloadInfo default values
 	WorkloadInfoDefaulting featuregate.Feature = "WorkloadInfoDefaulting"
+
+	// owner: @wojtek-t
+	// alpha: v1.18
+	// beta: v1.19
+	//
+	// Enables a feature to make secrets and configmaps data immutable.
+	ImmutableEphemeralVolumes featuregate.Feature = "ImmutableEphemeralVolumes"
 )
 
 func init() {
@@ -588,6 +595,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
 	MandatoryArktosNetwork:                         {Default: false, PreRelease: featuregate.Alpha},
 	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
+	ImmutableEphemeralVolumes:                      {Default: true, PreRelease: featuregate.Beta},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
