@@ -398,7 +398,9 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 			catchError(fmt.Errorf("node not found"))
 			return
 		}
-		for _, existingPod := range nodeInfo.PodsWithAffinity() {
+		existingPods := nodeInfo.PodsWithAffinity()
+		// klog.V(2).Infof("Node %v, Pods with Affinity: %v", nodeInfo.Node().Name, len(existingPods))
+		for _, existingPod := range existingPods {
 			existingPodTopologyMaps, err := getMatchingAntiAffinityTopologyPairsOfPod(pod, existingPod, node)
 			if err != nil {
 				catchError(err)
@@ -408,6 +410,10 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 			appendTopologyPairsMaps(existingPodTopologyMaps)
 		}
 	}
+
+	klog.V(2).Infof("Number of nodes: %v", len(allNodeNames))
+	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
+	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(ctx, 16, len(allNodeNames), processNode)
 	return topologyMaps, firstError
 }
@@ -499,6 +505,10 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 			appendResult(node.Name, nodeTopologyPairsAffinityPodsMaps, nodeTopologyPairsAntiAffinityPodsMaps)
 		}
 	}
+
+	klog.V(2).Infof("DEBUG: should not see this log in our current perf runs. Number of nodes: %v", len(allNodeNames))
+	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
+	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(ctx, 16, len(allNodeNames), processNode)
 	return topologyPairsAffinityPodsMaps, topologyPairsAntiAffinityPodsMaps, firstError
 }

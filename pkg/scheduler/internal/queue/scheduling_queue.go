@@ -207,6 +207,8 @@ func (p *PriorityQueue) run() {
 func (p *PriorityQueue) Add(pod *v1.Pod) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+	klog.V(2).Infof("adding pod %v/%v/%v to the scheduling queue.", pod.Tenant, pod.Namespace, pod.Name)
+
 	pInfo := p.newPodInfo(pod)
 	if err := p.activeQ.Add(pInfo); err != nil {
 		klog.Errorf("Error adding pod %v/%v/%v to the scheduling queue: %v", pod.Tenant, pod.Namespace, pod.Name, err)
@@ -814,7 +816,7 @@ func MakeNextPodFunc(queue SchedulingQueue) func() *v1.Pod {
 	return func() *v1.Pod {
 		pod, err := queue.Pop()
 		if err == nil {
-			klog.V(4).Infof("About to try and schedule pod %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+			klog.V(2).Infof("About to try and schedule pod %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 			return pod
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)

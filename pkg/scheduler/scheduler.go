@@ -414,6 +414,7 @@ func (sched *Scheduler) assume(assumed *v1.Pod, host string) error {
 // bind binds a pod to a given node defined in a binding object.  We expect this to run asynchronously, so we
 // handle binding metrics internally.
 func (sched *Scheduler) bind(assumed *v1.Pod, b *v1.Binding) error {
+	klog.V(2).Infof("Attempting to bind pod: %v/%v/%v", assumed.Tenant, assumed.Namespace, assumed.Name)
 	bindingStart := time.Now()
 	// If binding succeeded then PodScheduled condition will be updated in apiserver so that
 	// it's atomic with setting host.
@@ -450,17 +451,18 @@ func (sched *Scheduler) scheduleOne() {
 	}
 	if pod.DeletionTimestamp != nil {
 		sched.config.Recorder.Eventf(pod, v1.EventTypeWarning, "FailedScheduling", "skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
-		klog.V(3).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+		klog.V(2).Infof("Skip schedule deleting pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 		return
 	}
 
-	klog.V(3).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+	klog.V(2).Infof("Attempting to schedule pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 
 	// Synchronously attempt to find a fit for the pod.
 	start := time.Now()
 	pluginContext := framework.NewPluginContext()
 	scheduleResult, err := sched.schedule(pod, pluginContext)
 	if err != nil {
+		klog.V(2).Infof("DEBUG: Schedule pod %v/%v/%v failed with error: %v", pod.Tenant, pod.Namespace, pod.Name, err)
 		// schedule() may have failed because the pod would not fit on any host, so we try to
 		// preempt, with the expectation that the next time the pod is tried for scheduling it
 		// will fit due to the preemption. It is also possible that a different pod will schedule
