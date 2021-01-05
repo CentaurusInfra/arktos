@@ -214,10 +214,12 @@ func testSecretCacheMultipleRegistrations(t *testing.T, tenant string) {
 
 func TestImmutableSecretStopsTheReflector(t *testing.T) {
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.ImmutableEphemeralVolumes, true)()
+	tenant := "test-te"
 
 	secret := func(rv string, immutable bool) *v1.Secret {
 		result := &v1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
+				Tenant:          tenant,
 				Name:            "name",
 				Namespace:       "ns",
 				ResourceVersion: rv,
@@ -282,7 +284,7 @@ func TestImmutableSecretStopsTheReflector(t *testing.T) {
 
 			store := newSecretCache(fakeClient)
 
-			key := objectKey{namespace: "ns", name: "name"}
+			key := objectKey{tenant: tenant, namespace: "ns", name: "name"}
 			itemExists := func() (bool, error) {
 				store.lock.Lock()
 				defer store.lock.Unlock()
@@ -305,12 +307,12 @@ func TestImmutableSecretStopsTheReflector(t *testing.T) {
 			}
 
 			// AddReference should start reflector.
-			store.AddReference("ns", "name")
+			store.AddReference(tenant, "ns", "name")
 			if err := wait.Poll(10*time.Millisecond, time.Second, itemExists); err != nil {
 				t.Errorf("item wasn't added to cache")
 			}
 
-			obj, err := store.Get("ns", "name")
+			obj, err := store.Get(tenant, "ns", "name")
 			if tc.initial != nil {
 				assert.True(t, apiequality.Semantic.DeepEqual(tc.initial, obj))
 			} else {
@@ -327,7 +329,7 @@ func TestImmutableSecretStopsTheReflector(t *testing.T) {
 
 			// Eventually Get should return that secret.
 			getFn := func() (bool, error) {
-				object, err := store.Get("ns", "name")
+				object, err := store.Get(tenant, "ns", "name")
 				if err != nil {
 					if apierrors.IsNotFound(err) {
 						return false, nil
