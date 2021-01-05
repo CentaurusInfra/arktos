@@ -208,6 +208,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 		return result, err
 	}
 
+	klog.V(2).Infof("DEBUG: Compute predicates pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Computing predicates")
 	startPredicateEvalTime := time.Now()
 	filteredNodes, failedPredicateMap, err := g.findNodesThatFit(pod, nodes)
@@ -227,6 +228,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	metrics.SchedulingLatency.WithLabelValues(metrics.PredicateEvaluation).Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 	metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PredicateEvaluation).Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 
+	klog.V(2).Infof("DEBUG: Prioritizing pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Prioritizing")
 	startPriorityEvalTime := time.Now()
 	// When only one node after predicate, just use it.
@@ -250,6 +252,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	metrics.SchedulingLatency.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 	metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 
+	klog.V(2).Infof("DEBUG: Selecting host pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Selecting host")
 
 	host, err := g.selectHost(priorityList)
