@@ -1417,7 +1417,7 @@ global:
 scrape_configs:
   - job_name: prometheus-metrics
     static_configs:
-    - targets: ['127.0.0.1:2379','127.0.0.1:8080']
+    - targets: ['127.0.0.1:2379','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
   - job_name: 'haproxy'
     static_configs:
     - targets: ['scale_out_proxy_ip:8404']
