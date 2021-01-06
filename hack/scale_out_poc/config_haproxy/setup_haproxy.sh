@@ -62,6 +62,48 @@ install_haproxy_if_needed() {
         fi
 }
 
+patch-haproxy-prometheus() {
+  # based on https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint
+  echo 'Patching Haproxy to expose prometheus...'
+  haproxy_patch_tmp=/tmp/haproxy
+  run_command_exit_if_failed sudo apt install -y git ca-certificates gcc libc6-dev liblua5.3-dev libpcre3-dev libssl-dev libsystemd-dev make wget zlib1g-dev
+  run_command_exit_if_failed git clone https://github.com/haproxy/haproxy.git ${haproxy_patch_tmp}
+  run_command_exit_if_failed pushd ${haproxy_patch_tmp}
+  run_command_exit_if_failed git checkout tags/v2.3.0
+  run_command_exit_if_failed make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=contrib/prometheus-exporter/service-prometheus.o -j4
+  run_command_exit_if_failed sudo make install-bin
+  run_command_exit_if_failed sudo systemctl reset-failed haproxy.service
+  run_command_exit_if_failed sudo systemctl stop haproxy
+  run_command_exit_if_failed sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy
+  run_command_exit_if_failed sudo systemctl start haproxy
+  run_command_exit_if_failed haproxy -vv|grep Prometheus
+  run_command_exit_if_failed popd
+  run_command_exit_if_failed rm -rf ${haproxy_patch_tmp}
+}
+
+function direct-haproxy-logging {
+  haproxy_conf=`find /etc/rsyslog.d -name *haproxy.conf`
+
+  if [ -z "$haproxy_conf" ]; then
+    echo "haproxy conf file not found in /etc/rsyslog.d/"
+    return
+  fi
+
+  if grep -q "UDPServerRun 514" "$haproxy_conf"; then
+    echo "skipped updating haproxy.conf for directing logging"
+    return
+  fi
+
+   echo '
+$ModLoad imudp
+$UDPServerRun 514
+local0.* -/var/log/haproxy.log
+' >> $haproxy_conf
+
+  run_command_exit_if_failed sudo service rsyslog restart
+  echo "haproxy logging directed to /var/log/haproxy.log only"
+}
+
 config_haproxy() {
         script_root=$(dirname "${BASH_SOURCE}")
         local -r temp_haproxy_cfg="/tmp/haproxy.cfg"
@@ -96,6 +138,10 @@ fi
 
 install_haproxy_if_needed
 
+patch-haproxy-prometheus
+
+direct-haproxy-logging
+
 config_haproxy
 
 run_command_exit_if_failed sudo systemctl restart haproxy
@@ -103,12 +149,6 @@ run_command_exit_if_failed sudo systemctl restart haproxy
 printf "\033[0;32mHaproxy was configured and started. Please check out /var/log/haproxy.log for logs. \033[0m\n"
 
 sudo systemctl status haproxy
-
-
-
-
-
-
 
 returnCode=$?
 exit ${returnCode}
