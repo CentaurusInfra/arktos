@@ -2846,6 +2846,7 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
 
   patch-haproxy-prometheus
+  direct-haproxy-logging
 
   ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
@@ -2865,6 +2866,37 @@ function patch-haproxy-prometheus {
   ssh-to-node ${PROXY_NAME} "sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy"
   ssh-to-node ${PROXY_NAME} "sudo systemctl start haproxy"
   ssh-to-node ${PROXY_NAME} "haproxy -vv|grep Prometheus"
+}
+
+function direct-haproxy-logging {
+  tmp_folder=`mktemp -d -t`
+  pushd $tmp_folder
+  gcloud compute scp --zone="${ZONE}" "${PROXY_NAME}:/etc/rsyslog.d/*haproxy.conf" .
+  haproxy_conf=`find . -name *haproxy.conf`
+
+  if [ -z "$haproxy_conf" ]; then
+    echo "haproxy conf file not found in /etc/rsyslog.d/"
+    return
+  fi
+
+  if grep -q "UDPServerRun 514" "$haproxy_conf"; then
+    echo "skipped updating haproxy.conf for directing logging"
+    return
+  fi
+
+     echo '
+$ModLoad imudp
+$UDPServerRun 514
+local0.* -/var/log/haproxy.log
+' >> $haproxy_conf
+
+  gcloud compute scp --zone="${ZONE}" $haproxy_conf "${PROXY_NAME}:/tmp"
+  ssh-to-node ${PROXY_NAME} "sudo mv /tmp/$haproxy_conf /etc/rsyslog.d/"
+  ssh-to-node ${PROXY_NAME} "sudo service rsyslog restart"
+  echo "haproxy logging directed to /var/log/haproxy.log only"
+
+  popd
+  rm -rf $tmp_folder
 }
 
 function create-master() {
