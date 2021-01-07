@@ -1729,17 +1729,51 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
+
   if [[ -n "${NUM_NODES:-}" ]]; then
+    local max_request_inflight="-1"
+    local max_mutating_request_inflight="-1"
+
     # If the cluster is large, increase max-requests-inflight limit in apiserver.
-    if [[ "${NUM_NODES}" -gt 3000 ]]; then
-      params+=" --max-requests-inflight=3000 --max-mutating-requests-inflight=1000"
-    elif [[ "${NUM_NODES}" -gt 500 ]]; then
-      params+=" --max-requests-inflight=1500 --max-mutating-requests-inflight=500"
+    if [[ "${NUM_NODES}" -gt 10000 ]]; then
+       max_request_inflight=5000
+       max_mutating_request_inflight=2000
+    else
+      if [[ "${NUM_NODES}" -gt 3000 ]]; then
+        max_request_inflight=3000
+        max_mutating_request_inflight=1000
+      elif [[ "${NUM_NODES}" -gt 500 ]]; then
+        max_request_inflight=1500
+        max_mutating_request_inflight=500
+      fi
     fi
+
+    ## overwrite the setting if they were explictly set by the test
+    if [[ -n "${KUBE_APISERVER_MAX_REQUEST_INFLIGHT:-}" ]]; then
+      max_request_inflight=${KUBE_APISERVER_MAX_REQUEST_INFLIGHT}
+    fi
+    if [[ -n "${KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT:-}" ]]; then
+      max_mutating_request_inflight=${KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT}
+    fi
+
+    ## set the parameter if the parameter is set either in default or explicitly set in ENV VARs
+    if [[ "${max_request_inflight}" -ge 0 ]]; then
+      params+=" --max-requests-inflight=${max_request_inflight}
+    fi
+    if if [[ "${max_mutating_request_inflight}" -ge 0 ]]; then
+      params+=" --max-mutating-requests-inflight=${max_mutating_request_inflight}"
+    fi
+
+
     # Set amount of memory available for apiserver based on number of nodes.
     # TODO: Once we start setting proper requests and limits for apiserver
     # we should reuse the same logic here instead of current heuristic.
-    params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
+    # cap api server memory to 600G for now
+    if [[ "${NUM_NODES}" -gt 10000 ]]; then
+      params+=" --target-ram-mb=$(10000 * 60))"
+    else
+      params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
+    fi
   fi
   if [[ -n "${SERVICE_CLUSTER_IP_RANGE:-}" ]]; then
     params+=" --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE}"
