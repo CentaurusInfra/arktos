@@ -114,7 +114,11 @@ config_haproxy() {
 
         template_source=${repo_root}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
 
-        go build -o /tmp/haproxy_cfg_generator "${script_root}/cfg_generator/"
+        pushd .
+
+        cd ${script_root} && go build -o /tmp/haproxy_cfg_generator "./cfg_generator/"
+
+        popd
 
         TENANT_PARTITION_IP="${TENANT_PARTITION_IP:-}" RESOURCE_PARTITION_IP="${RESOURCE_PARTITION_IP:-}" /tmp/haproxy_cfg_generator -template=${template_source} -target="${temp_haproxy_cfg}" 
         
