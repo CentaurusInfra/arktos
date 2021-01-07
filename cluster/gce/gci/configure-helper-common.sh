@@ -1758,12 +1758,11 @@ function start-kube-apiserver {
 
     ## set the parameter if the parameter is set either in default or explicitly set in ENV VARs
     if [[ "${max_request_inflight}" -ge 0 ]]; then
-      params+=" --max-requests-inflight=${max_request_inflight}
+      params+=" --max-requests-inflight=${max_request_inflight}"
     fi
-    if if [[ "${max_mutating_request_inflight}" -ge 0 ]]; then
+    if [[ "${max_mutating_request_inflight}" -ge 0 ]]; then
       params+=" --max-mutating-requests-inflight=${max_mutating_request_inflight}"
     fi
-
 
     # Set amount of memory available for apiserver based on number of nodes.
     # TODO: Once we start setting proper requests and limits for apiserver
