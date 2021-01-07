@@ -1769,7 +1769,7 @@ function start-kube-apiserver {
     # we should reuse the same logic here instead of current heuristic.
     # cap api server memory to 600G for now
     if [[ "${NUM_NODES}" -gt 10000 ]]; then
-      params+=" --target-ram-mb=$(10000 * 60))"
+      params+=" --target-ram-mb=600000"
     else
       params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
     fi
