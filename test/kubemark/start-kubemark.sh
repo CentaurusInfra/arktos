@@ -208,6 +208,7 @@ function create-kube-hollow-node-resources {
 
 # Wait until all hollow-nodes are running or there is a timeout.
 function wait-for-hollow-nodes-to-run-or-timeout {
+  timeout_seconds=$1
   echo -n "Waiting for all hollow-nodes to become Running"
   start=$(date +%s)
   nodes=$("${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node 2> /dev/null) || true
@@ -217,8 +218,7 @@ function wait-for-hollow-nodes-to-run-or-timeout {
     echo -n "."
     sleep 1
     now=$(date +%s)
-    # Fail it if it already took more than 30 minutes.
-    if [ $((now - start)) -gt 1800 ]; then
+    if [ $((now - start)) -gt ${timeout_seconds:-1800} ]; then
       echo ""
       # shellcheck disable=SC2154 # Color defined in sourced script
       echo -e "${color_red} Timeout waiting for all hollow-nodes to become Running. ${color_norm}"
@@ -258,7 +258,12 @@ function start-hollow-nodes {
   else
     create-kube-hollow-node-resources
   fi
-  wait-for-hollow-nodes-to-run-or-timeout
+
+  # the timeout value is set based on default QPS of 20/sec and a buffer time of 10 minutes
+  let timeout_seconds=${KUBEMARK_NUM_NODES:-10}/20+600
+  echo -e "$(date): Wait ${timeout_seconds} seconds for ${KUBEMARK_NUM_NODES:-10} hollow nodes to be ready." 
+
+  wait-for-hollow-nodes-to-run-or-timeout ${timeout_seconds}
 }
 
 detect-project &> /dev/null
