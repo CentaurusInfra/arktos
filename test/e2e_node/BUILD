@@ -187,12 +187,14 @@ go_test(
     ] + select({
         "@io_bazel_rules_go//go/platform:linux": [
             "//cmd/kubeadm/app/util/system:go_default_library",
+            "//pkg/kubectl/generated:go_default_library",
             "//pkg/kubelet/stats/pidlimit:go_default_library",
             "//staging/src/k8s.io/apimachinery/pkg/labels:go_default_library",
             "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
             "//staging/src/k8s.io/apimachinery/pkg/util/yaml:go_default_library",
             "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
             "//test/e2e/framework/config:go_default_library",
+            "//test/e2e/framework/testfiles:go_default_library",
             "//vendor/github.com/onsi/ginkgo/config:go_default_library",
             "//vendor/github.com/onsi/ginkgo/reporters:go_default_library",
             "//vendor/github.com/spf13/pflag:go_default_library",
