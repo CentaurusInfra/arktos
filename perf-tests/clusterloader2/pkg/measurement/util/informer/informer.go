@@ -43,7 +43,7 @@ func NewInformer(
 		options.FieldSelector = selector.FieldSelector
 		options.LabelSelector = selector.LabelSelector
 	}
-	listerWatcher := cache.NewFilteredListWatchFromClient(c.CoreV1(), kind, selector.Namespace, optionsModifier)
+	listerWatcher := cache.NewFilteredListWatchFromClientWithMultiTenancy(c.CoreV1(), kind, selector.Namespace, optionsModifier, perfutil.GetTenant())
 	informer := cache.NewSharedInformer(listerWatcher, nil, 0)
 	addEventHandler(informer, handleObj)
 

@@ -229,5 +229,5 @@ func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
 }
 
 func createMetaNamespaceKey(namespace, name string) string {
-	return namespace + "/" + name
+	return util.GetTenant() + "/" + namespace + "/" + name
 }
