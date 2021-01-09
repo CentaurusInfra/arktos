@@ -387,7 +387,8 @@ func CreateMetaNamespaceKey(obj runtime.Object) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("retrieving name error: %v", err)
 	}
-	return namespace + "/" + name, nil
+
+	return util.GetTenant() + "/" + namespace + "/" + name, nil
 }
 
 // GetNumObjectsMatchingSelector returns number of objects matching the given selector.
