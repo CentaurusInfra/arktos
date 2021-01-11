@@ -314,7 +314,7 @@ replace (
 	github.com/go-ozzo/ozzo-validation => github.com/go-ozzo/ozzo-validation v3.5.0+incompatible
 	github.com/godbus/dbus => github.com/godbus/dbus v0.0.0-20151105175453-c7fdd8b5cd55
 	github.com/gofrs/uuid => github.com/gofrs/uuid v3.2.0+incompatible
-	github.com/gogo/protobuf => github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415
+	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.1
 	github.com/goji/httpauth => github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
 	github.com/golang/glog => github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/golang/groupcache => github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
@@ -360,6 +360,8 @@ replace (
 	github.com/jstemmer/go-junit-report => github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
 	github.com/jtolds/gls => github.com/jtolds/gls v4.20.0+incompatible
 	github.com/karrick/godirwalk => github.com/karrick/godirwalk v1.7.5
+	github.com/kisielk/errcheck => github.com/kisielk/errcheck v1.2.0
+	github.com/kisielk/gotool => github.com/kisielk/gotool v1.0.0
 	github.com/klauspost/cpuid => github.com/klauspost/cpuid v1.2.0
 	github.com/kolo/xmlrpc => github.com/kolo/xmlrpc v0.0.0-20190717152603-07c4ee3fd181
 	github.com/konsorten/go-windows-terminal-sequences => github.com/konsorten/go-windows-terminal-sequences v1.0.1

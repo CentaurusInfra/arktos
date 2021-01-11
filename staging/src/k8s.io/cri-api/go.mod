@@ -18,7 +18,6 @@ require (
 
 replace (
 	github.com/BurntSushi/toml => github.com/BurntSushi/toml v0.3.0
-	github.com/gogo/protobuf => github.com/gogo/protobuf v0.0.0-20171007142547-342cbe0a0415
 	github.com/golang/mock => github.com/golang/mock v0.0.0-20160127222235-bd3c8e81be01
 	github.com/golang/protobuf => github.com/golang/protobuf v1.2.0
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
