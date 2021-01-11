@@ -7,7 +7,7 @@ go 1.13
 require (
 	github.com/emicklei/go-restful v2.9.5+incompatible
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8 // indirect
-	github.com/go-openapi/analysis v0.19.5 // indirect
+	github.com/go-openapi/analysis v0.19.2 // indirect
 	github.com/go-openapi/errors v0.17.2 // indirect
 	github.com/go-openapi/loads v0.19.4 // indirect
 	github.com/go-openapi/runtime v0.17.2 // indirect
@@ -47,7 +47,7 @@ replace (
 	github.com/elazarl/goproxy => github.com/elazarl/goproxy v0.0.0-20170405201442-c4fc26588b6e
 	github.com/emicklei/go-restful => github.com/emicklei/go-restful v0.0.0-20170410110728-ff4f55a20633
 	github.com/evanphx/json-patch => github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550
-	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.17.2
+	github.com/go-openapi/analysis => github.com/go-openapi/analysis v0.19.2
 	github.com/go-openapi/loads => github.com/go-openapi/loads v0.17.2
 	github.com/go-openapi/spec => github.com/go-openapi/spec v0.17.2
 	github.com/go-openapi/strfmt => github.com/go-openapi/strfmt v0.17.0
