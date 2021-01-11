@@ -496,6 +496,7 @@ replace (
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	golang.org/x/time => golang.org/x/time v0.0.0-20191024005414-555d28b269f0
 	golang.org/x/tools => golang.org/x/tools v0.0.0-20190920225731-5eefd052ad72
+	golang.org/x/xerrors => golang.org/x/xerrors v0.0.0-20190717185122-a985d3407aa7
 	gonum.org/v1/gonum => gonum.org/v1/gonum v0.0.0-20190331200053-3d26580ed485
 	gonum.org/v1/netlib => gonum.org/v1/netlib v0.0.0-20190331212654-76723241ea4e
 	google.golang.org/api => google.golang.org/api v0.0.0-20181220000619-583d854617af

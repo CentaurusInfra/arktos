@@ -22,13 +22,9 @@ replace (
 	github.com/golang/mock => github.com/golang/mock v0.0.0-20160127222235-bd3c8e81be01
 	github.com/golang/protobuf => github.com/golang/protobuf v1.2.0
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
-	golang.org/x/lint => golang.org/x/lint v0.0.0-20181217174547-8f45f776aaf1
-	golang.org/x/net => golang.org/x/net v0.0.0-20201008223702-a5fa9d4b7c91
-	golang.org/x/oauth2 => golang.org/x/oauth2 v0.0.0-20190402181905-9f3314589c9a
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/sync => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
-	golang.org/x/sys => golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
-	golang.org/x/tools => golang.org/x/tools v0.0.0-20190313210603-aa82965741a9
 	google.golang.org/genproto => google.golang.org/genproto v0.0.0-20170731182057-09f6ed296fc6
 	google.golang.org/grpc => google.golang.org/grpc v1.23.0
 	k8s.io/cri-api => ../cri-api
