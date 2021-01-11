@@ -55,7 +55,6 @@ replace (
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
 	github.com/vmware/govmomi => github.com/vmware/govmomi v0.20.1
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/sync => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	google.golang.org/api => google.golang.org/api v0.0.0-20181220000619-583d854617af

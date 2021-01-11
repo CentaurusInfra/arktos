@@ -30,7 +30,6 @@ replace (
 	github.com/prometheus/client_golang => github.com/prometheus/client_golang v0.9.2
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	gopkg.in/check.v1 => gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
 	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.1

@@ -489,7 +489,7 @@ replace (
 	go.uber.org/multierr => go.uber.org/multierr v0.0.0-20180122172545-ddea229ff1df
 	go.uber.org/ratelimit => go.uber.org/ratelimit v0.0.0-20180316092928-c15da0234277
 	go.uber.org/zap => go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
+	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	golang.org/x/exp => golang.org/x/exp v0.0.0-20190312203227-4b39c73a6495
 	golang.org/x/image => golang.org/x/image v0.0.0-20190227222117-0694c2d4d067
 	golang.org/x/lint => golang.org/x/lint v0.0.0-20190409202823-959b441ac422

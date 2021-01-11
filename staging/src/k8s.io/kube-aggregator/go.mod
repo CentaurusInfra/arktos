@@ -63,7 +63,6 @@ replace (
 	go.uber.org/atomic => go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569
 	go.uber.org/multierr => go.uber.org/multierr v0.0.0-20180122172545-ddea229ff1df
 	go.uber.org/zap => go.uber.org/zap v0.0.0-20180814183419-67bc79d13d15
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/sync => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	gonum.org/v1/gonum => gonum.org/v1/gonum v0.0.0-20190331200053-3d26580ed485

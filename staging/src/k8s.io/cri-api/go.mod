@@ -20,7 +20,6 @@ replace (
 	github.com/BurntSushi/toml => github.com/BurntSushi/toml v0.3.0
 	github.com/golang/mock => github.com/golang/mock v0.0.0-20160127222235-bd3c8e81be01
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
-	golang.org/x/crypto => golang.org/x/crypto v0.0.0-20200220183623-bac4c82f6975
 	golang.org/x/sync => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	k8s.io/cri-api => ../cri-api
