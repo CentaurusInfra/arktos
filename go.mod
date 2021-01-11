@@ -222,7 +222,7 @@ replace (
 	github.com/Microsoft/hcsshim => github.com/Microsoft/hcsshim v0.8.6
 	github.com/NYTimes/gziphandler => github.com/NYTimes/gziphandler v0.0.0-20170623195520-56545f4a5d46
 	github.com/OpenDNS/vegadns2client => github.com/OpenDNS/vegadns2client v0.0.0-20180418235048-a3fa4a771d87
-	github.com/PuerkitoBio/purell => github.com/PuerkitoBio/purell v1.1.0
+	github.com/PuerkitoBio/purell => github.com/PuerkitoBio/purell v1.1.1
 	github.com/PuerkitoBio/urlesc => github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578
 	github.com/Rican7/retry => github.com/Rican7/retry v0.1.0
 	github.com/akamai/AkamaiOPEN-edgegrid-golang => github.com/akamai/AkamaiOPEN-edgegrid-golang v0.9.0
@@ -232,7 +232,7 @@ replace (
 	github.com/armon/circbuf => github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e
 	github.com/armon/go-metrics => github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da
 	github.com/armon/go-radix => github.com/armon/go-radix v1.0.0
-	github.com/asaskevich/govalidator => github.com/asaskevich/govalidator v0.0.0-20180720115003-f9ffefc3facf
+	github.com/asaskevich/govalidator => github.com/asaskevich/govalidator v0.0.0-20190424111038-f61b66f89f4a
 	github.com/auth0/go-jwt-middleware => github.com/auth0/go-jwt-middleware v0.0.0-20170425171159-5493cabe49f7
 	github.com/aws/aws-sdk-go => github.com/aws/aws-sdk-go v1.16.26
 	github.com/baiyubin/aliyun-sts-go-sdk => github.com/baiyubin/aliyun-sts-go-sdk v0.0.0-20180326062324-cfa1a18b161f
@@ -396,7 +396,7 @@ replace (
 	github.com/konsorten/go-windows-terminal-sequences => github.com/konsorten/go-windows-terminal-sequences v1.0.1
 	github.com/kr/fs => github.com/kr/fs v0.0.0-20131111012553-2788f0dbd169
 	github.com/kr/pretty => github.com/kr/pretty v0.0.0-20140812000539-f31442d60e51
-	github.com/kr/pty => github.com/kr/pty v1.1.1
+	github.com/kr/pty => github.com/kr/pty v1.1.5
 	github.com/kr/text => github.com/kr/text v0.1.0
 	github.com/kylelemons/godebug => github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
 	github.com/labbsr0x/bindman-dns-webhook => github.com/labbsr0x/bindman-dns-webhook v1.0.2
@@ -485,7 +485,7 @@ replace (
 	github.com/seccomp/libseccomp-golang => github.com/seccomp/libseccomp-golang v0.9.1
 	github.com/shurcooL/sanitized_anchor_name => github.com/shurcooL/sanitized_anchor_name v0.0.0-20151028001915-10ef21a441db
 	github.com/sigma/go-inotify => github.com/sigma/go-inotify v0.0.0-20181102212354-c87b6cf5033d
-	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.2.0
+	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.4.2
 	github.com/skratchdot/open-golang => github.com/skratchdot/open-golang v0.0.0-20160302144031-75fb7ed4208c
 	github.com/smartystreets/assertions => github.com/smartystreets/assertions v0.0.0-20180927180507-b2de0cb4f26d
 	github.com/smartystreets/goconvey => github.com/smartystreets/goconvey v0.0.0-20190330032615-68dc04aab96a
@@ -497,7 +497,7 @@ replace (
 	github.com/spf13/pflag => github.com/spf13/pflag v1.0.5
 	github.com/spf13/viper => github.com/spf13/viper v0.0.0-20160820190039-7fb2782df3d8
 	github.com/storageos/go-api => github.com/storageos/go-api v0.0.0-20180912212459-343b3eff91fc
-	github.com/stretchr/objx => github.com/stretchr/objx v0.1.1
+	github.com/stretchr/objx => github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
 	github.com/syndtr/gocapability => github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4
 	github.com/timewasted/linode => github.com/timewasted/linode v0.0.0-20160829202747-37e84520dcf7

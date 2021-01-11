@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/common v0.4.1 // indirect
 	github.com/rubiojr/go-vhd v0.0.0-20160810183302-0bfd3b39853c
 	github.com/satori/go.uuid v1.2.0 // indirect
-	github.com/stretchr/objx v0.1.1 // indirect
+	github.com/stretchr/objx v0.2.0 // indirect
 	github.com/stretchr/testify v1.4.0
 	github.com/vmware/govmomi v0.20.3
 	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
