@@ -20,7 +20,6 @@ package config
 
 import (
 	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"strings"
 
@@ -59,7 +58,8 @@ func applyDefaults(pod *api.Pod, source string, isFile bool, nodeName types.Node
 			fmt.Fprintf(hasher, "url:%s", source)
 		}
 		hash.DeepHashObject(hasher, pod)
-		pod.UID = types.UID(hex.EncodeToString(hasher.Sum(nil)[0:]))
+		hexVlaue := hasher.Sum(nil)[0:]
+		pod.UID = types.UID(fmt.Sprintf("%x-%x-%x-%x-%x", hexVlaue[0:4], hexVlaue[4:6], hexVlaue[6:8], hexVlaue[8:10], hexVlaue[10:]))
 		klog.V(5).Infof("Generated UID %q pod %q from %s", pod.UID, pod.Name, source)
 	}
 
