@@ -559,7 +559,7 @@ replace (
 	gopkg.in/natefinch/lumberjack.v2 => gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/ns1/ns1-go.v2 => gopkg.in/ns1/ns1-go.v2 v2.0.0-20190730140822-b51389932cbc
 	gopkg.in/resty.v1 => gopkg.in/resty.v1 v1.9.1
-	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.3.1
+	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.2.2
 	gopkg.in/tomb.v1 => gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7
 	gopkg.in/warnings.v0 => gopkg.in/warnings.v0 v0.1.1
 	gopkg.in/yaml.v1 => gopkg.in/yaml.v1 v1.0.0-20140924161607-9f9df34309c0
