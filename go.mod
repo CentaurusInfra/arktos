@@ -257,7 +257,7 @@ replace (
 	github.com/containerd/containerd => github.com/containerd/containerd v1.0.2
 	github.com/containerd/continuity => github.com/containerd/continuity v0.0.0-20201208142359-180525291bb7
 	github.com/containerd/typeurl => github.com/containerd/typeurl v0.0.0-20190228175220-2a93cfde8c20
-	github.com/containernetworking/cni => github.com/containernetworking/cni v0.6.0
+	github.com/containernetworking/cni => github.com/containernetworking/cni v0.7.1
 	github.com/coreos/bbolt => github.com/coreos/bbolt v1.3.1-coreos.6
 	github.com/coreos/etcd => github.com/coreos/etcd v3.3.25+incompatible
 	github.com/coreos/go-etcd => github.com/coreos/go-etcd v2.0.0+incompatible
