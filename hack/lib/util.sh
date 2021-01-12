@@ -630,8 +630,8 @@ function kube::util::ensure-cfssl {
     kernel=$(uname -s)
     case "${kernel}" in
       Linux)
-        curl --retry 10 -L -o cfssl https://pkg.cfssl.org/R1.2/cfssl_linux-amd64
-        curl --retry 10 -L -o cfssljson https://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
+        curl --retry 10 -L -o cfssl http://pkg.cfssl.org/R1.2/cfssl_linux-amd64
+        curl --retry 10 -L -o cfssljson http://pkg.cfssl.org/R1.2/cfssljson_linux-amd64
         ;;
       Darwin)
         curl --retry 10 -L -o cfssl https://pkg.cfssl.org/R1.2/cfssl_darwin-amd64
