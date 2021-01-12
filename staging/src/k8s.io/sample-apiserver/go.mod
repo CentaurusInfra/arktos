@@ -42,7 +42,7 @@ replace (
 	github.com/prometheus/common => github.com/prometheus/common v0.0.0-20181126121408-4724e9255275
 	github.com/sirupsen/logrus => github.com/sirupsen/logrus v1.4.2
 	github.com/soheilhy/cmux => github.com/soheilhy/cmux v0.1.3
-	github.com/spf13/cobra => github.com/spf13/cobra v0.0.0-20180319062004-c439c4fa0937
+	github.com/spf13/cobra => github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
 	github.com/xiang90/probing => github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18
 	go.uber.org/atomic => go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569
@@ -52,7 +52,7 @@ replace (
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
 	gonum.org/v1/gonum => gonum.org/v1/gonum v0.0.0-20190331200053-3d26580ed485
-	gopkg.in/check.v1 => gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
+	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/square/go-jose.v2 => gopkg.in/square/go-jose.v2 v2.0.0-20180411045311-89060dee6a84
 	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.1
 	k8s.io/api => ../api

@@ -8,7 +8,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/docker/spdystream v0.0.0-20160310174837-449fdfce4d96
 	github.com/elazarl/goproxy v0.0.0-20180725130230-947c36da3153
-	github.com/evanphx/json-patch v4.2.0+incompatible
+	github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
 	github.com/golang/protobuf v1.3.2
@@ -18,6 +18,8 @@ require (
 	github.com/googleapis/gnostic v0.1.0
 	github.com/hashicorp/golang-lru v0.5.3
 	github.com/json-iterator/go v1.1.8
+	github.com/kr/pretty v0.2.0 // indirect
+	github.com/kr/text v0.1.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.1
 	github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
@@ -39,19 +41,20 @@ require (
 
 replace (
 	github.com/elazarl/goproxy => github.com/elazarl/goproxy v0.0.0-20170405201442-c4fc26588b6e
-	github.com/evanphx/json-patch => github.com/evanphx/json-patch v0.0.0-20190203023257-5858425f7550
+	github.com/evanphx/json-patch => github.com/evanphx/json-patch v4.9.0+incompatible
 	github.com/google/gofuzz => github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf
 	github.com/googleapis/gnostic => github.com/googleapis/gnostic v0.0.0-20170729233727-0c5108395e2d
 	github.com/hashicorp/golang-lru => github.com/hashicorp/golang-lru v0.5.0
 	github.com/json-iterator/go => github.com/json-iterator/go v0.0.0-20180701071628-ab8a2e0c74be
-	github.com/onsi/ginkgo => github.com/onsi/ginkgo v1.6.0
-	github.com/onsi/gomega => github.com/onsi/gomega v0.0.0-20190113212917-5533ce8a0da3
-	github.com/stretchr/testify => github.com/stretchr/testify v1.2.2
+	github.com/kr/pretty => github.com/kr/pretty v0.2.0
+	github.com/onsi/ginkgo => github.com/onsi/ginkgo v1.11.0
+	github.com/onsi/gomega => github.com/onsi/gomega v1.7.0
+	github.com/stretchr/testify => github.com/stretchr/testify v1.4.0
 	golang.org/x/sync => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 	golang.org/x/sys => golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	golang.org/x/text => golang.org/x/text v0.3.1-0.20181227161524-e6919f6577db
-	gopkg.in/check.v1 => gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405
-	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
+	gopkg.in/yaml.v2 => gopkg.in/yaml.v2 v2.2.8
 	k8s.io/apimachinery => ../apimachinery
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
 	sigs.k8s.io/yaml => sigs.k8s.io/yaml v1.1.0
