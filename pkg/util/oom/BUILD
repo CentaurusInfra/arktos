@@ -38,6 +38,7 @@ go_test(
             "//vendor/github.com/stretchr/testify/assert:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
+            "//vendor/github.com/opencontainers/runc/libcontainer/cgroups:go_default_library",
             "//vendor/github.com/stretchr/testify/assert:go_default_library",
         ],
         "//conditions:default": [],
