@@ -11,7 +11,7 @@ require (
 	gonum.org/v1/gonum v0.6.2
 	gonum.org/v1/netlib v0.0.0-20190331212654-76723241ea4e // indirect
 	k8s.io/apimachinery v0.0.0
-	k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
+	k8s.io/gengo v0.0.0-20200205140755-e0e292d8aa12
 	k8s.io/klog v1.0.0
 )
 
