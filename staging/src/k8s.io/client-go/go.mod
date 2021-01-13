@@ -5,6 +5,8 @@ module k8s.io/client-go
 go 1.13
 
 require (
+	cloud.google.com/go v0.38.0 // indirect
+
 	github.com/Azure/go-autorest/autorest v0.9.0
 	github.com/Azure/go-autorest/autorest/adal v0.5.0
 	github.com/davecgh/go-spew v1.1.1
@@ -36,6 +38,7 @@ require (
 )
 
 replace (
+	cloud.google.com/go => cloud.google.com/go v0.34.0
 	github.com/dgrijalva/jwt-go => github.com/dgrijalva/jwt-go v0.0.0-20160705203006-01aeca54ebda
 	github.com/elazarl/goproxy => github.com/elazarl/goproxy v0.0.0-20170405201442-c4fc26588b6e
 	github.com/google/gofuzz => github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf

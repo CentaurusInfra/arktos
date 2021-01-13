@@ -29,7 +29,7 @@ PATH="${GOBIN}:${PATH}"
 pushd "${KUBE_ROOT}" >/dev/null
   GO111MODULE=on GOFLAGS=-mod=vendor go install github.com/bazelbuild/bazel-gazelle/cmd/gazelle
   GO111MODULE=on GOFLAGS=-mod=vendor go install github.com/bazelbuild/buildtools/buildozer
-  GO111MODULE=on GOFLAGS=-mod=vendor go install k8s.io/repo-infra/kazel
+  GO111MODULE=on GOFLAGS=-mod=vendor go install k8s.io/repo-infra/cmd/kazel
 popd >/dev/null
 
 # Find all of the staging repos.

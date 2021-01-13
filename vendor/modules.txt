@@ -1,6 +1,6 @@
 # bitbucket.org/bertimus9/systemstat v0.0.0-20180207000608-0eeff89b0690 => bitbucket.org/bertimus9/systemstat v0.0.0-20180207000608-0eeff89b0690
 bitbucket.org/bertimus9/systemstat
-# cloud.google.com/go v0.34.0 => cloud.google.com/go v0.34.0
+# cloud.google.com/go v0.38.0 => cloud.google.com/go v0.34.0
 cloud.google.com/go/compute/metadata
 # github.com/Azure/azure-sdk-for-go v35.0.0+incompatible => github.com/Azure/azure-sdk-for-go v35.0.0+incompatible
 github.com/Azure/azure-sdk-for-go/services/compute/mgmt/2019-07-01/compute
@@ -109,23 +109,23 @@ github.com/aws/aws-sdk-go/service/elb
 github.com/aws/aws-sdk-go/service/elbv2
 github.com/aws/aws-sdk-go/service/kms
 github.com/aws/aws-sdk-go/service/sts
-# github.com/bazelbuild/bazel-gazelle v0.19.1-0.20191105222053-70208cbdc798 => github.com/bazelbuild/bazel-gazelle v0.0.0-20181012220611-c728ce9f663e
+# github.com/bazelbuild/bazel-gazelle v0.19.1-0.20191105222053-70208cbdc798 => github.com/bazelbuild/bazel-gazelle v0.19.1-0.20191105222053-70208cbdc798
 github.com/bazelbuild/bazel-gazelle/cmd/gazelle
-github.com/bazelbuild/bazel-gazelle/internal/config
-github.com/bazelbuild/bazel-gazelle/internal/flag
-github.com/bazelbuild/bazel-gazelle/internal/label
-github.com/bazelbuild/bazel-gazelle/internal/language
-github.com/bazelbuild/bazel-gazelle/internal/language/go
-github.com/bazelbuild/bazel-gazelle/internal/language/proto
-github.com/bazelbuild/bazel-gazelle/internal/merger
-github.com/bazelbuild/bazel-gazelle/internal/pathtools
-github.com/bazelbuild/bazel-gazelle/internal/repos
-github.com/bazelbuild/bazel-gazelle/internal/resolve
-github.com/bazelbuild/bazel-gazelle/internal/rule
+github.com/bazelbuild/bazel-gazelle/config
+github.com/bazelbuild/bazel-gazelle/flag
 github.com/bazelbuild/bazel-gazelle/internal/version
-github.com/bazelbuild/bazel-gazelle/internal/walk
 github.com/bazelbuild/bazel-gazelle/internal/wspace
-# github.com/bazelbuild/buildtools v0.0.0-20190917191645-69366ca98f89 => github.com/bazelbuild/buildtools v0.0.0-20180226164855-80c7f0d45d7e
+github.com/bazelbuild/bazel-gazelle/label
+github.com/bazelbuild/bazel-gazelle/language
+github.com/bazelbuild/bazel-gazelle/language/go
+github.com/bazelbuild/bazel-gazelle/language/proto
+github.com/bazelbuild/bazel-gazelle/merger
+github.com/bazelbuild/bazel-gazelle/pathtools
+github.com/bazelbuild/bazel-gazelle/repo
+github.com/bazelbuild/bazel-gazelle/resolve
+github.com/bazelbuild/bazel-gazelle/rule
+github.com/bazelbuild/bazel-gazelle/walk
+# github.com/bazelbuild/buildtools v0.0.0-20190917191645-69366ca98f89 => github.com/bazelbuild/buildtools v0.0.0-20190917191645-69366ca98f89
 github.com/bazelbuild/buildtools/api_proto
 github.com/bazelbuild/buildtools/build
 github.com/bazelbuild/buildtools/build_proto
@@ -893,7 +893,7 @@ golang.org/x/oauth2/google
 golang.org/x/oauth2/internal
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sync v0.0.0-20190423024810-112230192c58 => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
+# golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e => golang.org/x/sync v0.0.0-20181108010431-42b317875d0f
 golang.org/x/sync/errgroup
 # golang.org/x/sys v0.0.0-20201201145000-ef89a241ccb3 => golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 golang.org/x/sys/cpu
@@ -1764,8 +1764,8 @@ k8s.io/metrics/pkg/client/custom_metrics/fake
 k8s.io/metrics/pkg/client/custom_metrics/scheme
 k8s.io/metrics/pkg/client/external_metrics
 k8s.io/metrics/pkg/client/external_metrics/fake
-# k8s.io/repo-infra v0.0.1-alpha.1 => k8s.io/repo-infra v0.0.0-20181204233714-00fe14e3d1a3
-k8s.io/repo-infra/kazel
+# k8s.io/repo-infra v0.0.1-alpha.1 => k8s.io/repo-infra v0.0.1-alpha.1
+k8s.io/repo-infra/cmd/kazel
 # k8s.io/sample-apiserver v0.0.0 => ./staging/src/k8s.io/sample-apiserver
 k8s.io/sample-apiserver/pkg/admission/plugin/banflunder
 k8s.io/sample-apiserver/pkg/admission/wardleinitializer

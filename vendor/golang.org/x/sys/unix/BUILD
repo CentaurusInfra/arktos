@@ -245,6 +245,9 @@ go_library(
     importpath = "golang.org/x/sys/unix",
     visibility = ["//visibility:public"],
     deps = select({
+        "@io_bazel_rules_go//go/platform:android": [
+            "//vendor/golang.org/x/sys/internal/unsafeheader:go_default_library",
+        ],
         "@io_bazel_rules_go//go/platform:darwin": [
             "//vendor/golang.org/x/sys/internal/unsafeheader:go_default_library",
         ],
@@ -252,6 +255,9 @@ go_library(
             "//vendor/golang.org/x/sys/internal/unsafeheader:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:freebsd": [
+            "//vendor/golang.org/x/sys/internal/unsafeheader:go_default_library",
+        ],
+        "@io_bazel_rules_go//go/platform:ios": [
             "//vendor/golang.org/x/sys/internal/unsafeheader:go_default_library",
         ],
         "@io_bazel_rules_go//go/platform:linux": [
