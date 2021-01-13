@@ -30,6 +30,7 @@ require (
 	github.com/caddyserver/caddy v1.0.3
 	github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
+	github.com/checkpoint-restore/go-criu v4.0.0+incompatible // indirect
 	github.com/client9/misspell v0.3.4
 	github.com/cloudflare/cfssl v0.0.0-20180726162950-56268a613adf
 	github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313
@@ -170,7 +171,7 @@ require (
 	k8s.io/component-base v0.0.0
 	k8s.io/cri-api v0.0.0
 	k8s.io/csi-translation-lib v0.0.0
-	k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
+	k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 	k8s.io/heapster v1.2.0-beta.1
 	k8s.io/klog v1.0.0
 	k8s.io/kube-aggregator v0.0.0
@@ -248,6 +249,7 @@ replace (
 	github.com/census-instrumentation/opencensus-proto => github.com/census-instrumentation/opencensus-proto v0.2.1
 	github.com/cespare/prettybench => github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c
 	github.com/chai2010/gettext-go => github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
+	github.com/checkpoint-restore/go-criu => github.com/checkpoint-restore/go-criu v4.0.0+incompatible
 	github.com/cheekybits/genny => github.com/cheekybits/genny v1.0.0
 	github.com/client9/misspell => github.com/client9/misspell v0.3.4
 	github.com/cloudflare/cfssl => github.com/cloudflare/cfssl v0.0.0-20180726162950-56268a613adf
@@ -283,7 +285,7 @@ replace (
 	github.com/dimchansky/utfbom => github.com/dimchansky/utfbom v1.1.0
 	github.com/dnaeon/go-vcr => github.com/dnaeon/go-vcr v1.0.1
 	github.com/dnsimple/dnsimple-go => github.com/dnsimple/dnsimple-go v0.30.0
-	github.com/docker/distribution => github.com/docker/distribution v0.0.0-20170726174610-edc3ab29cdff
+	github.com/docker/distribution => github.com/docker/distribution v2.7.1+incompatible
 	github.com/docker/docker => github.com/docker/docker v0.7.3-0.20190327010347-be7ac8be2ae0
 	github.com/docker/go-connections => github.com/docker/go-connections v0.3.0
 	github.com/docker/go-events => github.com/docker/go-events v0.0.0-20190806004212-e31b211e4f1c
@@ -437,7 +439,7 @@ replace (
 	github.com/kylelemons/godebug => github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
 	github.com/labbsr0x/bindman-dns-webhook => github.com/labbsr0x/bindman-dns-webhook v1.0.2
 	github.com/labbsr0x/goh => github.com/labbsr0x/goh v1.0.1
-	github.com/libopenstorage/openstorage => github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875
+	github.com/libopenstorage/openstorage => github.com/libopenstorage/openstorage v1.0.0
 	github.com/liggitt/tabwriter => github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
 	github.com/linode/linodego => github.com/linode/linodego v0.10.0
 	github.com/liquidweb/liquidweb-go => github.com/liquidweb/liquidweb-go v1.6.0
@@ -493,7 +495,7 @@ replace (
 	github.com/onsi/gomega => github.com/onsi/gomega v1.7.0
 	github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec => github.com/opencontainers/image-spec v1.0.1
-	github.com/opencontainers/runc => github.com/opencontainers/runc v0.0.0-20181113202123-f000fe11ece1
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.0
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/oracle/oci-go-sdk => github.com/oracle/oci-go-sdk v7.0.0+incompatible
@@ -642,7 +644,7 @@ replace (
 	k8s.io/component-base => ./staging/src/k8s.io/component-base
 	k8s.io/cri-api => ./staging/src/k8s.io/cri-api
 	k8s.io/csi-translation-lib => ./staging/src/k8s.io/csi-translation-lib
-	k8s.io/gengo => k8s.io/gengo v0.0.0-20190116091435-f8a0810f38af
+	k8s.io/gengo => k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 	k8s.io/heapster => k8s.io/heapster v1.2.0-beta.1
 	k8s.io/klog => k8s.io/klog v1.0.0
 	k8s.io/kube-aggregator => ./staging/src/k8s.io/kube-aggregator

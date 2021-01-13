@@ -148,6 +148,8 @@ github.com/chai2010/gettext-go/gettext
 github.com/chai2010/gettext-go/gettext/mo
 github.com/chai2010/gettext-go/gettext/plural
 github.com/chai2010/gettext-go/gettext/po
+# github.com/checkpoint-restore/go-criu v4.0.0+incompatible => github.com/checkpoint-restore/go-criu v4.0.0+incompatible
+github.com/checkpoint-restore/go-criu/rpc
 # github.com/client9/misspell v0.3.4 => github.com/client9/misspell v0.3.4
 github.com/client9/misspell
 github.com/client9/misspell/cmd/misspell
@@ -213,7 +215,7 @@ github.com/davecgh/go-spew/spew
 github.com/daviddengcn/go-colortext
 # github.com/dgrijalva/jwt-go v3.2.0+incompatible => github.com/dgrijalva/jwt-go v0.0.0-20160705203006-01aeca54ebda
 github.com/dgrijalva/jwt-go
-# github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v0.0.0-20170726174610-edc3ab29cdff
+# github.com/docker/distribution v2.7.1+incompatible => github.com/docker/distribution v2.7.1+incompatible
 github.com/docker/distribution/digestset
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
@@ -503,7 +505,7 @@ github.com/json-iterator/go
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2 => github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/libopenstorage/openstorage v1.0.0 => github.com/libopenstorage/openstorage v0.0.0-20170906232338-093a0c388875
+# github.com/libopenstorage/openstorage v1.0.0 => github.com/libopenstorage/openstorage v1.0.0
 github.com/libopenstorage/openstorage/api
 github.com/libopenstorage/openstorage/api/client
 github.com/libopenstorage/openstorage/api/client/volume
@@ -601,7 +603,7 @@ github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1 => github.com/opencontainers/image-spec v1.0.1
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830 => github.com/opencontainers/runc v0.0.0-20181113202123-f000fe11ece1
+# github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830 => github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
 github.com/opencontainers/runc/libcontainer
 github.com/opencontainers/runc/libcontainer/apparmor
 github.com/opencontainers/runc/libcontainer/cgroups
@@ -609,9 +611,9 @@ github.com/opencontainers/runc/libcontainer/cgroups/fs
 github.com/opencontainers/runc/libcontainer/cgroups/systemd
 github.com/opencontainers/runc/libcontainer/configs
 github.com/opencontainers/runc/libcontainer/configs/validate
-github.com/opencontainers/runc/libcontainer/criurpc
 github.com/opencontainers/runc/libcontainer/intelrdt
 github.com/opencontainers/runc/libcontainer/keys
+github.com/opencontainers/runc/libcontainer/logs
 github.com/opencontainers/runc/libcontainer/mount
 github.com/opencontainers/runc/libcontainer/seccomp
 github.com/opencontainers/runc/libcontainer/stacktrace
@@ -1667,7 +1669,7 @@ k8s.io/cri-api/pkg/apis/testing
 # k8s.io/csi-translation-lib v0.0.0 => ./staging/src/k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib
 k8s.io/csi-translation-lib/plugins
-# k8s.io/gengo v0.0.0-20200114144118-36b2048a9120 => k8s.io/gengo v0.0.0-20190116091435-f8a0810f38af
+# k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6 => k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 k8s.io/gengo/args
 k8s.io/gengo/examples/deepcopy-gen/generators
 k8s.io/gengo/examples/defaulter-gen/generators

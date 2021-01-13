@@ -73,6 +73,7 @@ filegroup(
         "//vendor/github.com/caddyserver/caddy/caddyfile:all-srcs",
         "//vendor/github.com/cespare/prettybench:all-srcs",
         "//vendor/github.com/chai2010/gettext-go/gettext:all-srcs",
+        "//vendor/github.com/checkpoint-restore/go-criu/rpc:all-srcs",
         "//vendor/github.com/client9/misspell:all-srcs",
         "//vendor/github.com/cloudflare/cfssl/auth:all-srcs",
         "//vendor/github.com/cloudflare/cfssl/certdb:all-srcs",

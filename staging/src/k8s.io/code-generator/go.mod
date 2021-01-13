@@ -11,7 +11,7 @@ require (
 	gonum.org/v1/gonum v0.6.2
 	gonum.org/v1/netlib v0.0.0-20190331212654-76723241ea4e // indirect
 	k8s.io/apimachinery v0.0.0
-	k8s.io/gengo v0.0.0-20200114144118-36b2048a9120
+	k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6
 	k8s.io/klog v1.0.0
 )
 
@@ -28,7 +28,6 @@ replace (
 	gopkg.in/check.v1 => gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	k8s.io/apimachinery => ../apimachinery
 	k8s.io/code-generator => ../code-generator
-	k8s.io/gengo => k8s.io/gengo v0.0.0-20190116091435-f8a0810f38af
 	k8s.io/kube-openapi => k8s.io/kube-openapi v0.0.0-20190228160746-b3a7cee44a30
 	sigs.k8s.io/yaml => sigs.k8s.io/yaml v1.1.0
 )
