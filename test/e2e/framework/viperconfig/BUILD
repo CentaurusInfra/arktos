@@ -24,13 +24,3 @@ filegroup(
     tags = ["automanaged"],
     visibility = ["//visibility:public"],
 )
-
-go_test(
-    name = "go_default_test",
-    srcs = ["viperconfig_test.go"],
-    embed = [":go_default_library"],
-    deps = [
-        "//test/e2e/framework/config:go_default_library",
-        "//vendor/github.com/stretchr/testify/require:go_default_library",
-    ],
-)
