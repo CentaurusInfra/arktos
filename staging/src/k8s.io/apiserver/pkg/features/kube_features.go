@@ -134,6 +134,12 @@ const (
 	//
 	// Enables managing request concurrency with prioritization and fairness at each server
 	RequestManagement featuregate.Feature = "RequestManagement"
+
+	// owner: @wojtek-t
+	// alpha: v1.16
+	//
+	// Deprecates and removes SelfLink from ObjectMeta and ListMeta.
+	RemoveSelfLink featuregate.Feature = "RemoveSelfLink"
 )
 
 func init() {
@@ -158,4 +164,5 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	WinDSR:                  {Default: false, PreRelease: featuregate.Alpha},
 	WatchBookmark:           {Default: true, PreRelease: featuregate.GA, LockToDefault: true},
 	RequestManagement:       {Default: false, PreRelease: featuregate.Alpha},
+	RemoveSelfLink:          {Default: false, PreRelease: featuregate.Alpha},
 }
