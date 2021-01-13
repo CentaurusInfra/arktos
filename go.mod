@@ -31,6 +31,7 @@ require (
 	github.com/cespare/prettybench v0.0.0-20150116022406-03b8cfe5406c
 	github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
 	github.com/checkpoint-restore/go-criu v4.0.0+incompatible // indirect
+	github.com/cilium/ebpf v0.0.0-20191025125908-95b36a581eed // indirect
 	github.com/client9/misspell v0.3.4
 	github.com/cloudflare/cfssl v0.0.0-20180726162950-56268a613adf
 	github.com/clusterhq/flocker-go v0.0.0-20160920122132-2b8b7259d313
@@ -67,7 +68,7 @@ require (
 	github.com/go-openapi/strfmt v0.19.3
 	github.com/go-openapi/validate v0.19.5
 	github.com/go-ozzo/ozzo-validation v3.5.0+incompatible // indirect
-	github.com/godbus/dbus v4.1.0+incompatible
+	github.com/godbus/dbus v0.0.0-20181101234600-2ff6f7ffd60f
 	github.com/gogo/protobuf v1.3.1
 	github.com/golang/groupcache v0.0.0-20160516000752-02826c3e7903
 	github.com/golang/mock v1.3.1
@@ -110,7 +111,7 @@ require (
 	github.com/onsi/gomega v1.7.0
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.1 // indirect
-	github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
+	github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/runtime-spec v1.0.0 // indirect
 	github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/pborman/uuid v1.2.0
@@ -251,6 +252,7 @@ replace (
 	github.com/chai2010/gettext-go => github.com/chai2010/gettext-go v0.0.0-20160711120539-c6fed771bfd5
 	github.com/checkpoint-restore/go-criu => github.com/checkpoint-restore/go-criu v4.0.0+incompatible
 	github.com/cheekybits/genny => github.com/cheekybits/genny v1.0.0
+	github.com/cilium/ebpf => github.com/cilium/ebpf v0.0.0-20191025125908-95b36a581eed
 	github.com/client9/misspell => github.com/client9/misspell v0.3.4
 	github.com/cloudflare/cfssl => github.com/cloudflare/cfssl v0.0.0-20180726162950-56268a613adf
 	github.com/cloudflare/cloudflare-go => github.com/cloudflare/cloudflare-go v0.10.2
@@ -270,7 +272,7 @@ replace (
 
 	github.com/coreos/go-oidc => github.com/coreos/go-oidc v0.0.0-20180117170138-065b426bd416
 	github.com/coreos/go-semver => github.com/coreos/go-semver v0.3.0
-	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20180511133405-39ca1b05acc7
+	github.com/coreos/go-systemd => github.com/coreos/go-systemd v0.0.0-20190321100706-95778dfbb74e
 	github.com/coreos/pkg => github.com/coreos/pkg v0.0.0-20180108230652-97fdf19511ea
 	github.com/coreos/rkt => github.com/coreos/rkt v1.30.0
 	github.com/cpu/goacmedns => github.com/cpu/goacmedns v0.0.1
@@ -342,7 +344,7 @@ replace (
 	github.com/go-toolsmith/strparse => github.com/go-toolsmith/strparse v1.0.0
 	github.com/go-toolsmith/typep => github.com/go-toolsmith/typep v1.0.0
 	github.com/gobwas/glob => github.com/gobwas/glob v0.2.3
-	github.com/godbus/dbus => github.com/godbus/dbus v0.0.0-20151105175453-c7fdd8b5cd55
+	github.com/godbus/dbus => github.com/godbus/dbus v0.0.0-20181101234600-2ff6f7ffd60f
 	github.com/gofrs/uuid => github.com/gofrs/uuid v3.2.0+incompatible
 	github.com/gogo/protobuf => github.com/gogo/protobuf v1.3.1
 	github.com/goji/httpauth => github.com/goji/httpauth v0.0.0-20160601135302-2da839ab0f4d
@@ -477,7 +479,7 @@ replace (
 	github.com/mohae/deepcopy => github.com/mohae/deepcopy v0.0.0-20170603005431-491d3605edfb
 	github.com/morikuni/aec => github.com/morikuni/aec v0.0.0-20170113033406-39771216ff4c
 	github.com/mozilla/tls-observatory => github.com/mozilla/tls-observatory v0.0.0-20180409132520-8791a200eb40
-	github.com/mrunalp/fileutils => github.com/mrunalp/fileutils v0.0.0-20160930181131-4ee1cc9a8058
+	github.com/mrunalp/fileutils => github.com/mrunalp/fileutils v0.0.0-20171103030105-7d4729fb3618
 	github.com/munnerz/goautoneg => github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d
 	github.com/mvdan/xurls => github.com/mvdan/xurls v1.1.0
 	github.com/mxk/go-flowrate => github.com/mxk/go-flowrate v0.0.0-20140419014527-cca7078d478f
@@ -495,7 +497,7 @@ replace (
 	github.com/onsi/gomega => github.com/onsi/gomega v1.7.0
 	github.com/opencontainers/go-digest => github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec => github.com/opencontainers/image-spec v1.0.1
-	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc2.0.20190611121236-6cc515888830
+	github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc10
 	github.com/opencontainers/runtime-spec => github.com/opencontainers/runtime-spec v1.0.0
 	github.com/opencontainers/selinux => github.com/opencontainers/selinux v1.3.1-0.20190929122143-5215b1806f52
 	github.com/oracle/oci-go-sdk => github.com/oracle/oci-go-sdk v7.0.0+incompatible
@@ -550,7 +552,7 @@ replace (
 	github.com/storageos/go-api => github.com/storageos/go-api v0.0.0-20180912212459-343b3eff91fc
 	github.com/stretchr/objx => github.com/stretchr/objx v0.2.0
 	github.com/stretchr/testify => github.com/stretchr/testify v1.4.0
-	github.com/syndtr/gocapability => github.com/syndtr/gocapability v0.0.0-20160928074757-e7cb7fa329f4
+	github.com/syndtr/gocapability => github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 	github.com/tarm/serial => github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07
 	github.com/tidwall/pretty => github.com/tidwall/pretty v1.0.0
 	github.com/timakin/bodyclose => github.com/timakin/bodyclose v0.0.0-20190721030226-87058b9bfcec
