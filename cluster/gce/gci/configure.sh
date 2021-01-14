@@ -74,6 +74,27 @@ for k,v in yaml.load(sys.stdin).iteritems():
   )
 }
 
+function download-tenantpartition-kubeconfigs {
+  local -r dest="$1"
+  local -r tp_num="$2"
+
+  echo "Downloading tenant partition kubeconfig file, if it exists"
+  (
+    umask 022
+    local -r tmp_tenantpartition_kubeconfig="/tmp/tenant_parition_kubeconfig"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_tenantpartition_kubeconfig}" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/tp-${tp_num}"; then
+      # only write to the final location if curl succeeds
+      mv "${tmp_tenantpartition_kubeconfig}" "${dest}"
+    else
+      echo "== Failed to download required tenant partition config file from metadata server =="
+      exit 1
+    fi
+  )
+}
+
 function download-kubelet-config {
   local -r dest="$1"
   echo "Downloading Kubelet config file, if it exists"
@@ -581,6 +602,18 @@ source "${KUBE_HOME}/kube-env"
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
+
+if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+  tpconfigs="/etc/srv/kubernetes/tp-kubeconfigs"
+  mkdir -p ${tpconfigs}
+
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    config="${tpconfigs}/tp-${tp_num}-kubeconfig"
+    echo "DBG: download tenant partition kubeconfig: ${config}"
+    download-tenantpartition-kubeconfigs  "${config}" "${tp_num}"
+  done
+fi
 
 # master certs
 if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then

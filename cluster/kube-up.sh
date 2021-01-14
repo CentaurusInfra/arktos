@@ -27,6 +27,11 @@ set -o pipefail
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
+#TODO: make the ca file independent from kubemark or kube-up
+#
+KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
+export RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
+
 if [ -f "${KUBE_ROOT}/cluster/env.sh" ]; then
     source "${KUBE_ROOT}/cluster/env.sh"
 fi

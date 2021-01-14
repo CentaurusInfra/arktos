@@ -120,6 +120,8 @@ function create-master-instance-internal() {
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
     "${address:-}" "${private_netwrok_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
+  echo "DBG: MASTER_EXTRA_METADATA : ${MASTER_EXTRA_METADATA}"
+
   local metadata="kube-env=${KUBE_TEMP}/master-kube-env.yaml"
   metadata="${metadata},kubelet-config=${KUBE_TEMP}/master-kubelet-config.yaml"
   metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/master.yaml"

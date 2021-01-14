@@ -17,6 +17,8 @@
 
 # Script that destroys Kubemark cluster and deletes all master resources.
 
+export ENABLE_APISERVER_INSECURE_PORT="${ENABLE_APISERVER_INSECURE_PORT:-false}"
+
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
 
 source "${KUBE_ROOT}/test/kubemark/skeleton/util.sh"
@@ -45,14 +47,15 @@ rm -rf "${RESOURCE_DIRECTORY}/addons" \
     "${RESOURCE_DIRECTORY}/hollow-node.yaml"  &> /dev/null || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  export KUBE_ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT=${ENABLE_APISERVER_INSECURE_PORT}
   export KUBERNETES_TENANT_PARTITION=true
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     export TENANT_PARTITION_SEQUENCE=${tp_num}
     delete-kubemark-master
+    rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}"
+    rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}-proxy"
   done
-
 
   export KUBERNETES_TENANT_PARTITION=false
   export KUBERNETES_RESOURCE_PARTITION=true
@@ -61,6 +64,8 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-*
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+  rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
 else
   delete-kubemark-master
 fi

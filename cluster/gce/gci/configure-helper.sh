@@ -95,7 +95,7 @@ function main() {
     gke-master-start
   else
     create-node-pki
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
       create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME} "8080" "http"
     else
       create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}

@@ -28,11 +28,12 @@ import (
 )
 
 const (
-	ARKTOS_API_PORT      = 8080
-	MAX_CONN_PER_BACKEND = 500000
-	CONNECTION_TIMEOUT   = "10m"
-	PROXY_PORT           = 8888
-	TEMPLATE_FILE        = "haproxy.cfg.template"
+	ARKTOS_API_SECURE_PORT = 443
+	ARKTOS_API_PORT        = 8080
+	MAX_CONN_PER_BACKEND   = 500000
+	CONNECTION_TIMEOUT     = "10m"
+	PROXY_PORT             = 8888
+	TEMPLATE_FILE          = "haproxy.cfg.template"
 )
 
 type Config struct {
@@ -196,13 +197,16 @@ func get_backends(config *Config) string {
 
 	result := ""
 
-	rp_backend := "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v\n\n"
+	//TODO: add flag to the tool for secure port or insecure port usage
+	//
+	tp_backend := "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+
 	for index, ip := range config.tenantPartititonIPs {
-		result = result + fmt.Sprintf(rp_backend, index+1, index+1, ip, ARKTOS_API_PORT, MAX_CONN_PER_BACKEND)
+		result = result + fmt.Sprintf(tp_backend, index+1, index+1, ip, ARKTOS_API_SECURE_PORT, MAX_CONN_PER_BACKEND)
 	}
 
-	tp_backend := "backend resource_api\n    server rp %v:%v maxconn %v\n\n"
-	result = result + fmt.Sprintf(tp_backend, config.resourcePartitionIP, ARKTOS_API_PORT, MAX_CONN_PER_BACKEND)
+	rp_backend := "backend resource_api\n    server rp %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+	result = result + fmt.Sprintf(rp_backend, config.resourcePartitionIP, ARKTOS_API_SECURE_PORT, MAX_CONN_PER_BACKEND)
 
 	return result
 }

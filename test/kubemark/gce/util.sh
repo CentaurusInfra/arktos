@@ -40,6 +40,7 @@ function create-kubemark-master {
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
     export LOCAL_KUBECONFIG
+    export LOCAL_KUBECONFIG_TMP
 
     KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"

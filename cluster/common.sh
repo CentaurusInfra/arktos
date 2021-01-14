@@ -96,11 +96,15 @@ function create-kubeconfig() {
       cluster_args=(
           "--server=${KUBE_SERVER:-https://${PROXY_RESERVED_IP}}:443"
        )
-    elif [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    elif [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
       cluster_args=(
           "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
        )
-    fi
+      else
+        cluster_args=(
+          "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}:443"
+        )
+      fi
   fi
 
   if [[ -z "${CA_CERT:-}" ]]; then
