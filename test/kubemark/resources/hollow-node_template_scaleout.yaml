@@ -50,10 +50,20 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
+        - name: TENANT_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: node-configmap
+              key: tenant.servers
+        - name: RESOURCE_SERVER
+          valueFrom:
+            configMapKeyRef:
+              name: node-configmap
+              key: resource.server
         command:
         - /bin/sh
         - -c
-        - /kubemark --morph=kubelet --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
+        - /kubemark --morph=kubelet --tenant-servers={{tenant_servers}} --resource-server={{resource_server}} --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
         volumeMounts:
         - name: kubeconfig-volume
           mountPath: /kubeconfig
@@ -66,32 +76,6 @@ spec:
             memory: 100M
         securityContext:
           privileged: true
-      - name: hollow-proxy
-        image: {{kubemark_image_registry}}/kubemark:{{kubemark_image_tag}}
-        env:
-        - name: CONTENT_TYPE
-          valueFrom:
-            configMapKeyRef:
-              name: node-configmap
-              key: content.type
-        - name: NODE_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        command:
-        - /bin/sh
-        - -c
-        - /kubemark --morph=proxy --name=$(NODE_NAME) {{hollow_proxy_params}} --kubeconfig=/kubeconfig/kubeproxy.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubeproxy-$(NODE_NAME).log 2>&1
-        volumeMounts:
-        - name: kubeconfig-volume
-          mountPath: /kubeconfig
-          readOnly: true
-        - name: logs-volume
-          mountPath: /var/log
-        resources:
-          requests:
-            cpu: {{HOLLOW_PROXY_CPU}}m
-            memory: {{HOLLOW_PROXY_MEM}}Ki
       - name: hollow-node-problem-detector
         image: k8s.gcr.io/node-problem-detector:v0.4.1
         env:
@@ -102,7 +86,11 @@ spec:
         command:
         - /bin/sh
         - -c
-        - /node-problem-detector --system-log-monitors=/config/kernel.monitor --apiserver-override="https://{{master_ip}}:443?inClusterConfig=false&auth=/kubeconfig/npd.kubeconfig" --alsologtostderr 1>>/var/log/npd-$(NODE_NAME).log 2>&1
+      # For Arktos scaleout POC only
+      # simply use master_ip for the Resource cluster master URL
+      # perviously hardcoded 443 as port could break the replacement logic currently in POC with insecure ports
+      #
+        - /node-problem-detector --system-log-monitors=/config/kernel.monitor --apiserver-override="{{master_ip}}?inClusterConfig=false&auth=/kubeconfig/npd.kubeconfig" --alsologtostderr 1>>/var/log/npd-$(NODE_NAME).log 2>&1
         volumeMounts:
         - name: kubeconfig-volume
           mountPath: /kubeconfig
