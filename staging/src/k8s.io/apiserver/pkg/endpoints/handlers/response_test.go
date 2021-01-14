@@ -74,10 +74,11 @@ func (m *mockCacheableObject) GetObject() runtime.Object {
 
 type mockNamer struct{}
 
-func (*mockNamer) Namespace(_ *http.Request) (string, error)           { return "", nil }
-func (*mockNamer) Name(_ *http.Request) (string, string, error)        { return "", "", nil }
-func (*mockNamer) ObjectName(_ runtime.Object) (string, string, error) { return "", "", nil }
-func (*mockNamer) SetSelfLink(_ runtime.Object, _ string) error        { return nil }
+func (*mockNamer) Tenant(_ *http.Request) (string, error)                      { return "", nil }
+func (*mockNamer) Namespace(_ *http.Request) (string, error)                   { return "", nil }
+func (*mockNamer) Name(_ *http.Request) (string, string, error)                { return "", "", nil }
+func (*mockNamer) ObjectName(_ runtime.Object) (string, string, string, error) { return "", "", "", nil }
+func (*mockNamer) SetSelfLink(_ runtime.Object, _ string) error                { return nil }
 func (*mockNamer) GenerateLink(_ *request.RequestInfo, _ runtime.Object) (string, error) {
 	return "", nil
 }
