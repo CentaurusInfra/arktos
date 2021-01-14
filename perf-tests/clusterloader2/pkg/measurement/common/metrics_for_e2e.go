@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"strings"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/klog"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
@@ -70,8 +72,11 @@ func (m *metricsForE2EMeasurement) Execute(config *measurement.MeasurementConfig
 		config.ClusterFramework.GetClientSets().GetClient(),
 		nil, /*external client*/
 		grabMetricsFromKubelets,
-		true, /*grab metrics from scheduler*/
-		true, /*grab metrics from controller manager*/
+		//We temporarily disable the metric collection on scheduler in scale-out scenarios, where we only test non-system tenants
+		//true, /*grab metrics from scheduler*/
+		util.GetTenant() == metav1.TenantSystem,
+		//true, /*grab metrics from controller manager*/
+		util.GetTenant() == metav1.TenantSystem,
 		true, /*grab metrics from apiserver*/
 		false /*grab metrics from cluster autoscaler*/)
 	if err != nil {

@@ -40,10 +40,15 @@ func NewDynamicSharedInformerFactory(client dynamic.Interface, defaultResync tim
 // NewFilteredDynamicSharedInformerFactory constructs a new instance of dynamicSharedInformerFactory.
 // Listers obtained via this factory will be subject to the same filters as specified here.
 func NewFilteredDynamicSharedInformerFactory(client dynamic.Interface, defaultResync time.Duration, namespace string, tweakListOptions TweakListOptionsFunc) DynamicSharedInformerFactory {
+	return NewFilteredDynamicSharedInformerFactoryWithMultiTenancy(client, defaultResync, namespace, tweakListOptions, metav1.TenantSystem)
+}
+
+func NewFilteredDynamicSharedInformerFactoryWithMultiTenancy(client dynamic.Interface, defaultResync time.Duration, namespace string, tweakListOptions TweakListOptionsFunc, tenant string) DynamicSharedInformerFactory {
 	return &dynamicSharedInformerFactory{
 		client:           client,
 		defaultResync:    defaultResync,
 		namespace:        namespace,
+		tenant:           tenant,
 		informers:        map[schema.GroupVersionResource]informers.GenericInformer{},
 		startedInformers: make(map[schema.GroupVersionResource]bool),
 		tweakListOptions: tweakListOptions,
@@ -55,6 +60,7 @@ type dynamicSharedInformerFactory struct {
 	clients       []dynamic.Interface
 	defaultResync time.Duration
 	namespace     string
+	tenant        string
 
 	lock      sync.Mutex
 	informers map[schema.GroupVersionResource]informers.GenericInformer
@@ -76,7 +82,7 @@ func (f *dynamicSharedInformerFactory) ForResource(gvr schema.GroupVersionResour
 		return informer
 	}
 
-	informer = NewFilteredDynamicInformer(f, gvr, f.namespace, f.defaultResync, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	informer = NewFilteredDynamicInformerWithMultiTenancy(f, gvr, f.namespace, f.defaultResync, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions, f.tenant)
 	f.informers[key] = informer
 
 	return informer
