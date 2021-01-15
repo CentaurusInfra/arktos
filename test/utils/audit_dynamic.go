@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -95,8 +96,6 @@ func (a *AuditTestServer) WaitForEvents(expected []AuditEvent) ([]AuditEvent, er
 	var missing []AuditEvent
 	err := wait.PollImmediate(50*time.Millisecond, wait.ForeverTestTimeout, func() (bool, error) {
 		var err error
-		a.LockedEventList.RLock()
-		defer a.LockedEventList.RUnlock()
 		el := a.GetEventList()
 		if len(el.Items) < 1 {
 			return false, nil

@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,13 +29,12 @@ func TestRateLimitingQueue(t *testing.T) {
 	queue := NewRateLimitingQueue(limiter).(*rateLimitingType)
 	fakeClock := clock.NewFakeClock(time.Now())
 	delayingQueue := &delayingType{
-		Interface:         New(),
-		clock:             fakeClock,
-		heartbeat:         fakeClock.NewTicker(maxWait),
-		stopCh:            make(chan struct{}),
-		waitingForAddCh:   make(chan *waitFor, 1000),
-		metrics:           newRetryMetrics(""),
-		deprecatedMetrics: newDeprecatedRetryMetrics(""),
+		Interface:       New(),
+		clock:           fakeClock,
+		heartbeat:       fakeClock.NewTicker(maxWait),
+		stopCh:          make(chan struct{}),
+		waitingForAddCh: make(chan *waitFor, 1000),
+		metrics:         newRetryMetrics(""),
 	}
 	queue.DelayingInterface = delayingQueue
 

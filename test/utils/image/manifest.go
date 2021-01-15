@@ -227,7 +227,7 @@ func initImageConfigs() map[int]Config {
 	configs[Agnhost] = Config{e2eRegistry, "agnhost", "2.0"}
 	configs[Alpine] = Config{dockerLibraryRegistry, "alpine", "3.7"}
 	configs[AuthenticatedAlpine] = Config{gcAuthenticatedRegistry, "alpine", "3.7"}
-	configs[APIServer] = Config{e2eRegistry, "sample-apiserver", "1.10"}
+	configs[APIServer] = Config{e2eRegistry, "sample-apiserver", "1.17"}
 	configs[AppArmorLoader] = Config{e2eRegistry, "apparmor-loader", "1.0"}
 	configs[AuditProxy] = Config{e2eRegistry, "audit-proxy", "1.0"}
 	configs[BusyBox] = Config{dockerLibraryRegistry, "busybox", "1.29"}

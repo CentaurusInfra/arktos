@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2015 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +38,12 @@ retry() {
 
 export PATH=${GOPATH}/bin:${PWD}/third_party/etcd:/usr/local/go/bin:${PATH}
 
-go install k8s.io/kubernetes/vendor/github.com/jstemmer/go-junit-report
+# Until all GOPATH references are removed from all build scripts as well,
+# explicitly disable module mode to avoid picking up user-set GO111MODULE preferences.
+# As individual scripts make use of go modules, they can explicitly set GO111MODULE=on
+export GO111MODULE=off
+
+go install k8s.io/kubernetes/vendor/gotest.tools/gotestsum
 
 # Enable the Go race detector.
 export KUBE_RACE=-race

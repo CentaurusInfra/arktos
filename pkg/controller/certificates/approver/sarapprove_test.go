@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -272,7 +273,7 @@ type csrBuilder struct {
 }
 
 func makeFancyTestCsr(b csrBuilder) *capi.CertificateSigningRequest {
-	pk, err := ecdsa.GenerateKey(elliptic.P224(), insecureRand)
+	pk, err := ecdsa.GenerateKey(elliptic.P256(), insecureRand)
 	if err != nil {
 		panic(err)
 	}

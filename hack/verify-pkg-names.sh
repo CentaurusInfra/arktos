@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +27,7 @@ source "${KUBE_ROOT}/hack/lib/init.sh"
 kube::golang::verify_go_version
 
 cd "${KUBE_ROOT}"
-if git --no-pager grep -E $'^(import |\t)[a-z]+[A-Z_][a-zA-Z]* "[^"]+"$' -- '**/*.go' ':(exclude)vendor/*' ':(exclude)**.*.pb.go'; then
+if git --no-pager grep -E $'^(import |\t)[a-z]+[A-Z_][a-zA-Z]* "[^"]+"$' -- '**/*.go' ':(exclude)vendor/*' ':(exclude)**/*.pb.go'; then
   echo "!!! Some package aliases break go conventions."
   echo "To fix these errors, do not use capitalized or underlined characters"
   echo "in pkg aliases. Refer to https://blog.golang.org/package-names for more info."

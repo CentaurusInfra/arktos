@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +76,7 @@ func (m *Time) Unmarshal(data []byte) error {
 	return nil
 }
 
-// Marshal implements the protobuf marshalling interface.
+// Marshal implements the protobuf marshaling interface.
 func (m *Time) Marshal() (data []byte, err error) {
 	if m == nil || m.Time.IsZero() {
 		return nil, nil
@@ -83,10 +84,18 @@ func (m *Time) Marshal() (data []byte, err error) {
 	return m.ProtoTime().Marshal()
 }
 
-// MarshalTo implements the protobuf marshalling interface.
+// MarshalTo implements the protobuf marshaling interface.
 func (m *Time) MarshalTo(data []byte) (int, error) {
 	if m == nil || m.Time.IsZero() {
 		return 0, nil
 	}
 	return m.ProtoTime().MarshalTo(data)
+}
+
+// MarshalToSizedBuffer implements the protobuf reverse marshaling interface.
+func (m *Time) MarshalToSizedBuffer(data []byte) (int, error) {
+	if m == nil || m.Time.IsZero() {
+		return 0, nil
+	}
+	return m.ProtoTime().MarshalToSizedBuffer(data)
 }

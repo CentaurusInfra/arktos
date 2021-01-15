@@ -2,6 +2,7 @@
 
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,8 +20,9 @@ limitations under the License.
 package oom
 
 import (
-	"os"
 	"testing"
+
+	"github.com/opencontainers/runc/libcontainer/cgroups"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -100,5 +102,5 @@ func TestOOMScoreAdjContainer(t *testing.T) {
 
 func TestPidListerFailure(t *testing.T) {
 	_, err := getPids("/does/not/exist")
-	assert.True(t, os.IsNotExist(err), "expected getPids to return not exists error. Got %v", err)
+	assert.True(t, cgroups.IsNotFound(err), "expected getPids to return not exists error. Got %v", err)
 }

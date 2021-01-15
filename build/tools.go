@@ -2,6 +2,7 @@
 
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,10 +25,12 @@ import (
 	_ "github.com/bazelbuild/buildtools/buildozer"
 	_ "github.com/cespare/prettybench"
 	_ "github.com/client9/misspell/cmd/misspell"
-	_ "github.com/jstemmer/go-junit-report"
-	_ "github.com/jteeuwen/go-bindata/go-bindata"
+	_ "github.com/go-bindata/go-bindata/go-bindata"
 	_ "github.com/onsi/ginkgo/ginkgo"
 	_ "golang.org/x/lint/golint"
+	_ "gotest.tools"
+	_ "gotest.tools/gotestsum"
+	_ "honnef.co/go/tools/cmd/staticcheck"
 	_ "k8s.io/code-generator/cmd/go-to-protobuf"
 	_ "k8s.io/code-generator/cmd/go-to-protobuf/protoc-gen-gogo"
 	_ "k8s.io/gengo/examples/deepcopy-gen/generators"
@@ -35,5 +38,5 @@ import (
 	_ "k8s.io/gengo/examples/import-boss/generators"
 	_ "k8s.io/gengo/examples/set-gen/generators"
 	_ "k8s.io/kube-openapi/cmd/openapi-gen"
-	_ "k8s.io/repo-infra/kazel"
+	_ "k8s.io/repo-infra/cmd/kazel"
 )

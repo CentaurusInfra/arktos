@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,7 +74,7 @@ var _ = framework.KubeDescribe("ResourceMetricsAPI", func() {
 			matchV1alpha1Expectations := gstruct.MatchAllKeys(gstruct.Keys{
 				"scrape_error": gstruct.Ignore(),
 				"node_cpu_usage_seconds_total": gstruct.MatchAllElements(nodeId, gstruct.Elements{
-					"": boundedSample(1, 1E6),
+					"": boundedSample(1, 1e6),
 				}),
 				"node_memory_working_set_bytes": gstruct.MatchAllElements(nodeId, gstruct.Elements{
 					"": boundedSample(10*volume.Mb, memoryLimit),

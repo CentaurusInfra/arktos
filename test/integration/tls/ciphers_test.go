@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -64,6 +65,7 @@ func runTestAPICiphers(t *testing.T, testID int, kubePort int, clientCiphers []u
 
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{
+			MaxVersion:         tls.VersionTLS12, // Limit to TLS1.2 to allow cipher configuration
 			InsecureSkipVerify: true,
 			CipherSuites:       clientCiphers,
 		},

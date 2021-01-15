@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,13 +45,12 @@ func NewNamedDelayingQueue(name string) DelayingInterface {
 
 func newDelayingQueue(clock clock.Clock, name string) DelayingInterface {
 	ret := &delayingType{
-		Interface:         NewNamed(name),
-		clock:             clock,
-		heartbeat:         clock.NewTicker(maxWait),
-		stopCh:            make(chan struct{}),
-		waitingForAddCh:   make(chan *waitFor, 1000),
-		metrics:           newRetryMetrics(name),
-		deprecatedMetrics: newDeprecatedRetryMetrics(name),
+		Interface:       NewNamed(name),
+		clock:           clock,
+		heartbeat:       clock.NewTicker(maxWait),
+		stopCh:          make(chan struct{}),
+		waitingForAddCh: make(chan *waitFor, 1000),
+		metrics:         newRetryMetrics(name),
 	}
 
 	go ret.waitingLoop()
@@ -77,8 +77,7 @@ type delayingType struct {
 	waitingForAddCh chan *waitFor
 
 	// metrics counts the number of retries
-	metrics           retryMetrics
-	deprecatedMetrics retryMetrics
+	metrics retryMetrics
 }
 
 // waitFor holds the data to add and the time it should be added
@@ -154,7 +153,6 @@ func (q *delayingType) AddAfter(item interface{}, duration time.Duration) {
 	}
 
 	q.metrics.retry()
-	q.deprecatedMetrics.retry()
 
 	// immediately add things with no delay
 	if duration <= 0 {
