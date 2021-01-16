@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -29,7 +30,7 @@ func NewSchemaValidator(customResourceValidation *apiextensions.CustomResourceVa
 	// Convert CRD schema to openapi schema
 	openapiSchema := &spec.Schema{}
 	if customResourceValidation != nil {
-		// WARNING: do not replace this with Structural.ToGoOpenAPI until it supports nullable.
+		// TODO: replace with NewStructural(...).ToGoOpenAPI
 		if err := ConvertJSONSchemaProps(customResourceValidation.OpenAPIV3Schema, openapiSchema); err != nil {
 			return nil, nil, err
 		}
@@ -76,9 +77,7 @@ func ConvertJSONSchemaPropsWithPostProcess(in *apiextensions.JSONSchemaProps, ou
 		out.VendorExtensible.AddExtension("x-kubernetes-int-or-string", true)
 		out.Type = spec.StringOrArray{"integer", "string"}
 	}
-	if out.Type != nil && in.Nullable {
-		out.Type = append(out.Type, "null")
-	}
+	out.Nullable = in.Nullable
 	out.Format = in.Format
 	out.Title = in.Title
 	out.Maximum = in.Maximum

@@ -52,10 +52,6 @@ const (
 	systemdSuffix string = ".slice"
 )
 
-// hugePageSizeList is useful for converting to the hugetlb canonical unit
-// which is what is expected when interacting with libcontainer
-var hugePageSizeList = []string{"B", "kB", "MB", "GB", "TB", "PB"}
-
 var RootCgroupName = CgroupName([]string{})
 
 // NewCgroupName composes a new cgroup name.
@@ -159,7 +155,7 @@ func (l *libcontainerAdapter) newManager(cgroups *libcontainerconfigs.Cgroup, pa
 		if !cgroupsystemd.UseSystemd() {
 			panic("systemd cgroup manager not available")
 		}
-		return &cgroupsystemd.Manager{
+		return &cgroupsystemd.LegacyManager{
 			Cgroups: cgroups,
 			Paths:   paths,
 		}, nil
@@ -391,7 +387,7 @@ func (m *cgroupManagerImpl) toResources(resourceConfig *ResourceConfig) *libcont
 	// for each page size enumerated, set that value
 	pageSizes := sets.NewString()
 	for pageSize, limit := range resourceConfig.HugePageLimit {
-		sizeString := units.CustomSize("%g%s", float64(pageSize), 1024.0, hugePageSizeList)
+		sizeString := units.CustomSize("%g%s", float64(pageSize), 1024.0, libcontainercgroups.HugePageSizeUnitList)
 		resources.HugetlbLimit = append(resources.HugetlbLimit, &libcontainerconfigs.HugepageLimit{
 			Pagesize: sizeString,
 			Limit:    uint64(limit),

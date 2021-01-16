@@ -4,3 +4,10 @@ dependencies:
     refPaths:
     - path: cluster/gce/manifests/etcd.manifest
       match: etcd_docker_tag|etcd_version
+  
+  - name: "golang"
+    version: 1.13.9
+    refPaths:
+    - path: build/build-image/cross/VERSION
+    - path: test/images/Makefile
+      match: GOLANG_VERSION

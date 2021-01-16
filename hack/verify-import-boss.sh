@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,4 +26,4 @@ kube::golang::setup_env
 
 make -C "${KUBE_ROOT}" WHAT=vendor/k8s.io/code-generator/cmd/import-boss
 
-$(kube::util::find-binary "import-boss") --verify-only
+$(kube::util::find-binary "import-boss") --verify-only "$@"

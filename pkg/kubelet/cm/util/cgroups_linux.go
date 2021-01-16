@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,7 +39,7 @@ func GetPids(cgroupPath string) ([]int, error) {
 func getCgroupPath(cgroupPath string) (string, error) {
 	cgroupPath = libcontainerutils.CleanPath(cgroupPath)
 
-	mnt, root, err := libcontainercgroups.FindCgroupMountpointAndRoot("devices")
+	mnt, root, err := libcontainercgroups.FindCgroupMountpointAndRoot(cgroupPath, "devices")
 	// If we didn't mount the subsystem, there is no point we make the path.
 	if err != nil {
 		return "", err

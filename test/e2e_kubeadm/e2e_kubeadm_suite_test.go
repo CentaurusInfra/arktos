@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,11 +31,13 @@ import (
 
 	morereporters "github.com/onsi/ginkgo/reporters"
 	"k8s.io/kubernetes/test/e2e/framework"
+	e2econfig "k8s.io/kubernetes/test/e2e/framework/config"
 )
 
 func init() {
-	framework.RegisterCommonFlags()
-	framework.RegisterClusterFlags()
+	e2econfig.CopyFlags(e2econfig.Flags, flag.CommandLine)
+	framework.RegisterCommonFlags(flag.CommandLine)
+	framework.RegisterClusterFlags(flag.CommandLine)
 
 	pflag.CommandLine.AddGoFlagSet(flag.CommandLine)
 }

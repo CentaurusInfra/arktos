@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -49,10 +50,6 @@ import (
 //
 // Driver deployments that are different will have to do the patching
 // without this function, or skip patching entirely.
-//
-// TODO (?): the storage.csi.image.version and storage.csi.image.registry
-// settings are ignored. We could patch the image definitions or deprecate
-// those options.
 func PatchCSIDeployment(f *framework.Framework, o PatchCSIOptions, object interface{}) error {
 	rename := o.OldDriverName != "" && o.NewDriverName != "" &&
 		o.OldDriverName != o.NewDriverName

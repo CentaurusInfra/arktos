@@ -1,4 +1,5 @@
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,7 +30,7 @@ ARCH ?= amd64
 ALL_ARCH = amd64 arm arm64 ppc64le s390x
 
 CFLAGS = -Os -Wall -Werror -static -DVERSION=v$(TAG)-$(REV)
-KUBE_CROSS_IMAGE ?= k8s.gcr.io/kube-cross
+KUBE_CROSS_IMAGE ?= us.gcr.io/k8s-artifacts-prod/build-image/kube-cross
 KUBE_CROSS_VERSION ?= $(shell cat ../build-image/cross/VERSION)
 
 BIN = pause

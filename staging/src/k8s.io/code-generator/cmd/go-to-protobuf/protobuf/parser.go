@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -132,7 +133,7 @@ func rewriteOptionalMethods(decl ast.Decl, isOptional OptionalFunc) {
 		switch t.Name.Name {
 		case "Unmarshal":
 			ast.Walk(&optionalItemsVisitor{}, t.Body)
-		case "MarshalTo", "Size", "String":
+		case "MarshalTo", "Size", "String", "MarshalToSizedBuffer":
 			ast.Walk(&optionalItemsVisitor{}, t.Body)
 			fallthrough
 		case "Marshal":

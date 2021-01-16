@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -69,4 +70,12 @@ func (m *MicroTime) MarshalTo(data []byte) (int, error) {
 		return 0, nil
 	}
 	return m.ProtoMicroTime().MarshalTo(data)
+}
+
+// MarshalToSizedBuffer implements the protobuf marshalling interface.
+func (m *MicroTime) MarshalToSizedBuffer(data []byte) (int, error) {
+	if m == nil || m.Time.IsZero() {
+		return 0, nil
+	}
+	return m.ProtoMicroTime().MarshalToSizedBuffer(data)
 }

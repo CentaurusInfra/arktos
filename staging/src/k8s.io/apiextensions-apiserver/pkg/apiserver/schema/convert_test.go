@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,11 +76,6 @@ func TestStructuralRoundtripOrError(t *testing.T) {
 			continue
 		}
 		f.Fuzz(x.Field(n).Addr().Interface())
-		if origSchema.Nullable {
-			// non-empty type for nullable. nullable:true with empty type does not roundtrip because
-			// go-openapi does not allow to encode that (we use type slices otherwise).
-			origSchema.Type = "string"
-		}
 
 		// it roundtrips or NewStructural errors out. We should never drop anything
 		orig, err := NewStructural(origSchema)
@@ -93,9 +89,8 @@ func TestStructuralRoundtripOrError(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		str := nullTypeRE.ReplaceAllString(string(bs), `"type":"$1","nullable":true`) // unfold nullable type:[<type>,"null"] -> type:<type>,nullable:true
 		v1beta1Schema := &apiextensionsv1beta1.JSONSchemaProps{}
-		err = json.Unmarshal([]byte(str), v1beta1Schema)
+		err = json.Unmarshal([]byte(bs), v1beta1Schema)
 		if err != nil {
 			t.Fatal(err)
 		}

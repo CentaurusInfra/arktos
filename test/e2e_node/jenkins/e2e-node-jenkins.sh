@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +28,11 @@ set -x
 : "${1:?Usage test/e2e_node/jenkins/e2e-node-jenkins.sh <path to properties>}"
 
 . "${1}"
+
+# Until all GOPATH references are removed from all build scripts as well,
+# explicitly disable module mode to avoid picking up user-set GO111MODULE preferences.
+# As individual scripts make use of go modules, they can explicitly set GO111MODULE=on
+export GO111MODULE=off
 
 # indirectly generates test/e2e/generated/bindata.go too
 make generated_files

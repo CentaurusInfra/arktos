@@ -18,6 +18,7 @@ limitations under the License.
 package cni
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -60,6 +61,7 @@ type cniNetworkPlugin struct {
 	nsenterPath string
 	confDir     string
 	binDirs     []string
+	cacheDir    string
 	podCidr     string
 }
 
@@ -116,7 +118,7 @@ func SplitDirs(dirs string) []string {
 	return strings.Split(dirs, ",")
 }
 
-func ProbeNetworkPlugins(confDir string, binDirs []string) []network.NetworkPlugin {
+func ProbeNetworkPlugins(confDir, cacheDir string, binDirs []string) []network.NetworkPlugin {
 	old := binDirs
 	binDirs = make([]string, 0, len(binDirs))
 	for _, dir := range old {
@@ -131,6 +133,7 @@ func ProbeNetworkPlugins(confDir string, binDirs []string) []network.NetworkPlug
 		execer:         utilexec.New(),
 		confDir:        confDir,
 		binDirs:        binDirs,
+		cacheDir:       cacheDir,
 	}
 
 	// sync NetworkConfig in best effort during probing.
@@ -327,7 +330,7 @@ func (plugin *cniNetworkPlugin) addToNetwork(network *cniNetwork, podName string
 	pdesc := podDesc(podTenant, podNamespace, podName, podSandboxID)
 	netConf, cniNet := network.NetworkConfig, network.CNIConfig
 	klog.V(4).Infof("Adding %s to network %s/%s netns %q", pdesc, netConf.Plugins[0].Network.Type, netConf.Name, podNetnsPath)
-	res, err := cniNet.AddNetworkList(netConf, rt)
+	res, err := cniNet.AddNetworkList(context.TODO(), netConf, rt)
 	if err != nil {
 		klog.Errorf("Error adding %s to network %s/%s: %v", pdesc, netConf.Plugins[0].Network.Type, netConf.Name, err)
 		return nil, err
@@ -346,7 +349,7 @@ func (plugin *cniNetworkPlugin) deleteFromNetwork(network *cniNetwork, podName s
 	pdesc := podDesc(podTenant, podNamespace, podName, podSandboxID)
 	netConf, cniNet := network.NetworkConfig, network.CNIConfig
 	klog.V(4).Infof("Deleting %s from network %s/%s netns %q", pdesc, netConf.Plugins[0].Network.Type, netConf.Name, podNetnsPath)
-	err = cniNet.DelNetworkList(netConf, rt)
+	err = cniNet.DelNetworkList(context.TODO(), netConf, rt)
 	// The pod may not get deleted successfully at the first time.
 	// Ignore "no such file or directory" error in case the network has already been deleted in previous attempts.
 	if err != nil && !strings.Contains(err.Error(), "no such file or directory") {
@@ -362,6 +365,7 @@ func (plugin *cniNetworkPlugin) buildCNIRuntimeConf(podName string, podNs string
 		ContainerID: podSandboxID.ID,
 		NetNS:       podNetnsPath,
 		IfName:      network.DefaultInterfaceName,
+		CacheDir:    plugin.cacheDir,
 		Args: [][2]string{
 			{"IgnoreUnknown", "1"},
 			{"K8S_POD_TENANT", podTenant},

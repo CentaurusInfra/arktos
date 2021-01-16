@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,13 +21,7 @@ import (
 	"github.com/go-openapi/spec"
 )
 
-// ToGoOpenAPI converts a structural schema to go-openapi schema. It is faithful and roundtrippable
-// with the exception of `nullable:true` for empty type (`type:""`).
-//
-// WARNING: Do not use the returned schema to perform CRD validation until this restriction is solved.
-//
-// Nullable:true is mapped to `type:[<structural-type>,"null"]`
-// if the structural type is non-empty, and nullable is dropped if the structural type is empty.
+// ToGoOpenAPI converts a structural schema to go-openapi schema. It is faithful and roundtrippable.
 func (s *Structural) ToGoOpenAPI() *spec.Schema {
 	if s == nil {
 		return nil
@@ -57,14 +52,8 @@ func (g *Generic) toGoOpenAPI(ret *spec.Schema) {
 
 	if len(g.Type) != 0 {
 		ret.Type = spec.StringOrArray{g.Type}
-		if g.Nullable {
-			// go-openapi does not support nullable, but multiple type values.
-			// Only when type is already non-empty, adding null to the types is correct though.
-			// If you add null as only type, you enforce null, in contrast to nullable being
-			// ineffective if no type is provided in a schema.
-			ret.Type = append(ret.Type, "null")
-		}
 	}
+	ret.Nullable = g.Nullable
 	if g.AdditionalProperties != nil {
 		ret.AdditionalProperties = &spec.SchemaOrBool{
 			Allows: g.AdditionalProperties.Bool,

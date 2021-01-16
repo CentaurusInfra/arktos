@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/gogo/protobuf/proto"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/apitesting/fuzzer"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -159,6 +160,39 @@ func BenchmarkEncodeProtobufGeneratedMarshal(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		if _, err := items[i%width].Marshal(); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkEncodeProtobufGeneratedMarshalList10(b *testing.B) {
+	item := benchmarkItemsList(b, 10)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := item.Marshal(); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkEncodeProtobufGeneratedMarshalList100(b *testing.B) {
+	item := benchmarkItemsList(b, 100)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := item.Marshal(); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkEncodeProtobufGeneratedMarshalList1000(b *testing.B) {
+	item := benchmarkItemsList(b, 1000)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if _, err := item.Marshal(); err != nil {
 			b.Fatal(err)
 		}
 	}

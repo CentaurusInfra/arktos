@@ -1,4 +1,5 @@
 # Copyright 2018 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,11 +36,11 @@ def go_bindata(
     srcs = srcs,
     outs = outs,
     cmd = """
-    $(location //vendor/github.com/jteeuwen/go-bindata/go-bindata:go-bindata) \
+    $(location //vendor/github.com/go-bindata/go-bindata/go-bindata:go-bindata) \
       -o "$@" -pkg %s -prefix $$(pwd) %s $(SRCS)
     """ % (pkg, " ".join(args)),
     tools = [
-      "//vendor/github.com/jteeuwen/go-bindata/go-bindata",
+      "//vendor/github.com/go-bindata/go-bindata/go-bindata",
     ],
     **kw
   )

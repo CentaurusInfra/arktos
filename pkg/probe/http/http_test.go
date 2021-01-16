@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -67,7 +68,8 @@ func TestHTTPProbeProxy(t *testing.T) {
 	defer unsetEnv("no_proxy")()
 	defer unsetEnv("NO_PROXY")()
 
-	prober := New(true)
+	followNonLocalRedirects := true
+	prober := New(followNonLocalRedirects)
 
 	go func() {
 		http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -122,7 +124,8 @@ func TestHTTPProbeChecker(t *testing.T) {
 		}
 	}
 
-	prober := New(true)
+	followNonLocalRedirects := true
+	prober := New(followNonLocalRedirects)
 	testCases := []struct {
 		handler    func(w http.ResponseWriter, r *http.Request)
 		reqHeaders http.Header
@@ -299,14 +302,16 @@ func TestHTTPProbeChecker_NonLocalRedirects(t *testing.T) {
 	}
 	for desc, test := range testCases {
 		t.Run(desc+"-local", func(t *testing.T) {
-			prober := New(false)
+			followNonLocalRedirects := false
+			prober := New(followNonLocalRedirects)
 			target, err := url.Parse(server.URL + "/redirect?loc=" + url.QueryEscape(test.redirect))
 			require.NoError(t, err)
 			result, _, _ := prober.Probe(target, nil, wait.ForeverTestTimeout)
 			assert.Equal(t, test.expectLocalResult, result)
 		})
 		t.Run(desc+"-nonlocal", func(t *testing.T) {
-			prober := New(true)
+			followNonLocalRedirects := true
+			prober := New(followNonLocalRedirects)
 			target, err := url.Parse(server.URL + "/redirect?loc=" + url.QueryEscape(test.redirect))
 			require.NoError(t, err)
 			result, _, _ := prober.Probe(target, nil, wait.ForeverTestTimeout)

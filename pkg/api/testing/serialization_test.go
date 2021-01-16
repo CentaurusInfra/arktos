@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +28,7 @@ import (
 
 	jsoniter "github.com/json-iterator/go"
 	appsv1 "k8s.io/api/apps/v1"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/apitesting/fuzzer"
 	"k8s.io/apimachinery/pkg/api/apitesting/roundtrip"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
@@ -422,6 +423,25 @@ func benchmarkItems(b *testing.B) []v1.Pod {
 		items[i] = *out.(*v1.Pod)
 	}
 	return items
+}
+
+func benchmarkItemsList(b *testing.B, numItems int) v1.PodList {
+	apiObjectFuzzer := fuzzer.FuzzerFor(FuzzerFuncs, rand.NewSource(benchmarkSeed), legacyscheme.Codecs)
+	items := make([]v1.Pod, numItems)
+	for i := range items {
+		var pod api.Pod
+		apiObjectFuzzer.Fuzz(&pod)
+		pod.Spec.InitContainers, pod.Status.InitContainerStatuses = nil, nil
+		out, err := legacyscheme.Scheme.ConvertToVersion(&pod, v1.SchemeGroupVersion)
+		if err != nil {
+			panic(err)
+		}
+		items[i] = *out.(*v1.Pod)
+	}
+
+	return v1.PodList{
+		Items: items,
+	}
 }
 
 // BenchmarkEncodeCodec measures the cost of performing a codec encode, which includes

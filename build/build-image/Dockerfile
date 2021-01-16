@@ -1,4 +1,5 @@
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +14,7 @@
 # limitations under the License.
 
 # This file creates a standard build environment for building Kubernetes
-FROM k8s.gcr.io/kube-cross:KUBE_BUILD_IMAGE_CROSS_TAG
+FROM us.gcr.io/k8s-artifacts-prod/build-image/kube-cross:KUBE_BUILD_IMAGE_CROSS_TAG
 
 # Mark this as a kube-build container
 RUN touch /kube-build-image
