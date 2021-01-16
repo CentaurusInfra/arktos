@@ -27,4 +27,5 @@ staging/src/k8s.io/apiserver/pkg/storage/etcd3/metrics/metrics.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/test_server.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/testingcert/certificates.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/utils.go
+test/e2e/node/node_problem_detector.go
 

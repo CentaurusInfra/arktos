@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -112,7 +113,7 @@ func SetDefaults_KubeletConfiguration(obj *kubeletconfigv1beta1.KubeletConfigura
 		// set to NodeStatusUpdateFrequency if NodeStatusUpdateFrequency is set
 		// explicitly.
 		if obj.NodeStatusUpdateFrequency == zeroDuration {
-			obj.NodeStatusReportFrequency = metav1.Duration{Duration: time.Minute}
+			obj.NodeStatusReportFrequency = metav1.Duration{Duration: 5 * time.Minute}
 		} else {
 			obj.NodeStatusReportFrequency = obj.NodeStatusUpdateFrequency
 		}
