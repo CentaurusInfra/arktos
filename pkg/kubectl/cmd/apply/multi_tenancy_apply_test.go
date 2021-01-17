@@ -651,7 +651,7 @@ func TestUnstructuredIdempotentApplyWithMultiTenancy(t *testing.T) {
 	cmdtesting.InitTestErrorHandler(t)
 
 	serversideObject := readUnstructuredFromFile(t, filenameWidgetServersideWithMultiTenancy)
-	serversideData, err := runtime.Encode(unstructured.JSONFallbackEncoder{Encoder: codec}, serversideObject)
+	serversideData, err := runtime.Encode(unstructured.NewJSONFallbackEncoder(codec), serversideObject)
 	if err != nil {
 		t.Fatal(err)
 	}
