@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,6 +122,8 @@ const (
 
 	// owner: @wojtek-t
 	// alpha: v1.15
+	// beta: v1.16
+	// GA: v1.17
 	//
 	// Enables support for watch bookmark events.
 	WatchBookmark featuregate.Feature = "WatchBookmark"
@@ -131,6 +134,12 @@ const (
 	//
 	// Enables managing request concurrency with prioritization and fairness at each server
 	RequestManagement featuregate.Feature = "RequestManagement"
+
+	// owner: @wojtek-t
+	// alpha: v1.16
+	//
+	// Deprecates and removes SelfLink from ObjectMeta and ListMeta.
+	RemoveSelfLink featuregate.Feature = "RemoveSelfLink"
 )
 
 func init() {
@@ -145,7 +154,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	ValidateProxyRedirects:  {Default: true, PreRelease: featuregate.Beta},
 	AdvancedAuditing:        {Default: true, PreRelease: featuregate.GA},
 	DynamicAuditing:         {Default: false, PreRelease: featuregate.Alpha},
-	APIResponseCompression:  {Default: false, PreRelease: featuregate.Alpha},
+	APIResponseCompression:  {Default: true, PreRelease: featuregate.Beta},
 	APIListChunking:         {Default: true, PreRelease: featuregate.Beta},
 	DryRun:                  {Default: true, PreRelease: featuregate.Beta},
 	RemainingItemCount:      {Default: false, PreRelease: featuregate.Alpha},
@@ -153,6 +162,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	StorageVersionHash:      {Default: true, PreRelease: featuregate.Beta},
 	WinOverlay:              {Default: false, PreRelease: featuregate.Alpha},
 	WinDSR:                  {Default: false, PreRelease: featuregate.Alpha},
-	WatchBookmark:           {Default: false, PreRelease: featuregate.Alpha},
+	WatchBookmark:           {Default: true, PreRelease: featuregate.GA, LockToDefault: true},
 	RequestManagement:       {Default: false, PreRelease: featuregate.Alpha},
+	RemoveSelfLink:          {Default: false, PreRelease: featuregate.Alpha},
 }
