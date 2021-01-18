@@ -39,7 +39,7 @@ Arktos requires a few dependencies to build and run, and [a bash script](https:/
 
 After the prerequisites are installed, you just need to clone the repo and run "make":
 
-##### Note: you need to have a working [Go 1.12 environment](https://golang.org/doc/install). Go 1.13 is not supported yet.
+##### Note: you need to have a working [Go 1.13 environment](https://golang.org/doc/install). Go 1.14 and above is not supported yet.
 
 ```
 mkdir -p $GOPATH/src/github.com
@@ -65,6 +65,12 @@ cluster/kubectl.sh get nodes
 ```
 
 To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
+
+## Community Meetings 
+
+ Pacific Time: **Tuesday, 6:00PM PST (Weekly)**
+
+ Resources: [Meeting Link](https://futurewei.zoom.us/j/92636035970) | [Meeting Summary](https://docs.google.com/document/d/1Cwpp44pQhMZ_MQ4ebralDHCt0AZHqhSkj14kNAzA7lY/edit#)
 
 ## Documents and Support
 
