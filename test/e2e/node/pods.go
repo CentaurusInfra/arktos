@@ -294,12 +294,12 @@ var _ = SIGDescribe("Pods Extended", func() {
 						ch := make(chan []watch.Event)
 						go func() {
 							defer close(ch)
-							w, err := podClient.Watch(context.TODO(), metav1.ListOptions{
+							w, err := podClient.Watch(metav1.ListOptions{
 								ResourceVersion: created.ResourceVersion,
 								FieldSelector:   fmt.Sprintf("metadata.name=%s", pod.Name),
 							})
 							if err != nil {
-								framework.Logf("Unable to watch pod %s: %v", pod.Name, err)
+								e2elog.Logf("Unable to watch pod %s: %v", pod.Name, err)
 								return
 							}
 							defer w.Stop()
@@ -317,7 +317,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 
 						t := time.Duration(rand.Intn(delay)) * time.Millisecond
 						time.Sleep(t)
-						err := podClient.Delete(context.TODO(), pod.Name, nil)
+						err := podClient.Delete(pod.Name, nil)
 						framework.ExpectNoError(err, "failed to delete pod")
 
 						events, ok := <-ch
@@ -325,7 +325,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 							continue
 						}
 						if len(events) < 2 {
-							framework.Fail("only got a single event")
+							framework.Failf("only got a single event")
 						}
 
 						end := time.Now()
@@ -337,7 +337,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 							var ok bool
 							pod, ok = event.Object.(*v1.Pod)
 							if !ok {
-								framework.Logf("Unexpected event object: %s %#v", event.Type, event.Object)
+								e2elog.Logf("Unexpected event object: %s %#v", event.Type, event.Object)
 								return nil
 							}
 
@@ -377,7 +377,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 									// expected
 								case t.ExitCode == 128 && reBug88766.MatchString(t.Message):
 									// pod volume teardown races with container start in CRI, which reports a failure
-									framework.Logf("pod %s on node %s failed with the symptoms of https://github.com/kubernetes/kubernetes/issues/88766")
+									e2elog.Logf("pod %s on node %s failed with the symptoms of https://github.com/kubernetes/kubernetes/issues/88766")
 								default:
 									return fmt.Errorf("pod %s on node %s container unexpected exit code %d: start=%s end=%s reason=%s message=%s", pod.Name, pod.Spec.NodeName, t.ExitCode, t.StartedAt, t.FinishedAt, t.Reason, t.Message)
 								}
@@ -434,7 +434,7 @@ var _ = SIGDescribe("Pods Extended", func() {
 						if duration > max || max == 0 {
 							max = duration
 						}
-						framework.Logf("Pod %s on node %s timings total=%s t=%s run=%s execute=%s", pod.Name, pod.Spec.NodeName, end.Sub(start), t, completeDuration, duration)
+						e2elog.Logf("Pod %s on node %s timings total=%s t=%s run=%s execute=%s", pod.Name, pod.Spec.NodeName, end.Sub(start), t, completeDuration, duration)
 					}
 
 				}(i)
