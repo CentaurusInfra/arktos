@@ -43,14 +43,19 @@ LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
 
 export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
 
-TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
-
 ### files to explicitly save the kubeconfig to different cluster or proxy
 ### those are used for targeted operations such as tenant creation etc on
 ### desired cluster directly
 ###
+TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
 PROXY_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy.saved"
 RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
+if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+  TP_KUBECONFIG="${LOCAL_KUBECONFIG}"
+  LOCAL_KUBECONFIG_TMP="${LOCAL_KUBECONFIG}"
+  RP_KUBECONFIG_SAVED="${LOCAL_KUBECONFIG}"
+fi
+
 
 ### POC tenant yaml files
 ###
@@ -128,8 +133,8 @@ function create-kube-hollow-node-resources {
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
     --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
-    --from-literal=resource.server="${RESOURCE_SERVER}" \
-    --from-literal=tenant.servers="${TENANT_SERVERS}"
+    --from-literal=resource.server="${RESOURCE_SERVER:-}" \
+    --from-literal=tenant.servers="${TENANT_SERVERS:-}"
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
@@ -184,7 +189,11 @@ function create-kube-hollow-node-resources {
   # Create the replication controller for hollow-nodes.
   # We allow to override the NUM_REPLICAS when running Cluster Autoscaler.
   NUM_REPLICAS=${NUM_REPLICAS:-${NUM_NODES}}
-  sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template_scaleout.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  else
+    sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  fi
   proxy_cpu=20
   if [ "${NUM_NODES}" -gt 1000 ]; then
     proxy_cpu=50
@@ -195,7 +204,7 @@ function create-kube-hollow-node-resources {
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_tag}}@${KUBEMARK_IMAGE_TAG}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_kubelet_params}}@${HOLLOW_KUBELET_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_proxy_params}}@${HOLLOW_PROXY_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_mig_config}}@${KUBEMARK_MIG_CONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
@@ -299,9 +308,8 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     sed -i -e "s@http://${PROXY_RESERVED_IP}:8888@${TP_SERVER}@g" "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}.direct"
     export KUBERNETES_SCALEOUT_PROXY=false
   done
+  echo "DBG: tenant-servers:  ${TENANT_SERVERS}"
 fi
-
-echo "DBG: tenant-servers:  ${TENANT_SERVERS}"
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   echo "DBG: set tenant partition flag false"
@@ -335,7 +343,9 @@ echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG_TMP}"
 #
 ### internally the TP configures are set with proxy URL, simply copy for POC phase for now
 ###
-cp -f ${TP_KUBECONFIG} ${PROXY_KUBECONFIG_SAVED}
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  cp -f ${TP_KUBECONFIG} ${PROXY_KUBECONFIG_SAVED}
+fi
 
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2

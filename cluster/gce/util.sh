@@ -2370,13 +2370,20 @@ function kube-up() {
     fi
     check-cluster
       
-    if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
-      echo "Local_kubeconfig_tmp not set"
-    else
-      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-      echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
+        echo "Local_kubeconfig_tmp not set"
+      else
+        cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+        echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+      fi
+      if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+        echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
+        echo "-----------------------------"
+        ssh-to-node ${PROXY_NAME} "for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid | grep NOFILE ; done"
+        echo "-----------------------------"
+      fi
     fi
-
   fi
 }
 
