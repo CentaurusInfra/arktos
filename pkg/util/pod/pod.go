@@ -18,6 +18,7 @@ limitations under the License.
 package pod
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 
@@ -28,26 +29,29 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-// PatchPodStatus patches pod status.
-func PatchPodStatus(c clientset.Interface, tenant, namespace, name string, uid types.UID, oldPodStatus, newPodStatus v1.PodStatus) (*v1.Pod, []byte, error) {
-	patchBytes, err := preparePatchBytesForPodStatus(tenant, namespace, name, uid, oldPodStatus, newPodStatus)
+// PatchPodStatus patches pod status. It returns true and avoids an update if the patch contains no changes.
+func PatchPodStatus(c clientset.Interface, tenant, namespace, name string, uid types.UID, oldPodStatus, newPodStatus v1.PodStatus) (*v1.Pod, []byte, bool, error) {
+	patchBytes, unchanged, err := preparePatchBytesForPodStatus(tenant, namespace, name, uid, oldPodStatus, newPodStatus)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, false, err
+	}
+	if unchanged {
+		return nil, patchBytes, true, nil
 	}
 
 	updatedPod, err := c.CoreV1().PodsWithMultiTenancy(namespace, tenant).Patch(name, types.StrategicMergePatchType, patchBytes, "status")
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to patch status %q for pod %q/%q/%q: %v \n pods type %T ", patchBytes, tenant, namespace, name, err, c.CoreV1().PodsWithMultiTenancy(namespace, tenant))
+		return nil, nil, false, fmt.Errorf("failed to patch status %q for pod %q/%q/%q: %v \n pods type %T ", patchBytes, tenant, namespace, name, err, c.CoreV1().PodsWithMultiTenancy(namespace, tenant))
 	}
-	return updatedPod, patchBytes, nil
+	return updatedPod, patchBytes, false, nil
 }
 
-func preparePatchBytesForPodStatus(tenant, namespace, name string, uid types.UID, oldPodStatus, newPodStatus v1.PodStatus) ([]byte, error) {
+func preparePatchBytesForPodStatus(tenant, namespace, name string, uid types.UID, oldPodStatus, newPodStatus v1.PodStatus) ([]byte, bool, error) {
 	oldData, err := json.Marshal(v1.Pod{
 		Status: oldPodStatus,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to Marshal oldData for pod %q/%q/%q: %v", tenant, namespace, name, err)
+		return nil, false, fmt.Errorf("failed to Marshal oldData for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
 
 	newData, err := json.Marshal(v1.Pod{
@@ -55,12 +59,12 @@ func preparePatchBytesForPodStatus(tenant, namespace, name string, uid types.UID
 		Status:     newPodStatus,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to Marshal newData for pod %q/%q/%q: %v", tenant, namespace, name, err)
+		return nil, false, fmt.Errorf("failed to Marshal newData for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
 
 	patchBytes, err := strategicpatch.CreateTwoWayMergePatch(oldData, newData, v1.Pod{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to CreateTwoWayMergePatch for pod %q/%q/%q: %v", tenant, namespace, name, err)
+		return nil, false, fmt.Errorf("failed to CreateTwoWayMergePatch for pod %q/%q/%q: %v", tenant, namespace, name, err)
 	}
-	return patchBytes, nil
+	return patchBytes, bytes.Equal(patchBytes, []byte(fmt.Sprintf(`{"metadata":{"uid":%q}}`, uid))), nil
 }
