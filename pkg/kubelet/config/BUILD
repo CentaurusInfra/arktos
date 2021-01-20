@@ -28,6 +28,7 @@ go_library(
         "//pkg/kubelet/checkpointmanager:go_default_library",
         "//pkg/kubelet/container:go_default_library",
         "//pkg/kubelet/events:go_default_library",
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//pkg/kubelet/types:go_default_library",
         "//pkg/kubelet/util/format:go_default_library",
         "//pkg/util/config:go_default_library",
