@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -235,7 +236,8 @@ func TestClient(t *testing.T) {
 			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) { tt.handler(t, w, req) }))
 			defer s.Close()
 
-			cfg := ConfigFor(&rest.Config{Host: s.URL})
+			kubeConfig := &rest.KubeConfig{Host: s.URL}
+			cfg := ConfigFor(rest.NewAggregatedConfig(kubeConfig))
 			client := NewConfigOrDie(cfg).(*Client)
 			tt.want(t, client)
 		})

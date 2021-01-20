@@ -32,6 +32,7 @@ const (
 	testGroup      = "testgroup"
 	testVersion    = "testversion"
 	testResource   = "testkinds"
+	testTenant     = "testte"
 	testNamespace  = "testns"
 	testName       = "testname"
 	testKind       = "TestKind"
@@ -45,13 +46,14 @@ func init() {
 	metav1.AddMetaToScheme(scheme)
 }
 
-func newPartialObjectMetadata(apiVersion, kind, namespace, name string) *metav1.PartialObjectMetadata {
+func newPartialObjectMetadata(apiVersion, kind, te, namespace, name string) *metav1.PartialObjectMetadata {
 	return &metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: apiVersion,
 			Kind:       kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    te,
 			Namespace: namespace,
 			Name:      name,
 		},
@@ -59,18 +61,18 @@ func newPartialObjectMetadata(apiVersion, kind, namespace, name string) *metav1.
 }
 
 func newPartialObjectMetadataWithAnnotations(annotations map[string]string) *metav1.PartialObjectMetadata {
-	u := newPartialObjectMetadata(testAPIVersion, testKind, testNamespace, testName)
+	u := newPartialObjectMetadata(testAPIVersion, testKind, testTenant, testNamespace, testName)
 	u.Annotations = annotations
 	return u
 }
 
 func TestList(t *testing.T) {
 	client := NewSimpleMetadataClient(scheme,
-		newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-foo"),
-		newPartialObjectMetadata("group2/version", "TheKind", "ns-foo", "name2-foo"),
-		newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-bar"),
-		newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-baz"),
-		newPartialObjectMetadata("group2/version", "TheKind", "ns-foo", "name2-baz"),
+		newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-foo"),
+		newPartialObjectMetadata("group2/version", "TheKind", "te-foo", "ns-foo", "name2-foo"),
+		newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-bar"),
+		newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-baz"),
+		newPartialObjectMetadata("group2/version", "TheKind", "te-foo", "ns-foo", "name2-baz"),
 	)
 	listFirst, err := client.Resource(schema.GroupVersionResource{Group: "group", Version: "version", Resource: "thekinds"}).List(metav1.ListOptions{})
 	if err != nil {
@@ -78,9 +80,9 @@ func TestList(t *testing.T) {
 	}
 
 	expected := []metav1.PartialObjectMetadata{
-		*newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-foo"),
-		*newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-bar"),
-		*newPartialObjectMetadata("group/version", "TheKind", "ns-foo", "name-baz"),
+		*newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-foo"),
+		*newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-bar"),
+		*newPartialObjectMetadata("group/version", "TheKind", "te-foo", "ns-foo", "name-baz"),
 	}
 	if !equality.Semantic.DeepEqual(listFirst.Items, expected) {
 		t.Fatal(diff.ObjectGoPrintDiff(expected, listFirst.Items))
