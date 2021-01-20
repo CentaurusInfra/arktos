@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,7 +19,9 @@ package metadata
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	"k8s.io/klog"
@@ -52,22 +55,30 @@ func init() {
 // (Kubernetes 1.14 and before) will retrieve the object and then
 // convert the metadata.
 type Client struct {
-	client *rest.RESTClient
+	clients []*rest.RESTClient
 }
 
 var _ Interface = &Client{}
 
 // ConfigFor returns a copy of the provided config with the
 // appropriate metadata client defaults set.
-func ConfigFor(inConfig *rest.Config) *rest.Config {
-	config := rest.CopyConfig(inConfig)
-	config.AcceptContentTypes = "application/vnd.kubernetes.protobuf,application/json"
-	config.ContentType = "application/vnd.kubernetes.protobuf"
-	config.NegotiatedSerializer = metainternalversion.Codecs.WithoutConversion()
-	if config.UserAgent == "" {
-		config.UserAgent = rest.DefaultKubernetesUserAgent()
+func ConfigFor(inConfigs *rest.Config) *rest.Config {
+	if inConfigs == nil || len(inConfigs.GetAllConfigs()) == 0 {
+		return inConfigs
 	}
-	return config
+
+	allConfigs := rest.NewAggregatedConfig()
+	for _, inConfig := range inConfigs.GetAllConfigs() {
+		config := rest.CopyConfig(inConfig)
+		config.AcceptContentTypes = "application/vnd.kubernetes.protobuf,application/json"
+		config.ContentType = "application/vnd.kubernetes.protobuf"
+		config.NegotiatedSerializer = metainternalversion.Codecs.WithoutConversion()
+		if config.UserAgent == "" {
+			config.UserAgent = rest.DefaultKubernetesUserAgent()
+		}
+		allConfigs.AddConfig(config)
+	}
+	return allConfigs
 }
 
 // NewConfigOrDie creates a new metadata client for the given config and
@@ -84,22 +95,31 @@ func NewConfigOrDie(c *rest.Config) Interface {
 // metadata details about any Kubernetes object (core, aggregated, or custom
 // resource based) in the form of PartialObjectMetadata objects, or returns
 // an error.
-func NewForConfig(inConfig *rest.Config) (Interface, error) {
-	config := ConfigFor(inConfig)
-	// for serializing the options
-	config.GroupVersion = &schema.GroupVersion{}
-	config.APIPath = "/this-value-should-never-be-sent"
-
-	restClient, err := rest.RESTClientFor(config)
-	if err != nil {
-		return nil, err
+func NewForConfig(inConfigs *rest.Config) (Interface, error) {
+	if inConfigs == nil || len(inConfigs.GetAllConfigs()) == 0 {
+		return nil, errors.New("Input was empty")
 	}
 
-	return &Client{client: restClient}, nil
+	configs := ConfigFor(inConfigs)
+	restClients := make([]*rest.RESTClient, len(configs.GetAllConfigs()))
+	for i, config := range configs.GetAllConfigs() {
+		// for serializing the options
+		config.GroupVersion = &schema.GroupVersion{}
+		config.APIPath = "/this-value-should-never-be-sent"
+
+		restClient, err := rest.RESTClientFor(config)
+		if err != nil {
+			return nil, err
+		}
+		restClients[i] = restClient
+	}
+
+	return &Client{clients: restClients}, nil
 }
 
 type client struct {
 	client    *Client
+	tenant    string
 	namespace string
 	resource  schema.GroupVersionResource
 }
@@ -113,9 +133,28 @@ func (c *Client) Resource(resource schema.GroupVersionResource) Getter {
 // Namespace returns an interface that can access namespace-scoped instances of the
 // provided resource.
 func (c *client) Namespace(ns string) ResourceInterface {
+	return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
+}
+
+func (c *client) NamespaceWithMultiTenancy(ns string, tenant string) ResourceInterface {
 	ret := *c
 	ret.namespace = ns
+	ret.tenant = tenant
 	return &ret
+}
+
+func (c *client) getRestClient() *rest.RESTClient {
+	max := len(c.client.clients)
+	switch max {
+	case 0:
+		return nil
+	case 1:
+		return c.client.clients[0]
+	default:
+		rand.Seed(time.Now().UnixNano())
+		ran := rand.Intn(max)
+		return c.client.clients[ran]
+	}
 }
 
 // Delete removes the provided resource from the server.
@@ -131,7 +170,7 @@ func (c *client) Delete(name string, opts *metav1.DeleteOptions, subresources ..
 		return err
 	}
 
-	result := c.client.client.
+	result := c.getRestClient().
 		Delete().
 		AbsPath(append(c.makeURLSegments(name), subresources...)...).
 		Body(deleteOptionsByte).
@@ -149,7 +188,7 @@ func (c *client) DeleteCollection(opts *metav1.DeleteOptions, listOptions metav1
 		return err
 	}
 
-	result := c.client.client.
+	result := c.getRestClient().
 		Delete().
 		AbsPath(c.makeURLSegments("")...).
 		Body(deleteOptionsByte).
@@ -163,7 +202,7 @@ func (c *client) Get(name string, opts metav1.GetOptions, subresources ...string
 	if len(name) == 0 {
 		return nil, fmt.Errorf("name is required")
 	}
-	result := c.client.client.Get().AbsPath(append(c.makeURLSegments(name), subresources...)...).
+	result := c.getRestClient().Get().AbsPath(append(c.makeURLSegments(name), subresources...)...).
 		SetHeader("Accept", "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json").
 		SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
 		Do()
@@ -199,7 +238,7 @@ func (c *client) Get(name string, opts metav1.GetOptions, subresources ...string
 
 // List returns all resources within the specified scope (namespace or cluster).
 func (c *client) List(opts metav1.ListOptions) (*metav1.PartialObjectMetadataList, error) {
-	result := c.client.client.Get().AbsPath(c.makeURLSegments("")...).
+	result := c.getRestClient().Get().AbsPath(c.makeURLSegments("")...).
 		SetHeader("Accept", "application/vnd.kubernetes.protobuf;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json").
 		SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
 		Do()
@@ -237,7 +276,7 @@ func (c *client) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	opts.Watch = true
-	return c.client.client.Get().
+	return c.getRestClient().Get().
 		AbsPath(c.makeURLSegments("")...).
 		SetHeader("Accept", "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json").
 		SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
@@ -250,7 +289,7 @@ func (c *client) Patch(name string, pt types.PatchType, data []byte, opts metav1
 	if len(name) == 0 {
 		return nil, fmt.Errorf("name is required")
 	}
-	result := c.client.client.
+	result := c.getRestClient().
 		Patch(pt).
 		AbsPath(append(c.makeURLSegments(name), subresources...)...).
 		Body(data).

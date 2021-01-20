@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -58,21 +59,63 @@ func (l *metadataLister) Get(name string) (*metav1.PartialObjectMetadata, error)
 	return obj.(*metav1.PartialObjectMetadata), nil
 }
 
+// Tenant returns an object that can list and get resources from a given tenant.
+func (l *metadataLister) Tenant(tenant string) TenantLister {
+	return &metadataTenantLister{indexer: l.indexer, tenant: tenant, gvr: l.gvr}
+}
+
 // Namespace returns an object that can list and get resources from a given namespace.
 func (l *metadataLister) Namespace(namespace string) NamespaceLister {
-	return &metadataNamespaceLister{indexer: l.indexer, namespace: namespace, gvr: l.gvr}
+	return &metadataNamespaceLister{indexer: l.indexer, tenant: metav1.TenantSystem, namespace: namespace, gvr: l.gvr}
+}
+
+func (l *metadataLister) NamespaceWithMultiTenancy(namespace string, tenant string) NamespaceLister {
+	return &metadataNamespaceLister{indexer: l.indexer, tenant: tenant, namespace: namespace, gvr: l.gvr}
+}
+
+// metadataTenantLister implements the TenantLister interface.
+type metadataTenantLister struct {
+	indexer cache.Indexer
+	tenant  string
+	gvr     schema.GroupVersionResource
+}
+
+// List lists all resources in the indexer for a given tenant.
+func (l *metadataTenantLister) List(selector labels.Selector) (ret []*metav1.PartialObjectMetadata, err error) {
+	err = cache.ListAllByTenant(l.indexer, l.tenant, selector, func(m interface{}) {
+		ret = append(ret, m.(*metav1.PartialObjectMetadata))
+	})
+	return ret, err
+}
+
+// Get retrieves a resource from the indexer for a given tenant and name.
+func (l *metadataTenantLister) Get(name string) (*metav1.PartialObjectMetadata, error) {
+	key := l.tenant + "/" + name
+	if l.tenant == metav1.TenantSystem {
+		key = name
+	}
+
+	obj, exists, err := l.indexer.GetByKey(key)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return nil, errors.NewNotFound(l.gvr.GroupResource(), name)
+	}
+	return obj.(*metav1.PartialObjectMetadata), nil
 }
 
 // metadataNamespaceLister implements the NamespaceLister interface.
 type metadataNamespaceLister struct {
 	indexer   cache.Indexer
 	namespace string
+	tenant    string
 	gvr       schema.GroupVersionResource
 }
 
 // List lists all resources in the indexer for a given namespace.
 func (l *metadataNamespaceLister) List(selector labels.Selector) (ret []*metav1.PartialObjectMetadata, err error) {
-	err = cache.ListAllByNamespace(l.indexer, l.namespace, selector, func(m interface{}) {
+	err = cache.ListAllByNamespace(l.indexer, l.tenant, l.namespace, selector, func(m interface{}) {
 		ret = append(ret, m.(*metav1.PartialObjectMetadata))
 	})
 	return ret, err
@@ -80,7 +123,12 @@ func (l *metadataNamespaceLister) List(selector labels.Selector) (ret []*metav1.
 
 // Get retrieves a resource from the indexer for a given namespace and name.
 func (l *metadataNamespaceLister) Get(name string) (*metav1.PartialObjectMetadata, error) {
-	obj, exists, err := l.indexer.GetByKey(l.namespace + "/" + name)
+	key := l.tenant + "/" + l.namespace + "/" + name
+	if l.tenant == metav1.TenantSystem {
+		key = l.namespace + "/" + name
+	}
+
+	obj, exists, err := l.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

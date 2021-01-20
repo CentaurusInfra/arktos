@@ -11,6 +11,13 @@ pkg/cloudfabric-controller/deployment/sync.go
 pkg/cloudfabric-controller/deployment/sync_test.go
 pkg/cloudfabric-controller/replicaset/replica_set.go
 pkg/cloudfabric-controller/replicaset/replica_set_test.go
+staging/src/k8s.io/client-go/metadata/fake/simple.go
+staging/src/k8s.io/client-go/metadata/interface.go
+staging/src/k8s.io/client-go/metadata/metadata.go
+staging/src/k8s.io/client-go/metadata/metadata_test.go
+staging/src/k8s.io/client-go/metadata/metadatalister/interface.go
+staging/src/k8s.io/client-go/metadata/metadatalister/lister.go
+staging/src/k8s.io/client-go/metadata/metadatalister/shim.go
 test/integration/cloudfabriccontrollers/deployment.go
 test/integration/cloudfabriccontrollers/deployment_test.go
 test/integration/cloudfabriccontrollers/deployment_util.go

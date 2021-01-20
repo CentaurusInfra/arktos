@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,5 +44,6 @@ type ResourceInterface interface {
 // Getter handles both namespaced and non-namespaced resource types consistently.
 type Getter interface {
 	Namespace(string) ResourceInterface
+	NamespaceWithMultiTenancy(string, string) ResourceInterface
 	ResourceInterface
 }
