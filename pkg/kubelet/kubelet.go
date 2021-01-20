@@ -256,7 +256,7 @@ type Dependencies struct {
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      []func()
-	KubeClient              clientset.Interface
+	KubeClient              clientset.Interface //TODO: remove
 	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -268,6 +268,7 @@ type Dependencies struct {
 	DynamicPluginProber     volume.DynamicPluginProber
 	TLSOptions              *server.TLSOptions
 	KubeletConfigController *kubeletconfig.Controller
+	KubeTPClients           []clientset.Interface
 }
 
 // makePodSourceConfig creates a config.PodConfig from the given
