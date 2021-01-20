@@ -24,7 +24,7 @@ echo "The script is to help install prerequisites of Arktos development environm
 echo "on a fresh Linux installation."
 echo "It's been tested on Ubuntu 16.04 LTS and 18.04 LTS."
 
-GOLANG_VERSION=${GOLANG_VERSION:-"1.12.17"}
+GOLANG_VERSION=${GOLANG_VERSION:-"1.13.9"}
 
 echo "Update apt."
 sudo apt -y update
