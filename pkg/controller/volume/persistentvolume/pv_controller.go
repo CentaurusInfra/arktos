@@ -1501,6 +1501,7 @@ func (ctrl *PersistentVolumeController) provisionClaimOperation(
 	volume.Spec.ClaimRef = claimRef
 	volume.Status.Phase = v1.VolumeBound
 	volume.Spec.StorageClassName = claimClass
+	volume.Tenant = claim.Tenant
 
 	// Add AnnBoundByController (used in deleting the volume)
 	metav1.SetMetaDataAnnotation(&volume.ObjectMeta, pvutil.AnnBoundByController, "yes")
