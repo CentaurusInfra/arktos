@@ -7,6 +7,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//perf-tests/clusterloader2/pkg/framework/client:go_default_library",
+        "//perf-tests/clusterloader2/pkg/util:go_default_library",
         "//pkg/apis/core/v1/helper:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/batch/v1:go_default_library",

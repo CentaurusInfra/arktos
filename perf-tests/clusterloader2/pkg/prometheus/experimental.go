@@ -26,6 +26,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
+
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 type prometheusDiskMetadata struct {
@@ -62,7 +64,7 @@ func (pc *PrometheusController) cachePrometheusDiskMetadataIfEnabled() error {
 func (pc *PrometheusController) tryRetrievePrometheusDiskMetadata() (bool, error) {
 	klog.Info("Retrieving Prometheus' persistent disk metadata...")
 	k8sClient := pc.framework.GetClientSets().GetClient()
-	list, err := k8sClient.CoreV1().PersistentVolumes().List(metav1.ListOptions{})
+	list, err := k8sClient.CoreV1().PersistentVolumesWithMultiTenancy(util.GetTenant()).List(metav1.ListOptions{})
 	if err != nil {
 		klog.Errorf("Listing PVs failed: %v", err)
 		// Poll() stops on error so returning nil

@@ -135,7 +135,7 @@ func (pc *PrometheusController) SetUpPrometheusStack() error {
 	k8sClient := pc.framework.GetClientSets().GetClient()
 
 	klog.Info("Setting up prometheus stack")
-	if err := client.CreateNamespace(k8sClient, namespace); err != nil {
+	if err := client.CreateNamespace(k8sClient, namespace, util.GetTenant()); err != nil {
 		return err
 	}
 	// If enabled scraping windows node, need to setup windows node and template mapping
@@ -184,10 +184,10 @@ func (pc *PrometheusController) TearDownPrometheusStack() error {
 	}
 	klog.Info("Tearing down prometheus stack")
 	k8sClient := pc.framework.GetClientSets().GetClient()
-	if err := client.DeleteNamespace(k8sClient, namespace); err != nil {
+	if err := client.DeleteNamespace(k8sClient, namespace, util.GetTenant()); err != nil {
 		return err
 	}
-	if err := client.WaitForDeleteNamespace(k8sClient, namespace); err != nil {
+	if err := client.WaitForDeleteNamespace(k8sClient, namespace, util.GetTenant()); err != nil {
 		return err
 	}
 	return nil
@@ -333,7 +333,7 @@ func (pc *PrometheusController) isKubemark() bool {
 
 func dumpAdditionalLogsOnPrometheusSetupFailure(k8sClient kubernetes.Interface) {
 	klog.Info("Dumping monitoring/prometheus-k8s events...")
-	list, err := client.ListEvents(k8sClient, namespace, "prometheus-k8s")
+	list, err := client.ListEvents(k8sClient, util.GetTenant(), namespace, "prometheus-k8s")
 	if err != nil {
 		klog.Warningf("Error while listing monitoring/prometheus-k8s events: %v", err)
 		return
