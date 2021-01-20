@@ -793,7 +793,7 @@ func (nc *Controller) monitorNodeHealth() error {
 			// Report node event.
 			if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
 				nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-				if err = nodeutil.MarkAllPodsNotReadyInMutliPartitions(nc.tenantPartitionClients, node); err != nil {
+				if err = nodeutil.MarkAllPodsNotReadyInPartitions(nc.tenantPartitionClients, node); err != nil {
 					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
 				}
 			}

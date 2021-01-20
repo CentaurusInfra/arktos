@@ -129,7 +129,7 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 	return updatedPod, nil
 }
 
-func MarkAllPodsNotReadyInMutliPartitions(kubeClients []clientset.Interface, node *v1.Node) error {
+func MarkAllPodsNotReadyInPartitions(kubeClients []clientset.Interface, node *v1.Node) error {
 	errString := ""
 	for i, kubeClient := range kubeClients {
 		err := MarkAllPodsNotReady(kubeClient, node)
@@ -384,7 +384,7 @@ current-context: node-controller-context
 func GetTenantPartitionClients(tenantServers []string) ([]clientset.Interface, error) {
 
 	for _, tenantServer := range tenantServers {
-		if err := validateUrl(tenantServer); err != nil {
+		if err := ValidateUrl(tenantServer); err != nil {
 			return nil, err
 		}
 	}
@@ -438,7 +438,8 @@ func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-ch
 	return GetTenantPartitionManagersFromKubeClients(clients, stop)
 }
 
-func validateUrl(urlString string) error {
+// this check enforce the tenant-server option use the format [scheme];//[IP addrese]:port to specify the url
+func ValidateUrl(urlString string) error {
 	_, err := url.ParseRequestURI(urlString)
 	if err != nil {
 		return err
@@ -449,15 +450,15 @@ func validateUrl(urlString string) error {
 		return err
 	}
 	if u.Scheme == "" {
-		return fmt.Errorf("Invalid url (%v): missing scheme")
+		return fmt.Errorf("Invalid url (%v): missing scheme", urlString)
 	}
 	if u.Host == "" {
-		return fmt.Errorf("Invalid url (%v): missing host")
+		return fmt.Errorf("Invalid url (%v): missing host", urlString)
 	}
 
 	host, _, _ := net.SplitHostPort(u.Host)
 	if net.ParseIP(host) == nil {
-		return fmt.Errorf("Invalid url (%v): invalid host IP")
+		return fmt.Errorf("Invalid url (%v): invalid host IP", urlString)
 	}
 
 	return nil
