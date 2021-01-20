@@ -87,6 +87,11 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 }
 
 func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
+	// fallback to default cluster DNS for pods on the default network if the feature gate is not enabled
+	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) == false {
+		return c.clusterDNS, nil
+	}
+
 	networkName, ok := pod.Labels[arktosv1.NetworkLabel]
 	if !ok {
 		networkName = arktosv1.NetworkDefault
@@ -105,16 +110,7 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName, err)
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
-		return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
-	}
-
-	// fallback to default cluster DNS for pods on the default network
-	if networkName == arktosv1.NetworkDefault {
-		return c.clusterDNS, nil
-	}
-
-	return nil, nil
+	return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
 }
 
 func omitDuplicates(strs []string) []string {
