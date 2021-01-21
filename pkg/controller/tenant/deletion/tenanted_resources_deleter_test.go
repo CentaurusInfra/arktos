@@ -18,6 +18,7 @@ package deletion
 
 import (
 	"fmt"
+	"k8s.io/client-go/metadata"
 	"net/http"
 	"net/http/httptest"
 	"path"
@@ -117,7 +118,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 	}
 
 	// when doing a delete all of content, we will do a GET of a collection, and DELETE of a collection by default
-	dynamicClientActionSet := sets.NewString()
+	metadataClientActionSet := sets.NewString()
 	resources := testResources()
 	groupVersionResources, _ := discovery.GroupVersionResources(resources)
 	for groupVersionResource := range groupVersionResources {
@@ -132,15 +133,15 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 			groupVersionResource.Resource,
 		}...)
 
-		dynamicClientActionSet.Insert((&fakeAction{method: "GET", path: urlPath}).String())
-		dynamicClientActionSet.Insert((&fakeAction{method: "DELETE", path: urlPath}).String())
+		metadataClientActionSet.Insert((&fakeAction{method: "GET", path: urlPath}).String())
+		metadataClientActionSet.Insert((&fakeAction{method: "DELETE", path: urlPath}).String())
 	}
 
 	scenarios := map[string]struct {
-		testTenant             *v1.Tenant
-		kubeClientActionSet    sets.String
-		dynamicClientActionSet sets.String
-		gvrError               error
+		testTenant              *v1.Tenant
+		kubeClientActionSet     sets.String
+		metadataClientActionSet sets.String
+		gvrError                error
 	}{
 		"pending-finalize": {
 			testTenant: testTenantPendingFinalize,
@@ -150,7 +151,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 				strings.Join([]string{"list", "namespaces", ""}, "-"),
 				strings.Join([]string{"delete", "tenants", ""}, "-"),
 			),
-			dynamicClientActionSet: dynamicClientActionSet,
+			metadataClientActionSet: metadataClientActionSet,
 		},
 		"complete-finalize": {
 			testTenant: testTenantFinalizeComplete,
@@ -158,7 +159,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 				strings.Join([]string{"get", "tenants", ""}, "-"),
 				strings.Join([]string{"delete", "tenants", ""}, "-"),
 			),
-			dynamicClientActionSet: sets.NewString(),
+			metadataClientActionSet: sets.NewString(),
 		},
 		"groupVersionResourceErr": {
 			testTenant: testTenantFinalizeComplete,
@@ -166,8 +167,8 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 				strings.Join([]string{"get", "tenants", ""}, "-"),
 				strings.Join([]string{"delete", "tenants", ""}, "-"),
 			),
-			dynamicClientActionSet: sets.NewString(),
-			gvrError:               fmt.Errorf("test error"),
+			metadataClientActionSet: sets.NewString(),
+			gvrError:                fmt.Errorf("test error"),
 		},
 	}
 
@@ -177,7 +178,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 		defer srv.Close()
 
 		mockClient := fake.NewSimpleClientset(testInput.testTenant)
-		dynamicClient, err := dynamic.NewForConfig(clientConfig)
+		metadataClient, err := metadata.NewForConfig(clientConfig)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -185,7 +186,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 		fn := func() ([]*metav1.APIResourceList, error) {
 			return resources, nil
 		}
-		d := NewTenantedResourcesDeleter(mockClient, dynamicClient, fn, v1.FinalizerArktos)
+		d := NewTenantedResourcesDeleter(mockClient, metadataClient, fn, v1.FinalizerArktos)
 		if err := d.Delete(testInput.testTenant.Name); err != nil {
 			t.Errorf("scenario %s - Unexpected error when synching tenant %v", scenario, err)
 		}
@@ -200,14 +201,14 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 				testInput.kubeClientActionSet, actionSet, testInput.kubeClientActionSet.Difference(actionSet))
 		}
 
-		// validate traffic from dynamic client
+		// validate traffic from metadata client
 		actionSet = sets.NewString()
 		for _, action := range testHandler.actions {
 			actionSet.Insert(action.String())
 		}
-		if !actionSet.Equal(testInput.dynamicClientActionSet) {
-			t.Errorf("scenario %s - dynamic client expected actions:\n%v\n but got:\n%v\nDifference:\n%v", scenario,
-				testInput.dynamicClientActionSet, actionSet, testInput.dynamicClientActionSet.Difference(actionSet))
+		if !actionSet.Equal(testInput.metadataClientActionSet) {
+			t.Errorf("scenario %s - metadata client expected actions:\n%v\n but got:\n%v\nDifference:\n%v", scenario,
+				testInput.metadataClientActionSet, actionSet, testInput.metadataClientActionSet.Difference(actionSet))
 		}
 	}
 }

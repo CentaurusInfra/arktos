@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/client-go/metadata"
 	"text/template"
 	"time"
 
@@ -34,7 +35,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
-	"k8s.io/client-go/dynamic"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -96,7 +96,7 @@ func NewTenantController(kubeClient clientset.Interface,
 	resyncPeriod time.Duration, // split this controller into tenant creation and deletion controllers if resyncPeriod causes performance degradation
 	networkClient arktos.Interface,
 	defaultNetworkTemplatePath string,
-	dynamicClient dynamic.Interface,
+	metadataClient metadata.Interface,
 	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
 	finalizerToken v1.FinalizerName) *TenantController {
 
@@ -106,7 +106,7 @@ func NewTenantController(kubeClient clientset.Interface,
 		networkClient:              networkClient,
 		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
 		defaultNetworkTemplatePath: defaultNetworkTemplatePath,
-		tenantedResourcesDeleter:   deletion.NewTenantedResourcesDeleter(kubeClient, dynamicClient, discoverResourcesFn, finalizerToken),
+		tenantedResourcesDeleter:   deletion.NewTenantedResourcesDeleter(kubeClient, metadataClient, discoverResourcesFn, finalizerToken),
 	}
 
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {

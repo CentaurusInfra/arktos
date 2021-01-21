@@ -385,7 +385,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
-	dynamicClient, err := dynamic.NewForConfig(tnKubeConfigs)
+	metadataClient, err := metadata.NewForConfig(tnKubeConfigs)
 	if err != nil {
 		return nil, true, err
 	}
@@ -405,7 +405,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
-		dynamicClient,
+		metadataClient,
 		discoverTenantedResourcesFn,
 		v1.FinalizerArktos)
 	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)

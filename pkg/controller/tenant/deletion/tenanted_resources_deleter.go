@@ -27,14 +27,13 @@ import (
 	crdregistry "k8s.io/apiextensions-apiserver/pkg/registry/customresourcedefinition"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/metadata"
 )
 
 // TenantedResourcesDeleterInterface is the interface to delete a tenant with all resources in it.
@@ -44,12 +43,12 @@ type TenantedResourcesDeleterInterface interface {
 
 // NewTenantedResourcesDeleter returns a new TenantedResourcesDeleter.
 func NewTenantedResourcesDeleter(kubeClient clientset.Interface,
-	dynamicClient dynamic.Interface,
+	metadataClient metadata.Interface,
 	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
 	finalizerToken v1.FinalizerName) TenantedResourcesDeleterInterface {
 	d := &tenantedResourcesDeleter{
 		kubeClient:          kubeClient,
-		dynamicClient:       dynamicClient,
+		metadataClient:      metadataClient,
 		discoverResourcesFn: discoverResourcesFn,
 		finalizerToken:      finalizerToken,
 		opCache: &operationNotSupportedCache{
@@ -66,8 +65,8 @@ var _ TenantedResourcesDeleterInterface = &tenantedResourcesDeleter{}
 type tenantedResourcesDeleter struct {
 	// kubeClient to get the resources
 	kubeClient clientset.Interface
-	// Dynamic client to list and delete all tenanted resources.
-	dynamicClient dynamic.Interface
+	// metadata client to list and delete all tenanted resources.
+	metadataClient metadata.Interface
 
 	// Cache of what operations are not supported on each group version resource.
 	opCache *operationNotSupportedCache
@@ -215,7 +214,7 @@ func (e *ResourcesRemainingError) Error() string {
 	return fmt.Sprintf("some content remains in the tenant, estimate %d seconds before it is removed", e.Estimate)
 }
 
-// operation is used for caching if an operation is supported on a dynamic client.
+// operation is used for caching if an operation is supported on a metadata client.
 type operation string
 
 const (
@@ -337,7 +336,7 @@ func (d *tenantedResourcesDeleter) deleteCollection(gvr schema.GroupVersionResou
 	// tenant itself.
 	background := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &background}
-	err := d.dynamicClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).DeleteCollection(opts, metav1.ListOptions{})
+	err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).DeleteCollection(opts, metav1.ListOptions{})
 
 	if err == nil {
 		return true, nil
@@ -358,7 +357,7 @@ func (d *tenantedResourcesDeleter) deleteCollection(gvr schema.GroupVersionResou
 //  the list of items in the collection (if found)
 //  a boolean if the operation is supported
 //  an error if the operation is supported but could not be completed.
-func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResource, tenant string) (*unstructured.UnstructuredList, bool, error) {
+func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResource, tenant string) (*metav1.PartialObjectMetadataList, bool, error) {
 	klog.V(5).Infof("tenant controller - listCollection - tenant: %s, gvr: %v", tenant, gvr)
 
 	key := operationKey{operation: operationList, gvr: gvr}
@@ -367,18 +366,18 @@ func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResourc
 		return nil, false, nil
 	}
 
-	unstructuredList, err := d.dynamicClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).List(metav1.ListOptions{})
+	partialList, err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).List(metav1.ListOptions{})
 	if err == nil {
-		newItems := []unstructured.Unstructured{}
-		for _, item := range unstructuredList.Items {
+		newItems := []metav1.PartialObjectMetadata{}
+		for _, item := range partialList.Items {
 			if crdregistry.IsSystemForcedCrd(item) {
 				continue
 			}
 
 			newItems = append(newItems, item)
 		}
-		unstructuredList.Items = newItems
-		return unstructuredList, true, nil
+		partialList.Items = newItems
+		return partialList, true, nil
 	}
 
 	if errors.IsMethodNotSupported(err) || errors.IsNotFound(err) {
@@ -394,24 +393,24 @@ func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResourc
 func (d *tenantedResourcesDeleter) deleteEachItem(gvr schema.GroupVersionResource, tenant string) error {
 	klog.V(5).Infof("tenant controller - deleteEachItem -tenant: %s, gvr: %v", tenant, gvr)
 
-	unstructuredList, listSupported, err := d.listCollection(gvr, tenant)
+	partialList, listSupported, err := d.listCollection(gvr, tenant)
 	if err != nil {
 		return err
 	}
 	if !listSupported {
 		return nil
 	}
-	for _, item := range unstructuredList.Items {
+	for _, item := range partialList.Items {
 		background := metav1.DeletePropagationBackground
 		opts := &metav1.DeleteOptions{PropagationPolicy: &background}
-		if err = d.dynamicClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).Delete(item.GetName(), opts); err != nil && !errors.IsNotFound(err) && !errors.IsMethodNotSupported(err) {
+		if err = d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).Delete(item.GetName(), opts); err != nil && !errors.IsNotFound(err) && !errors.IsMethodNotSupported(err) {
 			return err
 		}
 	}
 	return nil
 }
 
-// deleteAllContentForGroupVersionResource will use the dynamic client to delete each resource identified in gvr.
+// deleteAllContentForGroupVersionResource will use the metadata client to delete each resource identified in gvr.
 // It returns an estimate of the time remaining before the remaining resources are deleted.
 // If estimate > 0, not all resources are guaranteed to be gone.
 func (d *tenantedResourcesDeleter) deleteAllContentForGroupVersionResource(
@@ -444,7 +443,7 @@ func (d *tenantedResourcesDeleter) deleteAllContentForGroupVersionResource(
 	// verify there are no more remaining items
 	// it is not an error condition for there to be remaining items if local estimate is non-zero
 	klog.V(5).Infof("tenant controller - deleteAllContentForGroupVersionResource - checking for no more items in tenant: %s, gvr: %v", tenant, gvr)
-	unstructuredList, listSupported, err := d.listCollection(gvr, tenant)
+	partialList, listSupported, err := d.listCollection(gvr, tenant)
 	if err != nil {
 		klog.V(5).Infof("tenant controller - deleteAllContentForGroupVersionResource - error verifying no items in tenant: %s, gvr: %v, err: %v", tenant, gvr, err)
 		return estimate, err
@@ -452,10 +451,10 @@ func (d *tenantedResourcesDeleter) deleteAllContentForGroupVersionResource(
 	if !listSupported {
 		return estimate, nil
 	}
-	klog.V(5).Infof("tenant controller - deleteAllContentForGroupVersionResource - items remaining - tenant: %s, gvr: %v, items: %v", tenant, gvr, len(unstructuredList.Items))
-	if len(unstructuredList.Items) != 0 && estimate == int64(0) {
+	klog.V(5).Infof("tenant controller - deleteAllContentForGroupVersionResource - items remaining - tenant: %s, gvr: %v, items: %v", tenant, gvr, len(partialList.Items))
+	if len(partialList.Items) != 0 && estimate == int64(0) {
 		// if any item has a finalizer, we treat that as a normal condition, and use a default estimation to allow for GC to complete.
-		for _, item := range unstructuredList.Items {
+		for _, item := range partialList.Items {
 			if len(item.GetFinalizers()) > 0 {
 				klog.V(5).Infof("tenant controller - deleteAllContentForGroupVersionResource - items remaining with finalizers - tenant: %s, gvr: %v, finalizers: %v", tenant, gvr, item.GetFinalizers())
 				return finalizerEstimateSeconds, nil
@@ -467,7 +466,7 @@ func (d *tenantedResourcesDeleter) deleteAllContentForGroupVersionResource(
 	return estimate, nil
 }
 
-// deleteAllContent will use the dynamic client to delete each resource identified in groupVersionResources.
+// deleteAllContent will use the metadata client to delete each resource identified in groupVersionResources.
 // It returns an estimate of the time remaining before the remaining resources are deleted.
 // If estimate > 0, not all resources are guaranteed to be gone.
 func (d *tenantedResourcesDeleter) deleteAllContent(tenant *v1.Tenant, tenantDeletedAt metav1.Time) (int64, error) {
