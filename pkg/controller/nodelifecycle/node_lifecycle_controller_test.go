@@ -1,6 +1,5 @@
 /*
 Copyright 2017 The Kubernetes Authors.
-Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -75,7 +74,7 @@ func (nc *nodeLifecycleController) doEviction(fakeNodeHandler *testutil.FakeNode
 	for _, zone := range zones {
 		nc.zonePodEvictor[zone].Try(func(value scheduler.TimedValue) (bool, time.Duration) {
 			uid, _ := value.UID.(string)
-			nodeutil.DeletePods(fakeNodeHandler, nc.recorder, value.Value, uid, nc.tenantPartitionManagers[0].DaemonSetStore)
+			nodeutil.DeletePods(fakeNodeHandler, nc.recorder, value.Value, uid, nc.daemonSetStore)
 			return true, 0
 		})
 	}
@@ -142,15 +141,11 @@ func newNodeLifecycleControllerFromClient(
 	nodeInformer := factory.Core().V1().Nodes()
 	daemonSetInformer := factory.Apps().V1().DaemonSets()
 
-	tpManager, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeClient}, nil)
-	if err != nil {
-		return nil, err
-	}
-
 	nc, err := NewNodeLifecycleController(
-		tpManager,
 		leaseInformer,
+		factory.Core().V1().Pods(),
 		nodeInformer,
+		daemonSetInformer,
 		kubeClient,
 		nodeMonitorPeriod,
 		nodeStartupGracePeriod,
@@ -169,9 +164,9 @@ func newNodeLifecycleControllerFromClient(
 	}
 
 	nc.leaseInformerSynced = alwaysReady
-	nc.podInformersSynced = alwaysReady
+	nc.podInformerSynced = alwaysReady
 	nc.nodeInformerSynced = alwaysReady
-	nc.daemonSetInformersSynced = alwaysReady
+	nc.daemonSetInformerSynced = alwaysReady
 
 	return &nodeLifecycleController{nc, leaseInformer, nodeInformer, daemonSetInformer}, nil
 }
@@ -832,7 +827,7 @@ func TestPodStatusChange(t *testing.T) {
 		for _, zone := range zones {
 			nodeController.zonePodEvictor[zone].Try(func(value scheduler.TimedValue) (bool, time.Duration) {
 				nodeUID, _ := value.UID.(string)
-				nodeutil.DeletePods(item.fakeNodeHandler, nodeController.recorder, value.Value, nodeUID, nodeController.tenantPartitionManagers[0].DaemonSetStore)
+				nodeutil.DeletePods(item.fakeNodeHandler, nodeController.recorder, value.Value, nodeUID, nodeController.daemonSetStore)
 				return true, 0
 			})
 		}

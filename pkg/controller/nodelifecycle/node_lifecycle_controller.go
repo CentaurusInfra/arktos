@@ -38,11 +38,13 @@ import (
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	coordinformers "k8s.io/client-go/informers/coordination/v1beta1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	appsv1listers "k8s.io/client-go/listers/apps/v1"
 	coordlisters "k8s.io/client-go/listers/coordination/v1beta1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/cache"
@@ -168,11 +170,10 @@ type nodeHealthData struct {
 
 // Controller is the controller that manages node's life cycle.
 type Controller struct {
-	taintManager            *scheduler.NoExecuteTaintManager
-	podInformersSynced      cache.InformerSynced
-	tenantPartitionManagers []*nodeutil.TenantPartitionManager
-	tenantPartitionClients  []clientset.Interface
-	resourcePartitionClient clientset.Interface
+	taintManager *scheduler.NoExecuteTaintManager
+
+	podInformerSynced cache.InformerSynced
+	kubeClient        clientset.Interface
 
 	// This timestamp is to be used instead of LastProbeTime stored in Condition. We do this
 	// to avoid the problem with time skew across the cluster.
@@ -197,7 +198,8 @@ type Controller struct {
 
 	zoneStates map[string]ZoneState
 
-	daemonSetInformersSynced cache.InformerSynced
+	daemonSetStore          appsv1listers.DaemonSetLister
+	daemonSetInformerSynced cache.InformerSynced
 
 	leaseLister         coordlisters.LeaseLister
 	leaseInformerSynced cache.InformerSynced
@@ -261,10 +263,11 @@ type Controller struct {
 
 // NewNodeLifecycleController returns a new taint controller.
 func NewNodeLifecycleController(
-	tenantPartitionManagers []*nodeutil.TenantPartitionManager,
 	leaseInformer coordinformers.LeaseInformer,
+	podInformer coreinformers.PodInformer,
 	nodeInformer coreinformers.NodeInformer,
-	resourcePartitionClient clientset.Interface,
+	daemonSetInformer appsv1informers.DaemonSetInformer,
+	kubeClient clientset.Interface,
 	nodeMonitorPeriod time.Duration,
 	nodeStartupGracePeriod time.Duration,
 	nodeMonitorGracePeriod time.Duration,
@@ -277,13 +280,8 @@ func NewNodeLifecycleController(
 	useTaintBasedEvictions bool,
 	taintNodeByCondition bool) (*Controller, error) {
 
-	if len(tenantPartitionManagers) == 0 {
-		klog.Fatalf("The list of tenant partition accessor is empty when starting Controller")
-	}
-
-	tenantPartitionClients := []clientset.Interface{}
-	for _, tenantPartitionManager := range tenantPartitionManagers {
-		tenantPartitionClients = append(tenantPartitionClients, tenantPartitionManager.Client)
+	if kubeClient == nil {
+		klog.Fatalf("kubeClient is nil when starting Controller")
 	}
 
 	eventBroadcaster := record.NewBroadcaster()
@@ -291,20 +289,17 @@ func NewNodeLifecycleController(
 	eventBroadcaster.StartLogging(klog.Infof)
 
 	klog.Infof("Sending events to api server.")
-
 	eventBroadcaster.StartRecordingToSink(
 		&v1core.EventSinkImpl{
-			Interface: v1core.New(resourcePartitionClient.CoreV1().RESTClient()).EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
+			Interface: v1core.New(kubeClient.CoreV1().RESTClient()).EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
 		})
 
-	if resourcePartitionClient.CoreV1().RESTClient().GetRateLimiter() != nil {
-		metrics.RegisterMetricAndTrackRateLimiterUsage("node_lifecycle_controller", resourcePartitionClient.CoreV1().RESTClient().GetRateLimiter())
+	if kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
+		metrics.RegisterMetricAndTrackRateLimiterUsage("node_lifecycle_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 
 	nc := &Controller{
-		tenantPartitionManagers:     tenantPartitionManagers,
-		tenantPartitionClients:      tenantPartitionClients,
-		resourcePartitionClient:     resourcePartitionClient,
+		kubeClient:                  kubeClient,
 		now:                         metav1.Now,
 		knownNodeSet:                make(map[string]*v1.Node),
 		nodeHealthMap:               make(map[string]*nodeHealthData),
@@ -333,62 +328,50 @@ func NewNodeLifecycleController(
 	nc.enterFullDisruptionFunc = nc.HealthyQPSFunc
 	nc.computeZoneStateFunc = nc.ComputeZoneState
 
-	for _, tenantPartitionManager := range tenantPartitionManagers {
-		tenantPartitionClient := tenantPartitionManager.Client
-		podInformer := tenantPartitionManager.PodInformer
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: func(obj interface{}) {
+			pod := obj.(*v1.Pod)
+			if nc.taintManager != nil {
+				nc.taintManager.PodUpdated(nil, pod)
+			}
+		},
+		UpdateFunc: func(prev, obj interface{}) {
+			prevPod := prev.(*v1.Pod)
+			newPod := obj.(*v1.Pod)
+			if nc.taintManager != nil {
+				nc.taintManager.PodUpdated(prevPod, newPod)
+			}
+		},
+		DeleteFunc: func(obj interface{}) {
+			pod, isPod := obj.(*v1.Pod)
+			// We can get DeletedFinalStateUnknown instead of *v1.Pod here and we need to handle that correctly.
+			if !isPod {
+				deletedState, ok := obj.(cache.DeletedFinalStateUnknown)
+				if !ok {
+					klog.Errorf("Received unexpected object: %v", obj)
+					return
+				}
+				pod, ok = deletedState.Obj.(*v1.Pod)
+				if !ok {
+					klog.Errorf("DeletedFinalStateUnknown contained non-Pod object: %v", deletedState.Obj)
+					return
+				}
+			}
+			if nc.taintManager != nil {
+				nc.taintManager.PodUpdated(pod, nil)
+			}
+		},
+	})
+	nc.podInformerSynced = podInformer.Informer().HasSynced
+
+	if nc.runTaintManager {
 		podLister := podInformer.Lister()
 		podGetter := func(name, namespace, tenant string) (*v1.Pod, error) {
 			return podLister.PodsWithMultiTenancy(namespace, tenant).Get(name)
 		}
-		podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				pod := obj.(*v1.Pod)
-				if nc.taintManager != nil {
-					nc.taintManager.PodUpdated(nil, pod, tenantPartitionClient, podGetter)
-				}
-			},
-			UpdateFunc: func(prev, obj interface{}) {
-				prevPod := prev.(*v1.Pod)
-				newPod := obj.(*v1.Pod)
-				if nc.taintManager != nil {
-					nc.taintManager.PodUpdated(prevPod, newPod, tenantPartitionClient, podGetter)
-				}
-			},
-			DeleteFunc: func(obj interface{}) {
-				pod, isPod := obj.(*v1.Pod)
-				// We can get DeletedFinalStateUnknown instead of *v1.Pod here and we need to handle that correctly.
-				if !isPod {
-					deletedState, ok := obj.(cache.DeletedFinalStateUnknown)
-					if !ok {
-						klog.Errorf("Received unexpected object: %v", obj)
-						return
-					}
-					pod, ok = deletedState.Obj.(*v1.Pod)
-					if !ok {
-						klog.Errorf("DeletedFinalStateUnknown contained non-Pod object: %v", deletedState.Obj)
-						return
-					}
-				}
-				if nc.taintManager != nil {
-					nc.taintManager.PodUpdated(pod, nil, tenantPartitionClient, podGetter)
-				}
-			},
-		})
-	}
-
-	nc.podInformersSynced = func() bool {
-		for _, tenantPartitionManager := range tenantPartitionManagers {
-			if !tenantPartitionManager.PodInformer.Informer().HasSynced() {
-				return false
-			}
-		}
-		return true
-	}
-
-	if nc.runTaintManager {
 		nodeLister := nodeInformer.Lister()
 		nodeGetter := func(name string) (*v1.Node, error) { return nodeLister.Get(name) }
-		nc.taintManager = scheduler.NewNoExecuteTaintManager(resourcePartitionClient, tenantPartitionClients, nodeGetter)
+		nc.taintManager = scheduler.NewNoExecuteTaintManager(kubeClient, podGetter, nodeGetter)
 		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 			AddFunc: nodeutil.CreateAddNodeHandler(func(node *v1.Node) error {
 				nc.taintManager.NodeUpdated(nil, node)
@@ -432,14 +415,8 @@ func NewNodeLifecycleController(
 	nc.nodeLister = nodeInformer.Lister()
 	nc.nodeInformerSynced = nodeInformer.Informer().HasSynced
 
-	nc.daemonSetInformersSynced = func() bool {
-		for _, tenantPartitionManager := range tenantPartitionManagers {
-			if !tenantPartitionManager.DaemonSetInformer.Informer().HasSynced() {
-				return false
-			}
-		}
-		return true
-	}
+	nc.daemonSetStore = daemonSetInformer.Lister()
+	nc.daemonSetInformerSynced = daemonSetInformer.Informer().HasSynced
 
 	return nc, nil
 }
@@ -451,7 +428,7 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 	klog.Infof("Starting node controller")
 	defer klog.Infof("Shutting down node controller")
 
-	if !controller.WaitForCacheSync("taint", stopCh, nc.leaseInformerSynced, nc.nodeInformerSynced, nc.podInformersSynced, nc.daemonSetInformersSynced) {
+	if !controller.WaitForCacheSync("taint", stopCh, nc.leaseInformerSynced, nc.nodeInformerSynced, nc.podInformerSynced, nc.daemonSetInformerSynced) {
 		return
 	}
 
@@ -566,11 +543,9 @@ func (nc *Controller) doNoScheduleTaintingPass(nodeName string) error {
 	if len(taintsToAdd) == 0 && len(taintsToDel) == 0 {
 		return nil
 	}
-
-	if !nodeutil.SwapNodeControllerTaint(nc.resourcePartitionClient, taintsToAdd, taintsToDel, node) {
+	if !nodeutil.SwapNodeControllerTaint(nc.kubeClient, taintsToAdd, taintsToDel, node) {
 		return fmt.Errorf("failed to swap taints of node %+v", node)
 	}
-
 	return nil
 }
 
@@ -605,7 +580,7 @@ func (nc *Controller) doNoExecuteTaintingPass() {
 				return true, 0
 			}
 
-			result := nodeutil.SwapNodeControllerTaint(nc.resourcePartitionClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{&oppositeTaint}, node)
+			result := nodeutil.SwapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{&oppositeTaint}, node)
 			if result {
 				//count the evictionsNumber
 				zone := utilnode.GetZoneKey(node)
@@ -630,21 +605,19 @@ func (nc *Controller) doEvictionPass() {
 				klog.Warningf("Failed to get Node %v from the nodeLister: %v", value.Value, err)
 			}
 			nodeUID, _ := value.UID.(string)
-			for _, tpManager := range nc.tenantPartitionManagers {
-				remaining, err := nodeutil.DeletePods(tpManager.Client, nc.recorder, value.Value, nodeUID, tpManager.DaemonSetStore)
-				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
-					return false, 0
-				}
-				if remaining {
-					klog.Infof("Pods awaiting deletion due to Controller eviction")
-				}
+			remaining, err := nodeutil.DeletePods(nc.kubeClient, nc.recorder, value.Value, nodeUID, nc.daemonSetStore)
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("unable to evict node %q: %v", value.Value, err))
+				return false, 0
+			}
+			if remaining {
+				klog.Infof("Pods awaiting deletion due to Controller eviction")
+			}
 
-				//count the evictionsNumber
-				if node != nil {
-					zone := utilnode.GetZoneKey(node)
-					evictionsNumber.WithLabelValues(zone).Inc()
-				}
+			//count the evictionsNumber
+			if node != nil {
+				zone := utilnode.GetZoneKey(node)
+				evictionsNumber.WithLabelValues(zone).Inc()
 			}
 
 			return true, 0
@@ -700,7 +673,7 @@ func (nc *Controller) monitorNodeHealth() error {
 				return true, nil
 			}
 			name := node.Name
-			node, err = nc.resourcePartitionClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
+			node, err = nc.kubeClient.CoreV1().Nodes().Get(name, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Failed while getting a Node to retry updating node health. Probably Node %s was deleted.", name)
 				return false, err
@@ -725,7 +698,7 @@ func (nc *Controller) monitorNodeHealth() error {
 					// We want to update the taint straight away if Node is already tainted with the UnreachableTaint
 					if taintutils.TaintExists(node.Spec.Taints, UnreachableTaintTemplate) {
 						taintToAdd := *NotReadyTaintTemplate
-						if !nodeutil.SwapNodeControllerTaint(nc.resourcePartitionClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{UnreachableTaintTemplate}, node) {
+						if !nodeutil.SwapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{UnreachableTaintTemplate}, node) {
 							klog.Errorf("Failed to instantly swap UnreachableTaint to NotReadyTaint. Will try again in the next cycle.")
 						}
 					} else if nc.markNodeForTainting(node) {
@@ -752,7 +725,7 @@ func (nc *Controller) monitorNodeHealth() error {
 					// We want to update the taint straight away if Node is already tainted with the UnreachableTaint
 					if taintutils.TaintExists(node.Spec.Taints, NotReadyTaintTemplate) {
 						taintToAdd := *UnreachableTaintTemplate
-						if !nodeutil.SwapNodeControllerTaint(nc.resourcePartitionClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{NotReadyTaintTemplate}, node) {
+						if !nodeutil.SwapNodeControllerTaint(nc.kubeClient, []*v1.Taint{&taintToAdd}, []*v1.Taint{NotReadyTaintTemplate}, node) {
 							klog.Errorf("Failed to instantly swap UnreachableTaint to NotReadyTaint. Will try again in the next cycle.")
 						}
 					} else if nc.markNodeForTainting(node) {
@@ -793,7 +766,7 @@ func (nc *Controller) monitorNodeHealth() error {
 			// Report node event.
 			if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
 				nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-				if err = nodeutil.MarkAllPodsNotReadyInPartitions(nc.tenantPartitionClients, node); err != nil {
+				if err = nodeutil.MarkAllPodsNotReady(nc.kubeClient, node); err != nil {
 					utilruntime.HandleError(fmt.Errorf("Unable to mark all pods NotReady on node %v: %v", node.Name, err))
 				}
 			}
@@ -978,7 +951,7 @@ func (nc *Controller) tryUpdateNodeHealth(node *v1.Node) (time.Duration, v1.Node
 
 		_, currentCondition := nodeutil.GetNodeCondition(&node.Status, v1.NodeReady)
 		if !apiequality.Semantic.DeepEqual(currentCondition, &observedReadyCondition) {
-			if _, err = nc.resourcePartitionClient.CoreV1().Nodes().UpdateStatus(node); err != nil {
+			if _, err = nc.kubeClient.CoreV1().Nodes().UpdateStatus(node); err != nil {
 				klog.Errorf("Error updating node %s: %v", node.Name, err)
 				return gracePeriod, observedReadyCondition, currentReadyCondition, err
 			}
@@ -1222,12 +1195,12 @@ func (nc *Controller) markNodeForTainting(node *v1.Node) bool {
 func (nc *Controller) markNodeAsReachable(node *v1.Node) (bool, error) {
 	nc.evictorLock.Lock()
 	defer nc.evictorLock.Unlock()
-	err := controller.RemoveTaintOffNode(nc.resourcePartitionClient, node.Name, node, UnreachableTaintTemplate)
+	err := controller.RemoveTaintOffNode(nc.kubeClient, node.Name, node, UnreachableTaintTemplate)
 	if err != nil {
 		klog.Errorf("Failed to remove taint from node %v: %v", node.Name, err)
 		return false, err
 	}
-	err = controller.RemoveTaintOffNode(nc.resourcePartitionClient, node.Name, node, NotReadyTaintTemplate)
+	err = controller.RemoveTaintOffNode(nc.kubeClient, node.Name, node, NotReadyTaintTemplate)
 	if err != nil {
 		klog.Errorf("Failed to remove taint from node %v: %v", node.Name, err)
 		return false, err
@@ -1301,10 +1274,8 @@ func (nc *Controller) reconcileNodeLabels(nodeName string) error {
 	if len(labelsToUpdate) == 0 {
 		return nil
 	}
-
-	if !nodeutil.AddOrUpdateLabelsOnNode(nc.resourcePartitionClient, labelsToUpdate, node) {
+	if !nodeutil.AddOrUpdateLabelsOnNode(nc.kubeClient, labelsToUpdate, node) {
 		return fmt.Errorf("failed update labels for node %+v", node)
 	}
-
 	return nil
 }
