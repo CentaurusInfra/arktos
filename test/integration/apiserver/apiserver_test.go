@@ -484,7 +484,7 @@ func TestMetadataClient(t *testing.T) {
 					return wrapper
 				})
 
-				client := metadata.NewConfigOrDie(cfg).Resource(v1.SchemeGroupVersion.WithResource("services"))
+				client := metadata.NewForConfigOrDie(cfg).Resource(v1.SchemeGroupVersion.WithResource("services"))
 				items, err := client.Namespace(ns).List(metav1.ListOptions{})
 				if err != nil {
 					t.Fatal(err)
@@ -561,7 +561,7 @@ func TestMetadataClient(t *testing.T) {
 					return wrapper
 				})
 
-				client := metadata.NewConfigOrDie(cfg).Resource(crdGVR)
+				client := metadata.NewForConfigOrDie(cfg).Resource(crdGVR)
 				items, err := client.Namespace(ns).List(metav1.ListOptions{})
 				if err != nil {
 					t.Fatal(err)
@@ -628,7 +628,7 @@ func TestMetadataClient(t *testing.T) {
 					return wrapper
 				})
 
-				client := metadata.NewConfigOrDie(cfg).Resource(v1.SchemeGroupVersion.WithResource("services"))
+				client := metadata.NewForConfigOrDie(cfg).Resource(v1.SchemeGroupVersion.WithResource("services"))
 				w, err := client.Namespace(ns).Watch(metav1.ListOptions{ResourceVersion: svc.ResourceVersion, Watch: true})
 				if err != nil {
 					t.Fatal(err)
@@ -684,7 +684,7 @@ func TestMetadataClient(t *testing.T) {
 				}
 
 				cfg := metadata.ConfigFor(config)
-				client := metadata.NewConfigOrDie(cfg).Resource(crdGVR)
+				client := metadata.NewForConfigOrDie(cfg).Resource(crdGVR)
 
 				patched, err := client.Namespace(ns).Patch("test-2", types.MergePatchType, []byte(`{"metadata":{"annotations":{"test":"1"}}}`), metav1.PatchOptions{})
 				if err != nil {
@@ -699,7 +699,7 @@ func TestMetadataClient(t *testing.T) {
 					wrapper.nested = rt
 					return wrapper
 				})
-				client = metadata.NewConfigOrDie(cfg).Resource(crdGVR)
+				client = metadata.NewForConfigOrDie(cfg).Resource(crdGVR)
 
 				w, err := client.Namespace(ns).Watch(metav1.ListOptions{ResourceVersion: cr.GetResourceVersion(), Watch: true})
 				if err != nil {
