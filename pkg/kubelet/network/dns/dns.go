@@ -87,6 +87,12 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 }
 
 func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
+	// fallback to default cluster DNS for pods on the default network if the feature gate is not enabled
+	// remove the following block of if when feature MandatoryArktosNetwork is set by default.
+	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) == false {
+		return c.clusterDNS, nil
+	}
+
 	networkName, ok := pod.Labels[arktosv1.NetworkLabel]
 	if !ok {
 		networkName = arktosv1.NetworkDefault

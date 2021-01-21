@@ -414,6 +414,7 @@ func TestGetPodDNSType(t *testing.T) {
 }
 
 func TestGetPodDNS(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MandatoryArktosNetwork, true)()
 	recorder := record.NewFakeRecorder(20)
 	nodeRef := &v1.ObjectReference{
 		Kind:      "Node",
@@ -509,6 +510,7 @@ func TestGetPodDNS(t *testing.T) {
 }
 
 func TestGetPodDNSWithNotReadyNetwork(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MandatoryArktosNetwork, true)()
 	recorder := record.NewFakeRecorder(20)
 	nodeRed := &v1.ObjectReference{
 		Kind: "Node",
@@ -560,6 +562,7 @@ func TestGetPodDNSWithNotFoundNetworkWhileMandatoryNetworkGateIsOn(t *testing.T)
 }
 
 func TestGetPodDNSCustom(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MandatoryArktosNetwork, true)()
 	recorder := record.NewFakeRecorder(20)
 	nodeRef := &v1.ObjectReference{
 		Kind:      "Node",
