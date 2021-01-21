@@ -21,6 +21,7 @@ filegroup(
         "//cmd/genswaggertypedocs:all-srcs",
         "//cmd/genutils:all-srcs",
         "//cmd/genyaml:all-srcs",
+        "//cmd/haproxy-cfg-generator:all-srcs",
         "//cmd/hyperkube:all-srcs",
         "//cmd/importverifier:all-srcs",
         "//cmd/kube-apiserver:all-srcs",
