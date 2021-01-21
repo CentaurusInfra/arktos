@@ -238,7 +238,7 @@ func TestClient(t *testing.T) {
 
 			kubeConfig := &rest.KubeConfig{Host: s.URL}
 			cfg := ConfigFor(rest.NewAggregatedConfig(kubeConfig))
-			client := NewConfigOrDie(cfg).(*Client)
+			client := NewForConfigOrDie(cfg).(*Client)
 			tt.want(t, client)
 		})
 	}
