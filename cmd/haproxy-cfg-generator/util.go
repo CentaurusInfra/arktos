@@ -17,13 +17,9 @@ limitations under the License.
 package main
 
 import (
-	"context"
 	"fmt"
 	"os"
-	"os/exec"
-	"time"
 
-	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/klog"
 )
 
@@ -45,41 +41,6 @@ const (
 
 func ApplyColor(s string, color FontColor) string {
 	return string(color) + s + string(ResetColor)
-}
-
-func RandomString(length int) string {
-	// If we see a crazy length, set it the default length of 8
-	if length <= 0 || length > 128 {
-		length = 8
-	}
-
-	result := fmt.Sprintf("%v", uuid.NewUUID())[0:length]
-
-	return result
-}
-
-func ExecCommandLine(commandline string, timeout int) (int, string, error) {
-	var cmd *exec.Cmd
-	if timeout > 0 {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
-		defer cancel()
-
-		cmd = exec.CommandContext(ctx, ShellToUse, "-c", commandline)
-	} else {
-		cmd = exec.Command(ShellToUse, "-c", commandline)
-	}
-
-	exitCode := 0
-	var output []byte
-	var err error
-
-	if output, err = cmd.CombinedOutput(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			exitCode = exitError.ExitCode()
-		}
-	}
-
-	return exitCode, string(output), nil
 }
 
 func LogError(format string, a ...interface{}) {

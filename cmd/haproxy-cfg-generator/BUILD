@@ -8,10 +8,7 @@ go_library(
     ],
     importpath = "k8s.io/kubernetes/cmd/haproxy-cfg-generator",
     visibility = ["//visibility:private"],
-    deps = [
-        "//staging/src/k8s.io/apimachinery/pkg/util/uuid:go_default_library",
-        "//vendor/k8s.io/klog:go_default_library",
-    ],
+    deps = ["//vendor/k8s.io/klog:go_default_library"],
 )
 
 go_binary(
