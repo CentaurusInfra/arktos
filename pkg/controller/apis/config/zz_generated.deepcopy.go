@@ -120,7 +120,7 @@ func (in *KubeControllerManagerConfiguration) DeepCopyInto(out *KubeControllerMa
 	out.JobController = in.JobController
 	out.NamespaceController = in.NamespaceController
 	out.NodeIPAMController = in.NodeIPAMController
-	out.NodeLifecycleController = in.NodeLifecycleController
+	in.NodeLifecycleController.DeepCopyInto(&out.NodeLifecycleController)
 	out.PersistentVolumeBinderController = in.PersistentVolumeBinderController
 	out.PodGCController = in.PodGCController
 	out.ReplicaSetController = in.ReplicaSetController
