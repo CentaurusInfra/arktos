@@ -334,6 +334,10 @@ func (c *client) makeURLSegments(name string) []string {
 	}
 	url = append(url, c.resource.Version)
 
+	if len(c.tenant) > 0 {
+		url = append(url, "tenants", c.tenant)
+	}
+
 	if len(c.namespace) > 0 {
 		url = append(url, "namespaces", c.namespace)
 	}

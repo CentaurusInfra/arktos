@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -157,12 +158,17 @@ func TestMetadataSharedInformerFactory(t *testing.T) {
 }
 
 func newPartialObjectMetadata(apiVersion, kind, namespace, name string) *metav1.PartialObjectMetadata {
+	return newPartialObjectMetadataWithMultiTenancy(apiVersion, kind, namespace, name, metav1.TenantSystem)
+}
+
+func newPartialObjectMetadataWithMultiTenancy(apiVersion, kind, namespace, name string, tenant string) *metav1.PartialObjectMetadata {
 	return &metav1.PartialObjectMetadata{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: apiVersion,
 			Kind:       kind,
 		},
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    tenant,
 			Namespace: namespace,
 			Name:      name,
 		},
