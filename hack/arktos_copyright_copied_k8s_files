@@ -30,6 +30,7 @@ staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go
 staging/src/k8s.io/apiserver/pkg/server/healthz/healthz_test.go
 staging/src/k8s.io/apiserver/pkg/server/hooks.go
 staging/src/k8s.io/apiserver/pkg/server/options/server_run_options_test.go
+staging/src/k8s.io/apiserver/pkg/server/secure_serving.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner.go
@@ -50,4 +51,3 @@ staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/utils.go
 staging/src/k8s.io/apiserver/pkg/storage/value/encrypt/envelope/grpc_service.go
 staging/src/k8s.io/cli-runtime/pkg/resource/scheme.go
 test/e2e/node/node_problem_detector.go
-
