@@ -773,7 +773,18 @@ items:
     - pods
     verbs:
     - delete
+    - get
     - list
+    - watch
+  - apiGroups:
+    - apps
+    - extensions
+    resources:
+    - daemonsets
+    verbs:
+    - get
+    - list
+    - watch
   - apiGroups:
     - ""
     resources:
