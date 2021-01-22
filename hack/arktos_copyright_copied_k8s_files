@@ -1,3 +1,5 @@
+cmd/cloud-controller-manager/app/controllermanager.go
+cmd/controller-manager/app/serve.go
 pkg/cloudfabric-controller/client_builder.go
 pkg/cloudfabric-controller/controller_ref_manager.go
 pkg/cloudfabric-controller/controller_ref_manager_test.go
@@ -21,6 +23,10 @@ staging/src/k8s.io/apiserver/pkg/endpoints/discovery/util.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/response_test.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers_test.go
+staging/src/k8s.io/apiserver/pkg/server/healthz.go
+staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go
+staging/src/k8s.io/apiserver/pkg/server/healthz/healthz_test.go
+staging/src/k8s.io/apiserver/pkg/server/hooks.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner.go
