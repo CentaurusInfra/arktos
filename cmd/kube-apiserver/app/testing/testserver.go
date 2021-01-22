@@ -49,7 +49,7 @@ type TestServerInstanceOptions struct {
 	// DisableStorageCleanup Disable the automatic storage cleanup
 	DisableStorageCleanup bool
 	// Injected health
-	InjectedHealthzChecker healthz.HealthzChecker
+	InjectedHealthChecker healthz.HealthChecker
 }
 
 // TestServer return values supplied by kube-test-ApiServer
@@ -151,9 +151,11 @@ func StartTestServer(t Logger, instanceOptions *TestServerInstanceOptions, custo
 	t.Logf("Starting kube-apiserver on port %d...", s.SecureServing.BindPort)
 	server, err := app.CreateServerChain(completedOptions, stopCh)
 
-	if instanceOptions.InjectedHealthzChecker != nil {
-		t.Logf("Adding health check with delay %v %v", s.GenericServerRunOptions.MaxStartupSequenceDuration, instanceOptions.InjectedHealthzChecker.Name())
-		server.AddDelayedHealthzChecks(s.GenericServerRunOptions.MaxStartupSequenceDuration, instanceOptions.InjectedHealthzChecker)
+	if instanceOptions.InjectedHealthChecker != nil {
+		t.Logf("Adding health check with delay %v %v", s.GenericServerRunOptions.MaxStartupSequenceDuration, instanceOptions.InjectedHealthChecker.Name())
+		if err := server.AddDelayedHealthzChecks(s.GenericServerRunOptions.MaxStartupSequenceDuration, instanceOptions.InjectedHealthChecker); err != nil {
+			return result, err
+		}
 	}
 
 	if err != nil {
