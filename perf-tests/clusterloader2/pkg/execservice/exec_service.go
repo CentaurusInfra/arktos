@@ -31,6 +31,7 @@ import (
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
 	measurementutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
+	perfutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 const (
@@ -64,7 +65,7 @@ func SetUpExecService(f *framework.Framework) error {
 	mapping["Name"] = execDeploymentName
 	mapping["Namespace"] = execDeploymentNamespace
 	mapping["Replicas"] = execPodReplicas
-	if err = client.CreateNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err = client.CreateNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace, perfutil.GetTenant()); err != nil {
 		return fmt.Errorf("namespace %s creation error: %v", execDeploymentNamespace, err)
 	}
 	if err = f.ApplyTemplatedManifests(
@@ -110,10 +111,10 @@ func TearDownExecService(f *framework.Framework) error {
 		podStore.Stop()
 		podStore = nil
 	}
-	if err := client.DeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err := client.DeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace, perfutil.GetTenant()); err != nil {
 		return fmt.Errorf("deleting %s namespace error: %v", execDeploymentNamespace, err)
 	}
-	if err := client.WaitForDeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace); err != nil {
+	if err := client.WaitForDeleteNamespace(f.GetClientSets().GetClient(), execDeploymentNamespace, perfutil.GetTenant()); err != nil {
 		return err
 	}
 	return nil

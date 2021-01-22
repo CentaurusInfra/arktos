@@ -13,6 +13,7 @@ go_library(
         "//perf-tests/clusterloader2/pkg/measurement/util:go_default_library",
         "//perf-tests/clusterloader2/pkg/measurement/util/informer:go_default_library",
         "//perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects:go_default_library",
+        "//perf-tests/clusterloader2/pkg/util:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/wait:go_default_library",

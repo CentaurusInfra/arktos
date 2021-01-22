@@ -55,8 +55,9 @@ const defaultRootDir = "/var/lib/kubelet"
 // In general, please try to avoid adding flags or configuration fields,
 // we already have a confusingly large amount of them.
 type KubeletFlags struct {
-	KubeConfig          string
-	BootstrapKubeconfig string
+	TenantPartitionApiservers []string
+	KubeConfig                string
+	BootstrapKubeconfig       string
 
 	// Insert a probability of random errors during calls to the master.
 	ChaosChance float64

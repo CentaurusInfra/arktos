@@ -40,7 +40,7 @@ func FillObjectMetaSystemFields(meta metav1.Object) {
 		if err != nil {
 			uid := uuid.NewUUID()
 			meta.SetUID(uid)
-			klog.Infof("Got invalid uuid [%s]. Assign a new one [%v]", uidStr, uid)
+			klog.V(3).Infof("Got invalid uuid [%s]. Assign a new one [%v]", uidStr, uid)
 		}
 	}
 	uid := meta.GetUID()

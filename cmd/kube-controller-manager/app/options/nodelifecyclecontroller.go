@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -45,6 +46,7 @@ func (o *NodeLifecycleControllerOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.Int32Var(&o.LargeClusterSizeThreshold, "large-cluster-size-threshold", 50, "Number of nodes from which NodeController treats the cluster as large for the eviction logic purposes. --secondary-node-eviction-rate is implicitly overridden to 0 for clusters this size or smaller.")
 	fs.Float32Var(&o.UnhealthyZoneThreshold, "unhealthy-zone-threshold", 0.55, "Fraction of Nodes in a zone which needs to be not Ready (minimum 3) for zone to be treated as unhealthy. ")
 	fs.BoolVar(&o.EnableTaintManager, "enable-taint-manager", o.EnableTaintManager, "WARNING: Beta feature. If set to true enables NoExecute Taints and will evict all not-tolerating Pod running on Nodes tainted with this kind of Taints.")
+	fs.StringSliceVar(&o.TenantServers, "tenant-servers", o.TenantServers, "Comma separated string representing tenant api-server URLs.")
 }
 
 // ApplyTo fills up NodeLifecycleController config with options.
@@ -61,6 +63,7 @@ func (o *NodeLifecycleControllerOptions) ApplyTo(cfg *nodelifecycleconfig.NodeLi
 	cfg.SecondaryNodeEvictionRate = o.SecondaryNodeEvictionRate
 	cfg.LargeClusterSizeThreshold = o.LargeClusterSizeThreshold
 	cfg.UnhealthyZoneThreshold = o.UnhealthyZoneThreshold
+	cfg.TenantServers = o.TenantServers
 
 	return nil
 }

@@ -577,10 +577,31 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		}
 		kubeDeps.OnHeartbeatFailure = closeAllConns
 
-		kubeDeps.KubeClient, err = clientset.NewForConfig(clientConfigs)
-		if err != nil {
-			return fmt.Errorf("failed to initialize kubelet client: %v", err)
+		// create clients for each tenant partition
+		klog.V(6).Infof("make kubeDeps.KubeTPClients based on TenantPartitionApiservers args: %v", s.TenantPartitionApiservers)
+		if s.TenantPartitionApiservers == nil || len(s.TenantPartitionApiservers) == 0 {
+			klog.Infof("TenantPartitionApiservers not set. Default to single tenant partition and clientConfig setting")
+			s.TenantPartitionApiservers = make([]string, 1)
+			s.TenantPartitionApiservers[0] = clientConfigs.GetConfig().Host
 		}
+
+		clientConfigCopy := *restclient.CopyConfigs(clientConfigs)
+		kubeDeps.KubeTPClients = make([]clientset.Interface, len(s.TenantPartitionApiservers))
+
+		for i, tenantServer := range s.TenantPartitionApiservers {
+			for _, cfg := range clientConfigCopy.GetAllConfigs() {
+				cfg.Host = tenantServer
+				klog.V(6).Infof("clientConfigCopy.Host: %v", cfg.Host)
+			}
+
+			kubeDeps.KubeTPClients[i], err = clientset.NewForConfig(&clientConfigCopy)
+			if err != nil {
+				return fmt.Errorf("failed to initialize kubelet client for host %s : %v", tenantServer, err)
+			}
+		}
+
+		// backward compatible, to be removed once all client usages switch to KubeTPClients
+		kubeDeps.KubeClient = kubeDeps.KubeTPClients[0]
 
 		arktosExtClientConfig := *clientConfigs
 		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {

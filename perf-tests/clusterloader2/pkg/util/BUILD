@@ -4,6 +4,7 @@ go_library(
     name = "go_default_library",
     srcs = [
         "cluster.go",
+        "multi-tenancy.go",
         "ssh.go",
         "util.go",
     ],
@@ -13,6 +14,8 @@ go_library(
         "//perf-tests/clusterloader2/pkg/framework/client:go_default_library",
         "//pkg/util/system:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/api/validation:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
     ],

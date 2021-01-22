@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,6 +27,11 @@ func (in *NodeLifecycleControllerConfiguration) DeepCopyInto(out *NodeLifecycleC
 	out.NodeStartupGracePeriod = in.NodeStartupGracePeriod
 	out.NodeMonitorGracePeriod = in.NodeMonitorGracePeriod
 	out.PodEvictionTimeout = in.PodEvictionTimeout
+	if in.TenantServers != nil {
+		in, out := &in.TenantServers, &out.TenantServers
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	return
 }
 

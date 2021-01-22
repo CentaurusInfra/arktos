@@ -19,6 +19,8 @@ package bundle
 import (
 	"fmt"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"k8s.io/klog"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement"
@@ -41,8 +43,12 @@ func createTestMetricsMeasurement() measurement.Measurement {
 	if metrics.etcdMetrics, err = measurement.CreateMeasurement("EtcdMetrics"); err != nil {
 		klog.Errorf("%v: etcdMetrics creation error: %v", metrics, err)
 	}
-	if metrics.schedulingMetrics, err = measurement.CreateMeasurement("SchedulingMetrics"); err != nil {
-		klog.Errorf("%v: schedulingMetrics creation error: %v", metrics, err)
+	// We temporarily disable the metric collection on scheduler in scale-out scenarios,
+	// where we only test non-system tenants
+	if util.GetTenant() == metav1.TenantSystem {
+		if metrics.schedulingMetrics, err = measurement.CreateMeasurement("SchedulingMetrics"); err != nil {
+			klog.Errorf("%v: schedulingMetrics creation error: %v", metrics, err)
+		}
 	}
 	if metrics.metricsForE2E, err = measurement.CreateMeasurement("MetricsForE2E"); err != nil {
 		klog.Errorf("%v: metricsForE2E creation error: %v", metrics, err)
@@ -113,9 +119,11 @@ func (t *testMetrics) Execute(config *measurement.MeasurementConfig) ([]measurem
 	actionStartConfig := createConfig(config, map[string]interface{}{
 		"action": "start",
 	})
+
 	actionResetConfig := createConfig(config, map[string]interface{}{
 		"action": "reset",
 	})
+
 	actionGatherConfig := createConfig(config, map[string]interface{}{
 		"action": "gather",
 	})
@@ -156,8 +164,12 @@ func (t *testMetrics) Execute(config *measurement.MeasurementConfig) ([]measurem
 	case "start":
 		summary, err := execute(t.etcdMetrics, actionStartConfig)
 		appendResults(&summaries, errList, summary, executeError(t.etcdMetrics.String(), action, err))
-		summary, err = execute(t.schedulingMetrics, actionResetConfig)
-		appendResults(&summaries, errList, summary, executeError(t.schedulingMetrics.String(), action, err))
+		// We temporarily disable the metric collection on scheduler in scale-out scenarios,
+		// where we only test non-system tenants
+		if util.GetTenant() == metav1.TenantSystem {
+			summary, err = execute(t.schedulingMetrics, actionResetConfig)
+			appendResults(&summaries, errList, summary, executeError(t.schedulingMetrics.String(), action, err))
+		}
 		summary, err = execute(t.resourceUsageSummary, actionStartConfig)
 		appendResults(&summaries, errList, summary, executeError(t.resourceUsageSummary.String(), action, err))
 		summary, err = execute(t.etcdCPUProfile, etcdStartConfig)
@@ -183,8 +195,12 @@ func (t *testMetrics) Execute(config *measurement.MeasurementConfig) ([]measurem
 	case "gather":
 		summary, err := execute(t.etcdMetrics, actionGatherConfig)
 		appendResults(&summaries, errList, summary, executeError(t.etcdMetrics.String(), action, err))
-		summary, err = execute(t.schedulingMetrics, actionGatherConfig)
-		appendResults(&summaries, errList, summary, executeError(t.schedulingMetrics.String(), action, err))
+		// We temporarily disable the metric collection on scheduler in scale-out scenarios,
+		// where we only test non-system tenants
+		if util.GetTenant() == metav1.TenantSystem {
+			summary, err = execute(t.schedulingMetrics, actionGatherConfig)
+			appendResults(&summaries, errList, summary, executeError(t.schedulingMetrics.String(), action, err))
+		}
 		summary, err = execute(t.metricsForE2E, config)
 		appendResults(&summaries, errList, summary, executeError(t.metricsForE2E.String(), action, err))
 		summary, err = execute(t.resourceUsageSummary, actionGatherConfig)
@@ -223,7 +239,11 @@ func (t *testMetrics) Execute(config *measurement.MeasurementConfig) ([]measurem
 // Dispose cleans up after the measurement.
 func (t *testMetrics) Dispose() {
 	t.etcdMetrics.Dispose()
-	t.schedulingMetrics.Dispose()
+	// We temporarily disable the metric collection on scheduler in scale-out scenarios,
+	// where we only test non-system tenants
+	if util.GetTenant() == metav1.TenantSystem {
+		t.schedulingMetrics.Dispose()
+	}
 	t.metricsForE2E.Dispose()
 	t.resourceUsageSummary.Dispose()
 	t.etcdCPUProfile.Dispose()

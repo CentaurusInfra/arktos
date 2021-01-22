@@ -33,6 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
 )
 
 // ObjectStore is a convenient wrapper around cache.Store.
@@ -81,12 +82,12 @@ func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, er
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().Pods(selector.Namespace).List(options)
+			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, util.GetTenant()).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().Pods(selector.Namespace).Watch(options)
+			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, util.GetTenant()).Watch(options)
 		},
 	}
 	objectStore, err := newObjectStore(&v1.Pod{}, lw, selector)
@@ -117,12 +118,12 @@ func NewPVCStore(c clientset.Interface, selector *ObjectSelector) (*PVCStore, er
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PersistentVolumeClaims(selector.Namespace).List(options)
+			return c.CoreV1().PersistentVolumeClaimsWithMultiTenancy(selector.Namespace, util.GetTenant()).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PersistentVolumeClaims(selector.Namespace).Watch(options)
+			return c.CoreV1().PersistentVolumeClaimsWithMultiTenancy(selector.Namespace, util.GetTenant()).Watch(options)
 		},
 	}
 	objectStore, err := newObjectStore(&v1.PersistentVolumeClaim{}, lw, selector)
@@ -153,12 +154,12 @@ func NewPVStore(c clientset.Interface, selector *ObjectSelector) (*PVStore, erro
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PersistentVolumes().List(options)
+			return c.CoreV1().PersistentVolumesWithMultiTenancy(util.GetTenant()).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 			options.LabelSelector = selector.LabelSelector
 			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PersistentVolumes().Watch(options)
+			return c.CoreV1().PersistentVolumesWithMultiTenancy(util.GetTenant()).Watch(options)
 		},
 	}
 	objectStore, err := newObjectStore(&v1.PersistentVolume{}, lw, selector)
