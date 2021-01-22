@@ -74,7 +74,6 @@ go_library(
         "//pkg/controller/tenant:go_default_library",
         "//pkg/controller/ttl:go_default_library",
         "//pkg/controller/ttlafterfinished:go_default_library",
-        "//pkg/controller/util/node:go_default_library",
         "//pkg/controller/vmpod:go_default_library",
         "//pkg/controller/volume/attachdetach:go_default_library",
         "//pkg/controller/volume/expand:go_default_library",

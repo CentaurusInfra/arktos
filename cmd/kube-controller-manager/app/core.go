@@ -58,7 +58,6 @@ import (
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	ttlcontroller "k8s.io/kubernetes/pkg/controller/ttl"
 	"k8s.io/kubernetes/pkg/controller/ttlafterfinished"
-	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	"k8s.io/kubernetes/pkg/controller/vmpod"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach"
 	"k8s.io/kubernetes/pkg/controller/volume/expand"
@@ -129,28 +128,13 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 }
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
-
-	kubeclient := ctx.ClientBuilder.ClientOrDie("node-controller")
-
-	var tpAccessors []*nodeutil.TenantPartitionManager
-	var err error
-	// for backward compatibility, when "--tenant-servers" option is not specified, we fall back to the traditional kubernetes scenario.
-	if len(ctx.ComponentConfig.NodeLifecycleController.TenantServers) > 0 {
-		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromServerNames(ctx.ComponentConfig.NodeLifecycleController.TenantServers, ctx.Stop)
-	} else {
-		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeclient}, ctx.Stop)
-	}
-
-	if err != nil {
-		return nil, true, err
-	}
-
 	lifecycleController, err := lifecyclecontroller.NewNodeLifecycleController(
-		tpAccessors,
 		ctx.InformerFactory.Coordination().V1beta1().Leases(),
+		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.InformerFactory.Apps().V1().DaemonSets(),
 		// node lifecycle controller uses existing cluster role from node-controller
-		kubeclient,
+		ctx.ClientBuilder.ClientOrDie("node-controller"),
 		ctx.ComponentConfig.KubeCloudShared.NodeMonitorPeriod.Duration,
 		ctx.ComponentConfig.NodeLifecycleController.NodeStartupGracePeriod.Duration,
 		ctx.ComponentConfig.NodeLifecycleController.NodeMonitorGracePeriod.Duration,

@@ -59,12 +59,10 @@ type nodeUpdateItem struct {
 }
 
 type podUpdateItem struct {
-	podName               string
-	podNamespace          string
-	podTenant             string
-	nodeName              string
-	tenantPartitionClient clientset.Interface
-	getPodFunc            *GetPodFunc
+	podName      string
+	podNamespace string
+	podTenant    string
+	nodeName     string
 }
 
 func hash(val string, max int) int {
@@ -82,10 +80,10 @@ type GetNodeFunc func(name string) (*v1.Node, error)
 // NoExecuteTaintManager listens to Taint/Toleration changes and is responsible for removing Pods
 // from Nodes tainted with NoExecute Taints.
 type NoExecuteTaintManager struct {
-	resourcePartitionClient clientset.Interface
-	tenantPartitionClients  []clientset.Interface
-	recorder                record.EventRecorder
-	getNode                 GetNodeFunc
+	client   clientset.Interface
+	recorder record.EventRecorder
+	getPod   GetPodFunc
+	getNode  GetNodeFunc
 
 	taintEvictionQueue *TimedWorkerQueue
 	// keeps a map from nodeName to all noExecute taints on that Node
@@ -99,19 +97,18 @@ type NoExecuteTaintManager struct {
 	podUpdateQueue  workqueue.Interface
 }
 
-func deletePodHandler(emitEventFunc func(types.NamespacedName)) func(args *WorkArgs) error {
+func deletePodHandler(c clientset.Interface, emitEventFunc func(types.NamespacedName)) func(args *WorkArgs) error {
 	return func(args *WorkArgs) error {
 		tenant := args.NamespacedName.Tenant
 		ns := args.NamespacedName.Namespace
 		name := args.NamespacedName.Name
-		tenantPartitionClient := args.TenantPartitionClient
 		klog.V(0).Infof("NoExecuteTaintManager is deleting Pod: %v", args.NamespacedName.String())
 		if emitEventFunc != nil {
 			emitEventFunc(args.NamespacedName)
 		}
 		var err error
 		for i := 0; i < retries; i++ {
-			err = tenantPartitionClient.CoreV1().PodsWithMultiTenancy(ns, tenant).Delete(name, &metav1.DeleteOptions{})
+			err = c.CoreV1().PodsWithMultiTenancy(ns, tenant).Delete(name, &metav1.DeleteOptions{})
 			if err == nil {
 				break
 			}
@@ -131,24 +128,22 @@ func getNoExecuteTaints(taints []v1.Taint) []v1.Taint {
 	return result
 }
 
-func getPodsAssignedToNode(tenantPartitionClient clientset.Interface, nodeName string) ([]v1.Pod, error) {
+func getPodsAssignedToNode(c clientset.Interface, nodeName string) ([]v1.Pod, error) {
 	selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
-
-	pods, err := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
+	pods, err := c.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
 		FieldSelector: selector.String(),
 		LabelSelector: labels.Everything().String(),
 	})
 	for i := 0; i < retries && err != nil; i++ {
-		pods, err = tenantPartitionClient.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
+		pods, err = c.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
 			FieldSelector: selector.String(),
 			LabelSelector: labels.Everything().String(),
 		})
 		time.Sleep(100 * time.Millisecond)
 	}
 	if err != nil {
-		return []v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v from tenant partition client %v", nodeName, tenantPartitionClient)
+		return []v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v", nodeName)
 	}
-
 	return pods.Items, nil
 }
 
@@ -175,28 +170,28 @@ func getMinTolerationTime(tolerations []v1.Toleration) time.Duration {
 
 // NewNoExecuteTaintManager creates a new NoExecuteTaintManager that will use passed clientset to
 // communicate with the API server.
-func NewNoExecuteTaintManager(resourcePartitionClient clientset.Interface, tenantPartitionClients []clientset.Interface, getNode GetNodeFunc) *NoExecuteTaintManager {
+func NewNoExecuteTaintManager(c clientset.Interface, getPod GetPodFunc, getNode GetNodeFunc) *NoExecuteTaintManager {
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "taint-controller"})
 	eventBroadcaster.StartLogging(klog.Infof)
-	if resourcePartitionClient != nil {
+	if c != nil {
 		klog.V(0).Infof("Sending events to api server.")
-		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: resourcePartitionClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
+		eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: c.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 	} else {
 		klog.Fatalf("kubeClient is nil when starting NodeController")
 	}
 
 	tm := &NoExecuteTaintManager{
-		resourcePartitionClient: resourcePartitionClient,
-		tenantPartitionClients:  tenantPartitionClients,
-		recorder:                recorder,
-		getNode:                 getNode,
-		taintedNodes:            make(map[string][]v1.Taint),
+		client:       c,
+		recorder:     recorder,
+		getPod:       getPod,
+		getNode:      getNode,
+		taintedNodes: make(map[string][]v1.Taint),
 
 		nodeUpdateQueue: workqueue.NewNamed("noexec_taint_node"),
 		podUpdateQueue:  workqueue.NewNamed("noexec_taint_pod"),
 	}
-	tm.taintEvictionQueue = CreateWorkerQueue(deletePodHandler(tm.emitPodDeletionEvent))
+	tm.taintEvictionQueue = CreateWorkerQueue(deletePodHandler(c, tm.emitPodDeletionEvent))
 
 	return tm
 }
@@ -290,7 +285,7 @@ func (tc *NoExecuteTaintManager) worker(worker int, done func(), stopCh <-chan s
 }
 
 // PodUpdated is used to notify NoExecuteTaintManager about Pod changes.
-func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod, tenantPartitionClient clientset.Interface, getPodFunc GetPodFunc) {
+func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod) {
 	podName := ""
 	podNamespace := ""
 	podTenant := ""
@@ -316,12 +311,10 @@ func (tc *NoExecuteTaintManager) PodUpdated(oldPod *v1.Pod, newPod *v1.Pod, tena
 		return
 	}
 	updateItem := podUpdateItem{
-		podName:               podName,
-		podNamespace:          podNamespace,
-		podTenant:             podTenant,
-		nodeName:              nodeName,
-		tenantPartitionClient: tenantPartitionClient,
-		getPodFunc:            &getPodFunc,
+		podName:      podName,
+		podNamespace: podNamespace,
+		podTenant:    podTenant,
+		nodeName:     nodeName,
 	}
 
 	tc.podUpdateQueue.Add(updateItem)
@@ -359,7 +352,6 @@ func (tc *NoExecuteTaintManager) cancelWorkWithEvent(nsName types.NamespacedName
 }
 
 func (tc *NoExecuteTaintManager) processPodOnNode(
-	tenantPartitionClient clientset.Interface,
 	podNamespacedName types.NamespacedName,
 	nodeName string,
 	tolerations []v1.Toleration,
@@ -374,7 +366,7 @@ func (tc *NoExecuteTaintManager) processPodOnNode(
 		klog.V(2).Infof("Not all taints are tolerated after update for Pod %v on %v", podNamespacedName.String(), nodeName)
 		// We're canceling scheduled work (if any), as we're going to delete the Pod right away.
 		tc.cancelWorkWithEvent(podNamespacedName)
-		tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant, tenantPartitionClient), time.Now(), time.Now())
+		tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant), time.Now(), time.Now())
 		return
 	}
 	minTolerationTime := getMinTolerationTime(usedTolerations)
@@ -394,12 +386,11 @@ func (tc *NoExecuteTaintManager) processPodOnNode(
 		}
 		tc.cancelWorkWithEvent(podNamespacedName)
 	}
-	tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant, tenantPartitionClient), startTime, triggerTime)
+	tc.taintEvictionQueue.AddWork(NewWorkArgs(podNamespacedName.Name, podNamespacedName.Namespace, podNamespacedName.Tenant), startTime, triggerTime)
 }
 
 func (tc *NoExecuteTaintManager) handlePodUpdate(podUpdate podUpdateItem) {
-	podGetter := *(podUpdate.getPodFunc)
-	pod, err := podGetter(podUpdate.podName, podUpdate.podNamespace, podUpdate.podTenant)
+	pod, err := tc.getPod(podUpdate.podName, podUpdate.podNamespace, podUpdate.podTenant)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
 			// Delete
@@ -430,13 +421,12 @@ func (tc *NoExecuteTaintManager) handlePodUpdate(podUpdate podUpdateItem) {
 		taints, ok := tc.taintedNodes[nodeName]
 		return taints, ok
 	}()
-
 	// It's possible that Node was deleted, or Taints were removed before, which triggered
 	// eviction cancelling if it was needed.
 	if !ok {
 		return
 	}
-	tc.processPodOnNode(podUpdate.tenantPartitionClient, podNamespacedName, nodeName, pod.Spec.Tolerations, taints, time.Now())
+	tc.processPodOnNode(podNamespacedName, nodeName, pod.Spec.Tolerations, taints, time.Now())
 }
 
 func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
@@ -467,14 +457,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
 			tc.taintedNodes[node.Name] = taints
 		}
 	}()
-
-	for _, tenantPartitionClient := range tc.tenantPartitionClients {
-		tc.handleNodeUpdateInATenantPartition(tenantPartitionClient, node.Name, taints)
-	}
-}
-
-func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tenantPartitionClient clientset.Interface, nodeName string, taints []v1.Taint) {
-	pods, err := getPodsAssignedToNode(tenantPartitionClient, nodeName)
+	pods, err := getPodsAssignedToNode(tc.client, node.Name)
 	if err != nil {
 		klog.Errorf(err.Error())
 		return
@@ -484,7 +467,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tenantPartit
 	}
 	// Short circuit, to make this controller a bit faster.
 	if len(taints) == 0 {
-		klog.V(4).Infof("All taints were removed from the Node %v. Cancelling all evictions...", nodeName)
+		klog.V(4).Infof("All taints were removed from the Node %v. Cancelling all evictions...", node.Name)
 		for i := range pods {
 			tc.cancelWorkWithEvent(types.NamespacedName{Tenant: pods[i].Tenant, Namespace: pods[i].Namespace, Name: pods[i].Name})
 		}
@@ -495,7 +478,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tenantPartit
 	for i := range pods {
 		pod := &pods[i]
 		podNamespacedName := types.NamespacedName{Tenant: pod.Tenant, Namespace: pod.Namespace, Name: pod.Name}
-		tc.processPodOnNode(tenantPartitionClient, podNamespacedName, nodeName, pod.Spec.Tolerations, taints, now)
+		tc.processPodOnNode(podNamespacedName, node.Name, pod.Spec.Tolerations, taints, now)
 	}
 }
 
