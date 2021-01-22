@@ -26,6 +26,7 @@ go_test(
         "//pkg/api/legacyscheme:go_default_library",
         "//pkg/api/v1/pod:go_default_library",
         "//pkg/controller/nodelifecycle:go_default_library",
+        "//pkg/controller/util/node:go_default_library",
         "//pkg/controller/volume/persistentvolume:go_default_library",
         "//pkg/controller/volume/persistentvolume/options:go_default_library",
         "//pkg/features:go_default_library",
