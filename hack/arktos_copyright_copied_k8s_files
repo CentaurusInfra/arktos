@@ -23,10 +23,13 @@ staging/src/k8s.io/apiserver/pkg/endpoints/discovery/util.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/response_test.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers_test.go
+staging/src/k8s.io/apiserver/pkg/server/filters/goaway.go
+staging/src/k8s.io/apiserver/pkg/server/filters/goaway_test.go
 staging/src/k8s.io/apiserver/pkg/server/healthz.go
 staging/src/k8s.io/apiserver/pkg/server/healthz/healthz.go
 staging/src/k8s.io/apiserver/pkg/server/healthz/healthz_test.go
 staging/src/k8s.io/apiserver/pkg/server/hooks.go
+staging/src/k8s.io/apiserver/pkg/server/options/server_run_options_test.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object.go
 staging/src/k8s.io/apiserver/pkg/storage/cacher/caching_object_test.go
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/api_object_versioner.go
