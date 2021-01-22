@@ -34,6 +34,7 @@ import (
 	restclient "k8s.io/client-go/rest"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
+	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
@@ -91,12 +92,18 @@ func TestTaintNodeByCondition(t *testing.T) {
 	informers := context.informerFactory
 	nsName := context.ns.Name
 
+	stopCh := make(chan struct{})
+	tpAccessors, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]kubernetes.Interface{cs}, stopCh)
+	if err != nil {
+		t.Errorf("Failed to create Tenant Partition Accessor: %v", err)
+		return
+	}
+
 	// Start NodeLifecycleController for taint.
 	nc, err := nodelifecycle.NewNodeLifecycleController(
+		tpAccessors,
 		informers.Coordination().V1beta1().Leases(),
-		informers.Core().V1().Pods(),
 		informers.Core().V1().Nodes(),
-		informers.Apps().V1().DaemonSets(),
 		cs,
 		time.Hour,   // Node monitor grace period
 		time.Second, // Node startup grace period

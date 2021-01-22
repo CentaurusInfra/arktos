@@ -19,6 +19,10 @@ package node
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net"
+	"net/url"
+	"os"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,6 +44,13 @@ import (
 	nodepkg "k8s.io/kubernetes/pkg/util/node"
 
 	"k8s.io/klog"
+
+	"k8s.io/client-go/informers"
+	appsv1informers "k8s.io/client-go/informers/apps/v1"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // DeletePods will delete all pods from master running on given node,
@@ -118,13 +129,29 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 	return updatedPod, nil
 }
 
+func MarkAllPodsNotReadyInPartitions(kubeClients []clientset.Interface, node *v1.Node) error {
+	errString := ""
+	for i, kubeClient := range kubeClients {
+		err := MarkAllPodsNotReady(kubeClient, node)
+		if err != nil {
+			errString += fmt.Sprintf("Error in client #%d: %v", i, err)
+		}
+	}
+
+	if len(errString) != 0 {
+		return fmt.Errorf(errString)
+	}
+
+	return nil
+}
+
 // MarkAllPodsNotReady updates ready status of all pods running on
 // given node from master return true if success
 func MarkAllPodsNotReady(kubeClient clientset.Interface, node *v1.Node) error {
 	nodeName := node.Name
 	klog.V(2).Infof("Update ready status of pods on node [%v]", nodeName)
 	opts := metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector(api.PodHostField, nodeName).String()}
-	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(opts)
+	pods, err := kubeClient.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(opts)
 	if err != nil {
 		return err
 	}
@@ -297,4 +324,142 @@ func GetNodeCondition(status *v1.NodeStatus, conditionType v1.NodeConditionType)
 		}
 	}
 	return -1, nil
+}
+
+// The following are util functions for the node lifecycle ontroller, which is in the resource partition, to connect to the Resource Partition.
+// For the time being, the connection is insecure, as the scalablility work is still on the way.
+// TODO: upgrade the connection to secure.
+type TenantPartitionManager struct {
+	Client            clientset.Interface
+	PodInformer       coreinformers.PodInformer
+	PodGetter         corelisters.PodLister
+	DaemonSetInformer appsv1informers.DaemonSetInformer
+	DaemonSetStore    appsv1listers.DaemonSetLister
+}
+
+func GetTenantPartitionInsecureClient(ipAddr string) (clientset.Interface, error) {
+	cfg, err := GetTenantPartitionInsecureConfig(ipAddr)
+	if err != nil {
+		return nil, fmt.Errorf("Error building Tenant Partition Config to %v: %s", ipAddr, err.Error())
+	}
+
+	client, err := clientset.NewForConfig(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("Error building kubernetes clientset to %v: %s", ipAddr, err.Error())
+	}
+
+	return client, nil
+}
+
+func GetTenantPartitionInsecureConfig(tenantServerUrl string) (*rest.Config, error) {
+	template := `
+apiVersion: v1
+kind: Config
+clusters:
+- cluster:
+    server: %v
+  name: tenant-partition-cluster
+contexts:
+- context:
+    cluster: tenant-partition-cluster
+  name: node-controller-context
+current-context: node-controller-context
+`
+
+	content := fmt.Sprintf(template, tenantServerUrl)
+
+	tmpfile, err := ioutil.TempFile("", "kubeconfig")
+	if err != nil {
+		return nil, err
+	}
+	defer os.Remove(tmpfile.Name())
+
+	if err := ioutil.WriteFile(tmpfile.Name(), []byte(content), 0666); err != nil {
+		return nil, err
+	}
+
+	return clientcmd.BuildConfigFromFlags("", tmpfile.Name())
+}
+
+func GetTenantPartitionClients(tenantServers []string) ([]clientset.Interface, error) {
+
+	for _, tenantServer := range tenantServers {
+		if err := ValidateUrl(tenantServer); err != nil {
+			return nil, err
+		}
+	}
+
+	clients := []clientset.Interface{}
+
+	for _, tenantServer := range tenantServers {
+		tenantServerUrl := strings.TrimSpace(tenantServer)
+		client, err := GetTenantPartitionInsecureClient(tenantServerUrl)
+		if err != nil {
+			return nil, fmt.Errorf("Error in getting client for tenant partition (%v) ： %v", tenantServerUrl, err)
+		}
+
+		clients = append(clients, client)
+	}
+
+	return clients, nil
+}
+
+func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan struct{}) *TenantPartitionManager {
+	tpInformer := informers.NewSharedInformerFactory(client, 0)
+	go tpInformer.Core().V1().Pods().Informer().Run(stop)
+	go tpInformer.Apps().V1().DaemonSets().Informer().Run(stop)
+	tpAccessor := &TenantPartitionManager{
+		Client:            client,
+		PodInformer:       tpInformer.Core().V1().Pods(),
+		PodGetter:         tpInformer.Core().V1().Pods().Lister(),
+		DaemonSetInformer: tpInformer.Apps().V1().DaemonSets(),
+		DaemonSetStore:    tpInformer.Apps().V1().DaemonSets().Lister(),
+	}
+
+	return tpAccessor
+}
+
+func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	tpAccessors := []*TenantPartitionManager{}
+
+	for _, client := range clients {
+		tpAccessors = append(tpAccessors, getTenantPartitionManagerFromClient(client, stop))
+	}
+
+	return tpAccessors, nil
+}
+
+func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	clients, err := GetTenantPartitionClients(tenantServers)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetTenantPartitionManagersFromKubeClients(clients, stop)
+}
+
+// this check enforce the tenant-server option use the format [scheme];//[IP addrese]:port to specify the url
+func ValidateUrl(urlString string) error {
+	_, err := url.ParseRequestURI(urlString)
+	if err != nil {
+		return err
+	}
+
+	u, err := url.Parse(urlString)
+	if err != nil {
+		return err
+	}
+	if u.Scheme == "" {
+		return fmt.Errorf("Invalid url (%v): missing scheme", urlString)
+	}
+	if u.Host == "" {
+		return fmt.Errorf("Invalid url (%v): missing host", urlString)
+	}
+
+	host, _, _ := net.SplitHostPort(u.Host)
+	if net.ParseIP(host) == nil {
+		return fmt.Errorf("Invalid url (%v): invalid host IP", urlString)
+	}
+
+	return nil
 }
