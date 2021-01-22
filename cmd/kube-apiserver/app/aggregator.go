@@ -154,7 +154,7 @@ func createAggregatorServer(aggregatorConfig *aggregatorapiserver.Config, delega
 		return nil, err
 	}
 
-	err = aggregatorServer.GenericAPIServer.AddHealthChecks(
+	err = aggregatorServer.GenericAPIServer.AddBootSequenceHealthChecks(
 		makeAPIServiceAvailableHealthCheck(
 			"autoregister-completion",
 			apiServices,
