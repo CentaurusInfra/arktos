@@ -490,6 +490,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		hostnameOverridden:                      len(hostnameOverride) > 0,
 		nodeName:                                nodeName,
 		kubeClient:                              kubeDeps.KubeClient,
+		kubeTPClients:                           kubeDeps.KubeTPClients,
 		heartbeatClient:                         kubeDeps.HeartbeatClient,
 		onRepeatedHeartbeatFailure:              kubeDeps.OnHeartbeatFailure,
 		rootDirectory:                           rootDirectory,
@@ -905,7 +906,8 @@ type Kubelet struct {
 
 	nodeName        types.NodeName
 	runtimeCache    kubecontainer.RuntimeCache
-	kubeClient      clientset.Interface
+	kubeClient      clientset.Interface // TO DO: to be removed
+	kubeTPClients   []clientset.Interface
 	heartbeatClient clientset.Interface
 	iptClient       utilipt.Interface
 	rootDirectory   string

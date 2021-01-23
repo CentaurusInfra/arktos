@@ -25,6 +25,7 @@ import (
 	"fmt"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/datapartition"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"math/rand"
 	"net"
 	"net/http"
@@ -515,6 +516,9 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			}
 		}
 	}
+
+	// initialize the kubeclient manager
+	kubeclientmanager.NewKubeClientManager()
 
 	// Register current configuration with /configz endpoint
 	err = initConfigz(&s.KubeletConfiguration)
