@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/client-go/tools/record"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
@@ -102,9 +103,12 @@ func newTestManager() *manager {
 	refManager.SetRef(testContainerID, &v1.ObjectReference{}) // Suppress prober warnings.
 	podManager := kubepod.NewBasicPodManager(nil, nil, nil, nil)
 	// Add test pod to pod manager, so that status manager can get the pod from pod manager if needed.
+	kubeTPClients := []clientset.Interface{
+		&fake.Clientset{},
+	}
 	podManager.AddPod(getTestPod())
 	m := NewManager(
-		status.NewManager(&fake.Clientset{}, podManager, &statustest.FakePodDeletionSafetyProvider{}),
+		status.NewManager(kubeTPClients, podManager, &statustest.FakePodDeletionSafetyProvider{}),
 		results.NewManager(),
 		nil, // runner
 		refManager,

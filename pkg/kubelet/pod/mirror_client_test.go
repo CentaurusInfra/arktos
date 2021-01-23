@@ -20,7 +20,10 @@ package pod
 import (
 	"testing"
 
+	"k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 func TestParsePodFullName(t *testing.T) {
@@ -51,6 +54,79 @@ func TestParsePodFullName(t *testing.T) {
 		_, _, _, err := kubecontainer.ParsePodFullName(podFullName)
 		if err == nil {
 			t.Errorf("expected error when parsing the full name, got none")
+		}
+	}
+}
+
+func TestIsStaticPod(t *testing.T) {
+	testcases := []struct {
+		pod    *v1.Pod
+		expect bool
+	}{
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						kubetypes.ConfigSourceAnnotationKey: kubetypes.ApiserverSource,
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						kubetypes.ConfigSourceAnnotationKey: kubetypes.ApiserverSource + "0",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						kubetypes.ConfigSourceAnnotationKey: kubetypes.ApiserverSource + "99",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"abc": "def",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						kubetypes.ConfigSourceAnnotationKey: "abc",
+					},
+				},
+			},
+			expect: true,
+		},
+	}
+
+	for i, test := range testcases {
+		actual := IsStaticPod(test.pod)
+		if test.expect != actual {
+			t.Errorf("case %d faile: expected %v, got %v", i, test.expect, actual)
 		}
 	}
 }

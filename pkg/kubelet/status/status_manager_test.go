@@ -40,6 +40,7 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 	kubeconfigmap "k8s.io/kubernetes/pkg/kubelet/configmap"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	podtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	kubesecret "k8s.io/kubernetes/pkg/kubelet/secret"
@@ -85,8 +86,15 @@ func (m *manager) testSyncBatch() {
 
 func newTestManager(kubeClient clientset.Interface) *manager {
 	podManager := kubepod.NewBasicPodManager(podtest.NewFakeMirrorClient(), kubesecret.NewFakeManager(), kubeconfigmap.NewFakeManager(), podtest.NewMockCheckpointManager())
-	podManager.AddPod(getTestPod())
-	return NewManager(kubeClient, podManager, &statustest.FakePodDeletionSafetyProvider{}).(*manager)
+	pod := getTestPod()
+	podManager.AddPod(pod)
+	kubeTPClients := []clientset.Interface{
+		kubeClient,
+	}
+	kubeclientmanager.NewKubeClientManager()
+	kubeclientmanager.ClientManager.RegisterTenantSourceServer("api", pod)
+
+	return NewManager(kubeTPClients, podManager, &statustest.FakePodDeletionSafetyProvider{}).(*manager)
 }
 
 func generateRandomMessage() string {
@@ -101,8 +109,8 @@ func getRandomPodStatus() v1.PodStatus {
 
 func verifyActions(t *testing.T, manager *manager, expectedActions []core.Action) {
 	manager.consumeUpdates()
-	actions := manager.kubeClient.(*fake.Clientset).Actions()
-	defer manager.kubeClient.(*fake.Clientset).ClearActions()
+	actions := manager.kubeClients[0].(*fake.Clientset).Actions()
+	defer manager.kubeClients[0].(*fake.Clientset).ClearActions()
 	if len(actions) != len(expectedActions) {
 		t.Fatalf("unexpected actions, got: %+v expected: %+v", actions, expectedActions)
 		return
@@ -140,6 +148,7 @@ func (m *manager) consumeUpdates() int {
 func TestNewStatus(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	testPod := getTestPod()
+
 	syncer.SetPodStatus(testPod, getRandomPodStatus())
 	verifyUpdates(t, syncer, 1)
 
@@ -314,7 +323,7 @@ func TestSyncPodIgnoresNotFound(t *testing.T) {
 func TestSyncPod(t *testing.T) {
 	syncer := newTestManager(&fake.Clientset{})
 	testPod := getTestPod()
-	syncer.kubeClient = fake.NewSimpleClientset(testPod)
+	syncer.kubeClients[0] = fake.NewSimpleClientset(testPod)
 	syncer.SetPodStatus(testPod, getRandomPodStatus())
 	verifyActions(t, syncer, []core.Action{getAction(), patchAction()})
 }
@@ -327,7 +336,7 @@ func TestSyncPodChecksMismatchedUID(t *testing.T) {
 	differentPod := getTestPod()
 	differentPod.UID = "second"
 	syncer.podManager.AddPod(differentPod)
-	syncer.kubeClient = fake.NewSimpleClientset(pod)
+	syncer.kubeClients[0] = fake.NewSimpleClientset(pod)
 	syncer.SetPodStatus(differentPod, getRandomPodStatus())
 	verifyActions(t, syncer, []core.Action{getAction()})
 }
@@ -541,7 +550,7 @@ func TestStaticPod(t *testing.T) {
 
 	t.Logf("Should not sync pod in syncBatch because there is no corresponding mirror pod for the static pod.")
 	m.syncBatch()
-	assert.Equal(t, len(m.kubeClient.(*fake.Clientset).Actions()), 0, "Expected no updates after syncBatch, got %+v", m.kubeClient.(*fake.Clientset).Actions())
+	assert.Equal(t, len(m.kubeClients[0].(*fake.Clientset).Actions()), 0, "Expected no updates after syncBatch, got %+v", m.kubeClients[0].(*fake.Clientset).Actions())
 
 	t.Logf("Create the mirror pod")
 	m.podManager.AddPod(mirrorPod)

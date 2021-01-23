@@ -29,6 +29,7 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -77,6 +78,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/kubeletconfig"
 	"k8s.io/kubernetes/pkg/kubelet/kuberuntime"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
@@ -312,8 +314,17 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		}
 	}
 
+	if updatechannel == nil {
+		for i, client := range kubeDeps.KubeTPClients {
+			source := kubetypes.ApiserverSource + strconv.Itoa(i)
+			klog.Infof("Watching apiserver %s", source)
+			uc := cfg.Channel(source)
+			config.NewSourceApiserver(client, nodeName, uc)
+		}
+	}
+
 	if kubeDeps.KubeClient != nil {
-		klog.Infof("Watching apiserver")
+		klog.Info("Watching apiserver")
 		if updatechannel == nil {
 			updatechannel = cfg.Channel(kubetypes.ApiserverSource)
 		}
@@ -447,7 +458,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 	if kubeDeps.KubeClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
-		nodeLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
+		nodeLW := cache.NewListWatchFromClient(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
@@ -548,16 +559,16 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	var configMapManager configmap.Manager
 	switch kubeCfg.ConfigMapAndSecretChangeDetectionStrategy {
 	case kubeletconfiginternal.WatchChangeDetectionStrategy:
-		secretManager = secret.NewWatchingSecretManager(kubeDeps.KubeClient)
-		configMapManager = configmap.NewWatchingConfigMapManager(kubeDeps.KubeClient)
+		secretManager = secret.NewWatchingSecretManager(kubeDeps.KubeTPClients)
+		configMapManager = configmap.NewWatchingConfigMapManager(kubeDeps.KubeTPClients)
 	case kubeletconfiginternal.TTLCacheChangeDetectionStrategy:
 		secretManager = secret.NewCachingSecretManager(
-			kubeDeps.KubeClient, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
+			kubeDeps.KubeTPClients, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
 		configMapManager = configmap.NewCachingConfigMapManager(
-			kubeDeps.KubeClient, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
+			kubeDeps.KubeTPClients, manager.GetObjectTTLFromNodeFunc(klet.GetNode))
 	case kubeletconfiginternal.GetChangeDetectionStrategy:
-		secretManager = secret.NewSimpleSecretManager(kubeDeps.KubeClient)
-		configMapManager = configmap.NewSimpleConfigMapManager(kubeDeps.KubeClient)
+		secretManager = secret.NewSimpleSecretManager(kubeDeps.KubeTPClients)
+		configMapManager = configmap.NewSimpleConfigMapManager(kubeDeps.KubeTPClients)
 	default:
 		return nil, fmt.Errorf("unknown configmap and secret manager mode: %v", kubeCfg.ConfigMapAndSecretChangeDetectionStrategy)
 	}
@@ -590,7 +601,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	// podManager is also responsible for keeping secretManager and configMapManager contents up-to-date.
 	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient), secretManager, configMapManager, checkpointManager)
 
-	klet.statusManager = status.NewManager(klet.kubeClient, klet.podManager, klet)
+	klet.statusManager = status.NewManager(klet.kubeTPClients, klet.podManager, klet)
 
 	if remoteRuntimeEndpoint != "" {
 		// remoteImageEndpoint is same as remoteRuntimeEndpoint if not explicitly specified
@@ -1798,7 +1809,8 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 	kl.podResizeMutex.Lock()
 	defer kl.podResizeMutex.Unlock()
 	if fit, patchBytes := kl.canResizePod(pod); fit {
-		_, patchError := kl.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
+		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant)
+		_, patchError := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
 			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
 		}
@@ -2177,7 +2189,8 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 				PodName:  action.Spec.PodName,
 				Error:    errStr,
 			}
-			if _, err := kl.kubeClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
+			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, action.Tenant)
+			if _, err := tenantPartitionClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 			}
 			continue

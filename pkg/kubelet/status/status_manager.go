@@ -35,6 +35,7 @@ import (
 	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
@@ -61,8 +62,8 @@ type podStatusSyncRequest struct {
 // Updates pod statuses in apiserver. Writes only when new status has changed.
 // All methods are thread-safe.
 type manager struct {
-	kubeClient clientset.Interface
-	podManager kubepod.Manager
+	kubeClients []clientset.Interface
+	podManager  kubepod.Manager
 	// Map from pod UID to sync status of the corresponding pod.
 	podStatuses      map[types.UID]versionedPodStatus
 	podStatusesLock  sync.RWMutex
@@ -113,9 +114,9 @@ type Manager interface {
 
 const syncPeriod = 10 * time.Second
 
-func NewManager(kubeClient clientset.Interface, podManager kubepod.Manager, podDeletionSafety PodDeletionSafetyProvider) Manager {
+func NewManager(kubeClients []clientset.Interface, podManager kubepod.Manager, podDeletionSafety PodDeletionSafetyProvider) Manager {
 	return &manager{
-		kubeClient:        kubeClient,
+		kubeClients:       kubeClients,
 		podManager:        podManager,
 		podStatuses:       make(map[types.UID]versionedPodStatus),
 		podStatusChannel:  make(chan podStatusSyncRequest, 1000), // Buffer up to 1000 statuses
@@ -146,8 +147,8 @@ func (m *manager) Start() {
 	// Don't start the status manager if we don't have a client. This will happen
 	// on the master, where the kubelet is responsible for bootstrapping the pods
 	// of the master components.
-	if m.kubeClient == nil {
-		klog.Infof("Kubernetes client is nil, not starting status manager.")
+	if m.kubeClients == nil || len(m.kubeClients) == 0 {
+		klog.Error("Kubernetes clients is nil or empty, not starting status manager.")
 		return
 	}
 
@@ -479,7 +480,8 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	// TODO: make me easier to express from client code
-	pod, err := m.kubeClient.CoreV1().PodsWithMultiTenancy(status.podNamespace, status.podTenant).Get(status.podName, metav1.GetOptions{})
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(m.kubeClients, status.podTenant)
+	pod, err := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(status.podNamespace, status.podTenant).Get(status.podName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		klog.V(3).Infof("Pod %q (%s) does not exist on the server", status.podName, uid)
 		// If the Pod is deleted the status will be cleared in
@@ -500,7 +502,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	oldStatus := pod.Status.DeepCopy()
-	newPod, patchBytes, err := statusutil.PatchPodStatus(m.kubeClient, pod.Tenant, pod.Namespace, pod.Name, *oldStatus, mergePodStatus(*oldStatus, status.status))
+	newPod, patchBytes, err := statusutil.PatchPodStatus(tenantPartitionClient, pod.Tenant, pod.Namespace, pod.Name, *oldStatus, mergePodStatus(*oldStatus, status.status))
 	klog.V(3).Infof("Patch status for pod %q with %q", format.PodWithDeletionTimestampAndResourceVersion(pod), patchBytes)
 	if err != nil {
 		klog.Warningf("Failed to update status for pod %q: %v", format.PodWithDeletionTimestampAndResourceVersion(pod), err)
@@ -517,7 +519,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 		deleteOptions := metav1.NewDeleteOptions(0)
 		// Use the pod UID as the precondition for deletion to prevent deleting a newly created pod with the same name and namespace under the same tenant.
 		deleteOptions.Preconditions = metav1.NewUIDPreconditions(string(pod.UID))
-		err = m.kubeClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Delete(pod.Name, deleteOptions)
+		err = tenantPartitionClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Delete(pod.Name, deleteOptions)
 		if err != nil {
 			klog.Warningf("Failed to delete status for pod %q: %v", format.Pod(pod), err)
 			return

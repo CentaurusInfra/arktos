@@ -20,7 +20,6 @@ package kubelet
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"net"
 	"os"
 	"sort"
@@ -41,6 +40,7 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	coretesting "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/record"
@@ -57,6 +57,7 @@ import (
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/kubelet/logs"
 	"k8s.io/kubernetes/pkg/kubelet/network/dns"
@@ -66,6 +67,7 @@ import (
 	podtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	proberesults "k8s.io/kubernetes/pkg/kubelet/prober/results"
 	probetest "k8s.io/kubernetes/pkg/kubelet/prober/testing"
+	"k8s.io/kubernetes/pkg/kubelet/runtimeregistry"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	serverstats "k8s.io/kubernetes/pkg/kubelet/server/stats"
 	"k8s.io/kubernetes/pkg/kubelet/stats"
@@ -180,6 +182,9 @@ func newTestKubeletWithImageList(
 	kubelet.runtimeManager = fakeRuntimeManager
 	kubelet.recorder = fakeRecorder
 	kubelet.kubeClient = fakeKubeClient
+	kubelet.kubeTPClients = []clientset.Interface{
+		fakeKubeClient,
+	}
 	kubelet.heartbeatClient = fakeKubeClient
 	kubelet.os = &containertest.FakeOS{}
 	kubelet.mounter = &mount.FakeMounter{}
@@ -236,12 +241,20 @@ func newTestKubeletWithImageList(
 	kubelet.machineInfo = machineInfo
 
 	fakeMirrorClient := podtest.NewFakeMirrorClient()
-	secretManager := secret.NewSimpleSecretManager(kubelet.kubeClient)
+	secretManager := secret.NewSimpleSecretManager(kubelet.kubeTPClients)
 	kubelet.secretManager = secretManager
-	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeClient)
+	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeTPClients)
 	kubelet.configMapManager = configMapManager
 	kubelet.podManager = kubepod.NewBasicPodManager(fakeMirrorClient, kubelet.secretManager, kubelet.configMapManager, podtest.NewMockCheckpointManager())
-	kubelet.statusManager = status.NewManager(fakeKubeClient, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
+	kubelet.statusManager = status.NewManager(kubelet.kubeTPClients, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
+
+	kubeclientmanager.NewKubeClientManager()
+	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
+		"api",
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Tenant: "system",
+			}})
 
 	kubelet.containerRuntime = fakeRuntime
 	kubelet.runtimeCache = containertest.NewFakeRuntimeCache(kubelet.containerRuntime)
@@ -1985,6 +1998,9 @@ func TestHandlePodResourcesResize(t *testing.T) {
 
 	testKubelet.fakeKubeClient = fake.NewSimpleClientset(testPod1, testPod2, testPod3)
 	kubelet.kubeClient = testKubelet.fakeKubeClient
+	kubelet.kubeTPClients = []clientset.Interface{
+		testKubelet.fakeKubeClient,
+	}
 	kubelet.podManager.AddPod(testPod1)
 	kubelet.podManager.AddPod(testPod2)
 	kubelet.podManager.AddPod(testPod3)
@@ -1992,6 +2008,14 @@ func TestHandlePodResourcesResize(t *testing.T) {
 	defer kubelet.podManager.DeletePod(testPod3)
 	defer kubelet.podManager.DeletePod(testPod2)
 	defer kubelet.podManager.DeletePod(testPod1)
+
+	kubeclientmanager.NewKubeClientManager()
+	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
+		"api",
+		&v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Tenant: "system",
+			}})
 
 	tests := []struct {
 		pod                 *v1.Pod

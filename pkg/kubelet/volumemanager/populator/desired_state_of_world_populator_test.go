@@ -28,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
@@ -782,7 +783,10 @@ func createDswpWithVolume(t *testing.T, pv *v1.PersistentVolume, pvc *v1.Persist
 	fakeASW := cache.NewActualStateOfWorld("fake", fakeVolumePluginMgr)
 	fakeRuntime := &containertest.FakeRuntime{}
 
-	fakeStatusManager := status.NewManager(fakeClient, fakePodManager, &statustest.FakePodDeletionSafetyProvider{})
+	kubeTPClients := []clientset.Interface{
+		fakeClient,
+	}
+	fakeStatusManager := status.NewManager(kubeTPClients, fakePodManager, &statustest.FakePodDeletionSafetyProvider{})
 
 	dswp := &desiredStateOfWorldPopulator{
 		kubeClient:                fakeClient,

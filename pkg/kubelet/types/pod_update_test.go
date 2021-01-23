@@ -218,3 +218,76 @@ func TestIsCriticalPodBasedOnPriority(t *testing.T) {
 		}
 	}
 }
+
+func TestIsStaticPod(t *testing.T) {
+	testcases := []struct {
+		pod    *v1.Pod
+		expect bool
+	}{
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigSourceAnnotationKey: ApiserverSource,
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigSourceAnnotationKey: ApiserverSource + "0",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigSourceAnnotationKey: ApiserverSource + "99",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						"abc": "def",
+					},
+				},
+			},
+			expect: false,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Annotations: map[string]string{
+						ConfigSourceAnnotationKey: "abc",
+					},
+				},
+			},
+			expect: true,
+		},
+	}
+
+	for i, test := range testcases {
+		actual := IsStaticPod(test.pod)
+		if test.expect != actual {
+			t.Errorf("case %d faile: expected %v, got %v", i, test.expect, actual)
+		}
+	}
+}
