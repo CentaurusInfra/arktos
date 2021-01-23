@@ -20,7 +20,6 @@ package dynamic
 import (
 	"errors"
 	"fmt"
-	"io"
 	"math/rand"
 	"sync"
 	"time"
@@ -31,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/apimachinery/pkg/runtime/serializer/streaming"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/diff"
 	"k8s.io/apimachinery/pkg/watch"
@@ -400,33 +398,12 @@ func setResult(resultMap map[int]*unstructured.UnstructuredList, errMap map[int]
 }
 
 func (c *dynamicResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
-	internalGV := schema.GroupVersions{
-		{Group: c.resource.Group, Version: runtime.APIVersionInternal},
-		// always include the legacy group as a decoding target to handle non-error `Status` return types
-		{Group: "", Version: runtime.APIVersionInternal},
-	}
-	s := &rest.Serializers{
-		Encoder: watchNegotiatedSerializerInstance.EncoderForVersion(watchJsonSerializerInfo.Serializer, c.resource.GroupVersion()),
-		Decoder: watchNegotiatedSerializerInstance.DecoderToVersion(watchJsonSerializerInfo.Serializer, internalGV),
-
-		RenegotiatedDecoder: func(contentType string, params map[string]string) (runtime.Decoder, error) {
-			return watchNegotiatedSerializerInstance.DecoderToVersion(watchJsonSerializerInfo.Serializer, internalGV), nil
-		},
-		StreamingSerializer: watchJsonSerializerInfo.StreamSerializer.Serializer,
-		Framer:              watchJsonSerializerInfo.StreamSerializer.Framer,
-	}
-
-	wrappedDecoderFn := func(body io.ReadCloser) streaming.Decoder {
-		framer := s.Framer.NewFrameReader(body)
-		return streaming.NewDecoder(framer, s.StreamingSerializer)
-	}
-
 	opts.Watch = true
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.client.clients {
 		watcher, err := client.Get().AbsPath(c.makeURLSegments("")...).
 			SpecificallyVersionedParams(&opts, dynamicParameterCodec, versionV1).
-			WatchWithSpecificDecoders(wrappedDecoderFn, unstructured.UnstructuredJSONScheme)
+			Watch()
 		aggWatch.AddWatchInterface(watcher, err)
 	}
 	return aggWatch, aggWatch.GetErrors()
