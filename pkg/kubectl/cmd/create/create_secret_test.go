@@ -41,7 +41,7 @@ func TestCreateSecretGeneric(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Version: "v1"},
@@ -73,7 +73,7 @@ func TestCreateSecretDockerRegistry(t *testing.T) {
 	secretObject.Name = "my-secret"
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		GroupVersion:         schema.GroupVersion{Version: "v1"},

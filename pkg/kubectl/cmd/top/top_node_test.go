@@ -54,7 +54,7 @@ func TestTopNodeAllMetrics(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -110,7 +110,7 @@ func TestTopNodeAllMetricsCustomDefaults(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -173,7 +173,7 @@ func TestTopNodeWithNameMetrics(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -239,7 +239,7 @@ func TestTopNodeWithLabelSelectorMetrics(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -293,7 +293,7 @@ func TestTopNodeAllMetricsFromMetricsServer(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -360,7 +360,7 @@ func TestTopNodeWithNameMetricsFromMetricsServer(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,
@@ -437,7 +437,7 @@ func TestTopNodeWithLabelSelectorMetricsFromMetricsServer(t *testing.T) {
 	defer tf.Cleanup()
 
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 
 	tf.Client = &fake.RESTClient{
 		NegotiatedSerializer: ns,

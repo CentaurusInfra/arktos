@@ -177,7 +177,7 @@ func TestTopPod(t *testing.T) {
 			tf := cmdtesting.NewTestFactory().WithNamespace(testNS)
 			defer tf.Cleanup()
 
-			ns := scheme.Codecs
+			ns := scheme.Codecs.WithoutConversion()
 
 			tf.Client = &fake.RESTClient{
 				NegotiatedSerializer: ns,
@@ -324,7 +324,7 @@ func TestTopPodWithMetricsServer(t *testing.T) {
 			tf := cmdtesting.NewTestFactory().WithNamespace(testNS)
 			defer tf.Cleanup()
 
-			ns := scheme.Codecs
+			ns := scheme.Codecs.WithoutConversion()
 
 			tf.Client = &fake.RESTClient{
 				NegotiatedSerializer: ns,
@@ -534,7 +534,7 @@ func TestTopPodCustomDefaults(t *testing.T) {
 			tf := cmdtesting.NewTestFactory().WithNamespace(testNS)
 			defer tf.Cleanup()
 
-			ns := scheme.Codecs
+			ns := scheme.Codecs.WithoutConversion()
 
 			tf.Client = &fake.RESTClient{
 				NegotiatedSerializer: ns,
