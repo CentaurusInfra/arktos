@@ -13,6 +13,9 @@ pkg/cloudfabric-controller/replicaset/doc.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils_test.go
 pkg/cloudfabric-controller/testutil/test_utils.go
+pkg/kubectl/cmd/create/create_clusterrolebinding_test.go
+pkg/kubectl/cmd/create/create_namespace_test.go
+pkg/kubectl/cmd/taint/taint_test.go
 pkg/kubelet/container/ref_test.go
 staging/src/k8s.io/apimachinery/pkg/runtime/negotiate.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/json/json.go
@@ -50,4 +53,6 @@ staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/testingcert/certificates.
 staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/utils.go
 staging/src/k8s.io/apiserver/pkg/storage/value/encrypt/envelope/grpc_service.go
 staging/src/k8s.io/cli-runtime/pkg/resource/scheme.go
+staging/src/k8s.io/client-go/dynamic/scheme.go
+test/e2e/apimachinery/protocol.go
 test/e2e/node/node_problem_detector.go
