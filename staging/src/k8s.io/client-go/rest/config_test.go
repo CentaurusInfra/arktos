@@ -268,6 +268,10 @@ func (t *fakeLimiter) QPS() float32 {
 	return t.FakeQPS
 }
 
+func (t *fakeLimiter) Wait(ctx context.Context) error {
+	return nil
+}
+
 func (t *fakeLimiter) Stop() {}
 
 func (t *fakeLimiter) Accept() {}

@@ -590,14 +590,24 @@ func (r Request) finalURLTemplate() url.URL {
 	return *url
 }
 
-func (r *Request) tryThrottle() {
+func (r *Request) tryThrottle() error {
+	if r.throttle == nil {
+		return nil
+	}
+
 	now := time.Now()
-	if r.throttle != nil {
+	var err error
+	if r.ctx != nil {
+		err = r.throttle.Wait(r.ctx)
+	} else {
 		r.throttle.Accept()
 	}
+
 	if latency := time.Since(now); latency > longThrottleLatency {
 		klog.V(4).Infof("Throttling request took %v, request: %s:%s", latency, r.verb, r.URL().String())
 	}
+
+	return err
 }
 
 // Watch attempts to begin watching the requested location.
@@ -702,7 +712,9 @@ func (r *Request) Stream() (io.ReadCloser, error) {
 		return nil, r.err
 	}
 
-	r.tryThrottle()
+	if err := r.tryThrottle(); err != nil {
+		return nil, err
+	}
 
 	url := r.URL().String()
 	req, err := http.NewRequest(r.verb, url, nil)
@@ -804,7 +816,9 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 			// We are retrying the request that we already send to apiserver
 			// at least once before.
 			// This request should also be throttled with the client-internal throttler.
-			r.tryThrottle()
+			if err := r.tryThrottle(); err != nil {
+				return err
+			}
 		}
 		resp, err := client.Do(req)
 		updateURLMetrics(r, resp, err)
@@ -875,7 +889,9 @@ func (r *Request) request(fn func(*http.Request, *http.Response)) error {
 //  * If the server responds with a status: *errors.StatusError or *errors.UnexpectedObjectError
 //  * http.Client.Do errors are returned directly.
 func (r *Request) Do() Result {
-	r.tryThrottle()
+	if err := r.tryThrottle(); err != nil {
+		return Result{err: err}
+	}
 
 	var result Result
 	err := r.request(func(req *http.Request, resp *http.Response) {
@@ -889,7 +905,9 @@ func (r *Request) Do() Result {
 
 // DoRaw executes the request but does not process the response body.
 func (r *Request) DoRaw() ([]byte, error) {
-	r.tryThrottle()
+	if err := r.tryThrottle(); err != nil {
+		return nil, err
+	}
 
 	var result Result
 	err := r.request(func(req *http.Request, resp *http.Response) {
