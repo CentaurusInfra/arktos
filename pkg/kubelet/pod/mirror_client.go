@@ -18,6 +18,8 @@ limitations under the License.
 package pod
 
 import (
+	"strings"
+
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,7 +96,7 @@ func (mc *basicMirrorClient) DeleteMirrorPod(podFullName string) error {
 // IsStaticPod returns true if the pod is a static pod.
 func IsStaticPod(pod *v1.Pod) bool {
 	source, err := kubetypes.GetPodSource(pod)
-	return err == nil && source != kubetypes.ApiserverSource
+	return err == nil && !strings.HasPrefix(source, kubetypes.ApiserverSource)
 }
 
 // IsMirrorPod returns true if the pod is a mirror pod.
