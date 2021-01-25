@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,7 +47,7 @@ var _ = SIGDescribe("client-go should negotiate", func() {
 			cfg, err := framework.LoadConfig()
 			framework.ExpectNoError(err)
 
-			cfg.AcceptContentTypes = accept
+			cfg.GetConfig().AcceptContentTypes = accept
 
 			c := kubernetes.NewForConfigOrDie(cfg)
 			svcs, err := c.CoreV1().Services("default").Get("kubernetes", metav1.GetOptions{})

@@ -254,23 +254,23 @@ func TestSetBearerToken(t *testing.T) {
 func TestRESTClientLimiter(t *testing.T) {
 	testCases := []struct {
 		Name    string
-		Config  Config
+		Config  KubeConfig
 		Limiter flowcontrol.RateLimiter
 	}{
 		{
-			Config:  Config{},
+			Config:  KubeConfig{},
 			Limiter: flowcontrol.NewTokenBucketRateLimiter(5, 10),
 		},
 		{
-			Config:  Config{QPS: 10},
+			Config:  KubeConfig{QPS: 10},
 			Limiter: flowcontrol.NewTokenBucketRateLimiter(10, 10),
 		},
 		{
-			Config:  Config{QPS: -1},
+			Config:  KubeConfig{QPS: -1},
 			Limiter: nil,
 		},
 		{
-			Config: Config{
+			Config: KubeConfig{
 				RateLimiter: flowcontrol.NewTokenBucketRateLimiter(11, 12),
 			},
 			Limiter: flowcontrol.NewTokenBucketRateLimiter(11, 12),

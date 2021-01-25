@@ -83,7 +83,7 @@ var _ = SIGDescribe("Service endpoints latency", func() {
 		if err != nil {
 			framework.Failf("Unable to load config: %v", err)
 		}
-		cfg.RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
+		cfg.GetConfig().RateLimiter = flowcontrol.NewFakeAlwaysRateLimiter()
 		f.ClientSet = kubernetes.NewForConfigOrDie(cfg)
 
 		failing := sets.NewString()
