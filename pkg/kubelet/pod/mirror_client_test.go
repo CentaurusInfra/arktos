@@ -126,7 +126,7 @@ func TestIsStaticPod(t *testing.T) {
 	for i, test := range testcases {
 		actual := IsStaticPod(test.pod)
 		if test.expect != actual {
-			t.Errorf("case %d faile: expected %v, got %v", i, test.expect, actual)
+			t.Errorf("case %d failed: expected %v, got %v", i, test.expect, actual)
 		}
 	}
 }

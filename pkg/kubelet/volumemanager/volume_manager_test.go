@@ -222,7 +222,6 @@ func newTestVolumeManager(tmpDir string, podManager kubepod.Manager, kubeClient 
 	fakeRecorder := &record.FakeRecorder{}
 	plugMgr := &volume.VolumePluginMgr{}
 	// TODO (#51147) inject mock prober
-	// Clean up.
 	kubeTPClients := []clientset.Interface{
 		kubeClient,
 	}

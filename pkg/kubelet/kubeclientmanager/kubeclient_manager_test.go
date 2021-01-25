@@ -118,7 +118,7 @@ func TestRegisterTenantSourceServer(t *testing.T) {
 		newKubeClientManagerFunc()()
 		ClientManager.RegisterTenantSourceServer(test.source, test.pod)
 		if !reflect.DeepEqual(test.expectedMap, ClientManager.tenant2api) {
-			t.Errorf("case %d faile: expected %v, got %v", i, test.expectedMap, ClientManager.tenant2api)
+			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedMap, ClientManager.tenant2api)
 		}
 	}
 }

@@ -250,10 +250,10 @@ func newTestKubeletWithImageList(
 
 	kubeclientmanager.NewKubeClientManager()
 	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
-		"api",
+		kubetypes.ApiserverSource,
 		&v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant: "system",
+				Tenant: metav1.TenantSystem,
 			}})
 
 	kubelet.containerRuntime = fakeRuntime
@@ -2011,10 +2011,10 @@ func TestHandlePodResourcesResize(t *testing.T) {
 
 	kubeclientmanager.NewKubeClientManager()
 	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
-		"api",
+		kubetypes.ApiserverSource,
 		&v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
-				Tenant: "system",
+				Tenant: metav1.TenantSystem,
 			}})
 
 	tests := []struct {
