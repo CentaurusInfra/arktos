@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -147,7 +148,8 @@ func NewVolumeManager(
 	nodeName k8stypes.NodeName,
 	podManager pod.Manager,
 	podStatusProvider status.PodStatusProvider,
-	kubeClient clientset.Interface,
+	resourcePartitionKubeClient clientset.Interface,
+	tenantPartitionClients []clientset.Interface,
 	volumePluginMgr *volume.VolumePluginMgr,
 	kubeContainerRuntime container.Runtime,
 	mounter mount.Interface,
@@ -157,12 +159,12 @@ func NewVolumeManager(
 	keepTerminatedPodVolumes bool) VolumeManager {
 
 	vm := &volumeManager{
-		kubeClient:          kubeClient,
-		volumePluginMgr:     volumePluginMgr,
-		desiredStateOfWorld: cache.NewDesiredStateOfWorld(volumePluginMgr),
-		actualStateOfWorld:  cache.NewActualStateOfWorld(nodeName, volumePluginMgr),
+		tenantPartitionClients: tenantPartitionClients,
+		volumePluginMgr:        volumePluginMgr,
+		desiredStateOfWorld:    cache.NewDesiredStateOfWorld(volumePluginMgr),
+		actualStateOfWorld:     cache.NewActualStateOfWorld(nodeName, volumePluginMgr),
 		operationExecutor: operationexecutor.NewOperationExecutor(operationexecutor.NewOperationGenerator(
-			kubeClient,
+			resourcePartitionKubeClient,
 			volumePluginMgr,
 			recorder,
 			checkNodeCapabilitiesBeforeMount,
@@ -170,7 +172,7 @@ func NewVolumeManager(
 	}
 
 	vm.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
-		kubeClient,
+		tenantPartitionClients,
 		desiredStateOfWorldPopulatorLoopSleepPeriod,
 		desiredStateOfWorldPopulatorGetPodStatusRetryDuration,
 		podManager,
@@ -180,7 +182,7 @@ func NewVolumeManager(
 		kubeContainerRuntime,
 		keepTerminatedPodVolumes)
 	vm.reconciler = reconciler.NewReconciler(
-		kubeClient,
+		resourcePartitionKubeClient,
 		controllerAttachDetachEnabled,
 		reconcilerLoopSleepPeriod,
 		waitForAttachTimeout,
@@ -200,7 +202,11 @@ func NewVolumeManager(
 type volumeManager struct {
 	// kubeClient is the kube API client used by DesiredStateOfWorldPopulator to
 	// communicate with the API server to fetch PV and PVC objects
-	kubeClient clientset.Interface
+	resourcePartitionKubeClient clientset.Interface
+
+	// kubeClient is the kube API client used by DesiredStateOfWorldPopulator to
+	// communicate with the API server to fetch PV and PVC objects
+	tenantPartitionClients []clientset.Interface
 
 	// volumePluginMgr is the volume plugin manager used to access volume
 	// plugins. It must be pre-initialized.
@@ -245,7 +251,7 @@ func (vm *volumeManager) Run(sourcesReady config.SourcesReady, stopCh <-chan str
 
 	metrics.Register(vm.actualStateOfWorld, vm.desiredStateOfWorld, vm.volumePluginMgr)
 
-	if vm.kubeClient != nil {
+	if vm.tenantPartitionClients != nil && len(vm.tenantPartitionClients) != 0 {
 		// start informer for CSIDriver
 		vm.volumePluginMgr.Run(stopCh)
 	}
