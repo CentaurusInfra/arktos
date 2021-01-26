@@ -93,7 +93,7 @@ const (
 
 func StartControllerManager(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 	// Setup any healthz checks we will want to use.
-	var checks []healthz.HealthzChecker
+	var checks []healthz.HealthChecker
 
 	// Start the controller manager HTTP server
 	// unsecuredMux is the handler for these controller *after* authn/authz filters have been applied
