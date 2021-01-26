@@ -197,6 +197,7 @@ ENABLE_PROMETHEUS_DEBUG="${KUBE_ENABLE_PROMETHEUS_DEBUG:-false}"
 # TODO(piosz) remove this option once Metrics Server became a stable thing.
 ENABLE_METRICS_SERVER="${KUBE_ENABLE_METRICS_SERVER:-true}"
 
+ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}" 
 # Optional: Metadata agent to setup as part of the cluster bring up:
 #   none        - No metadata agent
 #   stackdriver - Stackdriver metadata agent

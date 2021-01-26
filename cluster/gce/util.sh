@@ -1416,6 +1416,7 @@ ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
 ENABLE_ETCD: $(yaml-quote ${ENABLE_ETCD})
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT})
 ETCD_CA_KEY: $(yaml-quote ${ETCD_CA_KEY_BASE64:-})
 ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
 ETCD_PEER_KEY: $(yaml-quote ${ETCD_PEER_KEY_BASE64:-})
@@ -2715,6 +2716,14 @@ function create-master() {
     --project "${NETWORK_PROJECT}" \
     --network "${NETWORK}" \
     --allow tcp:443 &
+
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+    gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:9090 &
+  fi
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
