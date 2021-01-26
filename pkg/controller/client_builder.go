@@ -59,8 +59,8 @@ type SimpleControllerClientBuilder struct {
 }
 
 func (b SimpleControllerClientBuilder) Config(name string) (*restclient.Config, error) {
-	clientConfig := *b.ClientConfig
-	return restclient.AddUserAgent(&clientConfig, name), nil
+	clientConfig := restclient.CopyConfigs(b.ClientConfig)
+	return restclient.AddUserAgent(clientConfig, name), nil
 }
 
 func (b SimpleControllerClientBuilder) ConfigOrDie(name string) *restclient.Config {
