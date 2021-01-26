@@ -35,11 +35,13 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	podtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	statustest "k8s.io/kubernetes/pkg/kubelet/status/testing"
+	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/kubelet/volumemanager/cache"
 	volumetesting "k8s.io/kubernetes/pkg/volume/testing"
 	"k8s.io/kubernetes/pkg/volume/util"
@@ -80,6 +82,9 @@ func TestFindAndAddNewPods_FindAndRemoveDeletedPods(t *testing.T) {
 		},
 	}
 	pod := createPodWithVolume("dswp-test-pod", "dswp-test-volume-name", "file-bound", containers)
+
+	kubeclientmanager.NewKubeClientManager()
+	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
 
 	fakePodManager.AddPod(pod)
 
@@ -741,6 +746,7 @@ func createPodWithVolume(pod, pv, pvc string, containers []v1.Container) *v1.Pod
 			Name:      pod,
 			UID:       "dswp-test-pod-uid",
 			Namespace: "dswp-test",
+			Tenant:    metav1.TenantSystem,
 		},
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{
@@ -789,7 +795,7 @@ func createDswpWithVolume(t *testing.T, pv *v1.PersistentVolume, pvc *v1.Persist
 	fakeStatusManager := status.NewManager(kubeTPClients, fakePodManager, &statustest.FakePodDeletionSafetyProvider{})
 
 	dswp := &desiredStateOfWorldPopulator{
-		kubeClient:                fakeClient,
+		kubeClients:               kubeTPClients,
 		loopSleepDuration:         100 * time.Millisecond,
 		getPodStatusRetryDuration: 2 * time.Second,
 		podManager:                fakePodManager,

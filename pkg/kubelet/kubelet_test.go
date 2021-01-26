@@ -353,6 +353,7 @@ func newTestKubeletWithImageList(
 		kubelet.podManager,
 		kubelet.statusManager,
 		fakeKubeClient,
+		kubelet.kubeTPClients,
 		kubelet.volumePluginMgr,
 		fakeRuntime,
 		kubelet.mounter,

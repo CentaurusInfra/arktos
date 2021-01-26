@@ -34,11 +34,13 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/config"
 	"k8s.io/kubernetes/pkg/kubelet/configmap"
 	containertest "k8s.io/kubernetes/pkg/kubelet/container/testing"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	kubepod "k8s.io/kubernetes/pkg/kubelet/pod"
 	podtest "k8s.io/kubernetes/pkg/kubelet/pod/testing"
 	"k8s.io/kubernetes/pkg/kubelet/secret"
 	"k8s.io/kubernetes/pkg/kubelet/status"
 	statustest "k8s.io/kubernetes/pkg/kubelet/status/testing"
+	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
@@ -60,6 +62,10 @@ func TestGetMountedVolumesForPodAndGetVolumesInUse(t *testing.T) {
 	podManager := kubepod.NewBasicPodManager(podtest.NewFakeMirrorClient(), secret.NewFakeManager(), configmap.NewFakeManager(), cpm)
 
 	node, pod, pv, claim := createObjects()
+
+	kubeclientmanager.NewKubeClientManager()
+	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
+
 	kubeClient := fake.NewSimpleClientset(node, pod, pv, claim)
 
 	manager := newTestVolumeManager(tmpDir, podManager, kubeClient)
@@ -234,6 +240,7 @@ func newTestVolumeManager(tmpDir string, podManager kubepod.Manager, kubeClient 
 		podManager,
 		statusManager,
 		kubeClient,
+		kubeTPClients,
 		plugMgr,
 		&containertest.FakeRuntime{},
 		&mount.FakeMounter{},
