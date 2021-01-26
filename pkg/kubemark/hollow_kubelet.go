@@ -52,7 +52,7 @@ type HollowKubelet struct {
 func NewHollowKubelet(
 	flags *options.KubeletFlags,
 	config *kubeletconfig.KubeletConfiguration,
-	client *clientset.Clientset,
+	clients []clientset.Interface,
 	arktosClient arktosCientset.Interface,
 	heartbeatClient *clientset.Clientset,
 	cadvisorInterface cadvisor.Interface,
@@ -65,7 +65,7 @@ func NewHollowKubelet(
 	volumePlugins = append(volumePlugins, secret.ProbeVolumePlugins()...)
 	volumePlugins = append(volumePlugins, projected.ProbeVolumePlugins()...)
 	d := &kubelet.Dependencies{
-		KubeClient:         client,
+		KubeClient:         clients[0],
 		ArktosExtClient:    arktosClient,
 		HeartbeatClient:    heartbeatClient,
 		DockerClientConfig: dockerClientConfig,
@@ -78,6 +78,7 @@ func NewHollowKubelet(
 		OOMAdjuster:        oom.NewFakeOOMAdjuster(),
 		Mounter:            mount.New("" /* default mount path */),
 		Subpather:          &subpath.FakeSubpath{},
+		KubeTPClients:      clients,
 	}
 
 	return &HollowKubelet{
@@ -141,7 +142,6 @@ func GetHollowKubeletConfig(opt *HollowKubletOptions) (*options.KubeletFlags, *k
 	c.FileCheckFrequency.Duration = 20 * time.Second
 	c.HTTPCheckFrequency.Duration = 20 * time.Second
 	c.NodeStatusUpdateFrequency.Duration = 10 * time.Second
-	c.NodeStatusReportFrequency.Duration = 5 * time.Minute
 	c.SyncFrequency.Duration = 10 * time.Second
 	c.EvictionPressureTransitionPeriod.Duration = 5 * time.Minute
 	c.MaxPods = int32(opt.MaxPods)

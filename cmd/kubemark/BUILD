@@ -23,6 +23,7 @@ go_library(
         "//pkg/kubelet/cm:go_default_library",
         "//pkg/kubelet/dockershim:go_default_library",
         "//pkg/kubelet/dockershim/libdocker:go_default_library",
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//pkg/kubemark:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//pkg/util/iptables/testing:go_default_library",
