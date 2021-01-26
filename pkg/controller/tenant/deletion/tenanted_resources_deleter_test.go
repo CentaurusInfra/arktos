@@ -92,7 +92,7 @@ func TestFinalizeTenantFunc(t *testing.T) {
 func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions) {
 	now := metav1.Now()
 	tenantName := "test"
-	/*testTenantPendingFinalize := &v1.Tenant{
+	testTenantPendingFinalize := &v1.Tenant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              tenantName,
 			ResourceVersion:   "1",
@@ -104,7 +104,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 		Status: v1.TenantStatus{
 			Phase: v1.TenantTerminating,
 		},
-	}*/
+	}
 	testTenantFinalizeComplete := &v1.Tenant{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:              tenantName,
@@ -133,7 +133,6 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 			groupVersionResource.Resource,
 		}...)
 
-		fmt.Printf("==== URL path [%v]\n", urlPath)
 		metadataClientActionSet.Insert((&fakeAction{method: "GET", path: urlPath}).String())
 		metadataClientActionSet.Insert((&fakeAction{method: "DELETE", path: urlPath}).String())
 	}
@@ -144,7 +143,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 		metadataClientActionSet sets.String
 		gvrError                error
 	}{
-		/*"pending-finalize": {
+		"pending-finalize": {
 			testTenant: testTenantPendingFinalize,
 			kubeClientActionSet: sets.NewString(
 				strings.Join([]string{"get", "tenants", ""}, "-"),
@@ -153,7 +152,7 @@ func testSyncTenantThatIsTerminating(t *testing.T, versions *metav1.APIVersions)
 				strings.Join([]string{"delete", "tenants", ""}, "-"),
 			),
 			metadataClientActionSet: metadataClientActionSet,
-		},*/
+		},
 		"complete-finalize": {
 			testTenant: testTenantFinalizeComplete,
 			kubeClientActionSet: sets.NewString(
