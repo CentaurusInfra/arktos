@@ -156,9 +156,9 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
     start-prometheus &  #####start prometheus
-  fi
+  fi 
   echo "Done for the configuration for kubernetes"
 }
 

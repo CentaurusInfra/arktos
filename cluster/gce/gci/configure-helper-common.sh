@@ -1424,7 +1424,8 @@ scrape_configs:
     static_configs:
     - targets: ['127.0.0.1:2379','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
 EOF
-  ./prometheus --config.file="/tmp/prometheus-metrics.yaml" --web.listen-address=":9090" --web.enable-admin-api &
+  nohup ./prometheus --config.file="/tmp/prometheus-metrics.yaml" --web.listen-address=":9090" --web.enable-admin-api > prometheus.log 2>&1 &
+
 }
 
 # Replaces the variables in the etcd manifest file with the real values, and then
