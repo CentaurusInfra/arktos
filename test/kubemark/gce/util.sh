@@ -39,9 +39,24 @@ function create-kubemark-master {
     # All calls to e2e-grow-cluster must share temp dir with initial e2e-up.sh.
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
+    export LOCAL_KUBECONFIG_TMP
+    export LOCAL_KUBECONFIG
 
-    export KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
-    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+    fi
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
+    fi
+
+    export SCALEOUT_PROXY_NAME
+    export KUBECONFIG
+    export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_CREATE_NODES=false
 
@@ -92,7 +107,16 @@ function delete-kubemark-master {
   # shellcheck disable=SC2030,SC2031
   (
     ## reset CLUSTER_NAME to avoid multi kubemark added after e2e.
-    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+    fi
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
+    fi
+    export SCALEOUT_PROXY_NAME
+    export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_DELETE_NETWORK=false
     # Even if the "real cluster" is private, we shouldn't manage cloud nat.
