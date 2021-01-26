@@ -136,7 +136,9 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+    start-prometheus &  #####start prometheus
+  fi
   echo "Done for the configuration for partitionserver"
 }
 
