@@ -39,6 +39,47 @@ KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+LOCAL_KUBECONFIG_TMP="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp"
+
+export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
+
+### files to explicitly save the kubeconfig to different cluster or proxy
+### those are used for targeted operations such as tenant creation etc on
+### desired cluster directly
+###
+TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+PROXY_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy.saved"
+RP_KUBECONFIG_SAVED="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp.saved"
+if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+  TP_KUBECONFIG="${LOCAL_KUBECONFIG}"
+  LOCAL_KUBECONFIG_TMP="${LOCAL_KUBECONFIG}"
+  RP_KUBECONFIG_SAVED="${LOCAL_KUBECONFIG}"
+fi
+
+
+### POC tenant yaml files
+###
+TENANT1_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant1.yaml"
+TENANT2_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant2.yaml"
+
+export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+export SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
+export KUBE_APISERVER_EXTRA_ARGS=${KUBE_APISERVER_EXTRA_ARGS:-}
+export KUBE_CONTROLLER_EXTRA_ARGS=${KUBE_CONTROLLER_EXTRA_ARGS:-}
+export KUBE_SCHEDULER_EXTRA_ARGS=${KUBE_SCHEDULER_EXTRA_ARGS:-}
+
+if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" != "haproxy" && "${KUBERNETES_SCALEOUT_PROXY_APP}" != "nginx" ]] ; then
+  echo "Error: unknown KUBERNETES_SCALEOUT_PROXY_APP ${KUBERNETES_SCALEOUT_PROXY_APP}, must be nginx or haproxy. "
+  exut 1
+fi
+
+if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" == "haproxy" ]] ; then
+  export PROXY_CONFIG_FILE="haproxy.cfg"
+else
+  export PROXY_CONFIG_FILE="nginx.conf"
+fi
+
+export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
@@ -91,22 +132,25 @@ function create-kube-hollow-node-resources {
   # Create configmap for configuring hollow- kubelet, proxy and npd.
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
-    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json"
+    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
+    --from-literal=resource.server="${RESOURCE_SERVER:-}" \
+    --from-literal=tenant.servers="${TENANT_SERVERS:-}"
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
   # TODO(https://github.com/kubernetes/kubernetes/issues/79883): Migrate all components to separate credentials.
   "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" \
-    --from-file=kubelet.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=kubeproxy.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=npd.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=heapster.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=cluster_autoscaler.kubeconfig="${LOCAL_KUBECONFIG}" \
-    --from-file=dns.kubeconfig="${LOCAL_KUBECONFIG}"
+    --from-file=kubelet.kubeconfig="${TP_KUBECONFIG}" \
+    --from-file=kubeproxy.kubeconfig="${TP_KUBECONFIG}" \
+    --from-file=npd.kubeconfig="${RP_KUBECONFIG_SAVED}" \
+    --from-file=heapster.kubeconfig="${TP_KUBECONFIG}" \
+    --from-file=cluster_autoscaler.kubeconfig="${TP_KUBECONFIG}" \
+    --from-file=dns.kubeconfig="${TP_KUBECONFIG}"
 
   # Create addon pods.
   # Heapster.
   mkdir -p "${RESOURCE_DIRECTORY}/addons"
+  MASTER_IP=$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
   sed "s@{{MASTER_IP}}@${MASTER_IP}@g" "${RESOURCE_DIRECTORY}/heapster_template.json" > "${RESOURCE_DIRECTORY}/addons/heapster.json"
   metrics_mem_per_node=4
   metrics_mem=$((200 + metrics_mem_per_node*NUM_NODES))
@@ -145,7 +189,11 @@ function create-kube-hollow-node-resources {
   # Create the replication controller for hollow-nodes.
   # We allow to override the NUM_REPLICAS when running Cluster Autoscaler.
   NUM_REPLICAS=${NUM_REPLICAS:-${NUM_NODES}}
-  sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template_scaleout.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  else
+    sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  fi
   proxy_cpu=20
   if [ "${NUM_NODES}" -gt 1000 ]; then
     proxy_cpu=50
@@ -156,10 +204,12 @@ function create-kube-hollow-node-resources {
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_tag}}@${KUBEMARK_IMAGE_TAG}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{master_ip}}@${MASTER_IP}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_kubelet_params}}@${HOLLOW_KUBELET_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_proxy_params}}@${HOLLOW_PROXY_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_mig_config}}@${KUBEMARK_MIG_CONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{tenant_servers}}@${TENANT_SERVERS:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{resource_server}}@${RESOURCE_SERVER:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/hollow-node.yaml" --namespace="kubemark"
 
   echo "Created secrets, configMaps, replication-controllers required for hollow-nodes."
@@ -167,22 +217,22 @@ function create-kube-hollow-node-resources {
 
 # Wait until all hollow-nodes are running or there is a timeout.
 function wait-for-hollow-nodes-to-run-or-timeout {
+  timeout_seconds=$1
   echo -n "Waiting for all hollow-nodes to become Running"
   start=$(date +%s)
-  nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node 2> /dev/null) || true
+  nodes=$("${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node 2> /dev/null) || true
   ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
 
   until [[ "${ready}" -ge "${NUM_REPLICAS}" ]]; do
     echo -n "."
     sleep 1
     now=$(date +%s)
-    # Fail it if it already took more than 30 minutes.
-    if [ $((now - start)) -gt 1800 ]; then
+    if [ $((now - start)) -gt ${timeout_seconds:-1800} ]; then
       echo ""
       # shellcheck disable=SC2154 # Color defined in sourced script
       echo -e "${color_red} Timeout waiting for all hollow-nodes to become Running. ${color_norm}"
       # Try listing nodes again - if it fails it means that API server is not responding
-      if "${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node &> /dev/null; then
+      if "${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node &> /dev/null; then
         echo "Found only ${ready} ready hollow-nodes while waiting for ${NUM_NODES}."
       else
         echo "Got error while trying to list hollow-nodes. Probably API server is down."
@@ -195,7 +245,7 @@ function wait-for-hollow-nodes-to-run-or-timeout {
       echo "${pods}" | grep -v Running
       exit 1
     fi
-    nodes=$("${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node 2> /dev/null) || true
+    nodes=$("${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node 2> /dev/null) || true
     ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
   done
   # shellcheck disable=SC2154 # Color defined in sourced script
@@ -217,15 +267,67 @@ function start-hollow-nodes {
   else
     create-kube-hollow-node-resources
   fi
-  wait-for-hollow-nodes-to-run-or-timeout
+
+  # the timeout value is set based on default QPS of 20/sec and a buffer time of 10 minutes
+  let timeout_seconds=${KUBEMARK_NUM_NODES:-10}/20+600
+  echo -e "$(date): Wait ${timeout_seconds} seconds for ${KUBEMARK_NUM_NODES:-10} hollow nodes to be ready."
+
+  wait-for-hollow-nodes-to-run-or-timeout ${timeout_seconds}
 }
 
 detect-project &> /dev/null
 
-create-kubemark-master
+# Start two tenant partition clusters and perseve their master url
+# Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
+#
 
-MASTER_IP=$(grep server "$LOCAL_KUBECONFIG" | awk -F "/" '{print $3}')
+rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
 
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  export ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBERNETES_TENANT_PARTITION=true
+  export KUBERNETES_SCALEOUT_PROXY=true
+
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    export TENANT_PARTITION_SEQUENCE=${tp_num}
+    create-kubemark-master
+
+    MASTER_IP=$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
+    export PROXY_RESERVED_IP=$(echo ${MASTER_IP} | cut -d: -f1)
+    echo "DBG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
+
+    TP_SERVER="http://$(cat /tmp/master_reserved_ip.txt):8080"
+    if [[ ${tp_num} == 1 ]]; then
+      export TENANT_SERVERS=${TP_SERVER}
+    else
+      export TENANT_SERVERS="${TENANT_SERVERS},${TP_SERVER}"
+    fi
+
+    cp -f ${LOCAL_KUBECONFIG_TMP} "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}.direct"
+    sed -i -e "s@http://${PROXY_RESERVED_IP}:8888@${TP_SERVER}@g" "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}.direct"
+    export KUBERNETES_SCALEOUT_PROXY=false
+  done
+  echo "DBG: tenant-servers:  ${TENANT_SERVERS}"
+fi
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  echo "DBG: set tenant partition flag false"
+  export KUBERNETES_TENANT_PARTITION=false
+  export KUBERNETES_RESOURCE_PARTITION=true
+  create-kubemark-master
+  export KUBERNETES_RESOURCE_PARTITION=false
+  export KUBERNETES_SCALEOUT_PROXY=false
+
+  export RESOURCE_SERVER="http://"$(grep server "${LOCAL_KUBECONFIG_TMP}" | awk -F "/" '{print $3}')
+  echo "DBG: resource-server: " ${RESOURCE_SERVER}
+  cp -f ${LOCAL_KUBECONFIG_TMP} ${RP_KUBECONFIG_SAVED}
+else
+  create-kubemark-master
+fi
+
+# start hollow nodes with multiple tenant partition parameters
+#
 start-hollow-nodes
 
 echo ""
@@ -235,25 +337,52 @@ if [ "${CLOUD_PROVIDER}" = "aws" ]; then
 else
   echo "Master IP: ${MASTER_IP}"
 fi
-echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"
+echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG_TMP}"
+
+# all kubectl OPs go via the proxy
+#
+### internally the TP configures are set with proxy URL, simply copy for POC phase for now
+###
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  cp -f ${TP_KUBECONFIG} ${PROXY_KUBECONFIG_SAVED}
+fi
 
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
 echo -e "Getting total nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | wc -l
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node | wc -l
 echo
 echo -e "Getting total hollow-nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get node | grep "hollow-node" | wc -l
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get node | grep "hollow-node" | wc -l
 echo
 echo -e "Getting endpoints status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get endpoints -A
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get endpoints -A
 echo
 echo -e "Getting workload controller co status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get co
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get co
 echo
 echo -e "Getting apiserver data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get datapartition
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get datapartition
 echo
 echo -e "Getting ETCD data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${LOCAL_KUBECONFIG}" get etcd
+"${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get etcd
 echo
+
+### for multiple tenant tests, set up the tenants on desired TP clusters
+###
+if [[ "${CREATE_TEST_TENANTS:-false}" == "true" ]]; then
+  ### create tenant1 on TP1 cluster
+  echo -e "Create tenant arktos on TP1 cluster"
+  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-1.direct" create -f ${TENANT1_YAML}
+
+  ### create tenant2 on TP2 cluster
+  echo -e "Create tenant zeta on TP${SCALEOUT_TP_COUNT} cluster"
+  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${SCALEOUT_TP_COUNT}.direct" create -f ${TENANT2_YAML}
+
+  echo -e "Getting test tenants from TP1:" >&2
+  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-1.direct" get tenants
+  echo
+  echo -e "Getting test tenants from TP${SCALEOUT_TP_COUNT}:" >&2
+  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${SCALEOUT_TP_COUNT}.direct" get tenants
+  echo
+fi

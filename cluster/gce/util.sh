@@ -1384,6 +1384,10 @@ EOF
     # Master-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "true")
+KUBERNETES_RESOURCE_PARTITION: $(yaml-quote ${KUBERNETES_RESOURCE_PARTITION:-false})
+KUBERNETES_TENANT_PARTITION: $(yaml-quote ${KUBERNETES_TENANT_PARTITION:-false})
+PROXY_RESERVED_IP: $(yaml-quote ${PROXY_RESERVED_IP:-})
+PROXY_RESERVED_INTERNAL_IP: $(yaml-quote ${PROXY_RESERVED_INTERNAL_IP:-})
 KUBE_USER: $(yaml-quote ${KUBE_USER})
 KUBE_PASSWORD: $(yaml-quote ${KUBE_PASSWORD})
 KUBE_BEARER_TOKEN: $(yaml-quote ${KUBE_BEARER_TOKEN})
@@ -1411,6 +1415,7 @@ ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
 ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
@@ -1420,6 +1425,11 @@ ETCD_CA_CERT: $(yaml-quote ${ETCD_CA_CERT_BASE64:-})
 ETCD_PEER_KEY: $(yaml-quote ${ETCD_PEER_KEY_BASE64:-})
 ETCD_PEER_CERT: $(yaml-quote ${ETCD_PEER_CERT_BASE64:-})
 SERVICEACCOUNT_ISSUER: $(yaml-quote ${SERVICEACCOUNT_ISSUER:-})
+KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT: $(yaml-quote ${KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT:-})
+KUBE_APISERVER_MAX_REQUEST_INFLIGHT: $(yaml-quote ${KUBE_APISERVER_MAX_REQUEST_INFLIGHT:-})
+KUBE_APISERVER_EXTRA_ARGS: $(yaml-quote ${KUBE_APISERVER_EXTRA_ARGS:-})
+KUBE_CONTROLLER_EXTRA_ARGS: $(yaml-quote ${KUBE_CONTROLLER_EXTRA_ARGS:-})
+KUBE_SCHEDULER_EXTRA_ARGS: $(yaml-quote ${KUBE_SCHEDULER_EXTRA_ARGS:-})
 EOF
     # KUBE_APISERVER_REQUEST_TIMEOUT_SEC (if set) controls the --request-timeout
     # flag
@@ -1563,6 +1573,7 @@ EOF
     # Node-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "false")
+ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
 EXTRA_DOCKER_OPTS: $(yaml-quote ${EXTRA_DOCKER_OPTS:-})
 EOF
     if [ -n "${KUBEPROXY_TEST_ARGS:-}" ]; then
@@ -1604,6 +1615,11 @@ EOF
 MAX_PODS_PER_NODE: $(yaml-quote ${MAX_PODS_PER_NODE})
 EOF
   fi
+  if [ -n "${TENANT_SERVERS:-}" ]; then
+      cat >>$file <<EOF
+TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+EOF
+    fi
 }
 
 
@@ -2341,6 +2357,9 @@ function kube-up() {
     write-cluster-name
     write-controller-config
     create-autoscaler-config
+    if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+      create-proxy-vm
+    fi
     create-master
     create-nodes-firewall
     create-nodes-template
@@ -2350,6 +2369,21 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
+
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
+        echo "Local_kubeconfig_tmp not set"
+      else
+        cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
+        echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
+      fi
+      if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+        echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
+        echo "-----------------------------"
+        ssh-to-node ${PROXY_NAME} "for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid | grep NOFILE ; done"
+        echo "-----------------------------"
+      fi
+    fi
   fi
 }
 
@@ -2648,7 +2682,7 @@ function create-etcd-certs {
   local ca_cert=${2:-}
   local ca_key=${3:-}
   local additionalServer=${4:-}
-  
+
   local certServers="${host},${additionalServer}"
   GEN_ETCD_CA_CERT="${ca_cert}" GEN_ETCD_CA_KEY="${ca_key}" \
     generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certServers}" "peer" "peer"
@@ -2707,6 +2741,172 @@ function create-etcd-apiserver-certs {
   popd
 }
 
+function create-proxy-vm() {
+  echo "Starting proxy and configuring proxy firewalls"
+
+  gcloud compute firewall-rules create "${PROXY_NAME}-https" \
+    --project "${NETWORK_PROJECT}" \
+    --network "${NETWORK}" \
+    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888,tcp:8404" &
+
+  # We have to make sure the disk is created before creating the master VM, so
+  # run this in the foreground.
+#  gcloud compute disks create "${MASTER_NAME}-pd" \
+#    --project "${PROJECT}" \
+#    --zone "${ZONE}" \
+#    --type "${MASTER_DISK_TYPE}" \
+#    --size "${MASTER_DISK_SIZE}"
+
+  # Reserve the master's IP so that it can later be transferred to another VM
+  # without disrupting the kubelets.
+  create-static-ip "${PROXY_NAME}-ip" "${REGION}"
+  create-static-internalip "${PROXY_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
+  PROXY_RESERVED_IP=$(gcloud compute addresses describe "${PROXY_NAME}-ip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  local enable_ip_aliases
+  if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
+    enable_ip_aliases=true
+  else
+    enable_ip_aliases=false
+  fi
+  local network=$(make-gcloud-network-argument \
+  "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
+  "${PROXY_RESERVED_IP:-}" "${PROXY_RESERVED_INTERNAL_IP:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
+
+  local retries=5
+  local sleep_sec=10
+  for attempt in $(seq 1 ${retries}); do
+    if result=$(gcloud compute instances create "${PROXY_NAME}" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --machine-type "${MASTER_SIZE}" \
+      --image-project="${PROXY_IMAGE_PROJECT}" \
+      --image "${PROXY_IMAGE}" \
+      --tags "${PROXY_TAG}" \
+      --scopes "storage-ro,compute-rw,monitoring,logging-write" \
+      --boot-disk-size "${MASTER_ROOT_DISK_SIZE}" \
+      ${network} 2>&1); then
+      echo "${result}" >&2
+      export PROXY_RESERVED_IP
+      export PROXY_RESERVED_INTERNAL_IP
+      return 0
+    else
+      echo "${result}" >&2
+      if [[ ! "${result}" =~ "try again later" ]]; then
+        echo "Failed to create master instance due to non-retryable error" >&2
+        return 1
+      fi
+      sleep $sleep_sec
+    fi
+  done
+
+  echo "Failed to create proxy instance despite ${retries} attempts" >&2
+  return 1
+}
+
+function update-proxy() {
+  local -r TP_IP=$1
+  local -r RP_IP=$2
+
+  local -r proxy_template=${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
+
+  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
+
+  if [[ $? != 0 ]]
+  then
+          printf "\033[0;31mhaproxy_cfg_generator Failed\n"
+          exit 1
+  fi
+
+  sed -i -e "/^ONEBOX_ONLY:/d"  "${PROXY_CONFIG_FILE_TMP}"
+  sed -i -e "s/KUBEMARK_ONLY://g" "${PROXY_CONFIG_FILE_TMP}"
+
+  load-proxy-cfg
+}
+
+function load-proxy-cfg {
+  gcloud compute scp --zone="${ZONE}" "${PROXY_CONFIG_FILE_TMP}" "${PROXY_NAME}:~/${PROXY_CONFIG_FILE}"
+  ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
+  ssh-to-node ${PROXY_NAME} "sudo mv ~/${PROXY_CONFIG_FILE} /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
+  echo "DBG ========================================"
+  cat ${PROXY_CONFIG_FILE_TMP}
+  echo "DBG ========================================"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
+}
+
+function build_haproxy_cfg_generator() {
+  export GO111MODULE=on
+  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/cfg_generator/"
+}
+
+function setup-proxy() {
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -w net.ipv4.ip_local_port_range='12000 65000'"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       hard    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       soft    nofile          1000000' /etc/security/limits.conf"
+  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
+  ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
+
+  patch-haproxy-prometheus
+  direct-haproxy-logging
+
+  ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
+}
+
+function patch-haproxy-prometheus {
+  # based on https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint
+  echo 'Patching Haproxy to expose prometheus...'
+  ssh-to-node ${PROXY_NAME} "sudo apt install -y git ca-certificates gcc libc6-dev liblua5.3-dev libpcre3-dev libssl-dev libsystemd-dev make wget zlib1g-dev"
+  ssh-to-node ${PROXY_NAME} "git clone https://github.com/haproxy/haproxy.git /tmp/haproxy"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;git checkout tags/v2.3.0"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=contrib/prometheus-exporter/service-prometheus.o -j4"
+  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;sudo make install-bin"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl reset-failed haproxy.service"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl stop haproxy"
+  ssh-to-node ${PROXY_NAME} "sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy"
+  ssh-to-node ${PROXY_NAME} "sudo systemctl start haproxy"
+  ssh-to-node ${PROXY_NAME} "haproxy -vv|grep Prometheus"
+}
+
+function direct-haproxy-logging {
+  tmp_folder=`mktemp -d -t`
+  pushd $tmp_folder
+  gcloud compute scp --zone="${ZONE}" "${PROXY_NAME}:/etc/rsyslog.d/*haproxy.conf" .
+  haproxy_conf=`find . -name *haproxy.conf`
+
+  if [ -z "$haproxy_conf" ]; then
+    echo "haproxy conf file not found in /etc/rsyslog.d/"
+    return
+  fi
+
+  if grep -q "UDPServerRun 514" "$haproxy_conf"; then
+    echo "skipped updating haproxy.conf for directing logging"
+    return
+  fi
+
+     echo '
+$ModLoad imudp
+$UDPServerRun 514
+local0.* -/var/log/haproxy.log
+' >> $haproxy_conf
+
+  gcloud compute scp --zone="${ZONE}" $haproxy_conf "${PROXY_NAME}:/tmp"
+  ssh-to-node ${PROXY_NAME} "sudo mv /tmp/$haproxy_conf /etc/rsyslog.d/"
+  ssh-to-node ${PROXY_NAME} "sudo service rsyslog restart"
+  echo "haproxy logging directed to /var/log/haproxy.log only"
+
+  popd
+  rm -rf $tmp_folder
+}
 
 function create-master() {
   echo "Starting master and configuring firewalls"
@@ -2714,6 +2914,14 @@ function create-master() {
     --project "${NETWORK_PROJECT}" \
     --network "${NETWORK}" \
     --allow tcp:443 &
+
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:9090 &
+  fi
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
@@ -2757,6 +2965,8 @@ function create-master() {
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
+  echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
+
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
@@ -2787,14 +2997,37 @@ function create-master() {
   # add all external and internal IP to cert
   CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
   ###set partition server name, ip
-  set-partitionserver true    
+  set-partitionserver true
   echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
-  
- 
-
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
+
+  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    setup-proxy
+    build_haproxy_cfg_generator
+  fi
+
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    update-proxy "$(cat /tmp/saved_tenant_ips.txt)" "${MASTER_RESERVED_IP}"
+  fi
+
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
+    if [[ -f /tmp/saved_tenant_ips.txt ]]; then
+      TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
+    fi
+    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then
+      TP_IP_CONCAT="${MASTER_RESERVED_IP}"
+    else
+      TP_IP_CONCAT="${TP_IP_CONCAT},${MASTER_RESERVED_IP}"
+    fi
+
+    echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
+
+    # as TP are built before RP, so when updating the proxy.cfg before RP is ready, we use IP of TP to replace RP_IP temporarily
+    update-proxy "${TP_IP_CONCAT}" "${MASTER_RESERVED_IP}"
+  fi
+
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
@@ -2803,7 +3036,11 @@ function create-master() {
   #else
   create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #fi
-  
+
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    echo "DBG: in ${MASTER_NAME}: sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
+    ssh-to-node ${MASTER_NAME} "sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
+  fi
   ENABLE_KUBESCHEDULER=false
   ENABLE_KUBECONTROLLER=false
   create-partitionserver
@@ -2827,7 +3064,7 @@ function set-partitionserver {
         else
           WORKLOADSERVER_CREATED[$num]=false
         fi
-        
+
         if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" && "${ETCD_EXTRA_NUM:-0}" -ge "$num" && "${ETCDSERVER_CREATED[$num]:-false}" != "true" ]]; then
           partitionserver_name+="-etcd${num}"
           ETCDSERVER_CREATED[$num]=true
@@ -2835,21 +3072,21 @@ function set-partitionserver {
           ETCDSERVER_CREATED[$num]=false
         fi
       fi
-      
+
       TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
       PARTITIONSERVER_NAME[$TOTALSERVER_EXTRA_NUM]="${partitionserver_name}"
       APISERVER_CREATED[$num]=true
       if [[ "${is_create}" == "true" ]]; then
         create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
         PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
-            --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+            --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
         echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
         CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
         create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
         PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-internalip" \
         --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
         CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]}"
-      fi  
+      fi
     done
   fi
 
@@ -2872,7 +3109,7 @@ function set-partitionserver {
         if [[ "${is_create}" == "true" ]]; then
           create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
           PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
-              --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+              --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
           echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
           CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
           create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
@@ -2935,7 +3172,7 @@ function create-partitionserver {
 #config server
 function config-partitionserver() {
   local server_name=""
-  
+
   [[ -n ${1:-} ]] && server_name="${1}"
   echo "Configing partition server and configuring firewalls"
 
@@ -2952,7 +3189,7 @@ function config-partitionserver() {
     --project "${PROJECT}" \
     --zone "${ZONE}" \
     --type "${PARTITIONSERVER_DISK_TYPE}" \
-    --size "${PARTITIONSERVER_DISK_SIZE}"  
+    --size "${PARTITIONSERVER_DISK_SIZE}"
 
   # Create rule for accessing and securing etcd servers.
   echo "creating partitionserver: ${server_name} etcd firewall-rules"
@@ -2978,7 +3215,7 @@ function set-apiserver-datapartition() {
     APISERVER_ISRANGEEND_VALID=true
     APISERVER_RANGESTART=${APISERVER_DATAPARTITION_CONFIG:0:1}
     APISERVER_RANGEEND=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid+range_interval-1 )):1}
-  else 
+  else
     if [[ "${service_groupid}" -eq "${APISERVERS_EXTRA_NUM}" ]]; then
       APISERVER_ISRANGESTART_VALID=true
       APISERVER_ISRANGEEND_VALID=false
@@ -3013,7 +3250,7 @@ function config-apiserver-datapartition {
   if [[ -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml" ]]; then
     sleep 5
     ${KUBE_ROOT}/cluster/kubectl.sh apply -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml"
-  else 
+  else
     echo "failed to config apiserver datapartition, cannot find required yaml file"
     exit 1
   fi
@@ -3037,7 +3274,7 @@ function config-etcd-datapartition {
   if [[ -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml" ]]; then
     sleep 5
     kubectl apply -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml"
-  else 
+  else
     echo "failed to config etcd data partition, cannot find required yaml file"
   fi
 }
@@ -3054,7 +3291,7 @@ function config-etcd-storagecluster {
         create-etcd-storagecluster-yml $num ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]}
         config-etcd-datapartition $num
       fi
-      
+
     done
   fi
 }
@@ -3744,6 +3981,35 @@ function kube-down() {
     done
   fi
 
+  # Delete proxy-vm
+  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    if gcloud compute instances describe "${PROXY_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute instances delete \
+        --project "${PROJECT}" \
+        --quiet \
+        --delete-disks all \
+        --zone "${ZONE}" \
+        "${PROXY_NAME}"
+    fi
+    # Delete firewall rule for the proxy.
+    delete-firewall-rules "${PROXY_NAME}-https"
+    echo "Deleting proxy's reserved IP"
+    if gcloud compute addresses describe "${PROXY_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute addresses delete \
+        --project "${PROJECT}" \
+        --region "${REGION}" \
+        --quiet \
+        "${PROXY_NAME}-ip"
+    fi
+    if gcloud compute addresses describe "${PROXY_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute addresses delete \
+        --project "${PROJECT}" \
+        --region "${REGION}" \
+        --quiet \
+        "${PROXY_NAME}-internalip"
+    fi
+  fi
+
   # If there are no more remaining master replicas: delete routes, pd for influxdb and update kubeconfig
   if [[ "${REMAINING_MASTER_COUNT}" -eq 0 ]]; then
     # Delete routes.
@@ -4141,7 +4407,7 @@ function delete-partitionserver() {
   if gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
     gcloud compute firewall-rules delete "${server_name}-etcd" \
       --quiet \
-      --project "${NETWORK_PROJECT}" 
+      --project "${NETWORK_PROJECT}"
   fi
 
   #echo "deleting partitionserver reserved IP address: ${server_name}-ip"
@@ -4149,7 +4415,7 @@ function delete-partitionserver() {
     gcloud compute addresses delete "${server_name}-ip" \
       --quiet \
       --project "${PROJECT}" \
-      --region "${REGION}" 
+      --region "${REGION}"
   fi
 
   echo "deleting partitionserver reserved internal IP address: ${server_name}-internalip"
@@ -4157,7 +4423,7 @@ function delete-partitionserver() {
     gcloud compute addresses delete "${server_name}-internalip" \
       --quiet \
       --project "${PROJECT}" \
-      --region "${REGION}" 
+      --region "${REGION}"
   fi
 
 }

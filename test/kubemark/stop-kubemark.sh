@@ -44,4 +44,26 @@ rm -rf "${RESOURCE_DIRECTORY}/addons" \
 	"${RESOURCE_DIRECTORY}/kubeconfig.kubemark" \
     "${RESOURCE_DIRECTORY}/hollow-node.yaml"  &> /dev/null || true
 
-delete-kubemark-master
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  export ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBERNETES_TENANT_PARTITION=true
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    export TENANT_PARTITION_SEQUENCE=${tp_num}
+    delete-kubemark-master
+  done
+
+
+  export KUBERNETES_TENANT_PARTITION=false
+  export KUBERNETES_RESOURCE_PARTITION=true
+  export KUBERNETES_SCALEOUT_PROXY=true
+  delete-kubemark-master
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy"
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.direct"
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.saved"
+  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.tmp"
+else
+  delete-kubemark-master
+fi

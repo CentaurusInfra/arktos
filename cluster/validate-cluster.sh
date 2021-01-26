@@ -173,6 +173,9 @@ while true; do
   #  - Total number of componentstatuses.
   #  - Number of "healthy" components.
   cs_status=$(kubectl_retry get componentstatuses -o template --template='{{range .items}}{{with index .conditions 0}}{{.type}}:{{.status}}{{end}}{{"\n"}}{{end}}') || true
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    cs_status=$(kubectl_retry get componentstatuses -o template --template='{{range .items}}{{with (and (ne .metadata.name "scheduler") (index .conditions 0))}}{{.type}}:{{.status}}{{end}}{{"\n"}}{{end}}') || true
+  fi
   componentstatuses=$(echo "${cs_status}" | grep -c 'Healthy:') || true
   healthy=$(echo "${cs_status}" | grep -c 'Healthy:True') || true
 

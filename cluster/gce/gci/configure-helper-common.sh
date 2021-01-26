@@ -617,7 +617,15 @@ function create-master-auth {
     for extra_component in "${extra_components[@]}"; do
       local token="$(secure_random 32)"
       append_or_replace_prefixed_line "${known_tokens_csv}" "${token}," "system:${extra_component},uid:system:${extra_component}"
-      create-kubeconfig "${extra_component}" "${token}"
+      if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+        if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+          create-kubeconfig "${extra_component}" "${token}" "${PROXY_RESERVED_IP}" "8888" "http"
+        else
+          create-kubeconfig "${extra_component}" "${token}" "localhost" "8080" "http"
+        fi
+      else
+        create-kubeconfig "${extra_component}" "${token}"
+      fi
     done
   fi
   local use_cloud_config="false"
@@ -982,7 +990,15 @@ EOF
 function create-kubeconfig {
   local component=$1
   local token=$2
-  local master_ip=${3:-localhost}  #optional
+  local master_ip=${3:-}  #optional
+  local master_port=${4:-} #optional
+  local master_proto=${5:-https} #optional
+  if [[ -z "${master_ip}" ]]; then
+    master_ip="localhost"
+  fi
+  if [[ -z "${master_port}" ]]; then
+    master_port="443"
+  fi
   echo "Creating kubeconfig file for component ${component}"
   mkdir -p /etc/srv/kubernetes/${component}
   cat <<EOF >/etc/srv/kubernetes/${component}/kubeconfig
@@ -996,7 +1012,7 @@ clusters:
 - name: local
   cluster:
     insecure-skip-tls-verify: true
-    server: https://${master_ip}:443
+    server: ${master_proto}://${master_ip}:${master_port}
 contexts:
 - context:
     cluster: local
@@ -1009,9 +1025,14 @@ EOF
 # Arg 1: the IP address of the API server
 function create-kubelet-kubeconfig() {
   local apiserver_address="${1}"
+  local apiserver_port="${2:-}"
+  local apiserver_proto="${3:-https}"
   if [[ -z "${apiserver_address}" ]]; then
     echo "Must provide API server address to create Kubelet kubeconfig file!"
     exit 1
+  fi
+  if [[ -n "${apiserver_port}" ]]; then
+    apiserver_address=${apiserver_address}:${apiserver_port}
   fi
   if [[ "${CREATE_BOOTSTRAP_KUBECONFIG:-true}" == "true" ]]; then
     echo "Creating kubelet bootstrap-kubeconfig file"
@@ -1026,7 +1047,7 @@ users:
 clusters:
 - name: local
   cluster:
-    server: https://${apiserver_address}
+    server: ${apiserver_proto}://${apiserver_address}
     certificate-authority: ${CA_CERT_BUNDLE_PATH}
 contexts:
 - context:
@@ -1053,7 +1074,11 @@ function create-master-kubelet-auth {
   # set in the environment.
   if [[ -n "${KUBELET_APISERVER:-}" && -n "${KUBELET_CERT:-}" && -n "${KUBELET_KEY:-}" ]]; then
     REGISTER_MASTER_KUBELET="true"
-    create-kubelet-kubeconfig ${KUBELET_APISERVER}
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      create-kubelet-kubeconfig ${KUBELET_APISERVER} "8080" "http"
+    else
+      create-kubelet-kubeconfig ${KUBELET_APISERVER}
+    fi
   fi
 }
 
@@ -1383,6 +1408,31 @@ function start-kube-proxy {
   cp "${src_file}" /etc/kubernetes/manifests
 }
 
+# Starts prometheus.
+function start-prometheus {
+  echo "Start prometheus"
+  cd /etc/srv/kubernetes
+# downloading prometheus
+  export RELEASE="2.2.1"
+  wget https://github.com/prometheus/prometheus/releases/download/v${RELEASE}/prometheus-${RELEASE}.linux-amd64.tar.gz
+  tar xvf prometheus-${RELEASE}.linux-amd64.tar.gz
+  cd prometheus-2.2.1.linux-amd64/
+  echo "configing prometheus-metrics"
+  cat <<EOF >/tmp/prometheus-metrics.yaml
+global:
+  scrape_interval: 10s
+scrape_configs:
+  - job_name: prometheus-metrics
+    static_configs:
+    - targets: ['127.0.0.1:2379','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
+  - job_name: 'haproxy'
+    static_configs:
+    - targets: ['scale_out_proxy_ip:8404']
+EOF
+  sed -i -e "s/scale_out_proxy_ip/$PROXY_RESERVED_IP/g" /tmp/prometheus-metrics.yaml
+  ./prometheus --config.file="/tmp/prometheus-metrics.yaml" --web.listen-address=":9090" --web.enable-admin-api &
+}
+
 # Replaces the variables in the etcd manifest file with the real values, and then
 # copy the file to the manifest dir
 # $1: value for variable 'suffix'
@@ -1644,6 +1694,8 @@ function start-kube-apiserver {
   if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
     # Default is :8080
     params+=" --insecure-port=0"
+  else
+    params+=" --insecure-bind-address=0.0.0.0 --insecure-port=8080"
   fi
   params+=" --tls-cert-file=${APISERVER_SERVER_CERT_PATH}"
   params+=" --tls-private-key-file=${APISERVER_SERVER_KEY_PATH}"
@@ -1684,17 +1736,50 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
+
   if [[ -n "${NUM_NODES:-}" ]]; then
+    local max_request_inflight="-1"
+    local max_mutating_request_inflight="-1"
+
     # If the cluster is large, increase max-requests-inflight limit in apiserver.
-    if [[ "${NUM_NODES}" -gt 3000 ]]; then
-      params+=" --max-requests-inflight=3000 --max-mutating-requests-inflight=1000"
-    elif [[ "${NUM_NODES}" -gt 500 ]]; then
-      params+=" --max-requests-inflight=1500 --max-mutating-requests-inflight=500"
+    if [[ "${NUM_NODES}" -gt 10000 ]]; then
+       max_request_inflight=5000
+       max_mutating_request_inflight=2000
+    else
+      if [[ "${NUM_NODES}" -gt 3000 ]]; then
+        max_request_inflight=3000
+        max_mutating_request_inflight=1000
+      elif [[ "${NUM_NODES}" -gt 500 ]]; then
+        max_request_inflight=1500
+        max_mutating_request_inflight=500
+      fi
     fi
+
+    ## overwrite the setting if they were explictly set by the test
+    if [[ -n "${KUBE_APISERVER_MAX_REQUEST_INFLIGHT:-}" ]]; then
+      max_request_inflight=${KUBE_APISERVER_MAX_REQUEST_INFLIGHT}
+    fi
+    if [[ -n "${KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT:-}" ]]; then
+      max_mutating_request_inflight=${KUBE_APISERVER_MAX_MUTATING_REQUEST_INFLIGHT}
+    fi
+
+    ## set the parameter if the parameter is set either in default or explicitly set in ENV VARs
+    if [[ "${max_request_inflight}" -ge 0 ]]; then
+      params+=" --max-requests-inflight=${max_request_inflight}"
+    fi
+    if [[ "${max_mutating_request_inflight}" -ge 0 ]]; then
+      params+=" --max-mutating-requests-inflight=${max_mutating_request_inflight}"
+    fi
+
     # Set amount of memory available for apiserver based on number of nodes.
     # TODO: Once we start setting proper requests and limits for apiserver
     # we should reuse the same logic here instead of current heuristic.
-    params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
+    # cap api server memory to 600G for now
+    if [[ "${NUM_NODES}" -gt 10000 ]]; then
+      params+=" --target-ram-mb=600000"
+    else
+      params+=" --target-ram-mb=$((${NUM_NODES} * 60))"
+    fi
   fi
   if [[ -n "${SERVICE_CLUSTER_IP_RANGE:-}" ]]; then
     params+=" --service-cluster-ip-range=${SERVICE_CLUSTER_IP_RANGE}"
@@ -1908,6 +1993,10 @@ function start-kube-apiserver {
   authorization_mode="Node,${authorization_mode}"
   params+=" --authorization-mode=${authorization_mode}"
 
+  if [[ -n "${KUBE_APISERVER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_APISERVER_EXTRA_ARGS"
+  fi
+
   local container_env=""
   if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
     container_env+="{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}"
@@ -2107,11 +2196,21 @@ function apply-encryption-config() {
 #   DOCKER_REGISTRY
 function start-kube-controller-manager {
   echo "Start kubernetes controller-manager"
-  create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+    else
+      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
+    fi
+  else
+    create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
+  fi
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  params+=" --use-service-account-credentials"
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
+    params+=" --use-service-account-credentials"
+  fi
   params+=" --cloud-provider=gce"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
@@ -2170,8 +2269,23 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    RUN_CONTROLLERS="nodelifecycle"
+  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network"
+  fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
+  fi
+
+  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    echo "DBG:Set tenant-servers parameters:  ${TENANT_SERVERS}"
+    params+=" --tenant-servers=${TENANT_SERVERS}"
+  fi
+
+  if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_CONTROLLER_EXTRA_ARGS"
   fi
 
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
@@ -2212,7 +2326,15 @@ function start-workload-controller-manager {
   mkdir -p /etc/srv/kubernetes/workload-controller-manager
   echo "Start workload controller-manager"
   local master_ip=${1:-}  #optional
-  create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip}
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${PROXY_RESERVED_IP} "8888" "http"
+    else
+      create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip} "8080" "http"
+    fi
+  else
+    create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip}
+  fi
   if [[ -f "${KUBE_HOME}/controllerconfig.json" ]]; then
     cp ${KUBE_HOME}/controllerconfig.json /etc/srv/kubernetes/workload-controller-manager/
   fi
@@ -2258,7 +2380,15 @@ function start-workload-controller-manager {
 #   DOCKER_REGISTRY
 function start-kube-scheduler {
   echo "Start kubernetes scheduler"
-  create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN}
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+    else
+      create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN} "localhost" "8080" "http"
+    fi
+  else
+    create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN}
+  fi
   prepare-log-file /var/log/kube-scheduler.log
 
   # Calculate variables and set them in the manifest.
@@ -2279,6 +2409,11 @@ function start-kube-scheduler {
     params+=" --use-legacy-policy-config"
     params+=" --policy-config-file=/etc/srv/kubernetes/kube-scheduler/policy-config"
   fi
+
+  if [[ -n "${KUBE_SCHEDULER_EXTRA_ARGS:-}" ]]; then
+    params+=" $KUBE_SCHEDULER_EXTRA_ARGS"
+  fi
+
   local -r kube_scheduler_docker_tag=$(cat "${KUBE_HOME}/kube-docker-files/kube-scheduler.docker_tag")
 
   # Remove salt comments and replace variables with values.
@@ -2300,7 +2435,15 @@ function start-cluster-autoscaler {
   if [[ "${ENABLE_CLUSTER_AUTOSCALER:-}" == "true" ]]; then
     echo "Start kubernetes cluster autoscaler"
     setup-addon-manifests "addons" "rbac/cluster-autoscaler"
-    create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN}
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+        create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+      else
+        create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN} "localhost" "8080" "http"
+      fi
+    else
+      create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN}
+    fi
     prepare-log-file /var/log/cluster-autoscaler.log
 
     # Remove salt comments and replace variables with values
@@ -2646,7 +2789,15 @@ function start-kube-addons {
   local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
   local -r dst_dir="/etc/kubernetes/addons"
 
-  create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN}
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+    else
+      create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN} "localhost" "8080" "http"
+    fi
+  else
+    create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN}
+  fi
 
   # prep addition kube-up specific rbac objects
   setup-addon-manifests "addons" "rbac/kubelet-api-auth"
@@ -2881,7 +3032,15 @@ function start-lb-controller {
     prepare-log-file /var/log/glbc.log
     setup-addon-manifests "addons" "cluster-loadbalancing/glbc"
     setup-addon-manifests "addons" "rbac/cluster-loadbalancing/glbc"
-    create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN}
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+        create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+      else
+        create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN} "localhost" "8080" "http"
+      fi
+    else
+      create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN}
+    fi
 
     local -r src_manifest="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/glbc.manifest"
     local -r dest_manifest="/etc/kubernetes/manifests/glbc.manifest"
@@ -3038,7 +3197,15 @@ function ensure-master-bootstrap-kubectl-auth {
   # If the insecure port is disabled, kubectl will need to use an admin-authenticated kubeconfig.
   local master_ip=${1:-localhost}
   if [[ -n "${KUBE_BOOTSTRAP_TOKEN:-}" ]]; then
-    create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}"
+    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+        create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${PROXY_RESERVED_IP}" "8888" "http"
+      else
+        create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}" "8080" "http"
+      fi
+    else
+      create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}"
+    fi
     export KUBECONFIG=/etc/srv/kubernetes/kube-bootstrap/kubeconfig
   fi
 }
