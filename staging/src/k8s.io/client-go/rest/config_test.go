@@ -251,6 +251,59 @@ func TestSetBearerToken(t *testing.T) {
 	}
 }
 
+func TestRESTClientLimiter(t *testing.T) {
+	testCases := []struct {
+		Name    string
+		Config  KubeConfig
+		Limiter flowcontrol.RateLimiter
+	}{
+		{
+			Config:  KubeConfig{},
+			Limiter: flowcontrol.NewTokenBucketRateLimiter(5, 10),
+		},
+		{
+			Config:  KubeConfig{QPS: 10},
+			Limiter: flowcontrol.NewTokenBucketRateLimiter(10, 10),
+		},
+		{
+			Config:  KubeConfig{QPS: -1},
+			Limiter: nil,
+		},
+		{
+			Config: KubeConfig{
+				RateLimiter: flowcontrol.NewTokenBucketRateLimiter(11, 12),
+			},
+			Limiter: flowcontrol.NewTokenBucketRateLimiter(11, 12),
+		},
+	}
+	for _, testCase := range testCases {
+		t.Run("Versioned_"+testCase.Name, func(t *testing.T) {
+			config := testCase.Config
+			config.Host = "127.0.0.1"
+			config.ContentConfig = ContentConfig{GroupVersion: &v1.SchemeGroupVersion, NegotiatedSerializer: scheme.Codecs}
+			client, err := RESTClientFor(&config)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(testCase.Limiter, client.rateLimiter) {
+				t.Fatalf("unexpected rate limiter: %#v", client.rateLimiter)
+			}
+		})
+		t.Run("Unversioned_"+testCase.Name, func(t *testing.T) {
+			config := testCase.Config
+			config.Host = "127.0.0.1"
+			config.ContentConfig = ContentConfig{GroupVersion: &v1.SchemeGroupVersion, NegotiatedSerializer: scheme.Codecs}
+			client, err := UnversionedRESTClientFor(&config)
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if !reflect.DeepEqual(testCase.Limiter, client.rateLimiter) {
+				t.Fatalf("unexpected rate limiter: %#v", client.rateLimiter)
+			}
+		})
+	}
+}
+
 type fakeLimiter struct {
 	FakeSaturation float64
 	FakeQPS        float32
@@ -266,6 +319,10 @@ func (t *fakeLimiter) Saturation() float64 {
 
 func (t *fakeLimiter) QPS() float32 {
 	return t.FakeQPS
+}
+
+func (t *fakeLimiter) Wait(ctx context.Context) error {
+	return nil
 }
 
 func (t *fakeLimiter) Stop() {}
