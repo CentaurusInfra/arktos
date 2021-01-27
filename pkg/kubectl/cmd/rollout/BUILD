@@ -70,7 +70,7 @@ go_test(
     deps = [
         "//pkg/kubectl/cmd/testing:go_default_library",
         "//pkg/kubectl/scheme:go_default_library",
-        "//staging/src/k8s.io/api/extensions/v1beta1:go_default_library",
+        "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",

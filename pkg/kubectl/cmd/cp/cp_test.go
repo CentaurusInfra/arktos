@@ -594,7 +594,7 @@ func TestClean(t *testing.T) {
 
 func TestCopyToPod(t *testing.T) {
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
 	tf.Client = &fake.RESTClient{
@@ -664,7 +664,7 @@ func TestCopyToPod(t *testing.T) {
 
 func TestCopyToPodNoPreserve(t *testing.T) {
 	tf := cmdtesting.NewTestFactory().WithNamespace("test")
-	ns := scheme.Codecs
+	ns := scheme.Codecs.WithoutConversion()
 	codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
 
 	tf.Client = &fake.RESTClient{

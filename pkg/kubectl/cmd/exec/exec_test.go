@@ -143,7 +143,7 @@ func testPodAndContainer(t *testing.T, tenant string) {
 			tf := cmdtesting.NewTestFactory().WithNamespaceWithMultiTenancy("test", tenant)
 			defer tf.Cleanup()
 
-			ns := scheme.Codecs
+			ns := scheme.Codecs.WithoutConversion()
 
 			tf.Client = &fake.RESTClient{
 				NegotiatedSerializer: ns,
@@ -221,7 +221,7 @@ func testExec(t *testing.T, tenant string) {
 			defer tf.Cleanup()
 
 			codec := scheme.Codecs.LegacyCodec(scheme.Scheme.PrioritizedVersionsAllGroups()...)
-			ns := scheme.Codecs
+			ns := scheme.Codecs.WithoutConversion()
 
 			tf.Client = &fake.RESTClient{
 				GroupVersion:         schema.GroupVersion{Group: "", Version: "v1"},
