@@ -86,7 +86,7 @@ func (kl *Kubelet) registerWithAPIServer() {
 // value of the annotation for controller-managed attach-detach of attachable
 // persistent volumes for the node.
 func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
-	_, err := kl.kubeClient.CoreV1().Nodes().Create(node)
+	_, err := kl.heartbeatClient.CoreV1().Nodes().Create(node)
 	if err == nil {
 		return true
 	}
@@ -96,7 +96,7 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 		return false
 	}
 
-	existingNode, err := kl.kubeClient.CoreV1().Nodes().Get(string(kl.nodeName), metav1.GetOptions{})
+	existingNode, err := kl.heartbeatClient.CoreV1().Nodes().Get(string(kl.nodeName), metav1.GetOptions{})
 	if err != nil {
 		klog.Errorf("Unable to register node %q with API server: error getting existing node: %v", kl.nodeName, err)
 		return false
@@ -365,7 +365,7 @@ func (kl *Kubelet) syncNodeStatus() {
 	kl.syncNodeStatusMux.Lock()
 	defer kl.syncNodeStatusMux.Unlock()
 
-	if kl.kubeClient == nil || kl.heartbeatClient == nil {
+	if kl.heartbeatClient == nil {
 		return
 	}
 	if kl.registerNode {
