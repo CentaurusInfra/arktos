@@ -90,24 +90,6 @@ function create-kubeconfig() {
   local cluster_args=(
       "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}"
   )
-
-  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      if [[ "${PROXY_RESERVED_IP}" == "" ]]; then
-        echo "Fatal Error: proxy IP is empty!"
-        exit 1
-      fi
-      cluster_args=(
-          "--server=${KUBE_SERVER:-http://${PROXY_RESERVED_IP}}:8888"
-       )
-    fi
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      cluster_args=(
-          "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
-       )
-    fi
-  fi
-
   if [[ -z "${CA_CERT:-}" ]]; then
     cluster_args+=("--insecure-skip-tls-verify=true")
   else
@@ -952,11 +934,6 @@ EOF
 ETCD_QUORUM_READ: $(yaml-quote ${ETCD_QUORUM_READ})
 EOF
     fi
-    if [ -n "${TENANT_SERVERS:-}" ]; then
-      cat >>$file <<EOF
-TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
-EOF
-    fi
 
   else
     # Node-only env vars.
@@ -1028,6 +1005,112 @@ EOF
     cat >>$file <<EOF
 SCHEDULING_ALGORITHM_PROVIDER: $(yaml-quote ${SCHEDULING_ALGORITHM_PROVIDER})
 EOF
+  fi
+}
+
+# Generate kubeconfig data for the created cluster.
+# Assumed vars:
+#   KUBE_USER
+#   KUBE_PASSWORD
+#   KUBE_MASTER_IP
+#   KUBECONFIG
+#   CONTEXT
+#
+# If the apiserver supports bearer auth, also provide:
+#   KUBE_BEARER_TOKEN
+#
+# If the kubeconfig context being created should NOT be set as the current context
+# SECONDARY_KUBECONFIG=true
+#
+# To explicitly name the context being created, use OVERRIDE_CONTEXT
+#
+# The following can be omitted for --insecure-skip-tls-verify
+#   KUBE_CERT
+#   KUBE_KEY
+#   CA_CERT
+function create-kubeconfig() {
+  KUBECONFIG=${KUBECONFIG:-$DEFAULT_KUBECONFIG}
+  local kubectl="${KUBE_ROOT}/cluster/kubectl.sh"
+  SECONDARY_KUBECONFIG=${SECONDARY_KUBECONFIG:-}
+  OVERRIDE_CONTEXT=${OVERRIDE_CONTEXT:-}
+
+  if [[ "$OVERRIDE_CONTEXT" != "" ]];then
+      CONTEXT=$OVERRIDE_CONTEXT
+  fi
+
+  # KUBECONFIG determines the file we write to, but it may not exist yet
+  OLD_IFS=$IFS
+  IFS=':'
+  for cfg in ${KUBECONFIG} ; do
+    if [[ ! -e "${cfg}" ]]; then
+      mkdir -p "$(dirname "${cfg}")"
+      touch "${cfg}"
+    fi
+  done
+  IFS=$OLD_IFS
+
+  local cluster_args=(
+      "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}"
+  )
+  if [[ -z "${CA_CERT:-}" ]]; then
+    cluster_args+=("--insecure-skip-tls-verify=true")
+  else
+    cluster_args+=(
+      "--certificate-authority=${CA_CERT}"
+      "--embed-certs=true"
+    )
+  fi
+
+  local user_args=()
+  if [[ ! -z "${KUBE_BEARER_TOKEN:-}" ]]; then
+    user_args+=(
+     "--token=${KUBE_BEARER_TOKEN}"
+    )
+  elif [[ ! -z "${KUBE_USER:-}" && ! -z "${KUBE_PASSWORD:-}" ]]; then
+    user_args+=(
+     "--username=${KUBE_USER}"
+     "--password=${KUBE_PASSWORD}"
+    )
+  fi
+  if [[ ! -z "${KUBE_CERT:-}" && ! -z "${KUBE_KEY:-}" ]]; then
+    user_args+=(
+     "--client-certificate=${KUBE_CERT}"
+     "--client-key=${KUBE_KEY}"
+     "--embed-certs=true"
+    )
+  fi
+
+  KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-cluster "${CONTEXT}" "${cluster_args[@]}"
+  if [[ -n "${user_args[@]:-}" ]]; then
+    KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-credentials "${CONTEXT}" "${user_args[@]}"
+  fi
+  KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-context "${CONTEXT}" --cluster="${CONTEXT}" --user="${CONTEXT}"
+
+  if [[ "${SECONDARY_KUBECONFIG}" != "true" ]];then
+      KUBECONFIG="${KUBECONFIG}" "${kubectl}" config use-context "${CONTEXT}"  --cluster="${CONTEXT}"
+  fi
+
+  # If we have a bearer token, also create a credential entry with basic auth
+  # so that it is easy to discover the basic auth password for your cluster
+  # to use in a web browser.
+  if [[ ! -z "${KUBE_BEARER_TOKEN:-}" && ! -z "${KUBE_USER:-}" && ! -z "${KUBE_PASSWORD:-}" ]]; then
+    KUBECONFIG="${KUBECONFIG}" "${kubectl}" config set-credentials "${CONTEXT}-basic-auth" "--username=${KUBE_USER}" "--password=${KUBE_PASSWORD}"
+  fi
+
+   echo "Wrote config for ${CONTEXT} to ${KUBECONFIG}"
+}
+
+# Creates a kubeconfig file with the credentials for only the current-context
+# cluster. This is used by federation to create secrets in test setup.
+function create-kubeconfig-for-federation() {
+  if [[ "${FEDERATION:-}" == "true" ]]; then
+    echo "creating kubeconfig for federation secret"
+    local kubectl="${KUBE_ROOT}/cluster/kubectl.sh"
+    local cc=$("${kubectl}" config view -o jsonpath='{.current-context}')
+    KUBECONFIG_DIR=$(dirname ${KUBECONFIG:-$DEFAULT_KUBECONFIG})
+    KUBECONFIG_PATH="${KUBECONFIG_DIR}/federation/kubernetes-apiserver/${cc}"
+    mkdir -p "${KUBECONFIG_PATH}"
+    "${kubectl}" config view --minify --flatten > "${KUBECONFIG_PATH}/kubeconfig"
   fi
 }
 

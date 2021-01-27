@@ -95,11 +95,7 @@ function main() {
     gke-master-start
   else
     create-node-pki
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
-      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
-    else
-      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME} "8080" "http"
-    fi
+    create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       create-kubeproxy-user-kubeconfig
     fi
@@ -132,12 +128,9 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
-
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
-      start-kube-scheduler
-    fi
+    start-kube-scheduler
     wait-till-apiserver-ready
-    # start-workload-controller-manager
+   # start-workload-controller-manager
     start-kube-addons
     start-cluster-autoscaler
     start-lb-controller
@@ -156,9 +149,6 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    start-prometheus &  #####start prometheus
-  fi
   echo "Done for the configuration for kubernetes"
 }
 
