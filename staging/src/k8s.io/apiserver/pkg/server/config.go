@@ -133,10 +133,12 @@ type Config struct {
 	// DiscoveryAddresses is used to build the IPs pass to discovery. If nil, the ExternalAddress is
 	// always reported
 	DiscoveryAddresses discovery.Addresses
-	// The default set of healthz checks. There might be more added via AddHealthzChecks dynamically.
-	HealthzChecks []healthz.HealthzChecker
+	// The default set of healthz checks. There might be more added via AddHealthChecks dynamically.
+	HealthzChecks []healthz.HealthChecker
+	// The default set of livez checks. There might be more added via AddHealthChecks dynamically.
+	LivezChecks []healthz.HealthChecker
 	// The default set of readyz-only checks. There might be more added via AddReadyzChecks dynamically.
-	ReadyzChecks []healthz.HealthzChecker
+	ReadyzChecks []healthz.HealthChecker
 	// LegacyAPIGroupPrefixes is used to set up URL parsing for authorization and for validating requests
 	// to InstallLegacyAPIGroup. New API servers don't generally have legacy groups at all.
 	LegacyAPIGroupPrefixes sets.String
@@ -161,9 +163,9 @@ type Config struct {
 
 	// This represents the maximum amount of time it should take for apiserver to complete its startup
 	// sequence and become healthy. From apiserver's start time to when this amount of time has
-	// elapsed, /healthz will assume that unfinished post-start hooks will complete successfully and
+	// elapsed, /livez will assume that unfinished post-start hooks will complete successfully and
 	// therefore return true.
-	MaxStartupSequenceDuration time.Duration
+	LivezGracePeriod time.Duration
 	// The limit on the total size increase all "copy" operations in a json
 	// patch may cause.
 	// This affects all places that applies json patch in the binary.
@@ -179,6 +181,12 @@ type Config struct {
 	MaxMutatingRequestsInFlight int
 	// Predicate which is true for paths of long-running http requests
 	LongRunningFunc apirequest.LongRunningRequestCheck
+
+	// GoawayChance is the probability that send a GOAWAY to HTTP/2 clients. When client received
+	// GOAWAY, the in-flight requests will not be affected and new requests will use
+	// a new TCP connection to triggering re-balancing to another server behind the load balance.
+	// Default to 0, means never send GOAWAY. Max is 0.02 to prevent break the apiserver.
+	GoawayChance float64
 
 	// MergedResourceConfig indicates which groupVersion enabled and its resources enabled/disabled.
 	// This is composed of genericapiserver defaultAPIResourceConfig and those parsed from flags.
@@ -238,6 +246,9 @@ type SecureServingInfo struct {
 	// HTTP2MaxStreamsPerConnection is the limit that the api server imposes on each client.
 	// A value of zero means to use the default provided by golang's HTTP/2 support.
 	HTTP2MaxStreamsPerConnection int
+
+	// DisableHTTP2 indicates that http2 should not be enabled.
+	DisableHTTP2 bool
 }
 
 type AuthenticationInfo struct {
@@ -260,15 +271,16 @@ type AuthorizationInfo struct {
 
 // NewConfig returns a Config struct with the default values
 func NewConfig(codecs serializer.CodecFactory) *Config {
-	defaultHealthChecks := []healthz.HealthzChecker{healthz.PingHealthz, healthz.LogHealthz}
+	defaultHealthChecks := []healthz.HealthChecker{healthz.PingHealthz, healthz.LogHealthz}
 	return &Config{
 		Serializer:                  codecs,
 		BuildHandlerChainFunc:       DefaultBuildHandlerChain,
 		HandlerChainWaitGroup:       new(utilwaitgroup.SafeWaitGroup),
 		LegacyAPIGroupPrefixes:      sets.NewString(DefaultLegacyAPIPrefix),
 		DisabledPostStartHooks:      sets.NewString(),
-		HealthzChecks:               append([]healthz.HealthzChecker{}, defaultHealthChecks...),
-		ReadyzChecks:                append([]healthz.HealthzChecker{}, defaultHealthChecks...),
+		HealthzChecks:               append([]healthz.HealthChecker{}, defaultHealthChecks...),
+		ReadyzChecks:                append([]healthz.HealthChecker{}, defaultHealthChecks...),
+		LivezChecks:                 append([]healthz.HealthChecker{}, defaultHealthChecks...),
 		EnableIndex:                 true,
 		EnableDiscovery:             true,
 		EnableProfiling:             true,
@@ -277,7 +289,7 @@ func NewConfig(codecs serializer.CodecFactory) *Config {
 		MaxMutatingRequestsInFlight: 200,
 		RequestTimeout:              time.Duration(60) * time.Second,
 		MinRequestTimeout:           1800,
-		MaxStartupSequenceDuration:  time.Duration(0),
+		LivezGracePeriod:            time.Duration(0),
 		// 10MB is the recommended maximum client request size in bytes
 		// the etcd server should accept. See
 		// https://github.com/etcd-io/etcd/blob/release-3.3/etcdserver/server.go#L90.
@@ -498,15 +510,16 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		preShutdownHooks:       map[string]preShutdownHookEntry{},
 		disabledPostStartHooks: c.DisabledPostStartHooks,
 
-		healthzChecks:              c.HealthzChecks,
-		readyzChecks:               c.ReadyzChecks,
-		readinessStopCh:            make(chan struct{}),
-		maxStartupSequenceDuration: c.MaxStartupSequenceDuration,
+		healthzChecks:    c.HealthzChecks,
+		livezChecks:      c.LivezChecks,
+		readyzChecks:     c.ReadyzChecks,
+		readinessStopCh:  make(chan struct{}),
+		livezGracePeriod: c.LivezGracePeriod,
 
 		DiscoveryGroupManager: discovery.NewRootAPIsHandler(c.DiscoveryAddresses, c.Serializer),
 
 		maxRequestBodyBytes: c.MaxRequestBodyBytes,
-		healthzClock:        clock.RealClock{},
+		livezClock:          clock.RealClock{},
 	}
 
 	for {
@@ -552,9 +565,7 @@ func (c completedConfig) New(name string, delegationTarget DelegationTarget) (*G
 		if skip {
 			continue
 		}
-
-		s.healthzChecks = append(s.healthzChecks, delegateCheck)
-		s.readyzChecks = append(s.readyzChecks, delegateCheck)
+		s.AddHealthChecks(delegateCheck)
 	}
 
 	s.listedPathProvider = routes.ListedPathProviders{s.listedPathProvider, delegationTarget}
@@ -586,6 +597,9 @@ func DefaultBuildHandlerChain(apiHandler http.Handler, c *Config) http.Handler {
 	handler = genericfilters.WithTimeoutForNonLongRunningRequests(handler, c.LongRunningFunc, c.RequestTimeout)
 	handler = genericfilters.WithWaitGroup(handler, c.LongRunningFunc, c.HandlerChainWaitGroup)
 	handler = genericapifilters.WithRequestInfo(handler, c.RequestInfoResolver)
+	if c.SecureServing != nil && !c.SecureServing.DisableHTTP2 && c.GoawayChance > 0 {
+		handler = genericfilters.WithProbabilisticGoaway(handler, c.GoawayChance)
+	}
 	handler = genericfilters.WithPanicRecovery(handler)
 	return handler
 }
