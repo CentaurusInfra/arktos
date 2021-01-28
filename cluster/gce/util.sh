@@ -1215,6 +1215,8 @@ KUBERNETES_MASTER_INTERNAL_IP: $(yaml-quote ${KUBERNETES_MASTER_INTERNAL_IP})
 ALLOCATE_NODE_CIDRS: $(yaml-quote ${ALLOCATE_NODE_CIDRS:-false})
 ENABLE_CLUSTER_MONITORING: $(yaml-quote ${ENABLE_CLUSTER_MONITORING:-none})
 ENABLE_PROMETHEUS_MONITORING: $(yaml-quote ${ENABLE_PROMETHEUS_MONITORING:-false})
+ENABLE_PROMETHEUS_DEBUG: $(yaml-quote ${ENABLE_PROMETHEUS_DEBUG:-false})
+ENABLE_PPROF_DEBUG: $(yaml-quote ${ENABLE_PPROF_DEBUG:-false})
 ENABLE_METRICS_SERVER: $(yaml-quote ${ENABLE_METRICS_SERVER:-false})
 ENABLE_METADATA_AGENT: $(yaml-quote ${ENABLE_METADATA_AGENT:-none})
 METADATA_AGENT_CPU_REQUEST: $(yaml-quote ${METADATA_AGENT_CPU_REQUEST:-})
@@ -2915,7 +2917,7 @@ function create-master() {
     --network "${NETWORK}" \
     --allow tcp:443 &
 
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
     gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
