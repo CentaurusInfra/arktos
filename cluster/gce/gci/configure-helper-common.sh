@@ -1423,11 +1423,7 @@ scrape_configs:
   - job_name: prometheus-metrics
     static_configs:
     - targets: ['127.0.0.1:2379','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
-  - job_name: 'haproxy'
-    static_configs:
-    - targets: ['scale_out_proxy_ip:8404']
 EOF
-  sed -i -e "s/scale_out_proxy_ip/$PROXY_RESERVED_IP/g" /tmp/prometheus-metrics.yaml
   ./prometheus --config.file="/tmp/prometheus-metrics.yaml" --web.listen-address=":9090" --web.enable-admin-api &
 }
 
