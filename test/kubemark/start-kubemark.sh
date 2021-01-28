@@ -264,7 +264,7 @@ detect-project &> /dev/null
 rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  export ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT=true
   export KUBERNETES_TENANT_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
 
