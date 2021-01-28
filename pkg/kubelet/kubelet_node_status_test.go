@@ -201,7 +201,8 @@ func TestUpdateNewNodeStatus(t *testing.T) {
 			defer testKubelet.Cleanup()
 			kubelet := testKubelet.kubelet
 			kubelet.nodeStatusMaxImages = tc.nodeStatusMaxImages
-			kubelet.kubeClient = nil // ensure only the heartbeat client is used
+			kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+			testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 			kubelet.containerManager = &localCM{
 				ContainerManager: cm.NewStubContainerManager(),
 				allocatableReservation: v1.ResourceList{
@@ -342,8 +343,9 @@ func TestUpdateExistingNodeStatus(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()
 	kubelet := testKubelet.kubelet
-	kubelet.nodeStatusMaxImages = 5 // don't truncate the image list that gets constructed by hand for this test
-	kubelet.kubeClient = nil        // ensure only the heartbeat client is used
+	kubelet.nodeStatusMaxImages = 5         // don't truncate the image list that gets constructed by hand for this test
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	kubelet.containerManager = &localCM{
 		ContainerManager: cm.NewStubContainerManager(),
 		allocatableReservation: v1.ResourceList{
@@ -585,7 +587,8 @@ func TestUpdateExistingNodeStatusTimeout(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()
 	kubelet := testKubelet.kubelet
-	kubelet.kubeClient = nil // ensure only the heartbeat client is used
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	kubelet.heartbeatClient, err = clientset.NewForConfig(config)
 
 	f := func() {
@@ -622,8 +625,9 @@ func TestUpdateNodeStatusWithRuntimeStateError(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()
 	kubelet := testKubelet.kubelet
-	kubelet.nodeStatusMaxImages = 5 // don't truncate the image list that gets constructed by hand for this test
-	kubelet.kubeClient = nil        // ensure only the heartbeat client is used
+	kubelet.nodeStatusMaxImages = 5         // don't truncate the image list that gets constructed by hand for this test
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	kubelet.containerManager = &localCM{
 		ContainerManager: cm.NewStubContainerManager(),
 		allocatableReservation: v1.ResourceList{
@@ -851,7 +855,8 @@ func TestUpdateNodeStatusError(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	defer testKubelet.Cleanup()
 	kubelet := testKubelet.kubelet
-	kubelet.kubeClient = nil // ensure only the heartbeat client is used
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	// No matching node for the kubelet
 	testKubelet.fakeKubeClient.ReactionChain = fake.NewSimpleClientset(&v1.NodeList{Items: []v1.Node{}}).ReactionChain
 	assert.Error(t, kubelet.updateNodeStatus())
@@ -865,8 +870,9 @@ func TestUpdateNodeStatusWithLease(t *testing.T) {
 	defer testKubelet.Cleanup()
 	clock := testKubelet.fakeClock
 	kubelet := testKubelet.kubelet
-	kubelet.nodeStatusMaxImages = 5 // don't truncate the image list that gets constructed by hand for this test
-	kubelet.kubeClient = nil        // ensure only the heartbeat client is used
+	kubelet.nodeStatusMaxImages = 5         // don't truncate the image list that gets constructed by hand for this test
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	kubelet.containerManager = &localCM{
 		ContainerManager: cm.NewStubContainerManager(),
 		allocatableReservation: v1.ResourceList{
@@ -1166,7 +1172,8 @@ func TestUpdateNodeStatusAndVolumesInUseWithoutNodeLease(t *testing.T) {
 			defer testKubelet.Cleanup()
 
 			kubelet := testKubelet.kubelet
-			kubelet.kubeClient = nil // ensure only the heartbeat client is used
+			kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+			testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 			kubelet.containerManager = &localCM{ContainerManager: cm.NewStubContainerManager()}
 			kubelet.lastStatusReportTime = kubelet.clock.Now()
 			kubelet.nodeStatusReportFrequency = time.Hour
@@ -1266,7 +1273,8 @@ func TestUpdateNodeStatusAndVolumesInUseWithNodeLease(t *testing.T) {
 			defer testKubelet.Cleanup()
 
 			kubelet := testKubelet.kubelet
-			kubelet.kubeClient = nil // ensure only the heartbeat client is used
+			kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+			testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 			kubelet.containerManager = &localCM{ContainerManager: cm.NewStubContainerManager()}
 			kubelet.lastStatusReportTime = kubelet.clock.Now()
 			kubelet.nodeStatusReportFrequency = time.Hour
@@ -1530,7 +1538,8 @@ func TestUpdateNewNodeStatusTooLargeReservation(t *testing.T) {
 	defer testKubelet.Cleanup()
 	kubelet := testKubelet.kubelet
 	kubelet.nodeStatusMaxImages = nodeStatusMaxImages
-	kubelet.kubeClient = nil // ensure only the heartbeat client is used
+	kubelet.kubeClient = nil                // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	kubelet.containerManager = &localCM{
 		ContainerManager: cm.NewStubContainerManager(),
 		allocatableReservation: v1.ResourceList{
@@ -1592,7 +1601,8 @@ func TestUpdateNewNodeStatusTooLargeReservation(t *testing.T) {
 
 func TestUpdateDefaultLabels(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-	testKubelet.kubelet.kubeClient = nil // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeClient = nil    // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 
 	cases := []struct {
 		name         string
@@ -1812,7 +1822,8 @@ func TestUpdateDefaultLabels(t *testing.T) {
 
 func TestReconcileExtendedResource(t *testing.T) {
 	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-	testKubelet.kubelet.kubeClient = nil // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeClient = nil    // ensure only the heartbeat client is used
+	testKubelet.kubelet.kubeTPClients = nil // ensure only the heartbeat client is used
 	testKubelet.kubelet.containerManager = cm.NewStubContainerManagerWithExtendedResource(true /* shouldResetExtendedResourceCapacity*/)
 	testKubeletNoReset := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
 	extendedResourceName1 := v1.ResourceName("test.com/resource1")
