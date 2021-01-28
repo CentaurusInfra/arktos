@@ -2812,7 +2812,7 @@ function update-proxy() {
   local -r TP_IP=$1
   local -r RP_IP=$2
 
-  local -r proxy_template=${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
+  local -r proxy_template=${KUBE_ROOT}/cmd/haproxy-cfg-generator/data/haproxy.cfg.template
 
   TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
 
@@ -2840,7 +2840,7 @@ function load-proxy-cfg {
 
 function build_haproxy_cfg_generator() {
   export GO111MODULE=on
-  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/cfg_generator/"
+  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/cmd/haproxy-cfg-generator/"
 }
 
 function setup-proxy() {

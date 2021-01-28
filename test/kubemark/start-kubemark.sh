@@ -56,28 +56,12 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
   RP_KUBECONFIG_SAVED="${LOCAL_KUBECONFIG}"
 fi
 
-
-### POC tenant yaml files
-###
-TENANT1_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant1.yaml"
-TENANT2_YAML="${KUBE_ROOT}/perf-tests/clusterloader2/testing/arktos/tenant2.yaml"
-
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
 export SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
 export KUBE_APISERVER_EXTRA_ARGS=${KUBE_APISERVER_EXTRA_ARGS:-}
 export KUBE_CONTROLLER_EXTRA_ARGS=${KUBE_CONTROLLER_EXTRA_ARGS:-}
 export KUBE_SCHEDULER_EXTRA_ARGS=${KUBE_SCHEDULER_EXTRA_ARGS:-}
-
-if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" != "haproxy" && "${KUBERNETES_SCALEOUT_PROXY_APP}" != "nginx" ]] ; then
-  echo "Error: unknown KUBERNETES_SCALEOUT_PROXY_APP ${KUBERNETES_SCALEOUT_PROXY_APP}, must be nginx or haproxy. "
-  exut 1
-fi
-
-if [[ "${KUBERNETES_SCALEOUT_PROXY_APP}" == "haproxy" ]] ; then
-  export PROXY_CONFIG_FILE="haproxy.cfg"
-else
-  export PROXY_CONFIG_FILE="nginx.conf"
-fi
 
 export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
 
@@ -277,10 +261,6 @@ function start-hollow-nodes {
 
 detect-project &> /dev/null
 
-# Start two tenant partition clusters and perseve their master url
-# Proxy server IP is the same as the first Tenant Cluster master IP, with port on 8888
-#
-
 rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
@@ -367,22 +347,3 @@ echo
 echo -e "Getting ETCD data partition status:" >&2
 "${KUBECTL}" --kubeconfig="${TP_KUBECONFIG}" get etcd
 echo
-
-### for multiple tenant tests, set up the tenants on desired TP clusters
-###
-if [[ "${CREATE_TEST_TENANTS:-false}" == "true" ]]; then
-  ### create tenant1 on TP1 cluster
-  echo -e "Create tenant arktos on TP1 cluster"
-  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-1.direct" create -f ${TENANT1_YAML}
-
-  ### create tenant2 on TP2 cluster
-  echo -e "Create tenant zeta on TP${SCALEOUT_TP_COUNT} cluster"
-  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${SCALEOUT_TP_COUNT}.direct" create -f ${TENANT2_YAML}
-
-  echo -e "Getting test tenants from TP1:" >&2
-  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-1.direct" get tenants
-  echo
-  echo -e "Getting test tenants from TP${SCALEOUT_TP_COUNT}:" >&2
-  "${KUBECTL}" --kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${SCALEOUT_TP_COUNT}.direct" get tenants
-  echo
-fi
