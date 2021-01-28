@@ -581,7 +581,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 			name := cm.Name
 			configMap, ok := configMaps[name]
 			if !ok {
-				if kl.kubeClient == nil {
+				if !hasValidTPClients(kl.kubeTPClients) {
 					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := cm.Optional != nil && *cm.Optional
@@ -616,7 +616,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 			name := s.Name
 			secret, ok := secrets[name]
 			if !ok {
-				if kl.kubeClient == nil {
+				if !hasValidTPClients(kl.kubeTPClients) {
 					return result, fmt.Errorf("Couldn't get secret %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := s.Optional != nil && *s.Optional
@@ -690,7 +690,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 				optional := cm.Optional != nil && *cm.Optional
 				configMap, ok := configMaps[name]
 				if !ok {
-					if kl.kubeClient == nil {
+					if !hasValidTPClients(kl.kubeTPClients) {
 						return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
 					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
@@ -717,7 +717,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 				optional := s.Optional != nil && *s.Optional
 				secret, ok := secrets[name]
 				if !ok {
-					if kl.kubeClient == nil {
+					if !hasValidTPClients(kl.kubeTPClients) {
 						return result, fmt.Errorf("Couldn't get secret %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
 					secret, err = kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, name)
@@ -1417,7 +1417,7 @@ func (kl *Kubelet) generateAPIPodStatus(pod *v1.Pod, podStatus *kubecontainer.Po
 		return *s
 	}
 
-	if kl.kubeClient != nil {
+	if hasValidTPClients(kl.kubeTPClients) {
 		hostIP, err := kl.getHostIPAnyWay()
 		if err != nil {
 			klog.V(4).Infof("Cannot get host IP: %v", err)
