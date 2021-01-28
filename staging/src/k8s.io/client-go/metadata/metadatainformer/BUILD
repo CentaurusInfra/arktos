@@ -23,7 +23,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["informer_test.go"],
+    srcs = [
+        "informer_multitenancy_test.go",
+        "informer_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/api/equality:go_default_library",
