@@ -2369,7 +2369,7 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
-      
+
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
         echo "Local_kubeconfig_tmp not set"
@@ -2682,7 +2682,7 @@ function create-etcd-certs {
   local ca_cert=${2:-}
   local ca_key=${3:-}
   local additionalServer=${4:-}
-  
+
   local certServers="${host},${additionalServer}"
   GEN_ETCD_CA_CERT="${ca_cert}" GEN_ETCD_CA_KEY="${ca_key}" \
     generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certServers}" "peer" "peer"
@@ -2812,9 +2812,9 @@ function update-proxy() {
 
   local -r proxy_template=${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
 
-  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}" 
+  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
 
-  if [[ $? != 0 ]] 
+  if [[ $? != 0 ]]
   then
           printf "\033[0;31mhaproxy_cfg_generator Failed\n"
           exit 1
@@ -2822,7 +2822,7 @@ function update-proxy() {
 
   sed -i -e "/^ONEBOX_ONLY:/d"  "${PROXY_CONFIG_FILE_TMP}"
   sed -i -e "s/KUBEMARK_ONLY://g" "${PROXY_CONFIG_FILE_TMP}"
-        
+
   load-proxy-cfg
 }
 
@@ -2964,7 +2964,7 @@ function create-master() {
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-  
+
   echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
@@ -2997,7 +2997,7 @@ function create-master() {
   # add all external and internal IP to cert
   CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
   ###set partition server name, ip
-  set-partitionserver true    
+  set-partitionserver true
   echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
@@ -3008,22 +3008,22 @@ function create-master() {
     build_haproxy_cfg_generator
   fi
 
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then 
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     update-proxy "$(cat /tmp/saved_tenant_ips.txt)" "${MASTER_RESERVED_IP}"
   fi
 
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then 
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
     if [[ -f /tmp/saved_tenant_ips.txt ]]; then
       TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
     fi
-    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then 
+    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then
       TP_IP_CONCAT="${MASTER_RESERVED_IP}"
     else
       TP_IP_CONCAT="${TP_IP_CONCAT},${MASTER_RESERVED_IP}"
     fi
 
     echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
-         
+
     # as TP are built before RP, so when updating the proxy.cfg before RP is ready, we use IP of TP to replace RP_IP temporarily
     update-proxy "${TP_IP_CONCAT}" "${MASTER_RESERVED_IP}"
   fi
@@ -3036,7 +3036,7 @@ function create-master() {
   #else
   create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #fi
-  
+
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     echo "VDBG: in ${MASTER_NAME}: sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
     ssh-to-node ${MASTER_NAME} "sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
@@ -3064,7 +3064,7 @@ function set-partitionserver {
         else
           WORKLOADSERVER_CREATED[$num]=false
         fi
-        
+
         if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" && "${ETCD_EXTRA_NUM:-0}" -ge "$num" && "${ETCDSERVER_CREATED[$num]:-false}" != "true" ]]; then
           partitionserver_name+="-etcd${num}"
           ETCDSERVER_CREATED[$num]=true
@@ -3072,21 +3072,21 @@ function set-partitionserver {
           ETCDSERVER_CREATED[$num]=false
         fi
       fi
-      
+
       TOTALSERVER_EXTRA_NUM=$((TOTALSERVER_EXTRA_NUM+1))
       PARTITIONSERVER_NAME[$TOTALSERVER_EXTRA_NUM]="${partitionserver_name}"
       APISERVER_CREATED[$num]=true
       if [[ "${is_create}" == "true" ]]; then
         create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
         PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
-            --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+            --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
         echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
         CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
         create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
         PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-internalip" \
         --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
         CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$TOTALSERVER_EXTRA_NUM]}"
-      fi  
+      fi
     done
   fi
 
@@ -3109,7 +3109,7 @@ function set-partitionserver {
         if [[ "${is_create}" == "true" ]]; then
           create-static-ip "${CLUSTER_NAME}${partitionserver_name}-ip" "${REGION}"
           PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]=$(gcloud compute addresses describe "${CLUSTER_NAME}${partitionserver_name}-ip" \
-              --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') 
+              --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
           echo "PARTITIONSERVER${TOTALSERVER_EXTRA_NUM}_RESERVED_IP: ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
           CREATE_CERT_SERVER_IP+=" ${PARTITIONSERVER_RESERVED_IP[$TOTALSERVER_EXTRA_NUM]}"
           create-static-internalip "${CLUSTER_NAME}${partitionserver_name}-internalip" "${REGION}" "${SUBNETWORK}"
@@ -3172,7 +3172,7 @@ function create-partitionserver {
 #config server
 function config-partitionserver() {
   local server_name=""
-  
+
   [[ -n ${1:-} ]] && server_name="${1}"
   echo "Configing partition server and configuring firewalls"
 
@@ -3189,7 +3189,7 @@ function config-partitionserver() {
     --project "${PROJECT}" \
     --zone "${ZONE}" \
     --type "${PARTITIONSERVER_DISK_TYPE}" \
-    --size "${PARTITIONSERVER_DISK_SIZE}"  
+    --size "${PARTITIONSERVER_DISK_SIZE}"
 
   # Create rule for accessing and securing etcd servers.
   echo "creating partitionserver: ${server_name} etcd firewall-rules"
@@ -3215,7 +3215,7 @@ function set-apiserver-datapartition() {
     APISERVER_ISRANGEEND_VALID=true
     APISERVER_RANGESTART=${APISERVER_DATAPARTITION_CONFIG:0:1}
     APISERVER_RANGEEND=${APISERVER_DATAPARTITION_CONFIG:$(( range_interval*service_groupid+range_interval-1 )):1}
-  else 
+  else
     if [[ "${service_groupid}" -eq "${APISERVERS_EXTRA_NUM}" ]]; then
       APISERVER_ISRANGESTART_VALID=true
       APISERVER_ISRANGEEND_VALID=false
@@ -3250,7 +3250,7 @@ function config-apiserver-datapartition {
   if [[ -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml" ]]; then
     sleep 5
     ${KUBE_ROOT}/cluster/kubectl.sh apply -f "${KUBE_ROOT}/partitionserver-config/apidatapartition${service_groupid}.yaml"
-  else 
+  else
     echo "failed to config apiserver datapartition, cannot find required yaml file"
     exit 1
   fi
@@ -3274,7 +3274,7 @@ function config-etcd-datapartition {
   if [[ -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml" ]]; then
     sleep 5
     kubectl apply -f "${KUBE_ROOT}/partitionserver-config/storagecluster${cluster_id}.yaml"
-  else 
+  else
     echo "failed to config etcd data partition, cannot find required yaml file"
   fi
 }
@@ -3291,7 +3291,7 @@ function config-etcd-storagecluster {
         create-etcd-storagecluster-yml $num ${PARTITIONSERVER_RESERVED_INTERNAL_IP[$num]}
         config-etcd-datapartition $num
       fi
-      
+
     done
   fi
 }
@@ -4407,7 +4407,7 @@ function delete-partitionserver() {
   if gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${server_name}-etcd" &>/dev/null; then
     gcloud compute firewall-rules delete "${server_name}-etcd" \
       --quiet \
-      --project "${NETWORK_PROJECT}" 
+      --project "${NETWORK_PROJECT}"
   fi
 
   #echo "deleting partitionserver reserved IP address: ${server_name}-ip"
@@ -4415,7 +4415,7 @@ function delete-partitionserver() {
     gcloud compute addresses delete "${server_name}-ip" \
       --quiet \
       --project "${PROJECT}" \
-      --region "${REGION}" 
+      --region "${REGION}"
   fi
 
   echo "deleting partitionserver reserved internal IP address: ${server_name}-internalip"
@@ -4423,7 +4423,7 @@ function delete-partitionserver() {
     gcloud compute addresses delete "${server_name}-internalip" \
       --quiet \
       --project "${PROJECT}" \
-      --region "${REGION}" 
+      --region "${REGION}"
   fi
 
 }
