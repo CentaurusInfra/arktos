@@ -336,7 +336,7 @@ func (d *tenantedResourcesDeleter) deleteCollection(gvr schema.GroupVersionResou
 	// tenant itself.
 	background := metav1.DeletePropagationBackground
 	opts := &metav1.DeleteOptions{PropagationPolicy: &background}
-	err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).DeleteCollection(opts, metav1.ListOptions{})
+	err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceAll, tenant).DeleteCollection(opts, metav1.ListOptions{})
 
 	if err == nil {
 		return true, nil
@@ -366,7 +366,7 @@ func (d *tenantedResourcesDeleter) listCollection(gvr schema.GroupVersionResourc
 		return nil, false, nil
 	}
 
-	partialList, err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).List(metav1.ListOptions{})
+	partialList, err := d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceAll, tenant).List(metav1.ListOptions{})
 	if err == nil {
 		newItems := []metav1.PartialObjectMetadata{}
 		for _, item := range partialList.Items {
@@ -403,7 +403,7 @@ func (d *tenantedResourcesDeleter) deleteEachItem(gvr schema.GroupVersionResourc
 	for _, item := range partialList.Items {
 		background := metav1.DeletePropagationBackground
 		opts := &metav1.DeleteOptions{PropagationPolicy: &background}
-		if err = d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy("", tenant).Delete(item.GetName(), opts); err != nil && !errors.IsNotFound(err) && !errors.IsMethodNotSupported(err) {
+		if err = d.metadataClient.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceAll, tenant).Delete(item.GetName(), opts); err != nil && !errors.IsNotFound(err) && !errors.IsMethodNotSupported(err) {
 			return err
 		}
 	}
