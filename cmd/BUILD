@@ -33,8 +33,8 @@ filegroup(
         "//cmd/kubelet:all-srcs",
         "//cmd/kubemark:all-srcs",
         "//cmd/linkcheck:all-srcs",
-        "//cmd/workload-controller-manager:all-srcs",
         "//cmd/preferredimports:all-srcs",
+        "//cmd/workload-controller-manager:all-srcs",
     ],
     tags = ["automanaged"],
 )
