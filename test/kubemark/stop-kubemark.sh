@@ -45,7 +45,7 @@ rm -rf "${RESOURCE_DIRECTORY}/addons" \
     "${RESOURCE_DIRECTORY}/hollow-node.yaml"  &> /dev/null || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  export ENABLE_APISERVER_INSECURE_PORT=true
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT=true
   export KUBERNETES_TENANT_PARTITION=true
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
