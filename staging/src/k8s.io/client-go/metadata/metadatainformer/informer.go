@@ -36,6 +36,10 @@ func NewSharedInformerFactory(client metadata.Interface, defaultResync time.Dura
 	return NewFilteredSharedInformerFactory(client, defaultResync, metav1.NamespaceAll, nil)
 }
 
+func NewSharedInformerFactoryWithMultitenancy(client metadata.Interface, tenant string, defaultResync time.Duration) SharedInformerFactory {
+	return NewFilteredSharedInformerFactoryWithMultiTenancy(client, defaultResync, tenant, metav1.NamespaceAll, nil)
+}
+
 // NewFilteredSharedInformerFactory constructs a new instance of metadataSharedInformerFactory.
 // Listers obtained via this factory will be subject to the same filters as specified here.
 func NewFilteredSharedInformerFactory(client metadata.Interface, defaultResync time.Duration, namespace string, tweakListOptions TweakListOptionsFunc) SharedInformerFactory {

@@ -128,7 +128,7 @@ func TestMetadataSharedInformerFactoryWithMultiTenancy(t *testing.T) {
 				objs = append(objs, ts.existingObj)
 			}
 			fakeClient := fake.NewSimpleMetadataClient(scheme, objs...)
-			target := NewSharedInformerFactory(fakeClient, 0)
+			target := NewSharedInformerFactoryWithMultitenancy(fakeClient, ts.tenant, 0)
 
 			// act
 			informerListerForGvr := target.ForResource(ts.gvr)
