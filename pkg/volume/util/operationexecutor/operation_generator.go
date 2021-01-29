@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@ import (
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/features"
 	kevents "k8s.io/kubernetes/pkg/kubelet/events"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/util/mount"
 	"k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/csi"
@@ -52,9 +54,12 @@ const (
 var _ OperationGenerator = &operationGenerator{}
 
 type operationGenerator struct {
-	// Used to fetch objects from the API server like Node in the
+	// Used to fetch objects from the (tenant partition) API server
+	kubeTenantPartitionClients []clientset.Interface
+
+	// Used to fetch objects from the (resource partition) API server like Node in the
 	// VerifyControllerAttachedVolume operation.
-	kubeClient clientset.Interface
+	kubeResourcePartitionClient clientset.Interface
 
 	// volumePluginMgr is the volume plugin manager used to create volume
 	// plugin objects.
@@ -73,14 +78,25 @@ type operationGenerator struct {
 }
 
 // NewOperationGenerator is returns instance of operationGenerator
-func NewOperationGenerator(kubeClient clientset.Interface,
+func NewOperationGenerator(
+	kubeResourcePartitionClient clientset.Interface,
 	volumePluginMgr *volume.VolumePluginMgr,
 	recorder record.EventRecorder,
 	checkNodeCapabilitiesBeforeMount bool,
-	blkUtil volumepathhandler.BlockVolumePathHandler) OperationGenerator {
+	blkUtil volumepathhandler.BlockVolumePathHandler,
+	kubeTenantPartitionClients ...[]clientset.Interface) OperationGenerator {
+
+	// kubeTenantPartitionClients is for the case when NewOperationGenerator is called from kubelet
+	var tenantClients []clientset.Interface
+	if len(kubeTenantPartitionClients) > 0 {
+		tenantClients = kubeTenantPartitionClients[0] // call is from kubelet
+	} else {
+		tenantClients = []clientset.Interface{kubeResourcePartitionClient} // call is from controller
+	}
 
 	return &operationGenerator{
-		kubeClient:                       kubeClient,
+		kubeResourcePartitionClient:      kubeResourcePartitionClient,
+		kubeTenantPartitionClients:       tenantClients,
 		volumePluginMgr:                  volumePluginMgr,
 		recorder:                         recorder,
 		checkNodeCapabilitiesBeforeMount: checkNodeCapabilitiesBeforeMount,
@@ -771,7 +787,8 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 		expandableVolumePlugin.RequiresFSResize() &&
 		volumeToMount.VolumeSpec.PersistentVolume != nil {
 		pv := volumeToMount.VolumeSpec.PersistentVolume
-		pvc, err := og.kubeClient.CoreV1().PersistentVolumeClaims(pv.Spec.ClaimRef.Namespace).Get(pv.Spec.ClaimRef.Name, metav1.GetOptions{})
+		kubeClient := og.getKubeClient(pv.Tenant)
+		pvc, err := kubeClient.CoreV1().PersistentVolumeClaims(pv.Spec.ClaimRef.Namespace).Get(pv.Spec.ClaimRef.Name, metav1.GetOptions{})
 		if err != nil {
 			// Return error rather than leave the file system un-resized, caller will log and retry
 			return false, fmt.Errorf("MountVolume.resizeFileSystem get PVC failed : %v", err)
@@ -806,7 +823,8 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 			og.recorder.Eventf(volumeToMount.Pod, v1.EventTypeNormal, kevents.FileSystemResizeSuccess, simpleMsg)
 			klog.Infof(detailedMsg)
 			// File system resize succeeded, now update the PVC's Capacity to match the PV's
-			err = util.MarkFSResizeFinished(pvc, pvSpecCap, og.kubeClient)
+
+			err = util.MarkFSResizeFinished(pvc, pvSpecCap, kubeClient)
 			if err != nil {
 				// On retry, resizeFileSystem will be called again but do nothing
 				return false, fmt.Errorf("MountVolume.resizeFileSystem update PVC status failed : %v", err)
@@ -815,6 +833,14 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 		}
 	}
 	return true, nil
+}
+
+func (og *operationGenerator) getKubeClient(tenant string) clientset.Interface {
+	if len(og.kubeTenantPartitionClients) == 1 {
+		return og.kubeTenantPartitionClients[0]
+	} else {
+		return kubeclientmanager.ClientManager.GetTPClient(og.kubeTenantPartitionClients, tenant)
+	}
 }
 
 func (og *operationGenerator) GenerateUnmountVolumeFunc(
@@ -1416,7 +1442,7 @@ func (og *operationGenerator) GenerateVerifyControllerAttachedVolumeFunc(
 		}
 
 		// Fetch current node object
-		node, fetchErr := og.kubeClient.CoreV1().Nodes().Get(string(nodeName), metav1.GetOptions{})
+		node, fetchErr := og.kubeResourcePartitionClient.CoreV1().Nodes().Get(string(nodeName), metav1.GetOptions{})
 		if fetchErr != nil {
 			// On failure, return error. Caller will log and retry.
 			return volumeToMount.GenerateError("VerifyControllerAttachedVolume failed fetching node from API server", fetchErr)
@@ -1458,7 +1484,7 @@ func (og *operationGenerator) GenerateVerifyControllerAttachedVolumeFunc(
 func (og *operationGenerator) verifyVolumeIsSafeToDetach(
 	volumeToDetach AttachedVolume) error {
 	// Fetch current node object
-	node, fetchErr := og.kubeClient.CoreV1().Nodes().Get(string(volumeToDetach.NodeName), metav1.GetOptions{})
+	node, fetchErr := og.kubeResourcePartitionClient.CoreV1().Nodes().Get(string(volumeToDetach.NodeName), metav1.GetOptions{})
 	if fetchErr != nil {
 		if errors.IsNotFound(fetchErr) {
 			klog.Warningf(volumeToDetach.GenerateMsgDetailed("Node not found on API server. DetachVolume will skip safe to detach check", ""))
@@ -1524,7 +1550,8 @@ func (og *operationGenerator) GenerateExpandVolumeFunc(
 			// k8s doesn't have transactions, we can't guarantee that after updating PV - updating PVC will be
 			// successful, that is why all PVCs for which pvc.Spec.Size > pvc.Status.Size must be reprocessed
 			// until they reflect user requested size in pvc.Status.Size
-			updateErr := util.UpdatePVSize(pv, newSize, og.kubeClient)
+			kubeClient := og.getKubeClient(pv.Tenant)
+			updateErr := util.UpdatePVSize(pv, newSize, kubeClient)
 			if updateErr != nil {
 				detailedErr := fmt.Errorf("Error updating PV spec capacity for volume %q with : %v", util.GetPersistentVolumeClaimQualifiedName(pvc), updateErr)
 				return detailedErr, detailedErr
@@ -1537,9 +1564,11 @@ func (og *operationGenerator) GenerateExpandVolumeFunc(
 		// No Cloudprovider resize needed, lets mark resizing as done
 		// Rest of the volume expand controller code will assume PVC as *not* resized until pvc.Status.Size
 		// reflects user requested size.
+		kubeClient := og.getKubeClient(pv.Tenant)
 		if !volumePlugin.RequiresFSResize() || !fsVolume {
 			klog.V(4).Infof("Controller resizing done for PVC %s", util.GetPersistentVolumeClaimQualifiedName(pvc))
-			err := util.MarkResizeFinished(pvc, newSize, og.kubeClient)
+
+			err := util.MarkResizeFinished(pvc, newSize, kubeClient)
 			if err != nil {
 				detailedErr := fmt.Errorf("Error marking pvc %s as resized : %v", util.GetPersistentVolumeClaimQualifiedName(pvc), err)
 				return detailedErr, detailedErr
@@ -1547,7 +1576,7 @@ func (og *operationGenerator) GenerateExpandVolumeFunc(
 			successMsg := fmt.Sprintf("ExpandVolume succeeded for volume %s", util.GetPersistentVolumeClaimQualifiedName(pvc))
 			og.recorder.Eventf(pvc, v1.EventTypeNormal, kevents.VolumeResizeSuccess, successMsg)
 		} else {
-			err := util.MarkForFSResize(pvc, og.kubeClient)
+			err := util.MarkForFSResize(pvc, kubeClient)
 			if err != nil {
 				detailedErr := fmt.Errorf("Error updating pvc %s condition for fs resize : %v", util.GetPersistentVolumeClaimQualifiedName(pvc), err)
 				klog.Warning(detailedErr)

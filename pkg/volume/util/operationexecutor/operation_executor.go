@@ -127,7 +127,7 @@ type OperationExecutor interface {
 	UnmountDevice(deviceToDetach AttachedVolume, actualStateOfWorld ActualStateOfWorldMounterUpdater, mounter mount.Interface) error
 
 	// VerifyControllerAttachedVolume checks if the specified volume is present
-	// in the specified nodes AttachedVolumes Status field. It uses kubeClient
+	// in the specified nodes AttachedVolumes Status field. It uses kubeResourcePartitionClient
 	// to fetch the node object.
 	// If the volume is found, the actual state of the world is updated to mark
 	// the volume as attached.

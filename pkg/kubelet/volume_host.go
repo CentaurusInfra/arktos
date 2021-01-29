@@ -69,8 +69,8 @@ func NewInitializedVolumePluginMgr(
 	const resyncPeriod = 0
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
 		// Don't initialize if kubeClient is nil
-		if kubelet.kubeClient != nil {
-			informerFactory = informers.NewSharedInformerFactory(kubelet.kubeClient, resyncPeriod)
+		if kubelet.heartbeatClient!= nil {
+			informerFactory = informers.NewSharedInformerFactory(kubelet.heartbeatClient, resyncPeriod)
 			csiDriverInformer := informerFactory.Storage().V1beta1().CSIDrivers()
 			csiDriverLister = csiDriverInformer.Lister()
 			csiDriversSynced = csiDriverInformer.Informer().HasSynced
@@ -154,7 +154,7 @@ func (kvh *kubeletVolumeHost) GetPodPluginDir(podUID types.UID, pluginName strin
 }
 
 func (kvh *kubeletVolumeHost) GetKubeClient() clientset.Interface {
-	return kvh.kubelet.kubeClient
+	return kvh.kubelet.heartbeatClient
 }
 
 func (kvh *kubeletVolumeHost) GetSubpather() subpath.Interface {

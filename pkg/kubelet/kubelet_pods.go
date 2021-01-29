@@ -55,6 +55,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/envvars"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	"k8s.io/kubernetes/pkg/kubelet/images"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/server/portforward"
 	remotecommandserver "k8s.io/kubernetes/pkg/kubelet/server/remotecommand"
 	"k8s.io/kubernetes/pkg/kubelet/status"
@@ -1969,13 +1970,14 @@ func hasHostNamespace(pod *v1.Pod) bool {
 func (kl *Kubelet) hasHostMountPVC(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			pvc, err := kl.kubeClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
+			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant)
+			pvc, err := tenantPartitionClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
 			if err != nil {
 				klog.Warningf("unable to retrieve pvc %s:%s - %v", pod.Namespace, volume.PersistentVolumeClaim.ClaimName, err)
 				continue
 			}
 			if pvc != nil {
-				referencedVolume, err := kl.kubeClient.CoreV1().PersistentVolumesWithMultiTenancy(pod.Tenant).Get(pvc.Spec.VolumeName, metav1.GetOptions{})
+				referencedVolume, err := tenantPartitionClient.CoreV1().PersistentVolumesWithMultiTenancy(pod.Tenant).Get(pvc.Spec.VolumeName, metav1.GetOptions{})
 				if err != nil {
 					klog.Warningf("unable to retrieve pv %s - %v", pvc.Spec.VolumeName, err)
 					continue
