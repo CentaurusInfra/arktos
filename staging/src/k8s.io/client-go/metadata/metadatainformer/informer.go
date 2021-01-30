@@ -132,7 +132,7 @@ func NewFilteredMetadataInformer(client metadata.Interface, gvr schema.GroupVers
 
 // NewFilteredMetadataInformerWithMultiTenancy constructs a new informer for a metadata type.
 func NewFilteredMetadataInformerWithMultiTenancy(client metadata.Interface, gvr schema.GroupVersionResource,
-   tenant string, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc) informers.GenericInformer {
+	tenant string, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc) informers.GenericInformer {
 	return &metadataInformer{
 		gvr: gvr,
 		informer: cache.NewSharedIndexInformer(
