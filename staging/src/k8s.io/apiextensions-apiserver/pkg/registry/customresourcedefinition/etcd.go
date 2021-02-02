@@ -359,7 +359,7 @@ func IsCrdSystemForced(crd *apiextensions.CustomResourceDefinition) bool {
 
 // Checks whether the unstructured object is a system-forced-sharing CRD
 func IsSystemForcedCrd(item metav1.PartialObjectMetadata) bool {
-	if item.GetObjectKind().GroupVersionKind().Kind != "CustomResourceDefinition" {
+	if item.Name != "networks.arktos.futurewei.com" {
 		return false
 	}
 
