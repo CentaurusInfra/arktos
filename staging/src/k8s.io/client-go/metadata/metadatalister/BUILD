@@ -22,7 +22,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["lister_test.go"],
+    srcs = [
+        "lister_multitenancy_test.go",
+        "lister_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",

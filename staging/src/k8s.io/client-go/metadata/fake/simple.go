@@ -65,7 +65,8 @@ func NewSimpleMetadataClient(scheme *runtime.Scheme, objects ...runtime.Object) 
 	cs.AddWatchReactor("*", func(action testing.Action) (handled bool, ret watch.Interface, err error) {
 		gvr := action.GetResource()
 		ns := action.GetNamespace()
-		watch, err := o.Watch(gvr, ns)
+		tenant := action.GetTenant()
+		watch, err := o.WatchWithMultiTenancy(gvr, ns, tenant)
 		if err != nil {
 			return false, nil, err
 		}
