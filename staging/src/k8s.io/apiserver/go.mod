@@ -54,6 +54,7 @@ require (
 	k8s.io/utils v0.0.0-20200324210504-a9aa75ae1b89
 	sigs.k8s.io/structured-merge-diff v0.0.0-20190302045857-e85c7b244fd2
 	sigs.k8s.io/yaml v1.2.0
+	sigs.k8s.io/structured-merge-diff v0.0.0-20190719182312-e94e05bfbbe3
 )
 
 replace (
