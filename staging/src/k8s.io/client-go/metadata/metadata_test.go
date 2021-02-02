@@ -58,7 +58,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" && req.URL.String() != "/apis/group/v1/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -95,7 +95,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" && req.URL.String() != "/apis/group/v1/namespaces/ns/resource" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.PodList{
@@ -152,7 +152,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" && req.URL.String() != "/apis/group/v1/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -179,7 +179,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" && req.URL.String() != "/apis/group/v1/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -208,7 +208,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" && req.URL.String() != "/apis/group/v1/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
