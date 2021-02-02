@@ -22,7 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/metadata"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
 	"net/http/httptest"
 	"testing"
@@ -50,7 +50,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 	resyncPeriod := 12 * time.Hour
 	informerSet := informers.NewSharedInformerFactory(clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "cronjob-informers")), resyncPeriod)
 
-	dynamicClient, err := dynamic.NewForConfig(configs)
+	metadataClient, err := metadata.NewForConfig(configs)
 	if err != nil {
 		t.Fatalf("Errror creating dynamic client")
 	}
@@ -70,7 +70,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 		resyncPeriod,
 		networkClient,
 		"",
-		dynamicClient,
+		metadataClient,
 		discoverTenantedResourcesFn,
 		v1.FinalizerArktos)
 	return server, closeFn, controller, informerSet, clientSet, *configs

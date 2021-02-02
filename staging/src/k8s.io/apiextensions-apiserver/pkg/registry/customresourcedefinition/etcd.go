@@ -36,7 +36,6 @@ import (
 	"k8s.io/apiserver/pkg/util/dryrun"
 
 	metainternalversion "k8s.io/apimachinery/pkg/apis/meta/internalversion"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 )
 
@@ -359,8 +358,8 @@ func IsCrdSystemForced(crd *apiextensions.CustomResourceDefinition) bool {
 }
 
 // Checks whether the unstructured object is a system-forced-sharing CRD
-func IsSystemForcedCrd(item unstructured.Unstructured) bool {
-	if item.GetObjectKind().GroupVersionKind().Kind != "CustomResourceDefinition" {
+func IsSystemForcedCrd(item metav1.PartialObjectMetadata) bool {
+	if item.Name != "networks.arktos.futurewei.com" {
 		return false
 	}
 
