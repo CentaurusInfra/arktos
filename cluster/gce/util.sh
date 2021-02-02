@@ -2241,7 +2241,7 @@ function create-node-template() {
   fi
 
   local address=""
-  if [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]] && [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
     address="no-address"
   fi
 
