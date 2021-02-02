@@ -197,7 +197,7 @@ func testSyncNamespaceThatIsTerminating(t *testing.T, versions *metav1.APIVersio
 		fn := func() ([]*metav1.APIResourceList, error) {
 			return resources, nil
 		}
-		d := NewNamespacedResourcesDeleter(mockClient.CoreV1().Namespaces(), metadataClient, mockClient.CoreV1(), fn, v1.FinalizerKubernetes, true)
+		d := NewNamespacedResourcesDeleter(mockClient.CoreV1(), metadataClient, mockClient.CoreV1(), fn, v1.FinalizerKubernetes, true)
 		if err := d.Delete(testInput.testNamespace.Name, testInput.testNamespace.Tenant); err != nil {
 			t.Errorf("scenario %s - Unexpected error when synching namespace %v", scenario, err)
 		}

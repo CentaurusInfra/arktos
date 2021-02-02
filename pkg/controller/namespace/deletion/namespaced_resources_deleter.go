@@ -48,9 +48,9 @@ func NewNamespacedResourcesDeleter(nsGetter v1clientset.NamespacesGetter,
 	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
 	finalizerToken v1.FinalizerName, deleteNamespaceWhenDone bool) NamespacedResourcesDeleterInterface {
 	d := &namespacedResourcesDeleter{
-		nsGetter:      nsGetter,
+		nsGetter:       nsGetter,
 		metadataClient: metadataClient,
-		podsGetter:    podsGetter,
+		podsGetter:     podsGetter,
 		opCache: &operationNotSupportedCache{
 			m: make(map[operationKey]bool),
 		},

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -116,6 +117,12 @@ func (f *metadataSharedInformerFactory) WaitForCacheSync(stopCh <-chan struct{})
 
 // NewFilteredMetadataInformer constructs a new informer for a metadata type.
 func NewFilteredMetadataInformer(client metadata.Interface, gvr schema.GroupVersionResource, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc) informers.GenericInformer {
+	return NewFilteredMetadataInformerWithMultiTenancy(client, gvr, namespace, resyncPeriod, indexers, tweakListOptions, metav1.TenantSystem)
+}
+
+// NewFilteredMetadataInformerWithMultiTenancy constructs a new informer for a metadata type.
+func NewFilteredMetadataInformerWithMultiTenancy(client metadata.Interface, gvr schema.GroupVersionResource,
+	namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions TweakListOptionsFunc, tenant string) informers.GenericInformer {
 	return &metadataInformer{
 		gvr: gvr,
 		informer: cache.NewSharedIndexInformer(
@@ -124,13 +131,13 @@ func NewFilteredMetadataInformer(client metadata.Interface, gvr schema.GroupVers
 					if tweakListOptions != nil {
 						tweakListOptions(&options)
 					}
-					return client.Resource(gvr).Namespace(namespace).List(options)
+					return client.Resource(gvr).NamespaceWithMultiTenancy(namespace, tenant).List(options)
 				},
 				WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 					if tweakListOptions != nil {
 						tweakListOptions(&options)
 					}
-					return client.Resource(gvr).Namespace(namespace).Watch(options)
+					return client.Resource(gvr).NamespaceWithMultiTenancy(namespace, tenant).Watch(options)
 				},
 			},
 			&metav1.PartialObjectMetadata{},

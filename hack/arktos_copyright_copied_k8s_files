@@ -54,9 +54,11 @@ staging/src/k8s.io/apiserver/pkg/storage/etcd3/testing/utils.go
 staging/src/k8s.io/apiserver/pkg/storage/value/encrypt/envelope/grpc_service.go
 staging/src/k8s.io/cli-runtime/pkg/resource/scheme.go
 staging/src/k8s.io/client-go/dynamic/scheme.go
+staging/src/k8s.io/client-go/metadata/metadatainformer/interface.go
 staging/src/k8s.io/client-go/rest/client.go
 staging/src/k8s.io/client-go/rest/fake/fake.go
 staging/src/k8s.io/client-go/rest/request_test.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle_test.go
 test/e2e/node/node_problem_detector.go
+test/integration/garbagecollector/garbage_collector_test.go

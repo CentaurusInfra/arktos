@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -84,6 +85,7 @@ type FakeMetadataClient struct {
 
 type metadataResourceClient struct {
 	client    *FakeMetadataClient
+	tenant    string
 	namespace string
 	resource  schema.GroupVersionResource
 }
@@ -98,8 +100,19 @@ func (c *FakeMetadataClient) Resource(resource schema.GroupVersionResource) meta
 // Namespace returns an interface for accessing the current resource in the specified
 // namespace.
 func (c *metadataResourceClient) Namespace(ns string) metadata.ResourceInterface {
+	return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
+}
+
+func (c *metadataResourceClient) NamespaceWithMultiTenancy(ns string, tenant string) metadata.ResourceInterface {
 	ret := *c
+	ret.tenant = tenant
 	ret.namespace = ns
+	return &ret
+}
+
+func (c *metadataResourceClient) Tenant(te string) metadata.ResourceInterface {
+	ret := *c
+	ret.tenant = te
 	return &ret
 }
 
@@ -108,11 +121,11 @@ func (c *metadataResourceClient) CreateFake(obj *metav1.PartialObjectMetadata, o
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootCreateAction(c.resource, obj), obj)
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		accessor, err := meta.Accessor(obj)
 		if err != nil {
 			return nil, err
@@ -121,19 +134,34 @@ func (c *metadataResourceClient) CreateFake(obj *metav1.PartialObjectMetadata, o
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), obj), obj)
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewCreateAction(c.resource, c.namespace, obj), obj)
+			Invokes(testing.NewTenantCreateAction(c.resource, obj, c.tenant), obj)
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		accessor, err := meta.Accessor(obj)
 		if err != nil {
 			return nil, err
 		}
 		name := accessor.GetName()
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), c.namespace, obj), obj)
+			Invokes(testing.NewTenantCreateSubresourceAction(c.resource, name, strings.Join(subresources, "/"), obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewCreateActionWithMultiTenancy(c.resource, c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		accessor, err := meta.Accessor(obj)
+		if err != nil {
+			return nil, err
+		}
+		name := accessor.GetName()
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewCreateSubresourceActionWithMultiTenancy(c.resource, name, strings.Join(subresources, "/"), c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -154,22 +182,32 @@ func (c *metadataResourceClient) UpdateFake(obj *metav1.PartialObjectMetadata, o
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateAction(c.resource, obj), obj)
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), obj), obj)
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateAction(c.resource, c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateAction(c.resource, obj, c.tenant), obj)
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateSubresourceAction(c.resource, strings.Join(subresources, "/"), obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateActionWithMultiTenancy(c.resource, c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(c.resource, strings.Join(subresources, "/"), c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -190,14 +228,20 @@ func (c *metadataResourceClient) UpdateStatus(obj *metav1.PartialObjectMetadata,
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootUpdateSubresourceAction(c.resource, "status", obj), obj)
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewUpdateSubresourceAction(c.resource, "status", c.namespace, obj), obj)
+			Invokes(testing.NewTenantUpdateSubresourceAction(c.resource, "status", obj, c.tenant), obj)
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewUpdateSubresourceActionWithMultiTenancy(c.resource, "status", c.namespace, obj, c.tenant), obj)
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -217,21 +261,32 @@ func (c *metadataResourceClient) UpdateStatus(obj *metav1.PartialObjectMetadata,
 func (c *metadataResourceClient) Delete(name string, opts *metav1.DeleteOptions, subresources ...string) error {
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		_, err = c.client.Fake.
 			Invokes(testing.NewRootDeleteAction(c.resource, name), &metav1.Status{Status: "metadata delete fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		_, err = c.client.Fake.
 			Invokes(testing.NewRootDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), name), &metav1.Status{Status: "metadata delete fail"})
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		_, err = c.client.Fake.
-			Invokes(testing.NewDeleteAction(c.resource, c.namespace, name), &metav1.Status{Status: "metadata delete fail"})
+			Invokes(testing.NewRootDeleteSubresourceAction(c.resource, name, c.tenant), &metav1.Status{Status: "metadata delete fail"})
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		_, err = c.client.Fake.
-			Invokes(testing.NewDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), c.namespace, name), &metav1.Status{Status: "metadata delete fail"})
+			Invokes(testing.NewTenantDeleteSubresourceAction(c.resource, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "metadata delete fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		_, err = c.client.Fake.
+			Invokes(testing.NewDeleteActionWithMultiTenancy(c.resource, c.namespace, name, c.tenant), &metav1.Status{Status: "metadata delete fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		_, err = c.client.Fake.
+			Invokes(testing.NewDeleteSubresourceActionWithMultiTenancy(c.resource, strings.Join(subresources, "/"), c.namespace, name, c.tenant), &metav1.Status{Status: "metadata delete fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	return err
@@ -241,14 +296,20 @@ func (c *metadataResourceClient) Delete(name string, opts *metav1.DeleteOptions,
 func (c *metadataResourceClient) DeleteCollection(opts *metav1.DeleteOptions, listOptions metav1.ListOptions) error {
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		action := testing.NewRootDeleteCollectionAction(c.resource, listOptions)
 		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "metadata deletecollection fail"})
 
-	case len(c.namespace) > 0:
-		action := testing.NewDeleteCollectionAction(c.resource, c.namespace, listOptions)
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
+		action := testing.NewTenantDeleteCollectionAction(c.resource, listOptions, c.tenant)
 		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "metadata deletecollection fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		action := testing.NewDeleteCollectionActionWithMultiTenancy(c.resource, c.namespace, listOptions, c.tenant)
+		_, err = c.client.Fake.Invokes(action, &metav1.Status{Status: "metadata deletecollection fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	return err
@@ -259,21 +320,32 @@ func (c *metadataResourceClient) Get(name string, opts metav1.GetOptions, subres
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootGetAction(c.resource, name), &metav1.Status{Status: "metadata get fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootGetSubresourceAction(c.resource, strings.Join(subresources, "/"), name), &metav1.Status{Status: "metadata get fail"})
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewGetAction(c.resource, c.namespace, name), &metav1.Status{Status: "metadata get fail"})
+			Invokes(testing.NewTenantGetAction(c.resource, name, c.tenant), &metav1.Status{Status: "metadata get fail"})
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewGetSubresourceAction(c.resource, c.namespace, strings.Join(subresources, "/"), name), &metav1.Status{Status: "metadata get fail"})
+			Invokes(testing.NewTenantGetSubresourceAction(c.resource, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "metadata get fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewGetActionWithMultiTenancy(c.resource, c.namespace, name, c.tenant), &metav1.Status{Status: "metadata get fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewGetSubresourceActionWithMultiTenancy(c.resource, c.namespace, strings.Join(subresources, "/"), name, c.tenant), &metav1.Status{Status: "metadata get fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
@@ -294,14 +366,20 @@ func (c *metadataResourceClient) List(opts metav1.ListOptions) (*metav1.PartialO
 	var obj runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		obj, err = c.client.Fake.
 			Invokes(testing.NewRootListAction(c.resource, schema.GroupVersionKind{Group: "fake-metadata-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, opts), &metav1.Status{Status: "metadata list fail"})
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		obj, err = c.client.Fake.
-			Invokes(testing.NewListAction(c.resource, schema.GroupVersionKind{Group: "fake-metadata-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, c.namespace, opts), &metav1.Status{Status: "metadata list fail"})
+			Invokes(testing.NewTenantListAction(c.resource, schema.GroupVersionKind{Group: "fake-metadata-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, opts, c.tenant), &metav1.Status{Status: "metadata list fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		obj, err = c.client.Fake.
+			Invokes(testing.NewListActionWithMultiTenancy(c.resource, schema.GroupVersionKind{Group: "fake-metadata-client-group", Version: "v1", Kind: "" /*List is appended by the tracker automatically*/}, c.namespace, opts, c.tenant), &metav1.Status{Status: "metadata list fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if obj == nil {
@@ -340,14 +418,20 @@ func (c *metadataResourceClient) List(opts metav1.ListOptions) (*metav1.PartialO
 
 func (c *metadataResourceClient) Watch(opts metav1.ListOptions) (watch.Interface, error) {
 	switch {
-	case len(c.namespace) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0:
 		return c.client.Fake.
 			InvokesWatch(testing.NewRootWatchAction(c.resource, opts))
 
-	case len(c.namespace) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0:
 		return c.client.Fake.
-			InvokesWatch(testing.NewWatchAction(c.resource, c.namespace, opts))
+			InvokesWatch(testing.NewTenantWatchAction(c.resource, opts, c.tenant))
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0:
+		return c.client.Fake.
+			InvokesWatch(testing.NewWatchActionWithMultiTenancy(c.resource, c.namespace, opts, c.tenant))
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	panic("math broke")
@@ -358,22 +442,32 @@ func (c *metadataResourceClient) Patch(name string, pt types.PatchType, data []b
 	var uncastRet runtime.Object
 	var err error
 	switch {
-	case len(c.namespace) == 0 && len(subresources) == 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootPatchAction(c.resource, name, pt, data), &metav1.Status{Status: "metadata patch fail"})
 
-	case len(c.namespace) == 0 && len(subresources) > 0:
+	case len(c.tenant) == 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
 			Invokes(testing.NewRootPatchSubresourceAction(c.resource, name, pt, data, subresources...), &metav1.Status{Status: "metadata patch fail"})
 
-	case len(c.namespace) > 0 && len(subresources) == 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) == 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewPatchAction(c.resource, c.namespace, name, pt, data), &metav1.Status{Status: "metadata patch fail"})
+			Invokes(testing.NewTenantPatchAction(c.resource, name, pt, data, c.tenant), &metav1.Status{Status: "metadata patch fail"})
 
-	case len(c.namespace) > 0 && len(subresources) > 0:
+	case len(c.tenant) > 0 && len(c.namespace) == 0 && len(subresources) > 0:
 		uncastRet, err = c.client.Fake.
-			Invokes(testing.NewPatchSubresourceAction(c.resource, c.namespace, name, pt, data, subresources...), &metav1.Status{Status: "metadata patch fail"})
+			Invokes(testing.NewTenantPatchSubresourceAction(c.resource, c.tenant, name, pt, data, subresources...), &metav1.Status{Status: "metadata patch fail"})
 
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) == 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewPatchActionWithMultiTenancy(c.resource, c.namespace, name, pt, data, c.tenant), &metav1.Status{Status: "metadata patch fail"})
+
+	case len(c.tenant) > 0 && len(c.namespace) > 0 && len(subresources) > 0:
+		uncastRet, err = c.client.Fake.
+			Invokes(testing.NewPatchSubresourceActionWithMultiTenancy(c.resource, c.tenant, c.namespace, name, pt, data, subresources...), &metav1.Status{Status: "metadata patch fail"})
+
+	case len(c.tenant) == 0 && len(c.namespace) > 0:
+		return nil, fmt.Errorf("namespace is not-empty but tenant is empty")
 	}
 
 	if err != nil {
