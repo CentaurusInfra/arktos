@@ -1698,6 +1698,7 @@ function create-certs {
       sans="${sans}IP:${extra},"
     fi
   done
+
   sans="${sans}IP:${service_ip},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.${DNS_DOMAIN},DNS:${MASTER_NAME}"
 
   echo "Generating certs for alternate-names: ${sans}"
@@ -1737,6 +1738,10 @@ function create-certs {
 #   CERT_DIR
 #   AGGREGATOR_CERT_DIR
 function setup-easyrsa {
+  if [ -n "${CERT_DIR+x}" ]; then
+    echo "CERT_DIR is already set to ${CERT_DIR}"
+    return 0
+  fi
   local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
   # Note: This was heavily cribbed from make-ca-cert.sh
   (set -x
@@ -1745,6 +1750,8 @@ function setup-easyrsa {
     tar xzf easy-rsa.tar.gz
     mkdir easy-rsa-master/kubelet
     cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/kubelet
+    mkdir easy-rsa-master/proxy
+    cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/proxy
     mkdir easy-rsa-master/aggregator
     cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/aggregator) &>${cert_create_debug_output} || true
   CERT_DIR="${KUBE_TEMP}/easy-rsa-master/easyrsa3"
@@ -1754,6 +1761,91 @@ function setup-easyrsa {
     # see https://github.com/kubernetes/kubernetes/issues/55229
     cat "${cert_create_debug_output}" >&2
     echo "=== Failed to setup easy-rsa: Aborting ===" >&2
+    exit 2
+  fi
+}
+
+# Create certificate pairs for the cluster.
+# $1: The public IP for the proxy.
+#
+# The following certificate pairs are created:
+#  - ca (the cluster's certificate authority)
+#  - proxy server
+#  - kubecfg (for kubectl)
+#
+# Assumed vars
+#   CERT_DIR
+#   PROXY_NAME
+#
+# Vars set:
+#   PROXY_CA_CERT_BASE64
+#   PROXY_CA_KEY_BASE64
+#   PROXY_CERT_BASE64
+#   PROXY_KEY_BASE64
+#   PROXY_KUBECFG_CERT_BASE64
+#   PROXY_KUBECFG_KEY_BASE64
+function create-proxy-certs {
+  local -r primary_cn="${1}"
+
+  # Determine extra certificate names for master
+  local octets=($(echo "${SERVICE_CLUSTER_IP_RANGE}" | sed -e 's|/.*||' -e 's/\./ /g'))
+  ((octets[3]+=1))
+  local -r service_ip=$(echo "${octets[*]}" | sed 's/ /./g')
+  local sans=""
+  for extra in $@; do
+    if [[ -n "${extra}" ]]; then
+      sans="${sans}IP:${extra},"
+    fi
+  done
+  sans="${sans}IP:${service_ip},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.${DNS_DOMAIN},DNS:${PROXY_NAME}"
+
+  echo "Generating proxy certs primary_cn: ${primary_cn}, proxy_name: ${PROXY_NAME}, alternate-names: ${sans}"
+
+  setup-easyrsa
+  PRIMARY_CN="${primary_cn}" SANS="${sans}" generate-proxy-certs
+
+  # By default, linux wraps base64 output every 76 cols, so we use 'tr -d' to remove whitespaces.
+  # Note 'base64 -w0' doesn't work on Mac OS X, which has different flags.
+  PROXY_CA_CERT_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/ca.crt" | base64 | tr -d '\r\n')
+  PROXY_CA_KEY_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/ca.key" | base64 | tr -d '\r\n')
+  PROXY_CERT_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/${PROXY_NAME}.crt" | base64 | tr -d '\r\n')
+  PROXY_KEY_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/${PROXY_NAME}.key" | base64 | tr -d '\r\n')
+  PROXY_KUBECFG_CERT_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt" | base64 | tr -d '\r\n')
+  PROXY_KUBECFG_KEY_BASE64=$(cat "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key" | base64 | tr -d '\r\n')
+}
+
+function generate-proxy-certs {
+  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/proxy_cert_create_debug_output.XXX")
+  (set -x
+    cd "${KUBE_TEMP}/easy-rsa-master/proxy"
+    ./easyrsa init-pki
+    # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
+    ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
+    ./easyrsa --subject-alt-name="${SANS}" build-server-full "${PROXY_NAME}" nopass
+
+    # Make a superuser client cert with subject "O=tenant:system, OU=system:masters, CN=kubecfg"
+    ./easyrsa --dn-mode=org \
+      --req-cn=kubecfg --req-org=tenant:system \
+      --req-c= --req-st= --req-city= --req-email= --req-ou=system:masters \
+      build-client-full kubecfg nopass) &>${cert_create_debug_output} || true
+  local output_file_missing=0
+  local output_file
+  for output_file in \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/ca.key" \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/ca.crt" \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/${PROXY_NAME}.crt" \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/${PROXY_NAME}.key" \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt" \
+    "${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key"
+  do
+    if [[ ! -s "${output_file}" ]]; then
+      echo "Expected file ${output_file} not created" >&2
+      output_file_missing=1
+    fi
+  done
+  if (( $output_file_missing )); then
+    cat "${cert_create_debug_output}" >&2
+    echo "=== Failed to generate master certificates: Aborting ===" >&2
     exit 2
   fi
 }
@@ -2371,12 +2463,6 @@ function kube-up() {
     check-cluster
 
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-      if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
-        echo "Local_kubeconfig_tmp not set"
-      else
-        cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-        echo "DBG:" grep -i "server:" ${LOCAL_KUBECONFIG_TMP}
-      fi
       if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
         echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
         echo "-----------------------------"
@@ -2765,6 +2851,10 @@ function create-proxy-vm() {
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
   PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+
+  echo "PROXY_NAME: ${PROXY_NAME} PROXY_RESERVED_IP: ${PROXY_RESERVED_IP}, PROXY_RESERVED_INTERNAL_IP: ${PROXY_RESERVED_INTERNAL_IP}"
+  create-proxy-certs "${PROXY_RESERVED_IP}" "${PROXY_RESERVED_INTERNAL_IP}"
+
   local enable_ip_aliases
   if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
     enable_ip_aliases=true
@@ -2791,6 +2881,7 @@ function create-proxy-vm() {
       echo "${result}" >&2
       export PROXY_RESERVED_IP
       export PROXY_RESERVED_INTERNAL_IP
+
       return 0
     else
       echo "${result}" >&2
@@ -2856,6 +2947,15 @@ function setup-proxy() {
 
   patch-haproxy-prometheus
   direct-haproxy-logging
+
+  pushd ${KUBE_TEMP}/easy-rsa-master/proxy
+  cat pki/issued/${PROXY_NAME}.crt > pki/kubemark-client-proxy.pem
+  cat pki/private/${PROXY_NAME}.key >> pki/kubemark-client-proxy.pem
+  tar -cpvzf scaleout-proxy-certs.tar.gz pki
+  popd
+  gcloud compute scp --zone="${ZONE}" "${KUBE_TEMP}/easy-rsa-master/proxy/scaleout-proxy-certs.tar.gz" "${PROXY_NAME}:~/"
+  ssh-to-node ${PROXY_NAME} "sudo tar -xpf ~/scaleout-proxy-certs.tar.gz -C /etc/haproxy/"
+  ssh-to-node ${PROXY_NAME} "sudo chmod +rx /etc/haproxy/pki"
 
   ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
@@ -2998,7 +3098,7 @@ function create-master() {
   CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
   ###set partition server name, ip
   set-partitionserver true
-  echo "CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
+  echo "MASTER_RESERVED_IP: ${MASTER_RESERVED_IP}, CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
@@ -3760,9 +3860,23 @@ function check-cluster() {
    # Update the user's kubeconfig to include credentials for this apiserver.
    create-kubeconfig
   )
-
   # ensures KUBECONFIG is set
   get-kubeconfig-basicauth
+
+  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
+    export KUBE_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt"
+    export KUBE_KEY="${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key"
+    export CA_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/ca.crt"
+    export CONTEXT="${PROJECT}_${SCALEOUT_PROXY_NAME}"
+    (
+     umask 077
+
+     # Update the user's kubeconfig to include credentials for this apiserver.
+     KUBERNETES_SCALEOUT_PROXY_KUBECFG=true KUBECONFIG=${PROXY_KUBECONFIG} create-kubeconfig
+    )
+    # ensures KUBECONFIG is set
+    get-kubeconfig-basicauth
+  fi
 
   if [[ ${GCE_UPLOAD_KUBCONFIG_TO_MASTER_METADATA:-} == "true" ]]; then
     gcloud compute instances add-metadata "${MASTER_NAME}" --zone="${ZONE}"  --metadata-from-file="kubeconfig=${KUBECONFIG}" || true

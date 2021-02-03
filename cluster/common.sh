@@ -92,21 +92,16 @@ function create-kubeconfig() {
   )
 
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      if [[ "${PROXY_RESERVED_IP}" == "" ]]; then
-        echo "Fatal Error: proxy IP is empty!"
-        exit 1
-      fi
+    if [[ "${KUBERNETES_SCALEOUT_PROXY_KUBECFG:-false}" == "true" ]]; then
       cluster_args=(
-          "--server=${KUBE_SERVER:-http://${PROXY_RESERVED_IP}}:8888"
+          "--server=${KUBE_SERVER:-https://${PROXY_RESERVED_IP}}:443"
        )
-    fi
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    elif [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
       cluster_args=(
           "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
        )
     fi
-  fi    
+  fi
 
   if [[ -z "${CA_CERT:-}" ]]; then
     cluster_args+=("--insecure-skip-tls-verify=true")

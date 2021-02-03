@@ -63,6 +63,7 @@ KUBEMARK_ONLY:    stats refresh 10s
 
 frontend scale-out-proxy
     bind *:{{ proxy_port }} alpn h2,http/1.1
+    bind *:443 ssl crt /etc/haproxy/pki/kubemark-client-proxy.pem
 
     {{ tp_request_acl }}    
     {{ rp_request_acl }}
