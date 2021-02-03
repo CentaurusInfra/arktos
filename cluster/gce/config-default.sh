@@ -182,11 +182,19 @@ ENABLE_CLUSTER_MONITORING="${KUBE_ENABLE_CLUSTER_MONITORING:-standalone}"
 # Optional: Enable deploying separate prometheus stack for monitoring kubernetes cluster
 ENABLE_PROMETHEUS_MONITORING="${KUBE_ENABLE_PROMETHEUS_MONITORING:-false}"
 
+# Optional: Enable manully deployed prometheus server for debug purpose
+ENABLE_PROMETHEUS_DEBUG="${KUBE_ENABLE_PROMETHEUS_DEBUG:-false}"
+
+# Optional: Enable manully collect pprof data for debug purpose
+ENABLE_PPROF_DEBUG="${KUBE_ENABLE_PPROF_DEBUG:-false}"
+
 # Optional: Enable Metrics Server. Metrics Server should be enable everywhere,
 # since it's a critical component, but in the first release we need a way to disable
 # this in case of stability issues.
 # TODO(piosz) remove this option once Metrics Server became a stable thing.
 ENABLE_METRICS_SERVER="${KUBE_ENABLE_METRICS_SERVER:-true}"
+
+ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
 
 # Optional: Metadata agent to setup as part of the cluster bring up:
 #   none        - No metadata agent
@@ -533,10 +541,3 @@ PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 KUBERNETES_RESOURCE_PARTITION="${KUBERNETES_RESOURCE_PARTITION:-false}"
 # true if this is a tenant partition cluster
 KUBERNETES_TENANT_PARTITION="${KUBERNETES_TENANT_PARTITION:-false}"
-
-if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == true ]]; then
-  ENABLE_APISERVER_INSECURE_PORT=${ENABLE_APISERVER_INSECURE_PORT:-false}
-fi
-if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == true ]]; then
-  ENABLE_APISERVER_INSECURE_PORT=${ENABLE_APISERVER_INSECURE_PORT:-false}
-fi

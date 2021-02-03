@@ -68,7 +68,7 @@ func (vmc *VMPodController) updatePod(old, cur interface{}) {
 
 	oldStatus := newPod.Status.DeepCopy()
 	newPod.Status.Phase = v1.PodPending
-	_, patchBytes, err := statusutil.PatchPodStatus(vmc.kubeClient, newPod.Tenant, newPod.Namespace, newPod.Name, *oldStatus, newPod.Status)
+	_, patchBytes, _, err := statusutil.PatchPodStatus(vmc.kubeClient, newPod.Tenant, newPod.Namespace, newPod.Name, newPod.UID, *oldStatus, newPod.Status)
 	klog.V(3).Infof("Patch status for pod %q with %q", newPod.Name, patchBytes)
 	if err != nil {
 		klog.Warningf("Failed to update status for pod %q: %v", newPod.Name, err)

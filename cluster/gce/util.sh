@@ -1215,6 +1215,8 @@ KUBERNETES_MASTER_INTERNAL_IP: $(yaml-quote ${KUBERNETES_MASTER_INTERNAL_IP})
 ALLOCATE_NODE_CIDRS: $(yaml-quote ${ALLOCATE_NODE_CIDRS:-false})
 ENABLE_CLUSTER_MONITORING: $(yaml-quote ${ENABLE_CLUSTER_MONITORING:-none})
 ENABLE_PROMETHEUS_MONITORING: $(yaml-quote ${ENABLE_PROMETHEUS_MONITORING:-false})
+ENABLE_PROMETHEUS_DEBUG: $(yaml-quote ${ENABLE_PROMETHEUS_DEBUG:-false})
+ENABLE_PPROF_DEBUG: $(yaml-quote ${ENABLE_PPROF_DEBUG:-false})
 ENABLE_METRICS_SERVER: $(yaml-quote ${ENABLE_METRICS_SERVER:-false})
 ENABLE_METADATA_AGENT: $(yaml-quote ${ENABLE_METADATA_AGENT:-none})
 METADATA_AGENT_CPU_REQUEST: $(yaml-quote ${METADATA_AGENT_CPU_REQUEST:-})
@@ -2239,7 +2241,7 @@ function create-node-template() {
   fi
 
   local address=""
-  if [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]] && [[ ${GCE_PRIVATE_CLUSTER:-} == "true" ]]; then
     address="no-address"
   fi
 
@@ -2810,7 +2812,7 @@ function update-proxy() {
   local -r TP_IP=$1
   local -r RP_IP=$2
 
-  local -r proxy_template=${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/haproxy.cfg.template
+  local -r proxy_template=${KUBE_ROOT}/cmd/haproxy-cfg-generator/data/haproxy.cfg.template
 
   TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
 
@@ -2838,7 +2840,7 @@ function load-proxy-cfg {
 
 function build_haproxy_cfg_generator() {
   export GO111MODULE=on
-  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/hack/scale_out_poc/config_haproxy/cfg_generator/"
+  go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/cmd/haproxy-cfg-generator/"
 }
 
 function setup-proxy() {
@@ -2915,7 +2917,7 @@ function create-master() {
     --network "${NETWORK}" \
     --allow tcp:443 &
 
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
     gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \

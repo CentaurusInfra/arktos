@@ -448,15 +448,15 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	if kubeDeps.KubeClient != nil {
-		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeClient.CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
+	if hasValidTPClients(kubeDeps.KubeTPClients) {
+		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[0].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
 		r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
 	serviceLister := corelisters.NewServiceLister(serviceIndexer)
 
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
-	if kubeDeps.KubeClient != nil {
+	if kubeDeps.HeartbeatClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
 		nodeLW := cache.NewListWatchFromClient(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
@@ -609,7 +609,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		}
 	}
 	// podManager is also responsible for keeping secretManager and configMapManager contents up-to-date.
-	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeClient), secretManager, configMapManager, checkpointManager)
+	klet.podManager = kubepod.NewBasicPodManager(kubepod.NewBasicMirrorClient(klet.kubeTPClients[0]), secretManager, configMapManager, checkpointManager)
 
 	klet.statusManager = status.NewManager(klet.kubeTPClients, klet.podManager, klet)
 
@@ -675,8 +675,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		return nil, fmt.Errorf("unsupported CRI runtime: %q", containerRuntime)
 	}
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && kubeDeps.KubeClient != nil {
-		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeClient)
+	if utilfeature.DefaultFeatureGate.Enabled(features.RuntimeClass) && hasValidTPClients(kubeDeps.KubeTPClients) {
+		klet.runtimeClassManager = runtimeclass.NewManager(kubeDeps.KubeTPClients[0])
 	}
 
 	runtimeRegistry, err := runtimeregistry.NewKubeRuntimeRegistry(remoteRuntimeEndpoint)
@@ -783,7 +783,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	if kubeCfg.ServerTLSBootstrap && kubeDeps.TLSOptions != nil && utilfeature.DefaultFeatureGate.Enabled(features.RotateKubeletServerCertificate) {
-		klet.serverCertificateManager, err = kubeletcertificate.NewKubeletServerCertificateManager(klet.kubeClient, kubeCfg, klet.nodeName, klet.getLastObservedNodeAddresses, certDirectory)
+		klet.serverCertificateManager, err = kubeletcertificate.NewKubeletServerCertificateManager(klet.kubeTPClients[0], kubeCfg, klet.nodeName, klet.getLastObservedNodeAddresses, certDirectory)
 		if err != nil {
 			return nil, fmt.Errorf("failed to initialize certificate manager: %v", err)
 		}
@@ -803,7 +803,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		containerRefManager,
 		kubeDeps.Recorder)
 
-	tokenManager := token.NewManager(kubeDeps.KubeClient)
+	tokenManager := token.NewManager(kubeDeps.KubeTPClients[0])
 
 	// NewInitializedVolumePluginMgr intializes some storageErrors on the Kubelet runtimeState (in csi_plugin.go init)
 	// which affects node ready status. This function must be called before Kubelet is initialized so that the Node
@@ -1421,7 +1421,7 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	if kl.logServer == nil {
 		kl.logServer = http.StripPrefix("/logs/", http.FileServer(http.Dir("/var/log/")))
 	}
-	if kl.kubeClient == nil {
+	if !hasValidTPClients(kl.kubeTPClients) {
 		klog.Warning("No api server defined - no node status update will be sent.")
 	}
 
@@ -1438,7 +1438,7 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	// Start volume manager
 	go kl.volumeManager.Run(kl.sourcesReady, wait.NeverStop)
 
-	if kl.kubeClient != nil {
+	if kl.heartbeatClient != nil {
 		// Start syncing node status immediately, this may set up things the runtime needs to run.
 		go wait.Until(kl.syncNodeStatus, kl.nodeStatusUpdateFrequency, wait.NeverStop)
 		go kl.fastStatusUpdateOnce()
@@ -1471,6 +1471,10 @@ func (kl *Kubelet) Run(updates <-chan kubetypes.PodUpdate) {
 	// Start the pod lifecycle event generator.
 	kl.pleg.Start()
 	kl.syncLoop(updates, kl)
+}
+
+func hasValidTPClients(kubeTPClients []clientset.Interface) bool {
+	return kubeTPClients != nil && len(kubeTPClients) > 0
 }
 
 // syncPod is the transaction script for the sync of a single pod.
@@ -2121,18 +2125,22 @@ func (kl *Kubelet) syncLoopIteration(configCh <-chan kubetypes.PodUpdate, handle
 }
 
 // dispatchWork starts the asynchronous sync of the pod in a pod worker.
-// If the pod is terminated, dispatchWork
+// If the pod has completed termination, dispatchWork will perform no action.
 func (kl *Kubelet) dispatchWork(pod *v1.Pod, syncType kubetypes.SyncPodType, mirrorPod *v1.Pod, start time.Time) {
-	if kl.podIsTerminated(pod) {
-		if pod.DeletionTimestamp != nil {
-			// If the pod is in a terminated state, there is no pod worker to
-			// handle the work item. Check if the DeletionTimestamp has been
-			// set, and force a status update to trigger a pod deletion request
-			// to the apiserver.
-			kl.statusManager.TerminatePod(pod)
-		}
+	// check whether we are ready to delete the pod from the API server (all status up to date)
+	containersTerminal, podWorkerTerminal := kl.podAndContainersAreTerminal(pod)
+	if pod.DeletionTimestamp != nil && containersTerminal {
+		klog.V(4).Infof("Pod %q has completed execution and should be deleted from the API server: %s", format.Pod(pod), syncType)
+		kl.statusManager.TerminatePod(pod)
 		return
 	}
+
+	// optimization: avoid invoking the pod worker if no further changes are possible to the pod definition
+	if podWorkerTerminal {
+		klog.V(4).Infof("Pod %q has completed, ignoring remaining sync work: %s", format.Pod(pod), syncType)
+		return
+	}
+
 	// Run the sync in an async worker.
 	kl.podWorkers.UpdatePod(&UpdatePodOptions{
 		Pod:        pod,

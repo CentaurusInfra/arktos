@@ -18,19 +18,22 @@ limitations under the License.
 package pod
 
 import (
+	"fmt"
 	"testing"
 
-	"fmt"
-	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/kubernetes/fake"
 	"reflect"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/fake"
 )
 
 func TestPatchPodStatus(t *testing.T) {
 	tenant := "te"
 	ns := "ns"
 	name := "name"
+	uid := types.UID("myuid")
 	client := &fake.Clientset{}
 	client.CoreV1().PodsWithMultiTenancy(ns, tenant).Create(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
@@ -43,12 +46,14 @@ func TestPatchPodStatus(t *testing.T) {
 	testCases := []struct {
 		description        string
 		mutate             func(input v1.PodStatus) v1.PodStatus
+		expectUnchanged    bool
 		expectedPatchBytes []byte
 	}{
 		{
 			"no change",
 			func(input v1.PodStatus) v1.PodStatus { return input },
-			[]byte(fmt.Sprintf(`{}`)),
+			true,
+			[]byte(fmt.Sprintf(`{"metadata":{"uid":"myuid"}}`)),
 		},
 		{
 			"message change",
@@ -56,7 +61,8 @@ func TestPatchPodStatus(t *testing.T) {
 				input.Message = "random message"
 				return input
 			},
-			[]byte(fmt.Sprintf(`{"status":{"message":"random message"}}`)),
+			false,
+			[]byte(fmt.Sprintf(`{"metadata":{"uid":"myuid"},"status":{"message":"random message"}}`)),
 		},
 		{
 			"pod condition change",
@@ -64,7 +70,8 @@ func TestPatchPodStatus(t *testing.T) {
 				input.Conditions[0].Status = v1.ConditionFalse
 				return input
 			},
-			[]byte(fmt.Sprintf(`{"status":{"$setElementOrder/conditions":[{"type":"Ready"},{"type":"PodScheduled"}],"conditions":[{"status":"False","type":"Ready"}]}}`)),
+			false,
+			[]byte(fmt.Sprintf(`{"metadata":{"uid":"myuid"},"status":{"$setElementOrder/conditions":[{"type":"Ready"},{"type":"PodScheduled"}],"conditions":[{"status":"False","type":"Ready"}]}}`)),
 		},
 		{
 			"additional init container condition",
@@ -77,17 +84,23 @@ func TestPatchPodStatus(t *testing.T) {
 				}
 				return input
 			},
-			[]byte(fmt.Sprintf(`{"status":{"initContainerStatuses":[{"image":"","imageID":"","lastState":{},"name":"init-container","ready":true,"resources":{},"restartCount":0,"state":{}}]}}`)),
+			false,
+			[]byte(fmt.Sprintf(`{"metadata":{"uid":"myuid"},"status":{"initContainerStatuses":[{"image":"","imageID":"","lastState":{},"name":"init-container","ready":true,"resources":{},"restartCount":0,"state":{}}]}}`)),
 		},
 	}
 	for _, tc := range testCases {
-		_, patchBytes, err := PatchPodStatus(client, tenant, ns, name, getPodStatus(), tc.mutate(getPodStatus()))
-		if err != nil {
-			t.Errorf("unexpected error: %v", err)
-		}
-		if !reflect.DeepEqual(patchBytes, tc.expectedPatchBytes) {
-			t.Errorf("for test case %q, expect patchBytes: %q, got: %q\n", tc.description, tc.expectedPatchBytes, patchBytes)
-		}
+		t.Run(tc.description, func(t *testing.T) {
+			_, patchBytes, unchanged, err := PatchPodStatus(client, tenant, ns, name, uid, getPodStatus(), tc.mutate(getPodStatus()))
+			if err != nil {
+				t.Errorf("unexpected error: %v", err)
+			}
+			if unchanged != tc.expectUnchanged {
+				t.Errorf("unexpected change: %t", unchanged)
+			}
+			if !reflect.DeepEqual(patchBytes, tc.expectedPatchBytes) {
+				t.Errorf("expect patchBytes: %q, got: %q\n", tc.expectedPatchBytes, patchBytes)
+			}
+		})
 	}
 }
 

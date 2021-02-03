@@ -95,10 +95,10 @@ function main() {
     gke-master-start
   else
     create-node-pki
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
-      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
-    else
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
       create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME} "8080" "http"
+    else
+      create-kubelet-kubeconfig ${KUBERNETES_MASTER_NAME}
     fi
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       create-kubeproxy-user-kubeconfig
@@ -156,9 +156,14 @@ function main() {
   reset-motd
   prepare-mounter-rootfs
   modprobe configs
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    start-prometheus &  #####start prometheus
+  if [[ "${ENABLE_PPROF_DEBUG:-false}" == "true" ]]; then
+    start-collect-pprof &  #### start collect profiling files
   fi
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+    start-prometheus &  #####start prometheus
+  fi 
+  ulimit -c unlimited
+
   echo "Done for the configuration for kubernetes"
 }
 
