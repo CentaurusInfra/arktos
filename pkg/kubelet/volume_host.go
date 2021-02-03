@@ -69,7 +69,7 @@ func NewInitializedVolumePluginMgr(
 	const resyncPeriod = 0
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIDriverRegistry) {
 		// Don't initialize if kubeClient is nil
-		if kubelet.heartbeatClient!= nil {
+		if kubelet.heartbeatClient != nil {
 			informerFactory = informers.NewSharedInformerFactory(kubelet.heartbeatClient, resyncPeriod)
 			csiDriverInformer := informerFactory.Storage().V1beta1().CSIDrivers()
 			csiDriverLister = csiDriverInformer.Lister()

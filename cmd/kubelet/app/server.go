@@ -649,13 +649,13 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
 		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient, kubeDeps.EventClient, string(nodeName)); err != nil {
+		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeTPClients[0], kubeDeps.EventClient, string(nodeName)); err != nil {
 			return err
 		}
 	}
 
 	if kubeDeps.Auth == nil {
-		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient, s.KubeletConfiguration)
+		auth, err := BuildAuth(nodeName, kubeDeps.KubeTPClients[0], s.KubeletConfiguration)
 		if err != nil {
 			return err
 		}
