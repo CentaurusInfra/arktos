@@ -8,31 +8,31 @@ This document describes the Arktos scale-out design, and how it supports a highl
 
 ## Scenario
 
-The typical scenario we are trying to support is: 
+The typical scenario we are trying to support is the following: 
 
-* A cloud provider has hundreds of thousands physical machines (hosts) distributed in different data centers in a geographic region. Each data center belongs to a certain availability zone (AZ) in the region.
+* A cloud provider has hundreds of thousands physical machines (hosts) distributed in different data centers in a geographic region. Each data center belongs to a certain availability zone (AZ) within the region.
 * The cloud provider deploys Arktos as the control plane to manage all these hosts.
-* Arktos provides an API entrance to cloud users, who call the API to deploy workloads. These workloads may have AZ constraints specified by users. For example, to automatically distribute the pods of a replicaSet to different AZs.
+* Arktos provides an API abstraction to the cloud users, who call the API to deploy workloads. These workloads may have AZ constraints specified by users. For example, to automatically distribute the pods of a replicaSet across different AZs.
 
-Note: in this document our discussion is limited to one region only. For multiple regions, each of them will have its own copy of Arktos control plane deployment. In future documents we will discuss cross-region scheduling and data replication.
+Note: In this document our discussion is limited to one region only. For multiple regions, each one of them will have its own copy of Arktos control plane deployment. In future documents we will discuss cross-region scheduling and data replication.
 
 ## Requirements
 
-Arktos was evolved from Kubernetes. When we check the Kubernetes architecture (referred to as "original architecture") to support above scenario, we found the following design gaps:
+Arktos was originally evolved from Kubernetes. When we look at the Kubernetes architecture (referred to as "original architecture") for supporting above mentioned scenario, we found the following design gaps:
 
-* Scalability: in the original architecture all API Server instances are identical. Each of them caches a full copy of all resource objects. Also all cluster data is stored in a single etcd cluster. This cannot scale up to hundreds of thousands of hosts.  
+* Scalability: in the original architecture all API Server instances are identical. Each of them caches a full copy of all resource objects. Also, all the cluster data is stored in a single etcd cluster. This cannot scale up to hundreds of thousands of hosts.  
 
-* Availability: kubernetes is not partitioned. The entire cluster is one single fault domain. Serving all tenants in a single partition is very risky from business perspective. All tenants will be impacted if the partition is down, which could be due to many reasons: hardware failures, software bugs, human mistakes, etc.
+* Availability: Kubernetes is not partitioned. The entire cluster is one single fault domain. Serving all tenants in a single partition is very risky from business perspective. All tenants will be impacted if the partition goes down, which could be due to many reasons: hardware failures, software bugs, operation mistakes, etc.
 
-In the past, we tried to use a federation-style architecture to address above problems. But we found various drawbacks including code maintenance cost, API code path overhead, etc. Therefore in this design we prefer a single-layer flat architecture.
+In the past, we tried to use a federation-style architecture to address above problems. But we found various drawbacks including code duplication between two layers, latency overhead of the extra code path, etc. Therefore, in the proposed design we want a single-layer flat architecture.
 
-Due to above considerations, our design requirements are:
+Due to the above mentioned considerations, our design requirements are the following:
 
 * A single flat control plane to manage all hosts in a region. 
 * Scalability: support 1M tenants, 300K+ hosts, 9M pods (using the 1:30 host:pod ratio from Kubernetes community.)
 * Availability: 
-	* Any component failure should only fail some tenants, not all tenants. 
-	* If one or more AZ goes down, the regional control plane should still work. Only the workloads running in that AZ should be impacted, and these workloads should be able to be re-scheduled to other AZs (if there are no AZ constraints on these workloads).
+	* Any component failure should only result in failure of some tenants, not all the tenants. 
+	* If one or more AZ goes down, the regional control plane should still work. Only the workloads running in that particular AZ should be impacted, and these workloads should be able to be re-scheduled to other AZs (if there are no AZ constraints on these workloads).
 
  
 ## Architecture
@@ -44,12 +44,12 @@ The below diagram shows a high-level overview of the design:
 
 The key idea is to split the entire control plane into multiple partitions by tenants and by hosts. And there is no single "system partition". Any partition can fail without bringing down the entire control plane.
 
-There are two types of partitions in Arktos:  tenant partition and resource manager. They handle different workloads and scale independently:
+There are two types of partitions in Arktos:  tenant partition and resource manager. They manage various workloads and scale independently:
 
-* Tenant Partition: handles traffic from public users, such as CRUD pods/deployments/jobs/statefulsets/. Basically all activities and resources that belong to tenants.
-* Resource Manager: a resource manager manages a host group. It serves the heartbeat traffic and status update traffic from all these hosts.
+* Tenant Partition: Handles workloads from tenant users, such as CRUD pods/deployments/jobs/statefulsets/. It stores all API resources belong to tenants, and serves all API requests from these tenants.
+* Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, daemonSets, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
 
-Tenant partitions and resource managers can scale independent from each other:
+Tenant partitions and resource managers can scale independently from each other:
 
 * If we have more hosts, we deploy more resource managers.
 * If we have more tenants or tenant workloads are high, we deploy more tenant partitions.
@@ -58,20 +58,18 @@ Tenant partitions and resource managers can scale independent from each other:
 
 #### Component View
 
-The below diagram shows an component-level view of the control plane, with an example of two tenant partitions and one resource manager:
+The below diagram shows a component-level view of the control plane, with an example of two tenant partitions and one resource manager:
 
 <p align="center"> <img src="images/scaleout_component.png"> </p>
 <p align="center"> Figure 2 The component view </p>
 
 #### Tenancy Model
 
-Tenants and tenant partitions are M:1 model. 
-
-One tenant belongs to one tenant partition and only one tenant partition. While one tenant partition holds multiple tenants, typical thousands or tens of thousands, depending on the planned partition capacity. For large tenants (so called VIP tenants), they can have their dedicated tenant partitions. 
+Tenants and tenant partitions are M:1 model. One tenant belongs to one tenant partition and only one tenant partition. While one tenant partition holds multiple tenants, typical thousands or tens of thousands, depending on the planned partition capacity. For large tenants (so called VIP tenants), they can have their dedicated tenant partitions. 
 
 A tenant is assigned to a certain tenant partition during the tenant creation time. The assignment rule is arbitrary and can be based on any policy (naming-based, round robin, load balanced, random, etc).
 
-Note: for simplicity purpose we don't support cross-partition tenants or tenants movement in this design. These will be added in future if really needed.
+Note: for simplicity purpose we don't support cross-partition tenants or tenants movement in this design. We will address this in future, if needed.
 
 #### API Gateway
 
@@ -79,16 +77,16 @@ It's a stateless service. Multiple identical gateway instances can be deployed t
 
 Notice:
 
-* API gateway is only for control plane requests. It doesn't server data plane traffic.
+* API gateway is only for control plane requests. It doesn't serve data plane traffic.
 * Internal clients (such as system admins and SREs) are able to connect to tenant partitions and resource managers directly. 
 
 Like most existing API gateways, Arktos API gateway perform duties like authentication, authorizing, request dispatching, auditing, rate limiting, etc. 
 
-On the API gateway side, a mapping (tenant name <---> Partition ID) is stored in an etcd cluster. 
+On the API gateway side, a mapping (tenant name <---> Partition ID) is stored within an etcd cluster. 
 
-Assume the average tenant name length is 64 bytes and tenant ID is represented as a 4-byte int. For 1 million tenants and 1000 partitions, the required storage size is about 1M * (64+4) = 68M. If we use tenant ID (GUID) in the request URL, the map size will be reduced to around 20M (1M * (16+4)).
+Assuming the average tenant name length is 64 bytes and tenant ID is represented as a 4-byte int. For 1 million tenants and 1000 partitions, the required storage size is about 1M * (64+4) = 68M. If we use tenant ID (GUID) in the request URL, the map size will be reduced to around 20M (1M * (16+4)).
 
-This size of map can easily be fully loaded into the memory of each API gateway instance, and maintained as a hash map in the memory. So that we can do an O(1) hash lookup for each incoming request. 
+The size of map can easily be fully loaded into the memory of each API gateway instance, and maintained as a hash map in the memory. So that we can do an O(1) hash lookup for each incoming request. 
 
 Any map entry changes will be synched to all API gateway instances via list/watch mechanism.
 
@@ -115,7 +113,7 @@ A resource manager is also a mini-cluster to manage a group of hosts. Its respon
 * Manage the daemonSet resource
 * Accept resource queries from all tenant partitions
 
-For now, only the node, node-lease, daemonSet and their dependent resources under system space are supported. Technically a resource manager can do all things, but limit its responsibility to nodes and daemonSets.
+For now, only the node, node-lease, daemonSet and their dependent resources under system space are supported. 
 
 A resource manager contains the following components:
 
@@ -177,7 +175,7 @@ This deployment has the following considerations:
 
 	Tenant partitions need to survive one or more AZ failures. They hold all the user job information. As long as tenant partitions are still up and there are available AZs, user jobs can be restored.
 	
-	Tenant partitions can also be deployed on AZ level, but that will greatly reduces its availability.
+	Tenant partitions can also be deployed on AZ level, but that will greatly reduce its availability.
 
 * Each resource manager is deployed on AZ level. 
 
@@ -185,10 +183,10 @@ This deployment has the following considerations:
 	
 	Deploying resource manager on AZ level will reduce the communication latency between resource manager and the hosts it managed, and therefore improve heartbeat robustness. It also reduces the cross-AZ traffic cost. 
 
-With this deployment, one AZ's failure will only impact the workloads running in that AZ. The regional control plane is still running, and the control plane can restart the workloads in another AZ (if the workload doesn't have a AZ constraining
+With this deployment, one AZ's failure will only impact the workloads running in that AZ. The regional control plane is still running, and the control plane can restart the workloads in another AZ (if the workload doesn't have an AZ constraining).
 
 
-## Discussions
+## Frequently Asked Questions
 
 * Is this regional control plane still a single cluster?
 
@@ -200,7 +198,7 @@ With this deployment, one AZ's failure will only impact the workloads running in
 
 * Can different partitions have different deployment configurations?
 
-   Yes. A partition's configuration is irrelevant to other partitions. Different partitions can have totally different configurations. 
+   Yes. A partition's configuration is local to this particular partition. Different partitions can have totally different configurations. 
    
    For example, tenant partition #1 could be a large partition and therefore has 5 replica of API Server, while tenant partition #2 has only 3 replica of API Server. Meanwhile, tenant partition #1 can deploy two scheduler instances if a single scheduler cannot meet the throughput requirement on that partition.
    
@@ -213,3 +211,11 @@ With this deployment, one AZ's failure will only impact the workloads running in
 * Can we deploy all scheduler instances together, instead of deploying them by partitions?
 
   It's possible.  In this design we make each partition has its own schedulers for easy deployment, easy management and more isolation. 
+  
+* What's the correlation between a resource manager and an AZ?
+
+  Resource manager is a software component that manages a group of hosts. You can deploy a resource manager to manage hosts from one AZ or multiple AZs, depending on your deployment plan.
+  
+  We recommend deploying one resource manager per AZ and each resource manager manages the hosts from its own AZ. The reasons are: 1) Host heartbeats and status reports will be more stable if we keep resource manager and its hosts physically close to each other. 2) This will reduce cross-AZ traffic cost.  3) No cross-AZ fault tolerance is needed for a resource manager if it only manages hosts from its own AZ. 
+  
+  If you deploy a resource manager to manage hosts from multiple AZs, you need to ensure the resource manager is deployed in a cross-AZ fault-tolerance way, so that the resource manager can survive the failures in any of these AZs.
