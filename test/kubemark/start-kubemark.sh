@@ -310,8 +310,22 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   KUBEMARK_KUBECONFIG="${TP_KUBECONFIG}-${TENANT_PARTITION_SEQUENCE}"
 fi
 
+# master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
+# destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    tp_vm="${RUN_PREFIX}-kubemark-tp-${tp_num}-master"
+    echo "DBG: reset scheduler on TP master: ${tp_vm}"
+    gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${RP_KUBECONFIG}" "${tp_vm}:/tmp/rp-kubeconfig"
+
+    cmd="sudo mv /tmp/rp-kubeconfig /etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    cmd="sudo pkill kube-scheduler"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+  done
+fi
 # start hollow nodes with multiple tenant partition parameters
-#
 start-hollow-nodes
 
 echo ""

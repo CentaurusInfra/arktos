@@ -98,6 +98,11 @@ type KubeSchedulerConfiguration struct {
 	// PluginConfig is an optional set of custom plugin arguments for each plugin.
 	// Omitting config args for a plugin is equivalent to using the default config for that plugin.
 	PluginConfig []PluginConfig
+
+	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
+	// optional for single cluster in Arktos deployment model
+	// TODO: make it an array for future release when multiple RP is supported
+	ResourceProviderClientConnection componentbaseconfig.ClientConnectionConfiguration
 }
 
 // SchedulerAlgorithmSource is the source of a scheduler algorithm. One source

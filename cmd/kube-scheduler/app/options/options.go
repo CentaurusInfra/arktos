@@ -252,6 +252,25 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 
 	c.Client = client
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
+
+	// if the resource provider kubeconfig is not set, default to the local cluster
+	//
+	if c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig == "" || !kubeconfigFileExists(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig) {
+		klog.V(4).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
+		c.ResourceInformer = c.InformerFactory.Core().V1().Nodes()
+	} else {
+
+		c.ResourceProviderClient, err = createClientFromFile(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig)
+		if err != nil {
+			klog.Error("failed to create resource provider rest client, error: %v", err)
+			return nil, err
+		}
+
+		klog.V(4).Infof("Create the resource informer from resourceProvider kubeConfig")
+		ResourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClient, 0)
+		c.ResourceInformer = ResourceInformerFactory.Core().V1().Nodes()
+	}
+
 	c.PodInformer = factory.NewPodInformer(client, 0)
 	c.EventClient = eventClient
 	c.Recorder = recorder
@@ -259,6 +278,11 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.LeaderElection = leaderElectionConfig
 
 	return c, nil
+}
+
+func kubeconfigFileExists(name string) bool {
+	_, err := os.Stat(name)
+	return err == nil
 }
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
@@ -339,4 +363,32 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 	}
 
 	return clients, leaderElectionClient, eventClient.CoreV1(), nil
+}
+
+func createClientFromFile(kubeconfigPath string) (clientset.Interface, error) {
+	klog.V(4).Infof("Create kubeclient from config file: %s", kubeconfigPath)
+	clientCfg, err := createClientConfigFromFile(kubeconfigPath)
+	if err != nil {
+		return nil, err
+	}
+
+	client, err := clientset.NewForConfig(restclient.AddUserAgent(clientCfg, "scheduler"))
+	if err != nil {
+		return nil, fmt.Errorf("error while creating clientset with %s, error %v", kubeconfigPath, err.Error())
+	}
+
+	return client, nil
+}
+
+func createClientConfigFromFile(kubeconfigPath string) (*restclient.Config, error) {
+	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", kubeconfigPath, err)
+	}
+	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
+	}
+
+	return configs, nil
 }

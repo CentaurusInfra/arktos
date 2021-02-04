@@ -2489,16 +2489,21 @@ function start-workload-controller-manager {
 #   DOCKER_REGISTRY
 function start-kube-scheduler {
   echo "Start kubernetes scheduler"
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN} "${PROXY_RESERVED_IP}" "8888" "http"
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN} "localhost" "8080" "http"
   else
     create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN}
   fi
+  
   prepare-log-file /var/log/kube-scheduler.log
 
   # Calculate variables and set them in the manifest.
   params="${SCHEDULER_TEST_LOG_LEVEL:-"--v=4"} ${SCHEDULER_TEST_ARGS:-}"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
+
+  # the resource provider kubeconfig
+  params+=" --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_SCHEDULER_LEADER_ELECT:-true}" == "false" ]]; then
     params+=" --leader-elect=false"

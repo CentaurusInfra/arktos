@@ -42,6 +42,10 @@ type Config struct {
 	Authorization          apiserver.AuthorizationInfo
 	SecureServing          *apiserver.SecureServingInfo
 
+	// explictly define node informer from the resource provider client
+	ResourceProviderClient clientset.Interface
+	ResourceInformer coreinformers.NodeInformer
+
 	Client          clientset.Interface
 	InformerFactory informers.SharedInformerFactory
 	PodInformer     coreinformers.PodInformer
