@@ -38,6 +38,14 @@ const ErrTenantEmptyCN = "CN name cannot be empty"
 const ErrMultipleOrganizationsWithTenant = "more than one organization with tenants specified"
 const ErrMultipleTenants = "more than one tenants specified in an organization "
 
+/*
+ * By default, the following metric is defined as falling under
+ * ALPHA stability level https://github.com/kubernetes/enhancements/blob/master/keps/sig-instrumentation/20190404-kubernetes-control-plane-metrics-stability.md#stability-classes)
+ *
+ * Promoting the stability level of the metric is a responsibility of the component owner, since it
+ * involves explicitly acknowledging support for the metric across multiple releases, in accordance with
+ * the metric stability policy.
+ */
 var clientCertificateExpirationHistogram = metrics.NewHistogram(
 	&metrics.HistogramOpts{
 		Namespace: "apiserver",
