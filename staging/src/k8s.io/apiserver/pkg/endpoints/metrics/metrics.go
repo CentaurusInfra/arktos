@@ -153,8 +153,8 @@ var (
 		},
 		[]string{"group", "version", "kind"},
 	)
-//<<<<<<< HEAD
-//=======
+	//<<<<<<< HEAD
+	//=======
 	WatchEvents = compbasemetrics.NewCounterVec(
 		&compbasemetrics.CounterOpts{
 			Name:           "apiserver_watch_events_total",
@@ -172,7 +172,7 @@ var (
 		},
 		[]string{"group", "version", "kind"},
 	)
-//>>>>>>> 466980d... migrate kube-apiserver metrics to stability framework
+	//>>>>>>> 466980d... migrate kube-apiserver metrics to stability framework
 	// Because of volatality of the base metric this is pre-aggregated one. Instead of reporing current usage all the time
 	// it reports maximal usage during the last second.
 	currentInflightRequests = compbasemetrics.NewGaugeVec(

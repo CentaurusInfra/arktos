@@ -17,7 +17,6 @@ limitations under the License.
 package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 	"time"
 
@@ -26,7 +25,7 @@ import (
 )
 
 var (
-//<<<<<<< HEAD
+	/* Disable those metrics as not in community (neither 2021-02-05 master or 1.18)
 	cacheHitCounterOpts = prometheus.CounterOpts{
 		Name: "etcd_helper_cache_hit_total",
 		Help: "Counter of etcd helper cache hits.",
@@ -55,7 +54,8 @@ var (
 			Help: "Latency in seconds of adding an object to etcd cache",
 		},
 	)
-//=======
+	*/
+
 	etcdRequestLatency = compbasemetrics.NewHistogramVec(
 		&compbasemetrics.HistogramOpts{
 			Name:           "etcd_request_duration_seconds",
@@ -73,7 +73,7 @@ var (
 		[]string{"resource"},
 	)
 
-//<<<<<<< HEAD
+	/* Disable those metrics as not in community (neither 2021-02-05 master or 1.18)
 	deprecatedCacheHitCounterOpts = prometheus.CounterOpts{
 		Name: "etcd_helper_cache_hit_count",
 		Help: "(Deprecated) Counter of etcd helper cache hits.",
@@ -102,7 +102,8 @@ var (
 			Help: "(Deprecated) Latency in microseconds of adding an object to etcd cache",
 		},
 	)
-//=======
+	*/
+
 	deprecatedEtcdRequestLatenciesSummary = compbasemetrics.NewSummaryVec(
 		&compbasemetrics.SummaryOpts{
 			Name:           "etcd_request_latencies_summary",
@@ -119,20 +120,10 @@ var registerMetrics sync.Once
 func Register() {
 	// Register the metrics.
 	registerMetrics.Do(func() {
-		prometheus.MustRegister(cacheHitCounter)
-		prometheus.MustRegister(cacheMissCounter)
-		prometheus.MustRegister(cacheEntryCounter)
-		prometheus.MustRegister(cacheAddLatency)
-		prometheus.MustRegister(cacheGetLatency)
 		legacyregistry.MustRegister(etcdRequestLatency)
 		legacyregistry.MustRegister(objectCounts)
 
 		// TODO(danielqsj): Remove the following metrics, they are deprecated
-		prometheus.MustRegister(deprecatedCacheHitCounter)
-		prometheus.MustRegister(deprecatedCacheMissCounter)
-		prometheus.MustRegister(deprecatedCacheEntryCounter)
-		prometheus.MustRegister(deprecatedCacheAddLatency)
-		prometheus.MustRegister(deprecatedCacheGetLatency)
 		legacyregistry.MustRegister(deprecatedEtcdRequestLatenciesSummary)
 	})
 }
@@ -146,6 +137,7 @@ func RecordEtcdRequestLatency(verb, resource string, startTime time.Time) {
 	deprecatedEtcdRequestLatenciesSummary.WithLabelValues(verb, resource).Observe(sinceInMicroseconds(startTime))
 }
 
+/*
 func ObserveGetCache(startTime time.Time) {
 	cacheGetLatency.Observe(sinceInSeconds(startTime))
 	deprecatedCacheGetLatency.Observe(sinceInMicroseconds(startTime))
@@ -170,19 +162,23 @@ func ObserveNewEntry() {
 	cacheEntryCounter.Inc()
 	deprecatedCacheEntryCounter.Inc()
 }
+*/
 
 func Reset() {
-	cacheHitCounter = prometheus.NewCounter(cacheHitCounterOpts)
+	/*cacheHitCounter = prometheus.NewCounter(cacheHitCounterOpts)
 	cacheMissCounter = prometheus.NewCounter(cacheMissCounterOpts)
 	cacheEntryCounter = prometheus.NewCounter(cacheEntryCounterOpts)
 	// TODO: Reset cacheAddLatency.
 	// TODO: Reset cacheGetLatency.
+	*/
 	etcdRequestLatency.Reset()
 
-	deprecatedCacheHitCounter = prometheus.NewCounter(deprecatedCacheHitCounterOpts)
-	deprecatedCacheMissCounter = prometheus.NewCounter(deprecatedCacheMissCounterOpts)
-	deprecatedCacheEntryCounter = prometheus.NewCounter(deprecatedCacheEntryCounterOpts)
-	deprecatedEtcdRequestLatenciesSummary.Reset()
+	/*
+		deprecatedCacheHitCounter = prometheus.NewCounter(deprecatedCacheHitCounterOpts)
+		deprecatedCacheMissCounter = prometheus.NewCounter(deprecatedCacheMissCounterOpts)
+		deprecatedCacheEntryCounter = prometheus.NewCounter(deprecatedCacheEntryCounterOpts)
+		deprecatedEtcdRequestLatenciesSummary.Reset()
+	*/
 }
 
 // sinceInMicroseconds gets the time since the specified start in microseconds.
