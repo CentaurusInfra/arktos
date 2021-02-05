@@ -391,7 +391,7 @@ replace (
 	github.com/grafov/bcast => github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d
 	github.com/gregjones/httpcache => github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7
 	github.com/grpc-ecosystem/go-grpc-middleware => github.com/grpc-ecosystem/go-grpc-middleware v0.0.0-20190222133341-cfaf5686ec79
-	github.com/grpc-ecosystem/go-grpc-prometheus => github.com/grpc-ecosystem/go-grpc-prometheus v0.0.0-20170330212424-2500245aa611
+	github.com/grpc-ecosystem/go-grpc-prometheus => github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-gateway => github.com/grpc-ecosystem/grpc-gateway v1.3.0
 	github.com/h2non/parth => github.com/h2non/parth v0.0.0-20190131123155-b4df798d6542
 	github.com/hashicorp/consul/api => github.com/hashicorp/consul/api v1.8.1
