@@ -26,20 +26,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apiserver/pkg/authentication/authenticator"
 	"k8s.io/apiserver/pkg/authentication/user"
+	"k8s.io/component-base/metrics"
+	"k8s.io/component-base/metrics/legacyregistry"
 )
 
 const ErrTenantEmptyCN = "CN name cannot be empty"
 const ErrMultipleOrganizationsWithTenant = "more than one organization with tenants specified"
 const ErrMultipleTenants = "more than one tenants specified in an organization "
 
-var clientCertificateExpirationHistogram = prometheus.NewHistogram(
-	prometheus.HistogramOpts{
+var clientCertificateExpirationHistogram = metrics.NewHistogram(
+	&metrics.HistogramOpts{
 		Namespace: "apiserver",
 		Subsystem: "client",
 		Name:      "certificate_expiration_seconds",
@@ -60,11 +60,12 @@ var clientCertificateExpirationHistogram = prometheus.NewHistogram(
 			(6 * 30 * 24 * time.Hour).Seconds(),
 			(12 * 30 * 24 * time.Hour).Seconds(),
 		},
+		StabilityLevel: metrics.ALPHA,
 	},
 )
 
 func init() {
-	prometheus.MustRegister(clientCertificateExpirationHistogram)
+	legacyregistry.MustRegister(clientCertificateExpirationHistogram)
 }
 
 // UserConversion defines an interface for extracting user info from a client certificate chain

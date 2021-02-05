@@ -17,13 +17,16 @@ limitations under the License.
 package metrics
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"sync"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	compbasemetrics "k8s.io/component-base/metrics"
+	"k8s.io/component-base/metrics/legacyregistry"
 )
 
 var (
+//<<<<<<< HEAD
 	cacheHitCounterOpts = prometheus.CounterOpts{
 		Name: "etcd_helper_cache_hit_total",
 		Help: "Counter of etcd helper cache hits.",
@@ -52,21 +55,25 @@ var (
 			Help: "Latency in seconds of adding an object to etcd cache",
 		},
 	)
-	etcdRequestLatency = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name: "etcd_request_duration_seconds",
-			Help: "Etcd request latency in seconds for each operation and object type.",
+//=======
+	etcdRequestLatency = compbasemetrics.NewHistogramVec(
+		&compbasemetrics.HistogramOpts{
+			Name:           "etcd_request_duration_seconds",
+			Help:           "Etcd request latency in seconds for each operation and object type.",
+			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{"operation", "type"},
 	)
-	objectCounts = prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
-			Name: "etcd_object_counts",
-			Help: "Number of stored objects at the time of last check split by kind.",
+	objectCounts = compbasemetrics.NewGaugeVec(
+		&compbasemetrics.GaugeOpts{
+			Name:           "etcd_object_counts",
+			Help:           "Number of stored objects at the time of last check split by kind.",
+			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{"resource"},
 	)
 
+//<<<<<<< HEAD
 	deprecatedCacheHitCounterOpts = prometheus.CounterOpts{
 		Name: "etcd_helper_cache_hit_count",
 		Help: "(Deprecated) Counter of etcd helper cache hits.",
@@ -95,10 +102,12 @@ var (
 			Help: "(Deprecated) Latency in microseconds of adding an object to etcd cache",
 		},
 	)
-	deprecatedEtcdRequestLatenciesSummary = prometheus.NewSummaryVec(
-		prometheus.SummaryOpts{
-			Name: "etcd_request_latencies_summary",
-			Help: "(Deprecated) Etcd request latency summary in microseconds for each operation and object type.",
+//=======
+	deprecatedEtcdRequestLatenciesSummary = compbasemetrics.NewSummaryVec(
+		&compbasemetrics.SummaryOpts{
+			Name:           "etcd_request_latencies_summary",
+			Help:           "(Deprecated) Etcd request latency summary in microseconds for each operation and object type.",
+			StabilityLevel: compbasemetrics.ALPHA,
 		},
 		[]string{"operation", "type"},
 	)
@@ -115,8 +124,8 @@ func Register() {
 		prometheus.MustRegister(cacheEntryCounter)
 		prometheus.MustRegister(cacheAddLatency)
 		prometheus.MustRegister(cacheGetLatency)
-		prometheus.MustRegister(etcdRequestLatency)
-		prometheus.MustRegister(objectCounts)
+		legacyregistry.MustRegister(etcdRequestLatency)
+		legacyregistry.MustRegister(objectCounts)
 
 		// TODO(danielqsj): Remove the following metrics, they are deprecated
 		prometheus.MustRegister(deprecatedCacheHitCounter)
@@ -124,7 +133,7 @@ func Register() {
 		prometheus.MustRegister(deprecatedCacheEntryCounter)
 		prometheus.MustRegister(deprecatedCacheAddLatency)
 		prometheus.MustRegister(deprecatedCacheGetLatency)
-		prometheus.MustRegister(deprecatedEtcdRequestLatenciesSummary)
+		legacyregistry.MustRegister(deprecatedEtcdRequestLatenciesSummary)
 	})
 }
 
