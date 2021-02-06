@@ -38,7 +38,7 @@ var ProberResults = metrics.NewCounterVec(
 	&metrics.CounterOpts{
 		Subsystem:      "prober",
 		Name:           "probe_total",
-		Help:           "Cumulative number of a liveness, readiness or startup probe for a container by result.",
+		Help:           "Cumulative number of a liveness or readiness probe for a container by result.",
 		StabilityLevel: metrics.ALPHA,
 	},
 	[]string{"probe_type",
