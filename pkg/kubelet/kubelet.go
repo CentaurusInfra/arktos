@@ -258,7 +258,6 @@ type Dependencies struct {
 	EventClient             v1core.EventsGetter
 	HeartbeatClient         clientset.Interface
 	OnHeartbeatFailure      []func()
-	KubeClient              clientset.Interface //TODO: remove
 	ArktosExtClient         arktos.Interface
 	Mounter                 mount.Interface
 	OOMAdjuster             *oom.OOMAdjuster
@@ -323,13 +322,6 @@ func makePodSourceConfig(kubeCfg *kubeletconfiginternal.KubeletConfiguration, ku
 		}
 	}
 
-	if kubeDeps.KubeClient != nil {
-		klog.Info("Watching apiserver")
-		if updatechannel == nil {
-			updatechannel = cfg.Channel(kubetypes.ApiserverSource)
-		}
-		config.NewSourceApiserver(kubeDeps.KubeClient, nodeName, updatechannel)
-	}
 	return cfg, nil
 }
 
@@ -496,10 +488,12 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		protocol = utilipt.ProtocolIpv6
 	}
 
-	if kubeDeps.KubeClient != nil && kubeDeps.KubeClient.CoreV1().RESTClient() != nil &&
-		kubeDeps.KubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
-		klog.Infof("kube client QPS %v, rate limiter %p", kubeDeps.KubeClient.CoreV1().RESTClient().GetRateLimiter().QPS(),
-			kubeDeps.KubeClient.CoreV1().RESTClient().GetRateLimiter())
+	for _, client := range kubeDeps.KubeTPClients {
+		if client != nil && client.CoreV1().RESTClient() != nil &&
+			client.CoreV1().RESTClient().GetRateLimiter() != nil {
+			klog.Infof("kube client QPS %v, rate limiter %p", client.CoreV1().RESTClient().GetRateLimiter().QPS(),
+				client.CoreV1().RESTClient().GetRateLimiter())
+		}
 	}
 	if kubeDeps.HeartbeatClient != nil && kubeDeps.HeartbeatClient.CoreV1().RESTClient() != nil &&
 		kubeDeps.HeartbeatClient.CoreV1().RESTClient().GetRateLimiter() != nil {
@@ -510,7 +504,6 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		hostname:                                hostname,
 		hostnameOverridden:                      len(hostnameOverride) > 0,
 		nodeName:                                nodeName,
-		kubeClient:                              kubeDeps.KubeClient,
 		kubeTPClients:                           kubeDeps.KubeTPClients,
 		heartbeatClient:                         kubeDeps.HeartbeatClient,
 		onRepeatedHeartbeatFailure:              kubeDeps.OnHeartbeatFailure,
@@ -836,7 +829,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		nodeName,
 		klet.podManager,
 		klet.statusManager,
-		klet.kubeClient,
+		klet.heartbeatClient,
 		klet.kubeTPClients,
 		klet.volumePluginMgr,
 		klet.containerRuntime,
@@ -928,7 +921,6 @@ type Kubelet struct {
 
 	nodeName        types.NodeName
 	runtimeCache    kubecontainer.RuntimeCache
-	kubeClient      clientset.Interface // TO DO: to be removed
 	kubeTPClients   []clientset.Interface
 	heartbeatClient clientset.Interface
 	iptClient       utilipt.Interface

@@ -17,6 +17,7 @@ go_library(
     deps = [
         "//pkg/features:go_default_library",
         "//pkg/kubelet/events:go_default_library",
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//pkg/util/mount:go_default_library",
         "//pkg/volume:go_default_library",
         "//pkg/volume/csi:go_default_library",

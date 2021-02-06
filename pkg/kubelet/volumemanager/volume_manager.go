@@ -158,7 +158,7 @@ func NewVolumeManager(
 	checkNodeCapabilitiesBeforeMount bool,
 	keepTerminatedPodVolumes bool) VolumeManager {
 
-	vm := &volumeManager{
+	manager := &volumeManager{
 		tenantPartitionClients: tenantPartitionClients,
 		volumePluginMgr:        volumePluginMgr,
 		desiredStateOfWorld:    cache.NewDesiredStateOfWorld(volumePluginMgr),
@@ -168,34 +168,36 @@ func NewVolumeManager(
 			volumePluginMgr,
 			recorder,
 			checkNodeCapabilitiesBeforeMount,
-			volumepathhandler.NewBlockVolumePathHandler())),
+			volumepathhandler.NewBlockVolumePathHandler(),
+			tenantPartitionClients,
+		)),
 	}
 
-	vm.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
+	manager.desiredStateOfWorldPopulator = populator.NewDesiredStateOfWorldPopulator(
 		tenantPartitionClients,
 		desiredStateOfWorldPopulatorLoopSleepPeriod,
 		desiredStateOfWorldPopulatorGetPodStatusRetryDuration,
 		podManager,
 		podStatusProvider,
-		vm.desiredStateOfWorld,
-		vm.actualStateOfWorld,
+		manager.desiredStateOfWorld,
+		manager.actualStateOfWorld,
 		kubeContainerRuntime,
 		keepTerminatedPodVolumes)
-	vm.reconciler = reconciler.NewReconciler(
+	manager.reconciler = reconciler.NewReconciler(
 		resourcePartitionKubeClient,
 		controllerAttachDetachEnabled,
 		reconcilerLoopSleepPeriod,
 		waitForAttachTimeout,
 		nodeName,
-		vm.desiredStateOfWorld,
-		vm.actualStateOfWorld,
-		vm.desiredStateOfWorldPopulator.HasAddedPods,
-		vm.operationExecutor,
+		manager.desiredStateOfWorld,
+		manager.actualStateOfWorld,
+		manager.desiredStateOfWorldPopulator.HasAddedPods,
+		manager.operationExecutor,
 		mounter,
 		volumePluginMgr,
 		kubeletPodsDir)
 
-	return vm
+	return manager
 }
 
 // volumeManager implements the VolumeManager interface

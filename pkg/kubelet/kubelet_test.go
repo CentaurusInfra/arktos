@@ -181,7 +181,6 @@ func newTestKubeletWithImageList(
 	kubelet := &Kubelet{}
 	kubelet.runtimeManager = fakeRuntimeManager
 	kubelet.recorder = fakeRecorder
-	kubelet.kubeClient = fakeKubeClient
 	kubelet.kubeTPClients = []clientset.Interface{
 		fakeKubeClient,
 	}
@@ -1998,7 +1997,6 @@ func TestHandlePodResourcesResize(t *testing.T) {
 	testPod3.Namespace = "ns2"
 
 	testKubelet.fakeKubeClient = fake.NewSimpleClientset(testPod1, testPod2, testPod3)
-	kubelet.kubeClient = testKubelet.fakeKubeClient
 	kubelet.kubeTPClients = []clientset.Interface{
 		testKubelet.fakeKubeClient,
 	}

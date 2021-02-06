@@ -407,7 +407,6 @@ func UnsecuredDependencies(s *options.KubeletServer) (*kubelet.Dependencies, err
 		Cloud:               nil, // cloud provider might start background processes
 		ContainerManager:    nil,
 		DockerClientConfig:  dockerClientConfig,
-		KubeClient:          nil,
 		ArktosExtClient:     nil,
 		HeartbeatClient:     nil,
 		EventClient:         nil,
@@ -565,12 +564,12 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	// if in standalone mode, indicate as much by setting all clients to nil
 	switch {
 	case standaloneMode:
-		kubeDeps.KubeClient = nil
+		kubeDeps.KubeTPClients = nil
 		kubeDeps.EventClient = nil
 		kubeDeps.HeartbeatClient = nil
 		klog.Warningf("standalone mode, no API client")
 
-	case kubeDeps.KubeClient == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
+	case kubeDeps.KubeTPClients == nil, kubeDeps.EventClient == nil, kubeDeps.HeartbeatClient == nil, kubeDeps.ArktosExtClient == nil:
 		clientConfigs, closeAllConns, err := buildKubeletClientConfig(s, nodeName)
 		if err != nil {
 			return err
@@ -602,9 +601,6 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 				return fmt.Errorf("failed to initialize kubelet client for host %s : %v", tenantServer, err)
 			}
 		}
-
-		// backward compatible, to be removed once all client usages switch to KubeTPClients
-		kubeDeps.KubeClient = kubeDeps.KubeTPClients[0]
 
 		arktosExtClientConfig := *clientConfigs
 		for _, cfg := range arktosExtClientConfig.GetAllConfigs() {
@@ -649,13 +645,13 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 	// If the kubelet config controller is available, and dynamic config is enabled, start the config and status sync loops
 	if utilfeature.DefaultFeatureGate.Enabled(features.DynamicKubeletConfig) && len(s.DynamicConfigDir.Value()) > 0 &&
 		kubeDeps.KubeletConfigController != nil && !standaloneMode && !s.RunOnce {
-		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeClient, kubeDeps.EventClient, string(nodeName)); err != nil {
+		if err := kubeDeps.KubeletConfigController.StartSync(kubeDeps.KubeTPClients[0], kubeDeps.EventClient, string(nodeName)); err != nil {
 			return err
 		}
 	}
 
 	if kubeDeps.Auth == nil {
-		auth, err := BuildAuth(nodeName, kubeDeps.KubeClient, s.KubeletConfiguration)
+		auth, err := BuildAuth(nodeName, kubeDeps.KubeTPClients[0], s.KubeletConfiguration)
 		if err != nil {
 			return err
 		}
