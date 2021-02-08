@@ -19,10 +19,15 @@ package framework
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/config"
+
+	"k8s.io/apimachinery/pkg/util/wait"
+	cacheddiscovery "k8s.io/client-go/discovery/cached"
+	"k8s.io/client-go/restmapper"
 )
 
 // MultiClientSet is a set of kubernetes clients.
@@ -95,4 +100,25 @@ func (m *MultiDynamicClient) GetClient() dynamic.Interface {
 	defer m.lock.Unlock()
 	m.current = (m.current + 1) % len(m.clients)
 	return m.clients[m.current]
+}
+
+func NewRestMapper(kubeconfigPath string) (*restmapper.DeferredDiscoveryRESTMapper, error) {
+
+	conf, err := config.PrepareConfig(kubeconfigPath)
+	if err != nil {
+		return nil, fmt.Errorf("config prepare failed: %v", err)
+	}
+
+	discoveryClient, err := clientset.NewForConfig(conf)
+	if err != nil {
+		return nil, fmt.Errorf("creating discovery client failed: %v", err)
+	}
+	cachedClient := cacheddiscovery.NewMemCacheClient(discoveryClient.Discovery())
+	restMapper := restmapper.NewDeferredDiscoveryRESTMapper(cachedClient)
+
+	go wait.Until(func() {
+		restMapper.Reset()
+	}, 30*time.Second, nil)
+
+	return restMapper, nil
 }
