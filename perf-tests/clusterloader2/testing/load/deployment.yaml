@@ -1,5 +1,6 @@
 {{$CpuRequest := DefaultParam .CpuRequest "10m"}}
 {{$MemoryRequest := DefaultParam .MemoryRequest "10M"}}
+{{$EnablePVs := DefaultParam .CL2_ENABLE_PVS true}}
 
 apiVersion: apps/v1
 kind: Deployment
@@ -27,6 +28,7 @@ spec:
           requests:
             cpu: {{$CpuRequest}}
             memory: {{$MemoryRequest}}
+        {{if $EnablePVs}}
         volumeMounts:
           {{if (eq (Mod .Index 20) 0 19) }} # .Index % 20 in {0,19} - 10% deployments will have ConfigMap
           - name: configmap
@@ -36,6 +38,7 @@ spec:
           - name: secret
             mountPath: /var/secret
           {{end}}
+        {{end}}
       dnsPolicy: Default
       terminationGracePeriodSeconds: 1
       # Add not-ready/unreachable tolerations for 15 minutes so that node
@@ -49,6 +52,7 @@ spec:
         operator: "Exists"
         effect: "NoExecute"
         tolerationSeconds: 900
+      {{if $EnablePVs}}
       volumes:
         {{if (eq (Mod .Index 20) 0 19) }} # .Index % 20 in {0,19} - 10% deployments will have ConfigMap
         - name: configmap
@@ -60,4 +64,5 @@ spec:
           secret:
             secretName: {{.BaseName}}-{{.Index}}
         {{end}}
+      {{end}}
 
