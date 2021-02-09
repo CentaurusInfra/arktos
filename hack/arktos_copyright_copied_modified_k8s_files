@@ -18,7 +18,6 @@ staging/src/k8s.io/client-go/metadata/metadata.go
 staging/src/k8s.io/client-go/metadata/metadata_test.go
 staging/src/k8s.io/client-go/metadata/metadatainformer/informer.go
 staging/src/k8s.io/client-go/metadata/metadatainformer/informer_test.go
-staging/src/k8s.io/client-go/metadata/metadatalister/interface.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister_test.go
 staging/src/k8s.io/client-go/metadata/metadatalister/shim.go

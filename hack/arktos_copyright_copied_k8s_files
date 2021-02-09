@@ -13,6 +13,7 @@ pkg/cloudfabric-controller/replicaset/doc.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils_test.go
 pkg/cloudfabric-controller/testutil/test_utils.go
+pkg/controller/informer_factory.go
 pkg/kubectl/cmd/create/create_clusterrolebinding_test.go
 pkg/kubectl/cmd/create/create_namespace_test.go
 pkg/kubectl/cmd/taint/taint_test.go
