@@ -1114,6 +1114,7 @@ func TestPendingPodsMetricWithMultiTenancy(t *testing.T) {
 	total := 50
 	timestamp := time.Now()
 	var pInfos = make([]*framework.PodInfo, 0, total)
+	metrics.Register()
 	for i := 1; i <= total; i++ {
 		p := &framework.PodInfo{
 			Pod: &v1.Pod{
@@ -1209,9 +1210,9 @@ func TestPendingPodsMetricWithMultiTenancy(t *testing.T) {
 	}
 
 	resetMetrics := func() {
-		metrics.ActivePods.Set(0)
-		metrics.BackoffPods.Set(0)
-		metrics.UnschedulablePods.Set(0)
+		metrics.ActivePods().Set(0)
+		metrics.BackoffPods().Set(0)
+		metrics.UnschedulablePods().Set(0)
 	}
 
 	for _, test := range tests {
@@ -1226,7 +1227,7 @@ func TestPendingPodsMetricWithMultiTenancy(t *testing.T) {
 
 			var activeNum, backoffNum, unschedulableNum float64
 			metricProto := &dto.Metric{}
-			if err := metrics.ActivePods.Write(metricProto); err != nil {
+			if err := metrics.ActivePods().Write(metricProto); err != nil {
 				t.Errorf("error writing ActivePods metric: %v", err)
 			}
 			activeNum = metricProto.Gauge.GetValue()
@@ -1234,7 +1235,7 @@ func TestPendingPodsMetricWithMultiTenancy(t *testing.T) {
 				t.Errorf("ActivePods: Expected %v, got %v", test.expected[0], activeNum)
 			}
 
-			if err := metrics.BackoffPods.Write(metricProto); err != nil {
+			if err := metrics.BackoffPods().Write(metricProto); err != nil {
 				t.Errorf("error writing BackoffPods metric: %v", err)
 			}
 			backoffNum = metricProto.Gauge.GetValue()
@@ -1242,7 +1243,7 @@ func TestPendingPodsMetricWithMultiTenancy(t *testing.T) {
 				t.Errorf("BackoffPods: Expected %v, got %v", test.expected[1], backoffNum)
 			}
 
-			if err := metrics.UnschedulablePods.Write(metricProto); err != nil {
+			if err := metrics.UnschedulablePods().Write(metricProto); err != nil {
 				t.Errorf("error writing UnschedulablePods metric: %v", err)
 			}
 			unschedulableNum = metricProto.Gauge.GetValue()

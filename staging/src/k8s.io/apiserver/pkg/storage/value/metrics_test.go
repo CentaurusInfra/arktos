@@ -18,6 +18,7 @@ package value
 
 import (
 	"errors"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"strings"
 	"testing"
 	"time"
@@ -25,7 +26,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
@@ -89,7 +89,7 @@ func TestTotals(t *testing.T) {
 			RecordTransformation("encrypt", "k8s:enc:kms:v1:", time.Now(), tt.error)
 			defer transformerOperationsTotal.Reset()
 			defer deprecatedTransformerFailuresTotal.Reset()
-			if err := testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(tt.want), tt.metrics...); err != nil {
+			if err := testutil.GatherAndCompare(legacyregistry.DefaultGatherer, strings.NewReader(tt.want), tt.metrics...); err != nil {
 				t.Fatal(err)
 			}
 		})

@@ -19,10 +19,10 @@ package value
 import (
 	"bytes"
 	"fmt"
+	"k8s.io/component-base/metrics/legacyregistry"
 	"strings"
 	"testing"
 
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
@@ -185,7 +185,7 @@ func TestPrefixFromMetrics(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			tc.prefix.TransformFromStorage(tc.input, nil)
 			defer transformerOperationsTotal.Reset()
-			if err := testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(tc.want), tc.metrics...); err != nil {
+			if err := testutil.GatherAndCompare(legacyregistry.DefaultGatherer, strings.NewReader(tc.want), tc.metrics...); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -243,7 +243,7 @@ func TestPrefixToMetrics(t *testing.T) {
 		t.Run(tc.desc, func(t *testing.T) {
 			tc.prefix.TransformToStorage(tc.input, nil)
 			defer transformerOperationsTotal.Reset()
-			if err := testutil.GatherAndCompare(prometheus.DefaultGatherer, strings.NewReader(tc.want), tc.metrics...); err != nil {
+			if err := testutil.GatherAndCompare(legacyregistry.DefaultGatherer, strings.NewReader(tc.want), tc.metrics...); err != nil {
 				t.Fatal(err)
 			}
 		})
