@@ -401,6 +401,11 @@ if [[ "${ENABLE_POD_SECURITY_POLICY:-}" == "true" ]]; then
   ADMISSION_CONTROL="${ADMISSION_CONTROL},PodSecurityPolicy"
 fi
 
+if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
+  ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
+fi
+
 # MutatingAdmissionWebhook should be the last controller that modifies the
 # request object, otherwise users will be confused if the mutating webhooks'
 # modification is overwritten.
