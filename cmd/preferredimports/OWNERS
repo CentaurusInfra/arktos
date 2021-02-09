@@ -1,8 +1,13 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
-reviewers:
-  - johnSchnake
 approvers:
-  - dims
-  - cblecker
-  - spiffxp
+- XiaoningDing 
+- dingyin
+- yxiong2020
+- zmn223
+reviewers:
+- vinaykul
+- Sindica
+- h-w-chen
+- yb01
+- pdgetrf

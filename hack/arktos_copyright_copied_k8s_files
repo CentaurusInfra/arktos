@@ -1,5 +1,8 @@
 cmd/cloud-controller-manager/app/controllermanager.go
 cmd/controller-manager/app/serve.go
+cmd/preferredimports/preferredimports.go
+hack/update-import-aliases.sh
+hack/verify-import-aliases.sh
 pkg/cloudfabric-controller/client_builder.go
 pkg/cloudfabric-controller/controller_ref_manager.go
 pkg/cloudfabric-controller/controller_ref_manager_test.go

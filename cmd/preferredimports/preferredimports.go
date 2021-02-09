@@ -1,5 +1,5 @@
 /*
-Copyright 2020 Authors of Arktos.
+Copyright 2019 The Kubernetes Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ import (
 	"go/format"
 	"go/parser"
 	"go/token"
-	"golang.org/x/crypto/ssh/terminal"
 	"io/ioutil"
 	"log"
 	"os"
@@ -35,6 +34,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
