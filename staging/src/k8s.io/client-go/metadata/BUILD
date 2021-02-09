@@ -24,7 +24,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["metadata_test.go"],
+    srcs = [
+        "metadata_multitenancy_test.go",
+        "metadata_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//staging/src/k8s.io/api/core/v1:go_default_library",

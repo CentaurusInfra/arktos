@@ -1,6 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors.
-Copyright 2020 Authors of Arktos - file modified.
+Copyright 2020 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +32,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-func TestClient(t *testing.T) {
+func TestMultiTenancyClient(t *testing.T) {
 	gvr := schema.GroupVersionResource{Group: "group", Version: "v1", Resource: "resource"}
 
 	writeJSON := func(t *testing.T, w http.ResponseWriter, obj runtime.Object) {
@@ -58,7 +57,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/te/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -67,18 +66,20 @@ func TestClient(t *testing.T) {
 						APIVersion: "v1",
 					},
 					ObjectMeta: metav1.ObjectMeta{
+						Tenant:    "te",
 						Name:      "name",
 						Namespace: "ns",
 					},
 				})
 			},
 			want: func(t *testing.T, client *Client) {
-				obj, err := client.Resource(gvr).Namespace("ns").Get("name", metav1.GetOptions{})
+				obj, err := client.Resource(gvr).NamespaceWithMultiTenancy("ns", "te").Get("name", metav1.GetOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}
 				expect := &metav1.PartialObjectMetadata{
 					ObjectMeta: metav1.ObjectMeta{
+						Tenant:    "te",
 						Name:      "name",
 						Namespace: "ns",
 					},
@@ -95,7 +96,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadataList;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/te/namespaces/ns/resource" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.PodList{
@@ -113,6 +114,7 @@ func TestClient(t *testing.T) {
 								APIVersion: "v1",
 							},
 							ObjectMeta: metav1.ObjectMeta{
+								Tenant:    "te",
 								Name:      "name",
 								Namespace: "ns",
 							},
@@ -121,7 +123,7 @@ func TestClient(t *testing.T) {
 				})
 			},
 			want: func(t *testing.T, client *Client) {
-				objs, err := client.Resource(gvr).Namespace("ns").List(metav1.ListOptions{})
+				objs, err := client.Resource(gvr).NamespaceWithMultiTenancy("ns", "te").List(metav1.ListOptions{})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -135,6 +137,7 @@ func TestClient(t *testing.T) {
 							APIVersion: "v1",
 						},
 						ObjectMeta: metav1.ObjectMeta{
+							Tenant:    "te",
 							Name:      "name",
 							Namespace: "ns",
 						},
@@ -152,18 +155,19 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/te/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
 					TypeMeta: metav1.TypeMeta{},
 					ObjectMeta: metav1.ObjectMeta{
-						UID: "123",
+						Tenant: "tenant",
+						UID:    "123",
 					},
 				})
 			},
 			want: func(t *testing.T, client *Client) {
-				obj, err := client.Resource(gvr).Namespace("ns").Get("name", metav1.GetOptions{})
+				obj, err := client.Resource(gvr).NamespaceWithMultiTenancy("ns", "te").Get("name", metav1.GetOptions{})
 				if err == nil || !runtime.IsMissingKind(err) {
 					t.Fatal(err)
 				}
@@ -179,7 +183,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/te/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -187,12 +191,13 @@ func TestClient(t *testing.T) {
 						Kind: "Pod",
 					},
 					ObjectMeta: metav1.ObjectMeta{
-						UID: "123",
+						Tenant: "te",
+						UID:    "123",
 					},
 				})
 			},
 			want: func(t *testing.T, client *Client) {
-				obj, err := client.Resource(gvr).Namespace("ns").Get("name", metav1.GetOptions{})
+				obj, err := client.Resource(gvr).NamespaceWithMultiTenancy("ns", "te").Get("name", metav1.GetOptions{})
 				if err == nil || !runtime.IsMissingVersion(err) {
 					t.Fatal(err)
 				}
@@ -208,7 +213,7 @@ func TestClient(t *testing.T) {
 				if req.Header.Get("Accept") != "application/vnd.kubernetes.protobuf;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json;as=PartialObjectMetadata;g=meta.k8s.io;v=v1,application/json" {
 					t.Fatal(req.Header.Get("Accept"))
 				}
-				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/system/namespaces/ns/resource/name" {
+				if req.Method != "GET" || req.URL.String() != "/apis/group/v1/tenants/te/namespaces/ns/resource/name" {
 					t.Fatal(req.URL.String())
 				}
 				writeJSON(t, w, &corev1.Pod{
@@ -220,7 +225,7 @@ func TestClient(t *testing.T) {
 				})
 			},
 			want: func(t *testing.T, client *Client) {
-				obj, err := client.Resource(gvr).Namespace("ns").Get("name", metav1.GetOptions{})
+				obj, err := client.Resource(gvr).NamespaceWithMultiTenancy("ns", "te").Get("name", metav1.GetOptions{})
 				if err == nil || !strings.Contains(err.Error(), "object does not appear to match the ObjectMeta schema") {
 					t.Fatal(err)
 				}

@@ -37,7 +37,6 @@ import (
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/discovery"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/metadata"
 	restclient "k8s.io/client-go/rest"
@@ -329,7 +328,7 @@ func startResourceQuotaController(ctx ControllerContext) (http.Handler, bool, er
 		QuotaClient:               resourceQuotaControllerClient.CoreV1(),
 		ResourceQuotaInformer:     ctx.InformerFactory.Core().V1().ResourceQuotas(),
 		ResyncPeriod:              controller.StaticResyncPeriodFunc(ctx.ComponentConfig.ResourceQuotaController.ResourceQuotaSyncPeriod.Duration),
-		InformerFactory:           ctx.GenericInformerFactory,
+		InformerFactory:           ctx.ObjectOrMetadataInformerFactory,
 		ReplenishmentResyncPeriod: ctx.ResyncPeriod,
 		DiscoveryFunc:             discoveryFunc,
 		IgnoredResourcesFunc:      quotaConfiguration.IgnoredResources,
@@ -386,7 +385,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
-	dynamicClient, err := dynamic.NewForConfig(tnKubeConfigs)
+	metadataClient, err := metadata.NewForConfig(tnKubeConfigs)
 	if err != nil {
 		return nil, true, err
 	}
@@ -406,7 +405,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
-		dynamicClient,
+		metadataClient,
 		discoverTenantedResourcesFn,
 		v1.FinalizerArktos)
 	go tenantController.Run(int(ctx.ComponentConfig.TenantController.ConcurrentTenantSyncs), ctx.Stop)
@@ -483,7 +482,7 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 		ctx.RESTMapper,
 		deletableResources,
 		ignoredResources,
-		ctx.GenericInformerFactory,
+		ctx.ObjectOrMetadataInformerFactory,
 		ctx.InformersStarted,
 	)
 	if err != nil {
