@@ -178,9 +178,20 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	obj, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
-	if err != nil {
-		return err
+	var obj *v1.Pod
+	if eventType == EventType_Delete {
+		obj = &v1.Pod{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Tenant:    tenant,
+			},
+		}
+	} else {
+		obj, err = c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+		if err != nil {
+			return err
+		}
 	}
 
 	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)

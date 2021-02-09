@@ -182,9 +182,12 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 		return err
 	}
 
-	svc, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
-	if err != nil {
-		return err
+	var svc *v1.Service
+	if event != EventType_Delete {
+		svc, err = c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
+		if err != nil {
+			return err
+		}
 	}
 
 	klog.Infof("Mizar-Service-controller - get service: %#v.", svc)
