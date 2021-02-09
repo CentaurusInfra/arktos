@@ -22,9 +22,11 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/config"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/errors"
@@ -44,6 +46,7 @@ type Framework struct {
 	automanagedNamespaceCount  int
 	clientSets                 *MultiClientSet
 	dynamicClients             *MultiDynamicClient
+	restMapper                 *restmapper.DeferredDiscoveryRESTMapper
 	clusterConfig              *config.ClusterConfig
 }
 
@@ -74,6 +77,9 @@ func newFramework(clusterConfig *config.ClusterConfig, clientsNumber int, kubeCo
 	if f.dynamicClients, err = NewMultiDynamicClient(kubeConfigPath, clientsNumber); err != nil {
 		return nil, fmt.Errorf("multi dynamic client creation error: %v", err)
 	}
+	if f.restMapper, err = NewRestMapper(kubeConfigPath); err != nil {
+		return nil, fmt.Errorf("rest mapper creation error: %v", err)
+	}
 	return &f, nil
 }
 
@@ -100,6 +106,11 @@ func (f *Framework) GetDynamicClients() *MultiDynamicClient {
 // GetClusterConfig returns cluster config.
 func (f *Framework) GetClusterConfig() *config.ClusterConfig {
 	return f.clusterConfig
+}
+
+// GetRestMapper returns REST Mapper.
+func (f *Framework) GetRestMapper() *restmapper.DeferredDiscoveryRESTMapper {
+	return f.restMapper
 }
 
 // CreateAutomanagedNamespaces creates automanged namespaces.
@@ -239,23 +250,45 @@ func (f *Framework) DeleteNamespaces(namespaces []string) *errors.ErrorList {
 	return errList
 }
 
+func (f *Framework) setObjMetadataPerScope(tenant *string, namespace *string, gvk schema.GroupVersionKind) {
+	mapping, _ := f.GetRestMapper().RESTMappings(schema.GroupKind{Group: gvk.Group, Kind: gvk.Kind}, gvk.Version)
+
+	if len(mapping) == 0 {
+		klog.Warningf("Could not get Rest Mapping info for GVK %v", gvk)
+		return
+	}
+
+	if mapping[0].Scope.Name() == meta.RESTScopeNameRoot {
+		*namespace = ""
+		*tenant = ""
+	}
+
+	if mapping[0].Scope.Name() == meta.RESTScopeNameTenant {
+		*namespace = ""
+	}
+}
+
 // CreateObject creates object base on given object description.
 func (f *Framework) CreateObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	f.setObjMetadataPerScope(&tenant, &namespace, obj.GroupVersionKind())
 	return client.CreateObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj, options...)
 }
 
 // PatchObject updates object (using patch) with given name using given object description.
 func (f *Framework) PatchObject(tenant string, namespace string, name string, obj *unstructured.Unstructured, options ...*client.ApiCallOptions) error {
+	f.setObjMetadataPerScope(&tenant, &namespace, obj.GroupVersionKind())
 	return client.PatchObject(f.dynamicClients.GetClient(), tenant, namespace, name, obj)
 }
 
 // DeleteObject deletes object with given name and group-version-kind.
 func (f *Framework) DeleteObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) error {
+	f.setObjMetadataPerScope(&tenant, &namespace, gvk)
 	return client.DeleteObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
 // GetObject retrieves object with given name and group-version-kind.
 func (f *Framework) GetObject(gvk schema.GroupVersionKind, tenant string, namespace string, name string, options ...*client.ApiCallOptions) (*unstructured.Unstructured, error) {
+	f.setObjMetadataPerScope(&tenant, &namespace, gvk)
 	return client.GetObject(f.dynamicClients.GetClient(), gvk, tenant, namespace, name)
 }
 
