@@ -52,7 +52,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 
 	metadataClient, err := metadata.NewForConfig(configs)
 	if err != nil {
-		t.Fatalf("Errror creating dynamic client")
+		t.Fatalf("Errror creating matadata client")
 	}
 
 	discoverTenantedResourcesFn := func() ([]*metav1.APIResourceList, error) {
