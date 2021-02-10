@@ -18,6 +18,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -180,10 +181,18 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 
 	obj, err := c.lister.Get(name)
 	if err != nil {
-		return err
+		if eventType == EventType_Delete && errors.IsNotFound(err) {
+			obj = &v1.Node{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name,
+				},
+			}
+		} else {
+			return err
+		}
 	}
 
-	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarNode, tenant, namespace, obj.Name, obj.HashKey, eventType)
+	klog.V(4).Infof("Handling %v %s for event %v", controllerForMizarNode, name, eventType)
 
 	switch eventType {
 	case EventType_Create:
