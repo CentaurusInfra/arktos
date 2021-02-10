@@ -86,6 +86,8 @@ MODIFIED_FILES=$(git status | grep modified:) || true
 if [[ "${MODIFIED_FILES:-}" != "" ]]; then
 	echo "Following files are updated:"
 	echo $MODIFIED_FILES
+	FILE_DIFF=$(git diff)
+	echo $FILE_DIFF
 	exit 1
 fi
 echo "Check completed."

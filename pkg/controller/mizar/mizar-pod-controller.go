@@ -18,6 +18,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -178,23 +179,25 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	var obj *v1.Pod
-	if eventType == EventType_Delete {
-		obj = &v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Tenant:    tenant,
-			},
-		}
-	} else {
-		obj, err = c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
-		if err != nil {
+	obj, err := c.lister.PodsWithMultiTenancy(namespace, tenant).Get(name)
+	if err != nil {
+		if eventType == EventType_Delete {
+			obj = &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+					Tenant:    tenant,
+				},
+			}
+			if !errors.IsNotFound(err) {
+				klog.Errorf("Should get NotFound error when retrieving deleted object %s/%s/%s but got error: %v", tenant, namespace, name, err)
+			}
+		} else {
 			return err
 		}
 	}
 
-	klog.V(4).Infof("Handling %v %s/%s/%s hashkey %v for event %v", controllerForMizarPod, tenant, namespace, obj.Name, obj.HashKey, eventType)
+	klog.V(4).Infof("Handling %v %s/%s/%s for event %v", controllerForMizarPod, tenant, namespace, name, eventType)
 
 	switch eventType {
 	case EventType_Create:

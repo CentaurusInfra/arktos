@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -182,10 +183,13 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 		return err
 	}
 
-	var svc *v1.Service
-	if event != EventType_Delete {
-		svc, err = c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
-		if err != nil {
+	svc, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
+	if err != nil {
+		if event == EventType_Delete {
+			if !apierrors.IsNotFound(err) {
+				klog.Errorf("Should get NotFound error when retrieving deleted object %s/%s/%s but got error: %v", tenant, namespace, name, err)
+			}
+		} else {
 			return err
 		}
 	}
