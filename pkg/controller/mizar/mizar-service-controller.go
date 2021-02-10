@@ -185,11 +185,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 
 	svc, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
-		if event == EventType_Delete {
-			if !apierrors.IsNotFound(err) {
-				klog.Errorf("Should get NotFound error when retrieving deleted object %s/%s/%s but got error: %v", tenant, namespace, name, err)
-			}
-		} else {
+		if event != EventType_Delete || !apierrors.IsNotFound(err) {
 			return err
 		}
 	}
