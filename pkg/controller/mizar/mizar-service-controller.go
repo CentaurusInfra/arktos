@@ -22,6 +22,7 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -184,7 +185,9 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 
 	svc, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
 	if err != nil {
-		return err
+		if event != EventType_Delete || !apierrors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	klog.Infof("Mizar-Service-controller - get service: %#v.", svc)
