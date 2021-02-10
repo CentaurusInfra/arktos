@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -221,7 +222,7 @@ func getKubeProxyStaticPods(c clientset.Interface) (*v1.PodList, error) {
 	return c.CoreV1().Pods(metav1.NamespaceSystem).List(listOpts)
 }
 
-func getKubeProxyDaemonSet(c clientset.Interface) (*apps.DaemonSetList, error) {
+func getKubeProxyDaemonSet(c clientset.Interface) (*appsv1.DaemonSetList, error) {
 	label := labels.SelectorFromSet(labels.Set(map[string]string{clusterAddonLabelKey: kubeProxyLabelName}))
 	listOpts := metav1.ListOptions{LabelSelector: label.String()}
 	return c.AppsV1().DaemonSets(metav1.NamespaceSystem).List(listOpts)

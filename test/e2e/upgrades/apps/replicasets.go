@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -89,7 +90,7 @@ func (r *ReplicaSetUpgradeTest) Test(f *framework.Framework, done <-chan struct{
 
 	// Verify the upgraded RS is active by scaling up the RS to scaleNum and ensuring all pods are Ready
 	ginkgo.By(fmt.Sprintf("Scaling up replicaset %s to %d", rsName, scaleNum))
-	_, err = replicaset.UpdateReplicaSetWithRetries(c, ns, rsName, func(rs *apps.ReplicaSet) {
+	_, err = replicaset.UpdateReplicaSetWithRetries(c, ns, rsName, func(rs *appsv1.ReplicaSet) {
 		*rs.Spec.Replicas = scaleNum
 	})
 	framework.ExpectNoError(err)

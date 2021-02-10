@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package replicaset
 import (
 	"fmt"
 
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	deploymentutil "k8s.io/kubernetes/pkg/controller/deployment/util"
@@ -29,7 +30,7 @@ import (
 )
 
 // UpdateReplicaSetWithRetries updates replicaset template with retries.
-func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate testutils.UpdateReplicaSetFunc) (*apps.ReplicaSet, error) {
+func UpdateReplicaSetWithRetries(c clientset.Interface, namespace, name string, applyUpdate testutils.UpdateReplicaSetFunc) (*appsv1.ReplicaSet, error) {
 	return testutils.UpdateReplicaSetWithRetries(c, namespace, name, applyUpdate, e2elog.Logf, framework.Poll, framework.PollShortTimeout)
 }
 

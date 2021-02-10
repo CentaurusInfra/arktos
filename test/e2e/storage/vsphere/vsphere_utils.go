@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,7 +34,7 @@ import (
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
-	storage "k8s.io/api/storage/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -237,10 +238,10 @@ func verifyContentOfVSpherePV(client clientset.Interface, pvc *v1.PersistentVolu
 	e2elog.Logf("Successfully verified content of the volume")
 }
 
-func getVSphereStorageClassSpec(name string, scParameters map[string]string, zones []string) *storage.StorageClass {
-	var sc *storage.StorageClass
+func getVSphereStorageClassSpec(name string, scParameters map[string]string, zones []string) *storagev1.StorageClass {
+	var sc *storagev1.StorageClass
 
-	sc = &storage.StorageClass{
+	sc = &storagev1.StorageClass{
 		TypeMeta: metav1.TypeMeta{
 			Kind: "StorageClass",
 		},
@@ -266,7 +267,7 @@ func getVSphereStorageClassSpec(name string, scParameters map[string]string, zon
 	return sc
 }
 
-func getVSphereClaimSpecWithStorageClass(ns string, diskSize string, storageclass *storage.StorageClass) *v1.PersistentVolumeClaim {
+func getVSphereClaimSpecWithStorageClass(ns string, diskSize string, storageclass *storagev1.StorageClass) *v1.PersistentVolumeClaim {
 	claim := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: "pvc-",

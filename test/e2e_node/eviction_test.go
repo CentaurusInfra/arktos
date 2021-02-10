@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,13 +25,13 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-	schedulerapi "k8s.io/api/scheduling/v1"
+	schedulingv1 "k8s.io/api/scheduling/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
-	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	kubeletstatsv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/eviction"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
 	kubeletmetrics "k8s.io/kubernetes/pkg/kubelet/metrics"
@@ -302,7 +303,7 @@ var _ = framework.KubeDescribe("PriorityMemoryEvictionOrdering [Slow] [Serial] [
 			initialConfig.EvictionMinimumReclaim = map[string]string{}
 		})
 		BeforeEach(func() {
-			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
+			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulingv1.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
 			Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue())
 		})
 		AfterEach(func() {
@@ -359,7 +360,7 @@ var _ = framework.KubeDescribe("PriorityLocalStorageEvictionOrdering [Slow] [Ser
 			initialConfig.EvictionMinimumReclaim = map[string]string{}
 		})
 		BeforeEach(func() {
-			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
+			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulingv1.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
 			Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue())
 		})
 		AfterEach(func() {
@@ -412,7 +413,7 @@ var _ = framework.KubeDescribe("PriorityPidEvictionOrdering [Slow] [Serial] [Dis
 			initialConfig.EvictionMinimumReclaim = map[string]string{}
 		})
 		BeforeEach(func() {
-			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulerapi.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
+			_, err := f.ClientSet.SchedulingV1().PriorityClasses().Create(&schedulingv1.PriorityClass{ObjectMeta: metav1.ObjectMeta{Name: highPriorityClassName}, Value: highPriority})
 			Expect(err == nil || errors.IsAlreadyExists(err)).To(BeTrue())
 		})
 		AfterEach(func() {
@@ -751,7 +752,7 @@ func logMemoryMetrics() {
 		e2elog.Logf("Node.Memory.WorkingSetBytes: %d, Node.Memory.AvailableBytes: %d", *summary.Node.Memory.WorkingSetBytes, *summary.Node.Memory.AvailableBytes)
 	}
 	for _, sysContainer := range summary.Node.SystemContainers {
-		if sysContainer.Name == stats.SystemContainerPods && sysContainer.Memory != nil && sysContainer.Memory.WorkingSetBytes != nil && sysContainer.Memory.AvailableBytes != nil {
+		if sysContainer.Name == kubeletstatsv1alpha1.SystemContainerPods && sysContainer.Memory != nil && sysContainer.Memory.WorkingSetBytes != nil && sysContainer.Memory.AvailableBytes != nil {
 			e2elog.Logf("Allocatable.Memory.WorkingSetBytes: %d, Allocatable.Memory.AvailableBytes: %d", *sysContainer.Memory.WorkingSetBytes, *sysContainer.Memory.AvailableBytes)
 		}
 	}
@@ -776,7 +777,7 @@ func logPidMetrics() {
 	}
 }
 
-func eventuallyGetSummary() (s *stats.Summary) {
+func eventuallyGetSummary() (s *kubeletstatsv1alpha1.Summary) {
 	Eventually(func() error {
 		summary, err := getNodeSummary()
 		if err != nil {

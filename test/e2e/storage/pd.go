@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	v1 "k8s.io/api/core/v1"
-	policy "k8s.io/api/policy/v1beta1"
+	policyv1beta1 "k8s.io/api/policy/v1beta1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -411,7 +412,7 @@ var _ = utils.SIGDescribe("Pod Disks", func() {
 					framework.ExpectNoError(podClient.Delete(host0Pod.Name, metav1.NewDeleteOptions(0)), "Unable to delete host0Pod")
 
 				} else if disruptOp == evictPod {
-					evictTarget := &policy.Eviction{
+					evictTarget := &policyv1beta1.Eviction{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      host0Pod.Name,
 							Namespace: ns,

@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package workloads
 import (
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
 )
 
@@ -29,7 +30,7 @@ type NodePerfWorkload interface {
 	// Name of the workload.
 	Name() string
 	// PodSpec used to run this workload.
-	PodSpec() corev1.PodSpec
+	PodSpec() v1.PodSpec
 	// Timeout provides the expected time to completion
 	// for this workload.
 	Timeout() time.Duration

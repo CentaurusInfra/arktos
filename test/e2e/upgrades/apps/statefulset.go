@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package upgrades
 import (
 	"github.com/onsi/ginkgo"
 
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/version"
 
@@ -31,7 +32,7 @@ import (
 type StatefulSetUpgradeTest struct {
 	tester  *framework.StatefulSetTester
 	service *v1.Service
-	set     *apps.StatefulSet
+	set     *appsv1.StatefulSet
 }
 
 // Name returns the tracking name of the test.

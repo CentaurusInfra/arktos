@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package job
 import (
 	"fmt"
 
-	batch "k8s.io/api/batch/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -30,7 +31,7 @@ import (
 )
 
 // GetJob uses c to get the Job in namespace ns named name. If the returned error is nil, the returned Job is valid.
-func GetJob(c clientset.Interface, ns, name string) (*batch.Job, error) {
+func GetJob(c clientset.Interface, ns, name string) (*batchv1.Job, error) {
 	return c.BatchV1().Jobs(ns).Get(name, metav1.GetOptions{})
 }
 
@@ -43,18 +44,18 @@ func GetJobPods(c clientset.Interface, ns, jobName string) (*v1.PodList, error) 
 
 // CreateJob uses c to create job in namespace ns. If the returned error is nil, the returned Job is valid and has
 // been created.
-func CreateJob(c clientset.Interface, ns string, job *batch.Job) (*batch.Job, error) {
+func CreateJob(c clientset.Interface, ns string, job *batchv1.Job) (*batchv1.Job, error) {
 	return c.BatchV1().Jobs(ns).Create(job)
 }
 
 // UpdateJob uses c to updated job in namespace ns. If the returned error is nil, the returned Job is valid and has
 // been updated.
-func UpdateJob(c clientset.Interface, ns string, job *batch.Job) (*batch.Job, error) {
+func UpdateJob(c clientset.Interface, ns string, job *batchv1.Job) (*batchv1.Job, error) {
 	return c.BatchV1().Jobs(ns).Update(job)
 }
 
 // UpdateJobWithRetries updates job with retries.
-func UpdateJobWithRetries(c clientset.Interface, namespace, name string, applyUpdate func(*batch.Job)) (job *batch.Job, err error) {
+func UpdateJobWithRetries(c clientset.Interface, namespace, name string, applyUpdate func(*batchv1.Job)) (job *batchv1.Job, err error) {
 	jobs := c.BatchV1().Jobs(namespace)
 	var updateErr error
 	pollErr := wait.PollImmediate(framework.Poll, JobTimeout, func() (bool, error) {
