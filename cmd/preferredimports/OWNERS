@@ -1,0 +1,13 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+approvers:
+- XiaoningDing 
+- dingyin
+- yxiong2020
+- zmn223
+reviewers:
+- vinaykul
+- Sindica
+- h-w-chen
+- yb01
+- pdgetrf

@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	apps "k8s.io/api/apps/v1"
+	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -42,7 +43,7 @@ func WaitForObservedDeployment(c clientset.Interface, ns, deploymentName string,
 }
 
 // WaitForDeploymentWithCondition waits for the specified deployment condition.
-func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, reason string, condType apps.DeploymentConditionType) error {
+func WaitForDeploymentWithCondition(c clientset.Interface, ns, deploymentName, reason string, condType appsv1.DeploymentConditionType) error {
 	return testutils.WaitForDeploymentWithCondition(c, ns, deploymentName, reason, condType, e2elog.Logf, poll, pollLongTimeout)
 }
 
@@ -56,13 +57,13 @@ func WaitForDeploymentRevisionAndImage(c clientset.Interface, ns, deploymentName
 // WaitForDeploymentComplete waits for the deployment to complete, and don't check if rolling update strategy is broken.
 // Rolling update strategy is used only during a rolling update, and can be violated in other situations,
 // such as shortly after a scaling event or the deployment is just created.
-func WaitForDeploymentComplete(c clientset.Interface, d *apps.Deployment) error {
+func WaitForDeploymentComplete(c clientset.Interface, d *appsv1.Deployment) error {
 	return testutils.WaitForDeploymentComplete(c, d, e2elog.Logf, poll, pollLongTimeout)
 }
 
 // WaitForDeploymentCompleteAndCheckRolling waits for the deployment to complete, and check rolling update strategy isn't broken at any times.
 // Rolling update strategy should not be broken during a rolling update.
-func WaitForDeploymentCompleteAndCheckRolling(c clientset.Interface, d *apps.Deployment) error {
+func WaitForDeploymentCompleteAndCheckRolling(c clientset.Interface, d *appsv1.Deployment) error {
 	return testutils.WaitForDeploymentCompleteAndCheckRolling(c, d, e2elog.Logf, poll, pollLongTimeout)
 }
 
@@ -79,8 +80,8 @@ func WaitForDeploymentRollbackCleared(c clientset.Interface, ns, deploymentName 
 
 // WaitForDeploymentOldRSsNum waits for the deployment to clean up old rcs.
 func WaitForDeploymentOldRSsNum(c clientset.Interface, ns, deploymentName string, desiredRSNum int) error {
-	var oldRSs []*apps.ReplicaSet
-	var d *apps.Deployment
+	var oldRSs []*appsv1.ReplicaSet
+	var d *appsv1.Deployment
 
 	pollErr := wait.PollImmediate(poll, 5*time.Minute, func() (bool, error) {
 		deployment, err := c.AppsV1().Deployments(ns).Get(deploymentName, metav1.GetOptions{})
@@ -103,7 +104,7 @@ func WaitForDeploymentOldRSsNum(c clientset.Interface, ns, deploymentName string
 }
 
 // WaitForDeploymentRevision waits for becoming the target revision of a delopyment.
-func WaitForDeploymentRevision(c clientset.Interface, d *apps.Deployment, targetRevision string) error {
+func WaitForDeploymentRevision(c clientset.Interface, d *appsv1.Deployment, targetRevision string) error {
 	err := wait.PollImmediate(poll, pollLongTimeout, func() (bool, error) {
 		deployment, err := c.AppsV1().Deployments(d.Namespace).Get(d.Name, metav1.GetOptions{})
 		if err != nil {

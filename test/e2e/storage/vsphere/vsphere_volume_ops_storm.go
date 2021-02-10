@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@ import (
 	"github.com/onsi/ginkgo"
 	"github.com/onsi/gomega"
 	"k8s.io/api/core/v1"
-	storage "k8s.io/api/storage/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	"k8s.io/kubernetes/test/e2e/storage/utils"
@@ -52,7 +53,7 @@ var _ = utils.SIGDescribe("Volume Operations Storm [Feature:vsphere]", func() {
 	var (
 		client            clientset.Interface
 		namespace         string
-		storageclass      *storage.StorageClass
+		storageclass      *storagev1.StorageClass
 		pvclaims          []*v1.PersistentVolumeClaim
 		persistentvolumes []*v1.PersistentVolume
 		err               error

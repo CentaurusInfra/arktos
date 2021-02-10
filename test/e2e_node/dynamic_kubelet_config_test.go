@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,7 +25,7 @@ import (
 
 	"github.com/davecgh/go-spew/spew"
 
-	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -46,7 +47,7 @@ import (
 const itDescription = "status and events should match expectations"
 
 type expectNodeConfigStatus struct {
-	lastKnownGood *apiv1.NodeConfigSource
+	lastKnownGood *v1.NodeConfigSource
 	err           string
 	// If true, expect Status.Config.Active == Status.Config.LastKnownGood,
 	// otherwise expect Status.Config.Active == Status.Config.Assigned.
@@ -55,8 +56,8 @@ type expectNodeConfigStatus struct {
 
 type nodeConfigTestCase struct {
 	desc               string
-	configSource       *apiv1.NodeConfigSource
-	configMap          *apiv1.ConfigMap
+	configSource       *v1.NodeConfigSource
+	configMap          *v1.ConfigMap
 	expectConfigStatus expectNodeConfigStatus
 	expectConfig       *kubeletconfig.KubeletConfiguration
 	// whether to expect this substring in an error returned from the API server when updating the config source
@@ -71,8 +72,8 @@ type nodeConfigTestCase struct {
 // This test is marked [Disruptive] because the Kubelet restarts several times during this test.
 var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:DynamicKubeletConfig][Serial][Disruptive]", func() {
 	f := framework.NewDefaultFramework("dynamic-kubelet-configuration-test")
-	var beforeNode *apiv1.Node
-	var beforeConfigMap *apiv1.ConfigMap
+	var beforeNode *v1.Node
+	var beforeConfigMap *v1.ConfigMap
 	var beforeKC *kubeletconfig.KubeletConfiguration
 	var localKC *kubeletconfig.KubeletConfiguration
 
@@ -145,7 +146,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				framework.ExpectNoError(err)
 
 				// fail to parse, we insert some bogus stuff into the configMap
-				failParseConfigMap := &apiv1.ConfigMap{
+				failParseConfigMap := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: "dynamic-kubelet-config-test-fail-parse"},
 					Data: map[string]string{
 						"kubelet": "{0xdeadbeef}",
@@ -161,17 +162,17 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				failValidateConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(failValidateConfigMap)
 				framework.ExpectNoError(err)
 
-				correctSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				correctSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        correctConfigMap.Namespace,
 					Name:             correctConfigMap.Name,
 					KubeletConfigKey: "kubelet",
 				}}
-				failParseSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				failParseSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        failParseConfigMap.Namespace,
 					Name:             failParseConfigMap.Name,
 					KubeletConfigKey: "kubelet",
 				}}
-				failValidateSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				failValidateSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        failValidateConfigMap.Namespace,
 					Name:             failValidateConfigMap.Name,
 					KubeletConfigKey: "kubelet",
@@ -187,12 +188,12 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc:         "Node.Spec.ConfigSource has all nil subfields",
-						configSource: &apiv1.NodeConfigSource{},
+						configSource: &v1.NodeConfigSource{},
 						apierr:       "exactly one reference subfield must be non-nil",
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap is missing namespace",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Name:             "bar",
 							KubeletConfigKey: "kubelet",
 						}}, // missing Namespace
@@ -200,7 +201,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap is missing name",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Namespace:        "foo",
 							KubeletConfigKey: "kubelet",
 						}}, // missing Name
@@ -208,7 +209,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap is missing kubeletConfigKey",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Namespace: "foo",
 							Name:      "bar",
 						}}, // missing KubeletConfigKey
@@ -216,7 +217,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap.UID is illegally specified",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							UID:              "foo",
 							Name:             "bar",
 							Namespace:        "baz",
@@ -226,7 +227,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap.ResourceVersion is illegally specified",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Name:             "bar",
 							Namespace:        "baz",
 							ResourceVersion:  "1",
@@ -236,7 +237,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap has invalid namespace",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Name:             "bar",
 							Namespace:        "../baz",
 							KubeletConfigKey: "kubelet",
@@ -245,7 +246,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap has invalid name",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Name:             "../bar",
 							Namespace:        "baz",
 							KubeletConfigKey: "kubelet",
@@ -254,7 +255,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					},
 					{
 						desc: "Node.Spec.ConfigSource.ConfigMap has invalid kubeletConfigKey",
-						configSource: &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+						configSource: &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 							Name:             "bar",
 							Namespace:        "baz",
 							KubeletConfigKey: "../qux",
@@ -310,7 +311,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				framework.ExpectNoError(err)
 
 				// bad config map, we insert some bogus stuff into the configMap
-				badConfigMap := &apiv1.ConfigMap{
+				badConfigMap := &v1.ConfigMap{
 					ObjectMeta: metav1.ObjectMeta{Name: "dynamic-kubelet-config-test-bad"},
 					Data: map[string]string{
 						"kubelet": "{0xdeadbeef}",
@@ -319,7 +320,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				badConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(badConfigMap)
 				framework.ExpectNoError(err)
 
-				lkgSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				lkgSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        lkgConfigMap.Namespace,
 					Name:             lkgConfigMap.Name,
 					KubeletConfigKey: "kubelet",
@@ -328,7 +329,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				lkgStatus.ConfigMap.UID = lkgConfigMap.UID
 				lkgStatus.ConfigMap.ResourceVersion = lkgConfigMap.ResourceVersion
 
-				badSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				badSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        badConfigMap.Namespace,
 					Name:             badConfigMap.Name,
 					KubeletConfigKey: "kubelet",
@@ -375,7 +376,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				combinedConfigMap, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(combinedConfigMap)
 				framework.ExpectNoError(err)
 
-				lkgSource := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				lkgSource := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        combinedConfigMap.Namespace,
 					Name:             combinedConfigMap.Name,
 					KubeletConfigKey: "kubelet",
@@ -428,7 +429,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				lkgConfigMap1, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(lkgConfigMap1)
 				framework.ExpectNoError(err)
 
-				lkgSource1 := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				lkgSource1 := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        lkgConfigMap1.Namespace,
 					Name:             lkgConfigMap1.Name,
 					KubeletConfigKey: "kubelet",
@@ -441,7 +442,7 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				lkgConfigMap2, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(lkgConfigMap2)
 				framework.ExpectNoError(err)
 
-				lkgSource2 := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				lkgSource2 := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        lkgConfigMap2.Namespace,
 					Name:             lkgConfigMap2.Name,
 					KubeletConfigKey: "kubelet",
@@ -500,13 +501,13 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 				cm2, err = f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(cm2)
 				framework.ExpectNoError(err)
 
-				cm1Source := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				cm1Source := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        cm1.Namespace,
 					Name:             cm1.Name,
 					KubeletConfigKey: "kubelet",
 				}}
 
-				cm2Source := &apiv1.NodeConfigSource{ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				cm2Source := &v1.NodeConfigSource{ConfigMap: &v1.ConfigMapNodeConfigSource{
 					Namespace:        cm2.Namespace,
 					Name:             cm2.Name,
 					KubeletConfigKey: "kubelet",
@@ -563,8 +564,8 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 
 				// ensure node config source is set to the config map we will mutate in-place,
 				// since updateConfigMapFunc doesn't mutate Node.Spec.ConfigSource
-				source := &apiv1.NodeConfigSource{
-					ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				source := &v1.NodeConfigSource{
+					ConfigMap: &v1.ConfigMapNodeConfigSource{
 						Namespace:        correctConfigMap.Namespace,
 						Name:             correctConfigMap.Name,
 						KubeletConfigKey: "kubelet",
@@ -635,8 +636,8 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 					"kubelet": "{0xdeadbeef}",
 				}
 				// ensure node config source is set to the config map we will mutate in-place
-				source := &apiv1.NodeConfigSource{
-					ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				source := &v1.NodeConfigSource{
+					ConfigMap: &v1.ConfigMapNodeConfigSource{
 						Namespace:        lkgConfigMap.Namespace,
 						Name:             lkgConfigMap.Name,
 						KubeletConfigKey: "kubelet",
@@ -722,8 +723,8 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 
 				// ensure node config source is set to the config map we will mutate in-place,
 				// since recreateConfigMapFunc doesn't mutate Node.Spec.ConfigSource
-				source := &apiv1.NodeConfigSource{
-					ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				source := &v1.NodeConfigSource{
+					ConfigMap: &v1.ConfigMapNodeConfigSource{
 						Namespace:        correctConfigMap.Namespace,
 						Name:             correctConfigMap.Name,
 						KubeletConfigKey: "kubelet",
@@ -790,8 +791,8 @@ var _ = framework.KubeDescribe("[Feature:DynamicKubeletConfig][NodeFeature:Dynam
 
 				// ensure node config source is set to the config map we will mutate in-place,
 				// since our mutation functions don't mutate Node.Spec.ConfigSource
-				source := &apiv1.NodeConfigSource{
-					ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+				source := &v1.NodeConfigSource{
+					ConfigMap: &v1.ConfigMapNodeConfigSource{
 						Namespace:        correctConfigMap.Namespace,
 						Name:             correctConfigMap.Name,
 						KubeletConfigKey: "kubelet",
@@ -984,7 +985,7 @@ func (tc *nodeConfigTestCase) checkConfigStatus(f *framework.Framework) {
 	}, timeout, interval).Should(BeNil())
 }
 
-func expectConfigStatus(tc *nodeConfigTestCase, actual *apiv1.NodeConfigStatus) error {
+func expectConfigStatus(tc *nodeConfigTestCase, actual *v1.NodeConfigStatus) error {
 	var errs []string
 	if actual == nil {
 		return fmt.Errorf("expectConfigStatus requires actual to be non-nil (possible Kubelet failed to update status)")
@@ -1052,7 +1053,7 @@ func (tc *nodeConfigTestCase) checkEvent(f *framework.Framework) {
 			return fmt.Errorf("checkEvent: case %s: %v", tc.desc, err)
 		}
 		// find config changed event with most recent timestamp
-		var recent *apiv1.Event
+		var recent *v1.Event
 		for i := range events.Items {
 			if events.Items[i].Reason == controller.KubeletConfigChangedEventReason {
 				if recent == nil {
@@ -1110,7 +1111,7 @@ func (tc *nodeConfigTestCase) checkConfigMetrics(f *framework.Framework) {
 		}
 	}
 	// remote config helper
-	mkRemoteSample := func(name model.LabelValue, source *apiv1.NodeConfigSource) *model.Sample {
+	mkRemoteSample := func(name model.LabelValue, source *v1.NodeConfigSource) *model.Sample {
 		return &model.Sample{
 			Metric: model.Metric(map[model.LabelName]model.LabelValue{
 				model.MetricNameLabel:                 name,
@@ -1192,6 +1193,6 @@ func (tc *nodeConfigTestCase) checkConfigMetrics(f *framework.Framework) {
 }
 
 // constructs the expected SelfLink for a config map
-func configMapAPIPath(cm *apiv1.ConfigMap) string {
+func configMapAPIPath(cm *v1.ConfigMap) string {
 	return fmt.Sprintf("/api/v1/namespaces/%s/configmaps/%s", cm.Namespace, cm.Name)
 }

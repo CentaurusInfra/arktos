@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,7 @@ package node
 import (
 	"time"
 
-	batch "k8s.io/api/batch/v1"
+	batchv1 "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/kubernetes/pkg/util/slice"
@@ -41,12 +42,12 @@ var _ = framework.KubeDescribe("[Feature:TTLAfterFinished][NodeAlphaFeature:TTLA
 	})
 })
 
-func cleanupJob(f *framework.Framework, job *batch.Job) {
+func cleanupJob(f *framework.Framework, job *batchv1.Job) {
 	ns := f.Namespace.Name
 	c := f.ClientSet
 
 	e2elog.Logf("Remove the Job's dummy finalizer; the Job should be deleted cascadingly")
-	removeFinalizerFunc := func(j *batch.Job) {
+	removeFinalizerFunc := func(j *batchv1.Job) {
 		j.ObjectMeta.Finalizers = slice.RemoveString(j.ObjectMeta.Finalizers, dummyFinalizer, nil)
 	}
 	_, err := jobutil.UpdateJobWithRetries(c, ns, job.Name, removeFinalizerFunc)

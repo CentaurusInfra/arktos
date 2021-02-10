@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ import (
 	"golang.org/x/net/context"
 	"k8s.io/klog"
 
-	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -42,8 +43,8 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	kubeletconfig "k8s.io/kubernetes/pkg/kubelet/apis/config"
 	"k8s.io/kubernetes/pkg/kubelet/apis/podresources"
-	podresourcesapi "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
-	stats "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
+	kubeletpodresourcesv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/podresources/v1alpha1"
+	kubeletstatsv1alpha1 "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	kubeletconfigcodec "k8s.io/kubernetes/pkg/kubelet/kubeletconfig/util/codec"
 	kubeletmetrics "k8s.io/kubernetes/pkg/kubelet/metrics"
@@ -75,7 +76,7 @@ const (
 	defaultPodResourcesMaxSize = 1024 * 1024 * 16 // 16 Mb
 )
 
-func getNodeSummary() (*stats.Summary, error) {
+func getNodeSummary() (*kubeletstatsv1alpha1.Summary, error) {
 	req, err := http.NewRequest("GET", *kubeletAddress+"/stats/summary", nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to build http request: %v", err)
@@ -95,7 +96,7 @@ func getNodeSummary() (*stats.Summary, error) {
 	}
 
 	decoder := json.NewDecoder(strings.NewReader(string(contentsBytes)))
-	summary := stats.Summary{}
+	summary := kubeletstatsv1alpha1.Summary{}
 	err = decoder.Decode(&summary)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse /stats/summary to go struct: %+v", resp)
@@ -103,7 +104,7 @@ func getNodeSummary() (*stats.Summary, error) {
 	return &summary, nil
 }
 
-func getNodeDevices() (*podresourcesapi.ListPodResourcesResponse, error) {
+func getNodeDevices() (*kubeletpodresourcesv1alpha1.ListPodResourcesResponse, error) {
 	endpoint, err := util.LocalEndpoint(defaultPodResourcesPath, podresources.Socket)
 	if err != nil {
 		return nil, fmt.Errorf("Error getting local endpoint: %v", err)
@@ -115,7 +116,7 @@ func getNodeDevices() (*podresourcesapi.ListPodResourcesResponse, error) {
 	defer conn.Close()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	resp, err := client.List(ctx, &podresourcesapi.ListPodResourcesRequest{})
+	resp, err := client.List(ctx, &kubeletpodresourcesv1alpha1.ListPodResourcesRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("%v.Get(_) = _, %v", client, err)
 	}
@@ -200,8 +201,8 @@ func setKubeletConfiguration(f *framework.Framework, kubeCfg *kubeletconfig.Kube
 	}
 
 	// create the reference and set Node.Spec.ConfigSource
-	src := &apiv1.NodeConfigSource{
-		ConfigMap: &apiv1.ConfigMapNodeConfigSource{
+	src := &v1.NodeConfigSource{
+		ConfigMap: &v1.ConfigMapNodeConfigSource{
 			Namespace:        "kube-system",
 			Name:             cm.Name,
 			KubeletConfigKey: "kubelet",
@@ -233,7 +234,7 @@ func setKubeletConfiguration(f *framework.Framework, kubeCfg *kubeletconfig.Kube
 }
 
 // sets the current node's configSource, this should only be called from Serial tests
-func setNodeConfigSource(f *framework.Framework, source *apiv1.NodeConfigSource) error {
+func setNodeConfigSource(f *framework.Framework, source *v1.NodeConfigSource) error {
 	// since this is a serial test, we just get the node, change the source, and then update it
 	// this prevents any issues with the patch API from affecting the test results
 	nodeclient := f.ClientSet.CoreV1().Nodes()
@@ -310,7 +311,7 @@ func decodeConfigz(resp *http.Response) (*kubeletconfig.KubeletConfiguration, er
 }
 
 // creates a configmap containing kubeCfg in kube-system namespace
-func createConfigMap(f *framework.Framework, internalKC *kubeletconfig.KubeletConfiguration) (*apiv1.ConfigMap, error) {
+func createConfigMap(f *framework.Framework, internalKC *kubeletconfig.KubeletConfiguration) (*v1.ConfigMap, error) {
 	cmap := newKubeletConfigMap("testcfg", internalKC)
 	cmap, err := f.ClientSet.CoreV1().ConfigMaps("kube-system").Create(cmap)
 	if err != nil {
@@ -320,11 +321,11 @@ func createConfigMap(f *framework.Framework, internalKC *kubeletconfig.KubeletCo
 }
 
 // constructs a ConfigMap, populating one of its keys with the KubeletConfiguration. Always uses GenerateName to generate a suffix.
-func newKubeletConfigMap(name string, internalKC *kubeletconfig.KubeletConfiguration) *apiv1.ConfigMap {
+func newKubeletConfigMap(name string, internalKC *kubeletconfig.KubeletConfiguration) *v1.ConfigMap {
 	data, err := kubeletconfigcodec.EncodeKubeletConfig(internalKC, kubeletconfigv1beta1.SchemeGroupVersion)
 	framework.ExpectNoError(err)
 
-	cmap := &apiv1.ConfigMap{
+	cmap := &v1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{GenerateName: name + "-"},
 		Data: map[string]string{
 			"kubelet": string(data),
@@ -345,7 +346,7 @@ func logNodeEvents(f *framework.Framework) {
 	framework.ExpectNoError(err)
 }
 
-func getLocalNode(f *framework.Framework) *apiv1.Node {
+func getLocalNode(f *framework.Framework) *v1.Node {
 	nodeList := framework.GetReadySchedulableNodesOrDie(f.ClientSet)
 	Expect(len(nodeList.Items)).To(Equal(1), "Unexpected number of node objects for node e2e. Expects only one node.")
 	return &nodeList.Items[0]

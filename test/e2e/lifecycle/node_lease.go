@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
@@ -99,7 +100,7 @@ var _ = SIGDescribe("[Disruptive]NodeLease", func() {
 		})
 
 		ginkgo.It("node lease should be deleted when corresponding node is deleted", func() {
-			leaseClient := c.CoordinationV1beta1().Leases(corev1.NamespaceNodeLease)
+			leaseClient := c.CoordinationV1beta1().Leases(v1.NamespaceNodeLease)
 			err := e2enode.WaitForReadyNodes(c, framework.TestContext.CloudConfig.NumNodes, 10*time.Minute)
 			gomega.Expect(err).To(gomega.BeNil())
 
