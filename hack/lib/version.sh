@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2014 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,6 +27,9 @@
 #    KUBE_GIT_VERSION - "vX.Y" used to indicate the last release version.
 #    KUBE_GIT_MAJOR - The major part of the version
 #    KUBE_GIT_MINOR - The minor component of the version
+
+# set default KUBE_GIT_VERSION_FILE
+KUBE_GIT_VERSION_FILE="${KUBE_ROOT}/pkg/version/VERSION.sh"
 
 # Grovels through git to set a set of env variables.
 #
