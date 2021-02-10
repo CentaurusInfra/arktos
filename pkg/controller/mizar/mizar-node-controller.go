@@ -174,7 +174,7 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 		klog.V(4).Infof("Finished handling %v %q (%v)", controllerForMizarNode, key, time.Since(startTime))
 	}()
 
-	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
+	_, _, name, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
