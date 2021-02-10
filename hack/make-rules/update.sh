@@ -85,7 +85,9 @@ echo "We define return value as 0 if there is no file updated, and 1 if there is
 MODIFIED_FILES=$(git status | grep modified:) || true
 if [[ "${MODIFIED_FILES:-}" != "" ]]; then
 	echo "Following files are updated:"
-	echo $MODIFIED_FILES
+	printf $MODIFIED_FILES
+	DIFF_FILES=$(git diff)
+	printf $DIFF_FILES
 	exit 1
 fi
 echo "Check completed."
