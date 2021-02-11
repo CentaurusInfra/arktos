@@ -413,6 +413,10 @@ if [[ -z "${KUBE_ADMISSION_CONTROL:-}" ]]; then
   if [[ "${ENABLE_POD_SECURITY_POLICY:-}" == "true" ]]; then
     ADMISSION_CONTROL="${ADMISSION_CONTROL},PodSecurityPolicy"
   fi
+  if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
+    FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
+    ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
+  fi
   # ResourceQuota must come last, or a creation is recorded, but the pod may be forbidden.
   ADMISSION_CONTROL="${ADMISSION_CONTROL},MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"
 else

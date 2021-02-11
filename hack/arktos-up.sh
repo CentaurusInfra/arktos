@@ -34,6 +34,9 @@ fi
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
+if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
+    FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
+fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true"
 
 # warn if users are running with swap allowed
