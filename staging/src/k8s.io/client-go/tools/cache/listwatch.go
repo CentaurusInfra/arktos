@@ -82,12 +82,13 @@ type Getter interface {
 // we should let it work on all tenants.
 // If it targets a specific namespaces, we should let it target at the system tenant.
 func InferTenantFromNamespace(namespace string) string {
-	tenant := metav1.TenantSystem
+	/*tenant := metav1.TenantSystem
 	if namespace == metav1.NamespaceAll {
 		tenant = metav1.TenantAll
 	}
 
-	return tenant
+	return tenant*/
+	return ""
 }
 
 // NewListWatchFromClient creates a new ListWatch from the specified client, resource, namespace and field selector.
