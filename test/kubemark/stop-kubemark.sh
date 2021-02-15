@@ -58,12 +58,9 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export KUBERNETES_RESOURCE_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
   delete-kubemark-master
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.proxy"
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.direct"
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.saved"
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.*.tmp"
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-*
 else
   delete-kubemark-master
 fi
