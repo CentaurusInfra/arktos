@@ -61,7 +61,7 @@ func NameIsDNS1035Label(name string, prefix bool) []string {
 
 // ValidateTenantName can be used to check whether the given tenant name is valid.
 func ValidateTenantName(name string, prefix bool) []string {
-	forbiddenTenantNames := []string{metav1.TenantAllExplicit}
+	forbiddenTenantNames := []string{metav1.TenantAll}
 	for _, forbiddenName := range forbiddenTenantNames {
 		if name == forbiddenName {
 			return []string{fmt.Sprintf("is not an acceptable tenant name")}
