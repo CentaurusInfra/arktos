@@ -86,9 +86,9 @@ func (c *FakeDynamicClient) Resource(resource schema.GroupVersionResource) dynam
 func (c *dynamicResourceClient) Namespace(ns string) dynamic.ResourceInterface {
 	if ns != metav1.NamespaceAll {
 		return c.NamespaceWithMultiTenancy(ns, metav1.TenantSystem)
-	} else {
-		return c.NamespaceWithMultiTenancy(ns, metav1.TenantAll)
 	}
+
+	return c.NamespaceWithMultiTenancy(ns, metav1.TenantAll)
 }
 
 func (c *dynamicResourceClient) NamespaceWithMultiTenancy(ns string, tenant string) dynamic.ResourceInterface {
