@@ -318,8 +318,8 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		// the tenant override instead of having config.ConfirmUsable() return an error. This allows
 		// things like in-cluster clients to execute `kubectl get pods --tenant=foo` and have the
 		// --tenant flag honored instead of being ignored.
-		if config.overrides.Context.Tenant == metav1.TenantAllExplicit {
-			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
+		if config.overrides.Context.Tenant == metav1.TenantAll {
+			return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAll)
 		}
 		return config.overrides.Context.Tenant, true, nil
 	}
@@ -333,8 +333,8 @@ func (config *DirectClientConfig) Tenant() (string, bool, error) {
 		return "", false, err
 	}
 
-	if configContext.Tenant == metav1.TenantAllExplicit {
-		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAllExplicit)
+	if configContext.Tenant == metav1.TenantAll {
+		return "", false, fmt.Errorf("%q is not a valid tenant name", metav1.TenantAll)
 	}
 
 	return configContext.Tenant, false, nil

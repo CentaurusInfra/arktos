@@ -125,7 +125,7 @@ func (d *Helper) GetPodsForDeletion(nodeName string) (*podDeleteList, []error) {
 		return nil, []error{err}
 	}
 
-	podList, err := d.Client.CoreV1().Pods(metav1.NamespaceAll).List(metav1.ListOptions{
+	podList, err := d.Client.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(metav1.ListOptions{
 		LabelSelector: labelSelector.String(),
 		FieldSelector: fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName}).String()})
 	if err != nil {

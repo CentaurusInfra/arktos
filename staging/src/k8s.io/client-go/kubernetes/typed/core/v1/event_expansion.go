@@ -48,10 +48,10 @@ type EventExpansion interface {
 // event; it must either match this event client's namespace, or this event
 // client must have been created with the "" namespace.
 func (e *events) CreateWithEventNamespace(event *v1.Event) (*v1.Event, error) {
-	if e.te != "" && event.Tenant != e.te {
+	if e.te != metav1.TenantAll && event.Tenant != e.te {
 		return nil, fmt.Errorf("can't create an event with tenant '%v' in tenant '%v'", event.Tenant, e.te)
 	}
-	if e.ns != "" && event.Namespace != e.ns {
+	if e.ns != metav1.NamespaceAll && event.Namespace != e.ns {
 		return nil, fmt.Errorf("can't create an event with namespace '%v' in namespace '%v'", event.Namespace, e.ns)
 	}
 	result := &v1.Event{}

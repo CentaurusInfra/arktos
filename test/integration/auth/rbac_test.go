@@ -555,7 +555,7 @@ func TestRBAC(t *testing.T) {
 				t.Errorf("case %d %d: unknown api group %q, %s", i, j, r.apiGroup, r)
 				continue
 			}
-			path := testGroup.ResourcePath(r.resource, r.namespace, r.name)
+			path := testGroup.ResourcePathWithMultiTenancy(r.resource, metav1.TenantSystem, r.namespace, r.name)
 
 			var body io.Reader
 			if r.body != "" {

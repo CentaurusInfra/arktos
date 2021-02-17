@@ -64,9 +64,20 @@ Tests:
              | jq -r '.items[] | [.metadata.tenant, .metadata.name, .metadata.selfLink] | @tsv'"
     OutputShouldBe: "${test_tenant}	admin-role-binding	/apis/rbac.authorization.k8s.io/v1/tenants/${test_tenant}/clusterrolebindings/admin-role-binding\n"
 
+
+############################################################################################################
+# check listing by "--tenantsystem" does not return resources under the other tenants
+############################################################################################################
+  - BeforeTestMessage: Verifying the listing by "--tenantsystem" does not return resources under the other tenants ...
+    Command: ${kubectl} get namespaces --tenant system -o json | jq -r '.items[] | [.metadata.tenant] | @tsv'
+    OutputShouldContain: 
+    - system
+    OutputShouldNotContain: 
+    - ${test_tenant}
+
 ############################################################################################################
 # namespaces created by tenant controller cannot be deleted
-###################################################################################################################
+############################################################################################################
   - BeforeTestMessage: Verifying namespaces created by tenant controller cannot be deleted ...
     Command: ${kubectl} delete ns default --tenant ${test_tenant}
     ShouldFail: true

@@ -538,10 +538,10 @@ func filterByNamespaceAndName(objs []runtime.Object, ns, name string, tenant str
 		if err != nil {
 			return nil, err
 		}
-		if tenant != "" && acc.GetTenant() != tenant {
+		if tenant != metav1.TenantAll && acc.GetTenant() != tenant && tenant != metav1.TenantNone {
 			continue
 		}
-		if ns != "" && acc.GetNamespace() != ns {
+		if ns != metav1.NamespaceAll && acc.GetNamespace() != ns {
 			continue
 		}
 		if name != "" && acc.GetName() != name {
