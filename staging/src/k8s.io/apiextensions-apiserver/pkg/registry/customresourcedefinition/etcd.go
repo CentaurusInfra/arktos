@@ -223,7 +223,7 @@ func (r *REST) Delete(ctx context.Context, name string, deleteValidation rest.Va
 
 	crd := obj.(*apiextensions.CustomResourceDefinition)
 	if IsCrdSystemForced(crd) && tenant != metav1.TenantSystem {
-		return nil, false, nil
+		return nil, false, fmt.Errorf("Forbidden: %s is a system CRD, it can only be deleted by a cluster admin.", name)
 	}
 
 	// Ensure we have a UID precondition
