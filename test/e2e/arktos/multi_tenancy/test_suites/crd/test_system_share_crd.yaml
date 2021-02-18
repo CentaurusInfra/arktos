@@ -71,6 +71,12 @@ Tests:
 #    OutputShouldContain:
 #    - "mustshareknowledges.learning.wisdom.com is a system CRD, you cannot overwrite it"
 
+  - BeforeTestMessage: Verifying system-share CRD cannot be deleted by regular tenants ...
+    Command: "${kubectl} delete crd mustshareknowledges.learning.wisdom.com --context ${first_tenant}-admin-context"
+    ShouldFail: true
+    OutputShouldContain:
+    - "Forbidden: mustshareknowledges.learning.wisdom.com is a system CRD, it can only be deleted by a cluster admin."
+
 ########################################################################################
 # Verifying regular tenants creating custom resources
 ########################################################################################
