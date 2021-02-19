@@ -474,6 +474,13 @@ function kube::common::start_controller_manager {
       cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
       cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
     fi
+
+    if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+      KUBE_CONTROLLERS="nodelifecycle"
+    else
+      KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam"
+    fi
+
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
     ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
       --v="${LOG_LEVEL}" \
@@ -490,12 +497,10 @@ function kube::common::start_controller_manager {
       --feature-gates="${FEATURE_GATES}" \
       "${cloud_config_arg[@]}" \
       --kubeconfig "${kubeconfigfilepaths}" \
-      --use-service-account-credentials \
       --controllers="${KUBE_CONTROLLERS}" \
       --leader-elect=false \
       --cert-dir="${CERT_DIR}" \
-      --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
+      --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 & 
     CTLRMGR_PID=$!
 }
 
@@ -510,8 +515,7 @@ function kube::common::start_kubescheduler {
       --v="${LOG_LEVEL}" \
       --leader-elect=false \
       --kubeconfig "${kubeconfigfilepaths}" \
-      --feature-gates="${FEATURE_GATES}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
+      --feature-gates="${FEATURE_GATES}" >"${SCHEDULER_LOG}" 2>&1 & 
     SCHEDULER_PID=$!
 }
 
