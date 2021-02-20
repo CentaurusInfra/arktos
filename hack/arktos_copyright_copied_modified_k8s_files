@@ -1,3 +1,8 @@
+pkg/apis/admissionregistration/v1/defaults.go
+pkg/apis/admissionregistration/v1/defaults_test.go
+pkg/apis/admissionregistration/v1beta1/defaults_test.go
+pkg/apis/admissionregistration/v1/doc.go
+pkg/apis/admissionregistration/v1/register.go
 pkg/cloudfabric-controller/deployment/deployment_controller.go
 pkg/cloudfabric-controller/deployment/deployment_controller_test.go
 pkg/cloudfabric-controller/deployment/progress.go
@@ -21,10 +26,11 @@ staging/src/k8s.io/client-go/metadata/metadatainformer/informer_test.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister_test.go
 staging/src/k8s.io/client-go/metadata/metadatalister/shim.go
+staging/src/k8s.io/api/admissionregistration/v1/doc.go
+staging/src/k8s.io/api/admissionregistration/v1/register.go
+staging/src/k8s.io/api/admissionregistration/v1/types.go
 test/integration/cloudfabriccontrollers/deployment.go
 test/integration/cloudfabriccontrollers/deployment_test.go
 test/integration/cloudfabriccontrollers/deployment_util.go
 test/integration/cloudfabriccontrollers/replicaset.go
 test/integration/cloudfabriccontrollers/replicaset_test.go
-
-

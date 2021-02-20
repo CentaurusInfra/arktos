@@ -1,4 +1,5 @@
 # Copyright The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,6 +40,7 @@ tags_values_pkgs = {"openapi-gen": {
         "pkg/apis/abac/v1beta1",
         "pkg/apis/auditregistration",
         "pkg/version",
+        "staging/src/k8s.io/api/admissionregistration/v1",
         "staging/src/k8s.io/api/admissionregistration/v1beta1",
         "staging/src/k8s.io/api/apps/v1",
         "staging/src/k8s.io/api/apps/v1beta1",
@@ -112,6 +114,7 @@ tags_pkgs_values = {"openapi-gen": {
     "pkg/apis/auditregistration": ["true"],
     "pkg/version": ["true"],
     "staging/src/k8s.io/api/admission/v1beta1": ["false"],
+    "staging/src/k8s.io/api/admissionregistration/v1": ["true"],
     "staging/src/k8s.io/api/admissionregistration/v1beta1": ["true"],
     "staging/src/k8s.io/api/apps/v1": ["true"],
     "staging/src/k8s.io/api/apps/v1beta1": ["true"],
