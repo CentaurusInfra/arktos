@@ -96,3 +96,7 @@ spec:
 kubectl --kubeconfig /var/run/kubernetes/scheduler.kubeconfig get pods
 ```
 
+### Note
+1. Current change break arktos-up.sh. To verify it works on the host, please use arktos-up.sh on master branch
+
+1. If there is no code changes, can use "./hack/arktos-up-scale-out-poc.sh -O" to save compile time
