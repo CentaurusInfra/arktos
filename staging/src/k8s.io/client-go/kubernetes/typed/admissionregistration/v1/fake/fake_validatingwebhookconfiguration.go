@@ -31,7 +31,6 @@ import (
 // FakeValidatingWebhookConfigurations implements ValidatingWebhookConfigurationInterface
 type FakeValidatingWebhookConfigurations struct {
 	Fake *FakeAdmissionregistrationV1
-	te   string
 }
 
 var validatingwebhookconfigurationsResource = schema.GroupVersionResource{Group: "admissionregistration.k8s.io", Version: "v1", Resource: "validatingwebhookconfigurations"}
@@ -41,8 +40,7 @@ var validatingwebhookconfigurationsKind = schema.GroupVersionKind{Group: "admiss
 // Get takes name of the validatingWebhookConfiguration, and returns the corresponding validatingWebhookConfiguration object, and an error if there is any.
 func (c *FakeValidatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(validatingwebhookconfigurationsResource, name, c.te), &admissionregistrationv1.ValidatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootGetAction(validatingwebhookconfigurationsResource, name), &admissionregistrationv1.ValidatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -53,8 +51,7 @@ func (c *FakeValidatingWebhookConfigurations) Get(name string, options v1.GetOpt
 // List takes label and field selectors, and returns the list of ValidatingWebhookConfigurations that match those selectors.
 func (c *FakeValidatingWebhookConfigurations) List(opts v1.ListOptions) (result *admissionregistrationv1.ValidatingWebhookConfigurationList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantListAction(validatingwebhookconfigurationsResource, validatingwebhookconfigurationsKind, opts, c.te), &admissionregistrationv1.ValidatingWebhookConfigurationList{})
-
+		Invokes(testing.NewRootListAction(validatingwebhookconfigurationsResource, validatingwebhookconfigurationsKind, opts), &admissionregistrationv1.ValidatingWebhookConfigurationList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -75,15 +72,13 @@ func (c *FakeValidatingWebhookConfigurations) List(opts v1.ListOptions) (result 
 // Watch returns a watch.Interface that watches the requested validatingWebhookConfigurations.
 func (c *FakeValidatingWebhookConfigurations) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewTenantWatchAction(validatingwebhookconfigurationsResource, opts, c.te))
-
+		InvokesWatch(testing.NewRootWatchAction(validatingwebhookconfigurationsResource, opts))
 }
 
 // Create takes the representation of a validatingWebhookConfiguration and creates it.  Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeValidatingWebhookConfigurations) Create(validatingWebhookConfiguration *admissionregistrationv1.ValidatingWebhookConfiguration) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration, c.te), &admissionregistrationv1.ValidatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootCreateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration), &admissionregistrationv1.ValidatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -94,8 +89,7 @@ func (c *FakeValidatingWebhookConfigurations) Create(validatingWebhookConfigurat
 // Update takes the representation of a validatingWebhookConfiguration and updates it. Returns the server's representation of the validatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeValidatingWebhookConfigurations) Update(validatingWebhookConfiguration *admissionregistrationv1.ValidatingWebhookConfiguration) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration, c.te), &admissionregistrationv1.ValidatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootUpdateAction(validatingwebhookconfigurationsResource, validatingWebhookConfiguration), &admissionregistrationv1.ValidatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -106,16 +100,14 @@ func (c *FakeValidatingWebhookConfigurations) Update(validatingWebhookConfigurat
 // Delete takes name of the validatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeValidatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(validatingwebhookconfigurationsResource, name, c.te), &admissionregistrationv1.ValidatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootDeleteAction(validatingwebhookconfigurationsResource, name), &admissionregistrationv1.ValidatingWebhookConfiguration{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeValidatingWebhookConfigurations) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 
-	action := testing.NewTenantDeleteCollectionAction(validatingwebhookconfigurationsResource, listOptions, c.te)
-
+	action := testing.NewRootDeleteCollectionAction(validatingwebhookconfigurationsResource, listOptions)
 	_, err := c.Fake.Invokes(action, &admissionregistrationv1.ValidatingWebhookConfigurationList{})
 	return err
 }
@@ -123,8 +115,7 @@ func (c *FakeValidatingWebhookConfigurations) DeleteCollection(options *v1.Delet
 // Patch applies the patch and returns the patched validatingWebhookConfiguration.
 func (c *FakeValidatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *admissionregistrationv1.ValidatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(validatingwebhookconfigurationsResource, c.te, name, pt, data, subresources...), &admissionregistrationv1.ValidatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(validatingwebhookconfigurationsResource, name, pt, data, subresources...), &admissionregistrationv1.ValidatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}

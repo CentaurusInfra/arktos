@@ -29,19 +29,13 @@ type FakeAdmissionregistrationV1 struct {
 }
 
 func (c *FakeAdmissionregistrationV1) MutatingWebhookConfigurations() v1.MutatingWebhookConfigurationInterface {
-	return &FakeMutatingWebhookConfigurations{c, "system"}
-}
 
-func (c *FakeAdmissionregistrationV1) MutatingWebhookConfigurationsWithMultiTenancy(tenant string) v1.MutatingWebhookConfigurationInterface {
-	return &FakeMutatingWebhookConfigurations{c, tenant}
+	return &FakeMutatingWebhookConfigurations{c}
 }
 
 func (c *FakeAdmissionregistrationV1) ValidatingWebhookConfigurations() v1.ValidatingWebhookConfigurationInterface {
-	return &FakeValidatingWebhookConfigurations{c, "system"}
-}
 
-func (c *FakeAdmissionregistrationV1) ValidatingWebhookConfigurationsWithMultiTenancy(tenant string) v1.ValidatingWebhookConfigurationInterface {
-	return &FakeValidatingWebhookConfigurations{c, tenant}
+	return &FakeValidatingWebhookConfigurations{c}
 }
 
 // RESTClient returns a RESTClient that is used to communicate

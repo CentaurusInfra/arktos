@@ -39,7 +39,6 @@ import (
 // A group's client should implement this interface.
 type ValidatingWebhookConfigurationsGetter interface {
 	ValidatingWebhookConfigurations() ValidatingWebhookConfigurationInterface
-	ValidatingWebhookConfigurationsWithMultiTenancy(tenant string) ValidatingWebhookConfigurationInterface
 }
 
 // ValidatingWebhookConfigurationInterface has methods to work with ValidatingWebhookConfiguration resources.
@@ -59,19 +58,13 @@ type ValidatingWebhookConfigurationInterface interface {
 type validatingWebhookConfigurations struct {
 	client  rest.Interface
 	clients []rest.Interface
-	te      string
 }
 
 // newValidatingWebhookConfigurations returns a ValidatingWebhookConfigurations
 func newValidatingWebhookConfigurations(c *AdmissionregistrationV1Client) *validatingWebhookConfigurations {
-	return newValidatingWebhookConfigurationsWithMultiTenancy(c, "system")
-}
-
-func newValidatingWebhookConfigurationsWithMultiTenancy(c *AdmissionregistrationV1Client, tenant string) *validatingWebhookConfigurations {
 	return &validatingWebhookConfigurations{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
-		te:      tenant,
 	}
 }
 
@@ -79,7 +72,6 @@ func newValidatingWebhookConfigurationsWithMultiTenancy(c *Admissionregistration
 func (c *validatingWebhookConfigurations) Get(name string, options metav1.GetOptions) (result *v1.ValidatingWebhookConfiguration, err error) {
 	result = &v1.ValidatingWebhookConfiguration{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("validatingwebhookconfigurations").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -115,7 +107,6 @@ func (c *validatingWebhookConfigurations) List(opts metav1.ListOptions) (result 
 			go func(c *validatingWebhookConfigurations, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.ValidatingWebhookConfigurationList, errMap map[int]error) {
 				r := &v1.ValidatingWebhookConfigurationList{}
 				err := ci.Get().
-					Tenant(c.te).
 					Resource("validatingwebhookconfigurations").
 					VersionedParams(&opts, scheme.ParameterCodec).
 					Timeout(timeout).
@@ -177,7 +168,6 @@ func (c *validatingWebhookConfigurations) List(opts metav1.ListOptions) (result 
 	// list of data if no permission issue. The list needs to done sequential to avoid increasing
 	// system load.
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("validatingwebhookconfigurations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -198,7 +188,6 @@ func (c *validatingWebhookConfigurations) List(opts metav1.ListOptions) (result 
 		}
 
 		err = client.Get().
-			Tenant(c.te).
 			Resource("validatingwebhookconfigurations").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -230,7 +219,6 @@ func (c *validatingWebhookConfigurations) Watch(opts metav1.ListOptions) (watch.
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
-			Tenant(c.te).
 			Resource("validatingwebhookconfigurations").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -249,13 +237,7 @@ func (c *validatingWebhookConfigurations) Watch(opts metav1.ListOptions) (watch.
 func (c *validatingWebhookConfigurations) Create(validatingWebhookConfiguration *v1.ValidatingWebhookConfiguration) (result *v1.ValidatingWebhookConfiguration, err error) {
 	result = &v1.ValidatingWebhookConfiguration{}
 
-	objectTenant := validatingWebhookConfiguration.ObjectMeta.Tenant
-	if objectTenant == "" {
-		objectTenant = c.te
-	}
-
 	err = c.client.Post().
-		Tenant(objectTenant).
 		Resource("validatingwebhookconfigurations").
 		Body(validatingWebhookConfiguration).
 		Do().
@@ -268,13 +250,7 @@ func (c *validatingWebhookConfigurations) Create(validatingWebhookConfiguration 
 func (c *validatingWebhookConfigurations) Update(validatingWebhookConfiguration *v1.ValidatingWebhookConfiguration) (result *v1.ValidatingWebhookConfiguration, err error) {
 	result = &v1.ValidatingWebhookConfiguration{}
 
-	objectTenant := validatingWebhookConfiguration.ObjectMeta.Tenant
-	if objectTenant == "" {
-		objectTenant = c.te
-	}
-
 	err = c.client.Put().
-		Tenant(objectTenant).
 		Resource("validatingwebhookconfigurations").
 		Name(validatingWebhookConfiguration.Name).
 		Body(validatingWebhookConfiguration).
@@ -287,7 +263,6 @@ func (c *validatingWebhookConfigurations) Update(validatingWebhookConfiguration 
 // Delete takes name of the validatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *validatingWebhookConfigurations) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("validatingwebhookconfigurations").
 		Name(name).
 		Body(options).
@@ -302,7 +277,6 @@ func (c *validatingWebhookConfigurations) DeleteCollection(options *metav1.Delet
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("validatingwebhookconfigurations").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -315,7 +289,6 @@ func (c *validatingWebhookConfigurations) DeleteCollection(options *metav1.Delet
 func (c *validatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.ValidatingWebhookConfiguration, err error) {
 	result = &v1.ValidatingWebhookConfiguration{}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
 		Resource("validatingwebhookconfigurations").
 		SubResource(subresources...).
 		Name(name).

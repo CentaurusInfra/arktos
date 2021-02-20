@@ -29,9 +29,6 @@ import (
 type MutatingWebhookConfigurationLister interface {
 	// List lists all MutatingWebhookConfigurations in the indexer.
 	List(selector labels.Selector) (ret []*v1.MutatingWebhookConfiguration, err error)
-	// MutatingWebhookConfigurations returns an object that can list and get MutatingWebhookConfigurations.
-	MutatingWebhookConfigurations() MutatingWebhookConfigurationTenantLister
-	MutatingWebhookConfigurationsWithMultiTenancy(tenant string) MutatingWebhookConfigurationTenantLister
 	// Get retrieves the MutatingWebhookConfiguration from the index for a given name.
 	Get(name string) (*v1.MutatingWebhookConfiguration, error)
 	MutatingWebhookConfigurationListerExpansion
@@ -58,55 +55,6 @@ func (s *mutatingWebhookConfigurationLister) List(selector labels.Selector) (ret
 // Get retrieves the MutatingWebhookConfiguration from the index for a given name.
 func (s *mutatingWebhookConfigurationLister) Get(name string) (*v1.MutatingWebhookConfiguration, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("mutatingwebhookconfiguration"), name)
-	}
-	return obj.(*v1.MutatingWebhookConfiguration), nil
-}
-
-// MutatingWebhookConfigurations returns an object that can list and get MutatingWebhookConfigurations.
-func (s *mutatingWebhookConfigurationLister) MutatingWebhookConfigurations() MutatingWebhookConfigurationTenantLister {
-	return mutatingWebhookConfigurationTenantLister{indexer: s.indexer, tenant: "system"}
-}
-
-func (s *mutatingWebhookConfigurationLister) MutatingWebhookConfigurationsWithMultiTenancy(tenant string) MutatingWebhookConfigurationTenantLister {
-	return mutatingWebhookConfigurationTenantLister{indexer: s.indexer, tenant: tenant}
-}
-
-// MutatingWebhookConfigurationTenantLister helps list and get MutatingWebhookConfigurations.
-type MutatingWebhookConfigurationTenantLister interface {
-	// List lists all MutatingWebhookConfigurations in the indexer for a given tenant/tenant.
-	List(selector labels.Selector) (ret []*v1.MutatingWebhookConfiguration, err error)
-	// Get retrieves the MutatingWebhookConfiguration from the indexer for a given tenant/tenant and name.
-	Get(name string) (*v1.MutatingWebhookConfiguration, error)
-	MutatingWebhookConfigurationTenantListerExpansion
-}
-
-// mutatingWebhookConfigurationTenantLister implements the MutatingWebhookConfigurationTenantLister
-// interface.
-type mutatingWebhookConfigurationTenantLister struct {
-	indexer cache.Indexer
-	tenant  string
-}
-
-// List lists all MutatingWebhookConfigurations in the indexer for a given tenant.
-func (s mutatingWebhookConfigurationTenantLister) List(selector labels.Selector) (ret []*v1.MutatingWebhookConfiguration, err error) {
-	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.MutatingWebhookConfiguration))
-	})
-	return ret, err
-}
-
-// Get retrieves the MutatingWebhookConfiguration from the indexer for a given tenant and name.
-func (s mutatingWebhookConfigurationTenantLister) Get(name string) (*v1.MutatingWebhookConfiguration, error) {
-	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
-	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

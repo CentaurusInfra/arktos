@@ -45,19 +45,11 @@ type AdmissionregistrationV1Client struct {
 }
 
 func (c *AdmissionregistrationV1Client) MutatingWebhookConfigurations() MutatingWebhookConfigurationInterface {
-	return newMutatingWebhookConfigurationsWithMultiTenancy(c, "system")
-}
-
-func (c *AdmissionregistrationV1Client) MutatingWebhookConfigurationsWithMultiTenancy(tenant string) MutatingWebhookConfigurationInterface {
-	return newMutatingWebhookConfigurationsWithMultiTenancy(c, tenant)
+	return newMutatingWebhookConfigurations(c)
 }
 
 func (c *AdmissionregistrationV1Client) ValidatingWebhookConfigurations() ValidatingWebhookConfigurationInterface {
-	return newValidatingWebhookConfigurationsWithMultiTenancy(c, "system")
-}
-
-func (c *AdmissionregistrationV1Client) ValidatingWebhookConfigurationsWithMultiTenancy(tenant string) ValidatingWebhookConfigurationInterface {
-	return newValidatingWebhookConfigurationsWithMultiTenancy(c, tenant)
+	return newValidatingWebhookConfigurations(c)
 }
 
 // NewForConfig creates a new AdmissionregistrationV1Client for the given config.

@@ -39,7 +39,6 @@ import (
 // A group's client should implement this interface.
 type MutatingWebhookConfigurationsGetter interface {
 	MutatingWebhookConfigurations() MutatingWebhookConfigurationInterface
-	MutatingWebhookConfigurationsWithMultiTenancy(tenant string) MutatingWebhookConfigurationInterface
 }
 
 // MutatingWebhookConfigurationInterface has methods to work with MutatingWebhookConfiguration resources.
@@ -59,19 +58,13 @@ type MutatingWebhookConfigurationInterface interface {
 type mutatingWebhookConfigurations struct {
 	client  rest.Interface
 	clients []rest.Interface
-	te      string
 }
 
 // newMutatingWebhookConfigurations returns a MutatingWebhookConfigurations
 func newMutatingWebhookConfigurations(c *AdmissionregistrationV1Client) *mutatingWebhookConfigurations {
-	return newMutatingWebhookConfigurationsWithMultiTenancy(c, "system")
-}
-
-func newMutatingWebhookConfigurationsWithMultiTenancy(c *AdmissionregistrationV1Client, tenant string) *mutatingWebhookConfigurations {
 	return &mutatingWebhookConfigurations{
 		client:  c.RESTClient(),
 		clients: c.RESTClients(),
-		te:      tenant,
 	}
 }
 
@@ -79,7 +72,6 @@ func newMutatingWebhookConfigurationsWithMultiTenancy(c *AdmissionregistrationV1
 func (c *mutatingWebhookConfigurations) Get(name string, options metav1.GetOptions) (result *v1.MutatingWebhookConfiguration, err error) {
 	result = &v1.MutatingWebhookConfiguration{}
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("mutatingwebhookconfigurations").
 		Name(name).
 		VersionedParams(&options, scheme.ParameterCodec).
@@ -115,7 +107,6 @@ func (c *mutatingWebhookConfigurations) List(opts metav1.ListOptions) (result *v
 			go func(c *mutatingWebhookConfigurations, ci rest.Interface, opts metav1.ListOptions, lock *sync.Mutex, pos int, resultMap map[int]*v1.MutatingWebhookConfigurationList, errMap map[int]error) {
 				r := &v1.MutatingWebhookConfigurationList{}
 				err := ci.Get().
-					Tenant(c.te).
 					Resource("mutatingwebhookconfigurations").
 					VersionedParams(&opts, scheme.ParameterCodec).
 					Timeout(timeout).
@@ -177,7 +168,6 @@ func (c *mutatingWebhookConfigurations) List(opts metav1.ListOptions) (result *v
 	// list of data if no permission issue. The list needs to done sequential to avoid increasing
 	// system load.
 	err = c.client.Get().
-		Tenant(c.te).
 		Resource("mutatingwebhookconfigurations").
 		VersionedParams(&opts, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -198,7 +188,6 @@ func (c *mutatingWebhookConfigurations) List(opts metav1.ListOptions) (result *v
 		}
 
 		err = client.Get().
-			Tenant(c.te).
 			Resource("mutatingwebhookconfigurations").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -230,7 +219,6 @@ func (c *mutatingWebhookConfigurations) Watch(opts metav1.ListOptions) (watch.In
 	aggWatch := watch.NewAggregatedWatcher()
 	for _, client := range c.clients {
 		watcher, err := client.Get().
-			Tenant(c.te).
 			Resource("mutatingwebhookconfigurations").
 			VersionedParams(&opts, scheme.ParameterCodec).
 			Timeout(timeout).
@@ -249,13 +237,7 @@ func (c *mutatingWebhookConfigurations) Watch(opts metav1.ListOptions) (watch.In
 func (c *mutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1.MutatingWebhookConfiguration) (result *v1.MutatingWebhookConfiguration, err error) {
 	result = &v1.MutatingWebhookConfiguration{}
 
-	objectTenant := mutatingWebhookConfiguration.ObjectMeta.Tenant
-	if objectTenant == "" {
-		objectTenant = c.te
-	}
-
 	err = c.client.Post().
-		Tenant(objectTenant).
 		Resource("mutatingwebhookconfigurations").
 		Body(mutatingWebhookConfiguration).
 		Do().
@@ -268,13 +250,7 @@ func (c *mutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *v1.
 func (c *mutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1.MutatingWebhookConfiguration) (result *v1.MutatingWebhookConfiguration, err error) {
 	result = &v1.MutatingWebhookConfiguration{}
 
-	objectTenant := mutatingWebhookConfiguration.ObjectMeta.Tenant
-	if objectTenant == "" {
-		objectTenant = c.te
-	}
-
 	err = c.client.Put().
-		Tenant(objectTenant).
 		Resource("mutatingwebhookconfigurations").
 		Name(mutatingWebhookConfiguration.Name).
 		Body(mutatingWebhookConfiguration).
@@ -287,7 +263,6 @@ func (c *mutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *v1.
 // Delete takes name of the mutatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *mutatingWebhookConfigurations) Delete(name string, options *metav1.DeleteOptions) error {
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("mutatingwebhookconfigurations").
 		Name(name).
 		Body(options).
@@ -302,7 +277,6 @@ func (c *mutatingWebhookConfigurations) DeleteCollection(options *metav1.DeleteO
 		timeout = time.Duration(*listOptions.TimeoutSeconds) * time.Second
 	}
 	return c.client.Delete().
-		Tenant(c.te).
 		Resource("mutatingwebhookconfigurations").
 		VersionedParams(&listOptions, scheme.ParameterCodec).
 		Timeout(timeout).
@@ -315,7 +289,6 @@ func (c *mutatingWebhookConfigurations) DeleteCollection(options *metav1.DeleteO
 func (c *mutatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *v1.MutatingWebhookConfiguration, err error) {
 	result = &v1.MutatingWebhookConfiguration{}
 	err = c.client.Patch(pt).
-		Tenant(c.te).
 		Resource("mutatingwebhookconfigurations").
 		SubResource(subresources...).
 		Name(name).

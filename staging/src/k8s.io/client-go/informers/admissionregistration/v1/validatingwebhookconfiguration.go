@@ -41,7 +41,6 @@ type ValidatingWebhookConfigurationInformer interface {
 type validatingWebhookConfigurationInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
 	tweakListOptions internalinterfaces.TweakListOptionsFunc
-	tenant           string
 }
 
 // NewValidatingWebhookConfigurationInformer constructs a new informer for ValidatingWebhookConfiguration type.
@@ -51,31 +50,23 @@ func NewValidatingWebhookConfigurationInformer(client kubernetes.Interface, resy
 	return NewFilteredValidatingWebhookConfigurationInformer(client, resyncPeriod, indexers, nil)
 }
 
-func NewValidatingWebhookConfigurationInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tenant string) cache.SharedIndexInformer {
-	return NewFilteredValidatingWebhookConfigurationInformerWithMultiTenancy(client, resyncPeriod, indexers, nil, tenant)
-}
-
 // NewFilteredValidatingWebhookConfigurationInformer constructs a new informer for ValidatingWebhookConfiguration type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredValidatingWebhookConfigurationInformer(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewFilteredValidatingWebhookConfigurationInformerWithMultiTenancy(client, resyncPeriod, indexers, tweakListOptions, "system")
-}
-
-func NewFilteredValidatingWebhookConfigurationInformerWithMultiTenancy(client kubernetes.Interface, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) cache.SharedIndexInformer {
 	return cache.NewSharedIndexInformer(
 		&cache.ListWatch{
 			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().ValidatingWebhookConfigurationsWithMultiTenancy(tenant).List(options)
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().List(options)
 			},
 			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.AdmissionregistrationV1().ValidatingWebhookConfigurationsWithMultiTenancy(tenant).Watch(options)
+				return client.AdmissionregistrationV1().ValidatingWebhookConfigurations().Watch(options)
 			},
 		},
 		&admissionregistrationv1.ValidatingWebhookConfiguration{},
@@ -85,7 +76,7 @@ func NewFilteredValidatingWebhookConfigurationInformerWithMultiTenancy(client ku
 }
 
 func (f *validatingWebhookConfigurationInformer) defaultInformer(client kubernetes.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredValidatingWebhookConfigurationInformerWithMultiTenancy(client, resyncPeriod, cache.Indexers{cache.TenantIndex: cache.MetaTenantIndexFunc}, f.tweakListOptions, f.tenant)
+	return NewFilteredValidatingWebhookConfigurationInformer(client, resyncPeriod, cache.Indexers{}, f.tweakListOptions)
 }
 
 func (f *validatingWebhookConfigurationInformer) Informer() cache.SharedIndexInformer {

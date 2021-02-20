@@ -31,7 +31,6 @@ import (
 // FakeMutatingWebhookConfigurations implements MutatingWebhookConfigurationInterface
 type FakeMutatingWebhookConfigurations struct {
 	Fake *FakeAdmissionregistrationV1
-	te   string
 }
 
 var mutatingwebhookconfigurationsResource = schema.GroupVersionResource{Group: "admissionregistration.k8s.io", Version: "v1", Resource: "mutatingwebhookconfigurations"}
@@ -41,8 +40,7 @@ var mutatingwebhookconfigurationsKind = schema.GroupVersionKind{Group: "admissio
 // Get takes name of the mutatingWebhookConfiguration, and returns the corresponding mutatingWebhookConfiguration object, and an error if there is any.
 func (c *FakeMutatingWebhookConfigurations) Get(name string, options v1.GetOptions) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantGetAction(mutatingwebhookconfigurationsResource, name, c.te), &admissionregistrationv1.MutatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootGetAction(mutatingwebhookconfigurationsResource, name), &admissionregistrationv1.MutatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -53,8 +51,7 @@ func (c *FakeMutatingWebhookConfigurations) Get(name string, options v1.GetOptio
 // List takes label and field selectors, and returns the list of MutatingWebhookConfigurations that match those selectors.
 func (c *FakeMutatingWebhookConfigurations) List(opts v1.ListOptions) (result *admissionregistrationv1.MutatingWebhookConfigurationList, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantListAction(mutatingwebhookconfigurationsResource, mutatingwebhookconfigurationsKind, opts, c.te), &admissionregistrationv1.MutatingWebhookConfigurationList{})
-
+		Invokes(testing.NewRootListAction(mutatingwebhookconfigurationsResource, mutatingwebhookconfigurationsKind, opts), &admissionregistrationv1.MutatingWebhookConfigurationList{})
 	if obj == nil {
 		return nil, err
 	}
@@ -75,15 +72,13 @@ func (c *FakeMutatingWebhookConfigurations) List(opts v1.ListOptions) (result *a
 // Watch returns a watch.Interface that watches the requested mutatingWebhookConfigurations.
 func (c *FakeMutatingWebhookConfigurations) Watch(opts v1.ListOptions) (watch.Interface, error) {
 	return c.Fake.
-		InvokesWatch(testing.NewTenantWatchAction(mutatingwebhookconfigurationsResource, opts, c.te))
-
+		InvokesWatch(testing.NewRootWatchAction(mutatingwebhookconfigurationsResource, opts))
 }
 
 // Create takes the representation of a mutatingWebhookConfiguration and creates it.  Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeMutatingWebhookConfigurations) Create(mutatingWebhookConfiguration *admissionregistrationv1.MutatingWebhookConfiguration) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantCreateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration, c.te), &admissionregistrationv1.MutatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootCreateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration), &admissionregistrationv1.MutatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -94,8 +89,7 @@ func (c *FakeMutatingWebhookConfigurations) Create(mutatingWebhookConfiguration 
 // Update takes the representation of a mutatingWebhookConfiguration and updates it. Returns the server's representation of the mutatingWebhookConfiguration, and an error, if there is any.
 func (c *FakeMutatingWebhookConfigurations) Update(mutatingWebhookConfiguration *admissionregistrationv1.MutatingWebhookConfiguration) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantUpdateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration, c.te), &admissionregistrationv1.MutatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootUpdateAction(mutatingwebhookconfigurationsResource, mutatingWebhookConfiguration), &admissionregistrationv1.MutatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}
@@ -106,16 +100,14 @@ func (c *FakeMutatingWebhookConfigurations) Update(mutatingWebhookConfiguration 
 // Delete takes name of the mutatingWebhookConfiguration and deletes it. Returns an error if one occurs.
 func (c *FakeMutatingWebhookConfigurations) Delete(name string, options *v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewTenantDeleteAction(mutatingwebhookconfigurationsResource, name, c.te), &admissionregistrationv1.MutatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootDeleteAction(mutatingwebhookconfigurationsResource, name), &admissionregistrationv1.MutatingWebhookConfiguration{})
 	return err
 }
 
 // DeleteCollection deletes a collection of objects.
 func (c *FakeMutatingWebhookConfigurations) DeleteCollection(options *v1.DeleteOptions, listOptions v1.ListOptions) error {
 
-	action := testing.NewTenantDeleteCollectionAction(mutatingwebhookconfigurationsResource, listOptions, c.te)
-
+	action := testing.NewRootDeleteCollectionAction(mutatingwebhookconfigurationsResource, listOptions)
 	_, err := c.Fake.Invokes(action, &admissionregistrationv1.MutatingWebhookConfigurationList{})
 	return err
 }
@@ -123,8 +115,7 @@ func (c *FakeMutatingWebhookConfigurations) DeleteCollection(options *v1.DeleteO
 // Patch applies the patch and returns the patched mutatingWebhookConfiguration.
 func (c *FakeMutatingWebhookConfigurations) Patch(name string, pt types.PatchType, data []byte, subresources ...string) (result *admissionregistrationv1.MutatingWebhookConfiguration, err error) {
 	obj, err := c.Fake.
-		Invokes(testing.NewTenantPatchSubresourceAction(mutatingwebhookconfigurationsResource, c.te, name, pt, data, subresources...), &admissionregistrationv1.MutatingWebhookConfiguration{})
-
+		Invokes(testing.NewRootPatchSubresourceAction(mutatingwebhookconfigurationsResource, name, pt, data, subresources...), &admissionregistrationv1.MutatingWebhookConfiguration{})
 	if obj == nil {
 		return nil, err
 	}

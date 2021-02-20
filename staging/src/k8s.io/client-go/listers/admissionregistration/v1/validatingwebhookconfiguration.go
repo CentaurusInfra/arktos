@@ -29,9 +29,6 @@ import (
 type ValidatingWebhookConfigurationLister interface {
 	// List lists all ValidatingWebhookConfigurations in the indexer.
 	List(selector labels.Selector) (ret []*v1.ValidatingWebhookConfiguration, err error)
-	// ValidatingWebhookConfigurations returns an object that can list and get ValidatingWebhookConfigurations.
-	ValidatingWebhookConfigurations() ValidatingWebhookConfigurationTenantLister
-	ValidatingWebhookConfigurationsWithMultiTenancy(tenant string) ValidatingWebhookConfigurationTenantLister
 	// Get retrieves the ValidatingWebhookConfiguration from the index for a given name.
 	Get(name string) (*v1.ValidatingWebhookConfiguration, error)
 	ValidatingWebhookConfigurationListerExpansion
@@ -58,55 +55,6 @@ func (s *validatingWebhookConfigurationLister) List(selector labels.Selector) (r
 // Get retrieves the ValidatingWebhookConfiguration from the index for a given name.
 func (s *validatingWebhookConfigurationLister) Get(name string) (*v1.ValidatingWebhookConfiguration, error) {
 	obj, exists, err := s.indexer.GetByKey(name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1.Resource("validatingwebhookconfiguration"), name)
-	}
-	return obj.(*v1.ValidatingWebhookConfiguration), nil
-}
-
-// ValidatingWebhookConfigurations returns an object that can list and get ValidatingWebhookConfigurations.
-func (s *validatingWebhookConfigurationLister) ValidatingWebhookConfigurations() ValidatingWebhookConfigurationTenantLister {
-	return validatingWebhookConfigurationTenantLister{indexer: s.indexer, tenant: "system"}
-}
-
-func (s *validatingWebhookConfigurationLister) ValidatingWebhookConfigurationsWithMultiTenancy(tenant string) ValidatingWebhookConfigurationTenantLister {
-	return validatingWebhookConfigurationTenantLister{indexer: s.indexer, tenant: tenant}
-}
-
-// ValidatingWebhookConfigurationTenantLister helps list and get ValidatingWebhookConfigurations.
-type ValidatingWebhookConfigurationTenantLister interface {
-	// List lists all ValidatingWebhookConfigurations in the indexer for a given tenant/tenant.
-	List(selector labels.Selector) (ret []*v1.ValidatingWebhookConfiguration, err error)
-	// Get retrieves the ValidatingWebhookConfiguration from the indexer for a given tenant/tenant and name.
-	Get(name string) (*v1.ValidatingWebhookConfiguration, error)
-	ValidatingWebhookConfigurationTenantListerExpansion
-}
-
-// validatingWebhookConfigurationTenantLister implements the ValidatingWebhookConfigurationTenantLister
-// interface.
-type validatingWebhookConfigurationTenantLister struct {
-	indexer cache.Indexer
-	tenant  string
-}
-
-// List lists all ValidatingWebhookConfigurations in the indexer for a given tenant.
-func (s validatingWebhookConfigurationTenantLister) List(selector labels.Selector) (ret []*v1.ValidatingWebhookConfiguration, err error) {
-	err = cache.ListAllByTenant(s.indexer, s.tenant, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1.ValidatingWebhookConfiguration))
-	})
-	return ret, err
-}
-
-// Get retrieves the ValidatingWebhookConfiguration from the indexer for a given tenant and name.
-func (s validatingWebhookConfigurationTenantLister) Get(name string) (*v1.ValidatingWebhookConfiguration, error) {
-	key := s.tenant + "/" + name
-	if s.tenant == "system" {
-		key = name
-	}
-	obj, exists, err := s.indexer.GetByKey(key)
 	if err != nil {
 		return nil, err
 	}

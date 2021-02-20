@@ -22,14 +22,6 @@ package v1
 // MutatingWebhookConfigurationLister.
 type MutatingWebhookConfigurationListerExpansion interface{}
 
-// MutatingWebhookConfigurationTenantListerExpansion allows custom methods to be added to
-// MutatingWebhookConfigurationTenantLister.
-type MutatingWebhookConfigurationTenantListerExpansion interface{}
-
 // ValidatingWebhookConfigurationListerExpansion allows custom methods to be added to
 // ValidatingWebhookConfigurationLister.
 type ValidatingWebhookConfigurationListerExpansion interface{}
-
-// ValidatingWebhookConfigurationTenantListerExpansion allows custom methods to be added to
-// ValidatingWebhookConfigurationTenantLister.
-type ValidatingWebhookConfigurationTenantListerExpansion interface{}

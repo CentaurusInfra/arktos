@@ -49,10 +49,10 @@ func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace s
 
 // MutatingWebhookConfigurations returns a MutatingWebhookConfigurationInformer.
 func (v *version) MutatingWebhookConfigurations() MutatingWebhookConfigurationInformer {
-	return &mutatingWebhookConfigurationInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+	return &mutatingWebhookConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // ValidatingWebhookConfigurations returns a ValidatingWebhookConfigurationInformer.
 func (v *version) ValidatingWebhookConfigurations() ValidatingWebhookConfigurationInformer {
-	return &validatingWebhookConfigurationInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
+	return &validatingWebhookConfigurationInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
