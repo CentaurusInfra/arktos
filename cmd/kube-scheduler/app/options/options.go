@@ -256,7 +256,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	// if the resource provider kubeconfig is not set, default to the local cluster
 	//
 	if c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig == "" || !kubeconfigFileExists(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig) {
-		klog.V(4).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
+		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
 		c.ResourceInformer = c.InformerFactory.Core().V1().Nodes()
 	} else {
 
@@ -266,7 +266,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 			return nil, err
 		}
 
-		klog.V(4).Infof("Create the resource informer from resourceProvider kubeConfig")
+		klog.V(2).Infof("Create the resource informer from resourceProvider kubeConfig")
 		ResourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClient, 0)
 		c.ResourceInformer = ResourceInformerFactory.Core().V1().Nodes()
 	}
@@ -320,6 +320,9 @@ func makeLeaderElectionConfig(config kubeschedulerconfig.KubeSchedulerLeaderElec
 
 // createClients creates a kube client and an event client from the given config and masterOverride.
 // TODO remove masterOverride when CLI flags are removed.
+//      issue 997: refactor to move the createClients() to shared util package
+//                 optionally set QPS
+//
 func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, v1core.EventsGetter, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
 		klog.Warningf("Neither --kubeconfig nor --master was specified. Using default API client. This might not work.")
