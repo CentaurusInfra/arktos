@@ -60,7 +60,7 @@ func DeletePods(kubeClient clientset.Interface, recorder record.EventRecorder, n
 	remaining := false
 	selector := fields.OneTermEqualSelector(api.PodHostField, nodeName).String()
 	options := metav1.ListOptions{FieldSelector: selector}
-	pods, err := kubeClient.CoreV1().Pods(metav1.NamespaceAll).List(options)
+	pods, err := kubeClient.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(options)
 	var updateErrList []error
 
 	if err != nil {

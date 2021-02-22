@@ -21,4 +21,4 @@ subjects:
   - kind: User
     apiGroup: rbac.authorization.k8s.io
     # Legacy node ID
-    name: kubelet
+    name: system:kubelet

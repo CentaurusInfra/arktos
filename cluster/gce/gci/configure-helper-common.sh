@@ -849,7 +849,7 @@ rules:
       - group: "" # core
         resources: ["configmaps"]
   - level: None
-    users: ["kubelet"] # legacy kubelet identity
+    users: ["system:kubelet"] # legacy kubelet identity
     verbs: ["get"]
     resources:
       - group: "" # core
@@ -908,7 +908,7 @@ rules:
 
   # node and pod status calls from nodes are high-volume and can be large, don't log responses for expected updates from nodes
   - level: Request
-    users: ["kubelet", "system:node-problem-detector", "system:serviceaccount:kube-system:node-problem-detector"]
+    users: ["system:kubelet", "system:node-problem-detector", "system:serviceaccount:kube-system:node-problem-detector"]
     verbs: ["update","patch"]
     resources:
       - group: "" # core

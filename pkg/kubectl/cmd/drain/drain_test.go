@@ -800,7 +800,7 @@ func TestDrain(t *testing.T) {
 							return &http.Response{StatusCode: 200, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &test.replicaSets[0])}, nil
 						case m.isFor("GET", "/tenants/system/namespaces/default/pods/bar"):
 							return &http.Response{StatusCode: 404, Header: cmdtesting.DefaultHeader(), Body: cmdtesting.ObjBody(codec, &corev1.Pod{})}, nil
-						case m.isFor("GET", "/tenants/system/pods"):
+						case m.isFor("GET", "/tenants/all/pods"):
 							values, err := url.ParseQuery(req.URL.RawQuery)
 							if err != nil {
 								t.Fatalf("%s: unexpected error: %v", test.description, err)

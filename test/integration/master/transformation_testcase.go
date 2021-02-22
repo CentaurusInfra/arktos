@@ -151,7 +151,7 @@ func (e *transformTest) benchmark(b *testing.B) {
 }
 
 func (e *transformTest) getETCDPath() string {
-	return fmt.Sprintf("/%s/secrets/%s/%s", e.storageConfig.Prefix, e.ns.Name, e.secret.Name)
+	return fmt.Sprintf("/%s/secrets/%s/%s/%s", e.storageConfig.Prefix, e.ns.Tenant, e.ns.Name, e.secret.Name)
 }
 
 func (e *transformTest) getRawSecretFromETCD() ([]byte, error) {
@@ -200,7 +200,8 @@ func (e *transformTest) getEncryptionConfig() (*apiserverconfigv1.ProviderConfig
 func (e *transformTest) createNamespace(name string) (*corev1.Namespace, error) {
 	ns := &corev1.Namespace{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: name,
+			Name:   name,
+			Tenant: metav1.TenantSystem,
 		},
 	}
 
