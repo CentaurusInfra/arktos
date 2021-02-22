@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/19/2021
 package testing
 
 import (
@@ -21,6 +23,7 @@ import (
 	"testing"
 
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
+	admissionregv1 "k8s.io/api/admissionregistration/v1"
 	admissionregv1beta1 "k8s.io/api/admissionregistration/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	appsv1beta1 "k8s.io/api/apps/v1beta1"
@@ -69,6 +72,7 @@ import (
 var groups = []runtime.SchemeBuilder{
 	admissionv1beta1.SchemeBuilder,
 	admissionregv1beta1.SchemeBuilder,
+	admissionregv1.SchemeBuilder,
 	appsv1beta1.SchemeBuilder,
 	appsv1beta2.SchemeBuilder,
 	appsv1.SchemeBuilder,

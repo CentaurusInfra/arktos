@@ -78,6 +78,7 @@ require (
 	github.com/golangplus/testing v0.0.0-20180327235837-af21d9c3145e // indirect
 	github.com/google/cadvisor v0.35.0
 	github.com/google/certificate-transparency-go v1.0.21 // indirect
+	github.com/google/go-cmp v0.3.0
 	github.com/google/gofuzz v1.1.0
 	github.com/googleapis/gnostic v0.1.0
 	github.com/gophercloud/gophercloud v0.6.0
