@@ -507,13 +507,22 @@ function kube::util::write_client_kubeconfig {
     local api_port=$5
     local client_id=$6
     local token=${7:-}
+
+    IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-}
+
+    if [[ -z "${IS_RESOURCE_PARTITION}" ]]; then
+       MASTER_ENDPOINT="https://${API_HOST}:${API_SECURE_PORT}"
+    else
+       MASTER_ENDPOINT=${SCALE_OUT_PROXY_ENDPOINT}
+    fi
+
     cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
 apiVersion: v1
 kind: Config
 clusters:
   - cluster:
       certificate-authority: ${ca_file}
-      server: https://${api_host}:${api_port}/
+      server: ${MASTER_ENDPOINT}
     name: local-up-cluster
 users:
   - user:
