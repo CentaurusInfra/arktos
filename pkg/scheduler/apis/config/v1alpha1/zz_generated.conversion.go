@@ -2,6 +2,7 @@
 
 /*
 Copyright The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -162,6 +163,9 @@ func autoConvert_v1alpha1_KubeSchedulerConfiguration_To_config_KubeSchedulerConf
 	out.BindTimeoutSeconds = (*int64)(unsafe.Pointer(in.BindTimeoutSeconds))
 	out.Plugins = (*config.Plugins)(unsafe.Pointer(in.Plugins))
 	out.PluginConfig = *(*[]config.PluginConfig)(unsafe.Pointer(&in.PluginConfig))
+	if err := configv1alpha1.Convert_v1alpha1_ClientConnectionConfiguration_To_config_ClientConnectionConfiguration(&in.ResourceProviderClientConnection, &out.ResourceProviderClientConnection, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -192,6 +196,9 @@ func autoConvert_config_KubeSchedulerConfiguration_To_v1alpha1_KubeSchedulerConf
 	out.BindTimeoutSeconds = (*int64)(unsafe.Pointer(in.BindTimeoutSeconds))
 	out.Plugins = (*v1alpha1.Plugins)(unsafe.Pointer(in.Plugins))
 	out.PluginConfig = *(*[]v1alpha1.PluginConfig)(unsafe.Pointer(&in.PluginConfig))
+	if err := configv1alpha1.Convert_config_ClientConnectionConfiguration_To_v1alpha1_ClientConnectionConfiguration(&in.ResourceProviderClientConnection, &out.ResourceProviderClientConnection, s); err != nil {
+		return err
+	}
 	return nil
 }
 

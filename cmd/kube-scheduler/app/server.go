@@ -26,6 +26,7 @@ import (
 	"net/http"
 	"os"
 	goruntime "runtime"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
@@ -166,7 +167,7 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 
 	// Create the scheduler.
 	sched, err := scheduler.New(cc.Client,
-		cc.InformerFactory.Core().V1().Nodes(),
+		cc.ResourceInformer,
 		cc.PodInformer,
 		cc.InformerFactory.Core().V1().PersistentVolumes(),
 		cc.InformerFactory.Core().V1().PersistentVolumeClaims(),
@@ -229,6 +230,19 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	// Start all informers.
 	go cc.PodInformer.Informer().Run(stopCh)
 	cc.InformerFactory.Start(stopCh)
+
+	// only start the ResourceInformer with the separated resource clusters
+	//
+	if cc.ResourceProviderClient != nil {
+		go cc.ResourceInformer.Informer().Run(stopCh)
+		for {
+			if cc.ResourceInformer.Informer().HasSynced() {
+				break
+			}
+			klog.V(6).Infof("Wait for node sync...")
+			time.Sleep(300 * time.Millisecond)
+		}
+	}
 
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(stopCh)

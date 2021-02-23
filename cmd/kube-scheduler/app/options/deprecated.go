@@ -66,6 +66,7 @@ func (o *DeprecatedOptions) AddFlags(fs *pflag.FlagSet, cfg *kubeschedulerconfig
 		"RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule corresponding "+
 			"to every RequiredDuringScheduling affinity rule. --hard-pod-affinity-symmetric-weight represents the weight of implicit PreferredDuringScheduling affinity rule. Must be in the range 0-100.")
 	fs.MarkDeprecated("hard-pod-affinity-symmetric-weight", "This option was moved to the policy configuration file")
+	fs.StringVar(&cfg.ResourceProviderClientConnection.Kubeconfig, "resource-providers", cfg.ResourceProviderClientConnection.Kubeconfig, "string representing resource provider kubeconfig files")
 }
 
 // Validate validates the deprecated scheduler options.
