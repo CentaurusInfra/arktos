@@ -451,10 +451,10 @@ func TestVerifyAdmissionResponse(t *testing.T) {
 }
 
 func TestCreateAdmissionObjects(t *testing.T) {
-	internalObj := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2", Name: "myname", Namespace: "myns"}}
-	internalObjOld := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1", Name: "myname", Namespace: "myns"}}
-	versionedObj := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2", Name: "myname", Namespace: "myns"}}
-	versionedObjOld := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1", Name: "myname", Namespace: "myns"}}
+	internalObj := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2", Name: "myname", Tenant: "mytenant", Namespace: "myns"}}
+	internalObjOld := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1", Name: "myname", Tenant: "mytenant", Namespace: "myns"}}
+	versionedObj := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "2", Name: "myname", Tenant: "mytenant", Namespace: "myns"}}
+	versionedObjOld := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{ResourceVersion: "1", Name: "myname", Tenant: "mytenant", Namespace: "myns"}}
 	userInfo := &user.DefaultInfo{
 		Name:   "myuser",
 		Groups: []string{"mygroup"},
@@ -465,6 +465,7 @@ func TestCreateAdmissionObjects(t *testing.T) {
 		internalObj.DeepCopyObject(),
 		internalObjOld.DeepCopyObject(),
 		schema.GroupVersionKind{Group: "apps", Version: "v1", Kind: "Deployment"},
+		"mytenant",
 		"myns",
 		"myname",
 		schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "deployments"},
