@@ -35,6 +35,8 @@ import (
 	"k8s.io/utils/pointer"
 )
 
+var testTenant = "test-te"
+
 func TestDropDisableFieldsCustomResourceDefinition(t *testing.T) {
 	t.Log("testing unversioned validation..")
 	for _, validationEnabled := range []bool{true, false} {
@@ -624,7 +626,7 @@ func TestValidateAPIApproval(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			crd := &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "foos." + test.group, Annotations: map[string]string{v1beta1.KubeAPIApprovedAnnotation: test.annotationValue}, ResourceVersion: "1"},
+				ObjectMeta: metav1.ObjectMeta{Name: "foos." + test.group, Annotations: map[string]string{v1beta1.KubeAPIApprovedAnnotation: test.annotationValue}, ResourceVersion: "1", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group:    test.group,
 					Scope:    apiextensions.NamespaceScoped,
@@ -642,7 +644,7 @@ func TestValidateAPIApproval(t *testing.T) {
 			var oldCRD *apiextensions.CustomResourceDefinition
 			if test.oldAnnotationValue != nil {
 				oldCRD = &apiextensions.CustomResourceDefinition{
-					ObjectMeta: metav1.ObjectMeta{Name: "foos." + test.group, Annotations: map[string]string{v1beta1.KubeAPIApprovedAnnotation: *test.oldAnnotationValue}, ResourceVersion: "1"},
+					ObjectMeta: metav1.ObjectMeta{Name: "foos." + test.group, Annotations: map[string]string{v1beta1.KubeAPIApprovedAnnotation: *test.oldAnnotationValue}, ResourceVersion: "1", Tenant: testTenant},
 					Spec: apiextensions.CustomResourceDefinitionSpec{
 						Group:    test.group,
 						Scope:    apiextensions.NamespaceScoped,

@@ -90,7 +90,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "invalid types allowed via v1beta1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group: "group.com",
 					Scope: apiextensions.ResourceScope("Cluster"),
@@ -121,7 +121,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "invalid types disallowed via v1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group: "group.com",
 					Scope: apiextensions.ResourceScope("Cluster"),
@@ -1435,7 +1435,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "no schema via v1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group:   "group.com",
 					Version: "version",
@@ -1477,7 +1477,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "preserveUnknownFields: true via v1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group:                 "group.com",
 					Version:               "version",
@@ -1610,7 +1610,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "defaults with enabled feature gate via v1beta1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group:    "group.com",
 					Version:  "version",
@@ -1648,7 +1648,7 @@ func TestValidateCustomResourceDefinition(t *testing.T) {
 		{
 			name: "defaults with enabled feature gate via v1",
 			resource: &apiextensions.CustomResourceDefinition{
-				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com"},
+				ObjectMeta: metav1.ObjectMeta{Name: "plural.group.com", Tenant: testTenant},
 				Spec: apiextensions.CustomResourceDefinitionSpec{
 					Group:    "group.com",
 					Version:  "version",
