@@ -40,8 +40,10 @@ function create-kubemark-master {
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
     export LOCAL_KUBECONFIG
-    export LOCAL_KUBECONFIG_TMP
 
+    ## TODO: those logic should be handled by the caller function
+    ##       i.e. the create-kubemark-master function should just create the kubefig under the resource folder
+    ##       and name it kubeconfig.kubemark, the call to rename it as needed for scaleout env
     KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
     SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"

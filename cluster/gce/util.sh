@@ -2479,16 +2479,18 @@ function kube-up() {
     fi
     check-cluster
 
-    ## TODO: cleanup local_kubeconfig_tmp file
-    #
-    if [ -z "${LOCAL_KUBECONFIG_TMP:-}" ]; then
-      echo "Local_kubeconfig_tmp not set"
-    else
-      cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG_TMP}
-      echo "DBG:" $(grep -i "server:" ${LOCAL_KUBECONFIG_TMP})
-    fi
-
+    ## TODO: RP, or TP kubeconfig naming convention
+    ##       if the convention and naming is agreed upon all components, the COPY can be removed and the start-kubemark
+    ##       script can use the kubeconfig created here
+    ##
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      if [ -z "${LOCAL_KUBECONFIG:-}" ]; then
+        echo "Local_kubeconfig not set"
+      else
+        cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG}
+        echo "DBG:" $(grep -i "server:" ${LOCAL_KUBECONFIG})
+      fi
+
       if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
         echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
         echo "-----------------------------"
@@ -2909,8 +2911,8 @@ function create-proxy-vm() {
       export PROXY_RESERVED_INTERNAL_IP
 
       # pass back the proxy reserved IP
-      echo ${PROXY_RESERVED_IP} > /tmp/proxy-reserved-ip.txt
-      cat /tmp/proxy-reserved-ip.txt
+      echo ${PROXY_RESERVED_IP} > ${KUBE_TEMP}/proxy-reserved-ip.txt
+      cat ${KUBE_TEMP}/proxy-reserved-ip.txt
 
       return 0
     else
@@ -3103,7 +3105,7 @@ function create-master() {
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
-  echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
+  echo ${MASTER_RESERVED_IP} > ${KUBE_TEMP}/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')

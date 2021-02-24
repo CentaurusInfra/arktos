@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -186,11 +185,11 @@ func run(config *hollowNodeConfig) {
 	if len(config.TenantServers) == 0 {
 		klog.V(3).Infof("TenantServers is not set. Default to single tenant partition and clientConfig setting")
 		config.TenantServers = make([]string, 1)
-		config.TenantServers[0] = clientConfigs.GetConfig().Host
+		config.TenantServers[0] = config.KubeconfigPath
 	}
 	if config.ResourceServer == "" {
 		klog.V(3).Infof("Resource is not set. Default to clientConfig setting")
-		config.ResourceServer = clientConfigs.GetConfig().Host
+		config.ResourceServer = config.KubeconfigPath
 	}
 
 	// initialize the kubeclient manager
@@ -205,7 +204,7 @@ func run(config *hollowNodeConfig) {
 		if enableInSecurePorts == false {
 			kubeconfigFile := config.TenantServers[i]
 			klog.V(2).Infof("create client config from file: %s", kubeconfigFile)
-			config, err := config.createClientConfigFromSpecificFile(path.Join("/kubeconfig", kubeconfigFile))
+			config, err := config.createClientConfigFromSpecificFile(kubeconfigFile)
 			if err != nil {
 				klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 			}
@@ -234,7 +233,7 @@ func run(config *hollowNodeConfig) {
 		var heartbeatClient *clientset.Clientset
 		if enableInSecurePorts == false {
 			klog.V(2).Infof("create client config from file: %s", config.ResourceServer)
-			config, err := config.createClientConfigFromSpecificFile(path.Join("/kubeconfig", config.ResourceServer))
+			config, err := config.createClientConfigFromSpecificFile(config.ResourceServer)
 			if err != nil {
 				klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 			}
