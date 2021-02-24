@@ -216,11 +216,14 @@ function kube::common::generate_certs {
       echo "Skip generating CA as CA files existed and REGENERATE_CA != true. To regenerate CA files, export REGENERATE_CA=true"
     fi
 
-    # Create auth proxy client ca
-    kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
+    # Create Certs
+    if [[ "${REUSE_CERTS}" != true ]]; then
+      # Create auth proxy client ca
+      kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
-    # serving cert for kube-apiserver
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${RESOURCE_SERVER:-}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
+      # serving cert for kube-apiserver
+      kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${RESOURCE_SERVER:-}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
+    fi
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
@@ -230,7 +233,7 @@ function kube::common::generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver system:kube-apiserver
 
     # in scale out poc, generate client certkey for TP components accessing RP api servers
-    if [[ "${IS_SCALE_OUT}" == "true" ]] && [[ "${IS_RESOURCE_PARTITION}" != "true" ]] && [[ "${REUSE_CERTS}" != true ]]; then
+    if [[ "${IS_SCALE_OUT}" == "true" ]] && [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
       kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' resource-provider-scheduler  system:kube-scheduler
     fi
 
@@ -315,10 +318,7 @@ function kube::common::start_apiserver()  {
       service_group_id="--service-group-id=${APISERVER_SERVICEGROUPID}"
     fi
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-      # Create Certs
-      kube::common::generate_certs
-    fi
+    kube::common::generate_certs
 
     cloud_config_arg="--cloud-provider=${CLOUD_PROVIDER} --cloud-config=${CLOUD_CONFIG}"
     if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
