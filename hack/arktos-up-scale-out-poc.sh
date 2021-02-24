@@ -14,26 +14,43 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if [[ -z "${SCALE_OUT_PROXY_ENDPOINT}" ]]; then
-  echo ERROR: Please set SCALE_OUT_PROXY_ENDPOINT. For example: SCALE_OUT_PROXY_ENDPOINT=\"http://192.168.0.120:8888\"    
+# set up variables
+IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-"false"}
+SCALE_OUT_PROXY_IP=${SCALE_OUT_PROXY_IP:-}
+SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-"8888"}
+TENANT_SERVERS=${TENANT_SERVERS:-}
+RESOURCE_SERVER=${RESOURCE_SERVER:-}
+IS_SCALE_OUT=${IS_SCALE_OUT:-"true"}
+
+echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
+echo "TENANT_SERVERS: |${TENANT_SERVERS}|"
+echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
+echo "IS_SCALE_OUT: |${IS_SCALE_OUT}|"
+
+if [[ -z "${SCALE_OUT_PROXY_IP}" ]]; then
+  echo ERROR: Please set SCALE_OUT_PROXY_IP.
   exit 1
 fi
 
+SCALE_OUT_PROXY_ENDPOINT="https://${SCALE_OUT_PROXY_IP}:${SCALE_OUT_PROXY_PORT}/"
+
 if [[ -z "${TENANT_SERVERS}" ]]; then
-  TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
+  if [ IS_RESOURCE_PARTITION == "true" ]; then
+    echo ERROR: Please set TENANT_SERVERS for RP. For example: TENANT_SERVERS=\"http://192.168.0.2:8080,http://192.168.0.3:8080\"
+  else
+    echo "Missing TENANT_SERVERS, default to SCALE_OUT_PROXY_ENDPOINT: ${SCALE_OUT_PROXY_ENDPOINT}"
+    TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
+  fi
 fi
 
-# for POC, the kubelet_flags is used for the new temporary kubelet commandline args
-KUBELET_FLAGS="--tenant-servers="${TENANT_SERVERS}
-
-echo KUBELET_FLAGS for new kubelet commandline --tenant-servers
-echo ${KUBELET_FLAGS}
+if [[ -z "${RESOURCE_SERVER}" ]]; then
+  if ! [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+    echo ERROR: Please set RESOURCE_SERVER for in tenant partition for RP. For example: RESOURCE_SERVER=\"http://192.168.0.2:8080\"
+    exit 1
+  fi
+fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-
-if [[ -z "${TENANT_SERVERS}" ]]; then
-  TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
-fi
 
 # for POC, the kubelet_flags is used for the new temporary kubelet commandline args
 KUBELET_FLAGS="--tenant-servers="${TENANT_SERVERS}
@@ -189,11 +206,6 @@ cleanup()
   [[ -n "${CTLRMGR_PID-}" ]] && mapfile -t CTLRMGR_PIDS < <(pgrep -P "${CTLRMGR_PID}" ; ps -o pid= -p "${CTLRMGR_PID}")
   [[ -n "${CTLRMGR_PIDS-}" ]] && sudo kill "${CTLRMGR_PIDS[@]}" 2>/dev/null
 
-  # Check if the workload-controller-manager is still running
-  [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && mapfile -t WORKLOAD_CTLRMGR_PIDS < <(pgrep -P "${WORKLOAD_CTLRMGR_PID}" ; ps -o pid= -p "${WORKLOAD_CTLRMGR_PID}")
-  [[ -n "${WORKLOAD_CTLRMGR_PIDS-}" ]] && sudo kill "${WORKLOAD_CTLRMGR_PIDS[@]}" 2>/dev/null
-
-
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
   [[ -n "${KUBELET_PIDS-}" ]] && sudo kill "${KUBELET_PIDS[@]}" 2>/dev/null
@@ -236,11 +248,6 @@ function healthcheck {
   if [[ -n "${CTLRMGR_PID-}" ]] && ! sudo kill -0 "${CTLRMGR_PID}" 2>/dev/null; then
     warning_log "kube-controller-manager terminated unexpectedly, see ${CTLRMGR_LOG}"
     CTLRMGR_PID=
-  fi
-
-  if [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && ! sudo kill -0 "${WORKLOAD_CTLRMGR_PID}" 2>/dev/null; then
-    warning_log "workload-controller-manager terminated unexpectedly, see ${WORKLOAD_CONTROLLER_LOG}"
-    WORKLOAD_CTLRMGR_PID=
   fi
 
   if [[ -n "${KUBELET_PID-}" ]] && ! sudo kill -0 "${KUBELET_PID}" 2>/dev/null; then
@@ -384,7 +391,6 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
 Logs:
   ${APISERVER_LOG:-}
   ${CTLRMGR_LOG:-}
-  ${WORKLOAD_CONTROLLER_LOG:-}
   ${CLOUD_CTLRMGR_LOG:-}
   ${PROXY_LOG:-}
   ${SCHEDULER_LOG:-}
@@ -513,7 +519,6 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
   kube::common::start_controller_manager
-  #kube::common::start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
