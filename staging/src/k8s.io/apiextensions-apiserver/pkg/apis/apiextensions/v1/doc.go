@@ -22,4 +22,5 @@ limitations under the License.
 // +groupName=apiextensions.k8s.io
 
 // Package v1 is the v1 version of the API.
+// File modified by cherrypick from kubernetes on 02/25/2021
 package v1 // import "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
