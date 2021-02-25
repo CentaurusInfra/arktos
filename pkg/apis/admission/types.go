@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package admission
 
 import (
@@ -95,10 +97,10 @@ type AdmissionRequest struct {
 	Operation Operation
 	// UserInfo is information about the requesting user
 	UserInfo authentication.UserInfo
-	// Object is the object from the incoming request prior to default values being applied
+	// Object is the object from the incoming request.
 	// +optional
 	Object runtime.Object
-	// OldObject is the existing object. Only populated for UPDATE requests.
+	// OldObject is the existing object. Only populated for DELETE and UPDATE requests.
 	// +optional
 	OldObject runtime.Object
 	// DryRun indicates that modifications will definitely not be persisted for this request.

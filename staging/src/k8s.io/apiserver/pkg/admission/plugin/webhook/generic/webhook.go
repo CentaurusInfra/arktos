@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package generic
 
 import (
@@ -21,6 +23,7 @@ import (
 	"fmt"
 	"io"
 
+	admissionv1 "k8s.io/api/admission/v1"
 	admissionv1beta1 "k8s.io/api/admission/v1beta1"
 	"k8s.io/api/admissionregistration/v1beta1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -65,7 +68,14 @@ func NewWebhook(handler *admission.Handler, configFile io.Reader, sourceFactory 
 		return nil, err
 	}
 
-	cm, err := webhookutil.NewClientManager(admissionv1beta1.SchemeGroupVersion, admissionv1beta1.AddToScheme)
+	cm, err := webhookutil.NewClientManager(
+		[]schema.GroupVersion{
+			admissionv1beta1.SchemeGroupVersion,
+			admissionv1.SchemeGroupVersion,
+		},
+		admissionv1beta1.AddToScheme,
+		admissionv1.AddToScheme,
+	)
 	if err != nil {
 		return nil, err
 	}

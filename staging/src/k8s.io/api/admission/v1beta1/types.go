@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package v1beta1
 
 import (
@@ -82,7 +84,7 @@ type AdmissionRequest struct {
 	RequestSubResource string `json:"requestSubResource,omitempty" protobuf:"bytes,15,opt,name=requestSubResource"`
 
 	// Name is the name of the object as presented in the request.  On a CREATE operation, the client may omit name and
-	// rely on the server to generate the name.  If that is the case, this method will return the empty string.
+	// rely on the server to generate the name.  If that is the case, this field will contain an empty string.
 	// +optional
 	Name string `json:"name,omitempty" protobuf:"bytes,5,opt,name=name"`
 	// Namespace is the namespace associated with the request (if any).
@@ -93,10 +95,10 @@ type AdmissionRequest struct {
 	Operation Operation `json:"operation" protobuf:"bytes,7,opt,name=operation"`
 	// UserInfo is information about the requesting user
 	UserInfo authenticationv1.UserInfo `json:"userInfo" protobuf:"bytes,8,opt,name=userInfo"`
-	// Object is the object from the incoming request prior to default values being applied
+	// Object is the object from the incoming request.
 	// +optional
 	Object runtime.RawExtension `json:"object,omitempty" protobuf:"bytes,9,opt,name=object"`
-	// OldObject is the existing object. Only populated for UPDATE requests.
+	// OldObject is the existing object. Only populated for DELETE and UPDATE requests.
 	// +optional
 	OldObject runtime.RawExtension `json:"oldObject,omitempty" protobuf:"bytes,10,opt,name=oldObject"`
 	// DryRun indicates that modifications will definitely not be persisted for this request.

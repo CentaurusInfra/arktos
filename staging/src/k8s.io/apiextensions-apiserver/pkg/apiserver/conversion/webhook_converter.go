@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package conversion
 
 import (
@@ -40,7 +42,7 @@ type webhookConverterFactory struct {
 }
 
 func newWebhookConverterFactory(serviceResolver webhook.ServiceResolver, authResolverWrapper webhook.AuthenticationInfoResolverWrapper) (*webhookConverterFactory, error) {
-	clientManager, err := webhook.NewClientManager(v1beta1.SchemeGroupVersion, v1beta1.AddToScheme)
+	clientManager, err := webhook.NewClientManager([]schema.GroupVersion{v1beta1.SchemeGroupVersion}, v1beta1.AddToScheme)
 	if err != nil {
 		return nil, err
 	}

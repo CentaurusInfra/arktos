@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package dynamic
 
 import (
@@ -28,6 +30,7 @@ import (
 	auditregv1alpha1 "k8s.io/api/auditregistration/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	auditinternal "k8s.io/apiserver/pkg/apis/audit"
 	auditinstall "k8s.io/apiserver/pkg/apis/audit/install"
@@ -101,7 +104,7 @@ func NewBackend(c *Config) (audit.Backend, error) {
 	if c.BufferedConfig == nil {
 		c.BufferedConfig = NewDefaultWebhookBatchConfig()
 	}
-	cm, err := webhook.NewClientManager(auditv1.SchemeGroupVersion, func(s *runtime.Scheme) error {
+	cm, err := webhook.NewClientManager([]schema.GroupVersion{auditv1.SchemeGroupVersion}, func(s *runtime.Scheme) error {
 		auditinstall.Install(s)
 		return nil
 	})

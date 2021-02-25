@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 02/23/2021
 package pruning
 
 import (
@@ -29,11 +31,11 @@ import (
 
 func TestPrune(t *testing.T) {
 	tests := []struct {
-		name                string
-		json                string
-		dontPruneMetaAtRoot bool
-		schema              *structuralschema.Structural
-		expected            string
+		name           string
+		json           string
+		isResourceRoot bool
+		schema         *structuralschema.Structural
+		expected       string
 	}{
 		{name: "empty", json: "null", expected: "null"},
 		{name: "scalar", json: "4", schema: &structuralschema.Structural{}, expected: "4"},
@@ -85,7 +87,13 @@ func TestPrune(t *testing.T) {
      "pruning": {"unspecified": "bar"},
      "preserving": {"unspecified": "bar"}
   },
-  "preservingAdditionalProperties": {
+  "preservingAdditionalPropertiesNotInheritingXPreserveUnknownFields": {
+     "foo": {
+        "specified": {"unspecified":"bar"},
+        "unspecified": "bar"
+     }
+  },
+  "preservingAdditionalPropertiesKeyPruneValues": {
      "foo": {
         "specified": {"unspecified":"bar"},
         "unspecified": "bar"
@@ -123,8 +131,22 @@ func TestPrune(t *testing.T) {
 						},
 					},
 				},
-				"preservingAdditionalProperties": {
+				"preservingAdditionalPropertiesNotInheritingXPreserveUnknownFields": {
+					// this x-kubernetes-preserve-unknown-fields is not inherited by the schema inside of additionalProperties
 					Extensions: structuralschema.Extensions{XPreserveUnknownFields: true},
+					Generic: structuralschema.Generic{
+						Type: "object",
+						AdditionalProperties: &structuralschema.StructuralOrBool{
+							Structural: &structuralschema.Structural{
+								Generic: structuralschema.Generic{Type: "object"},
+								Properties: map[string]structuralschema.Structural{
+									"specified": {Generic: structuralschema.Generic{Type: "object"}},
+								},
+							},
+						},
+					},
+				},
+				"preservingAdditionalPropertiesKeyPruneValues": {
 					Generic: structuralschema.Generic{
 						Type: "object",
 						AdditionalProperties: &structuralschema.StructuralOrBool{
@@ -154,7 +176,12 @@ func TestPrune(t *testing.T) {
      "pruning": {},
      "preserving": {"unspecified": "bar"}
   },
-  "preservingAdditionalProperties": {
+  "preservingAdditionalPropertiesNotInheritingXPreserveUnknownFields": {
+     "foo": {
+        "specified": {}
+     }
+  },
+  "preservingAdditionalPropertiesKeyPruneValues": {
      "foo": {
         "specified": {}
      }
@@ -397,7 +424,7 @@ func TestPrune(t *testing.T) {
     }
   }
 }
-`, dontPruneMetaAtRoot: true, schema: &structuralschema.Structural{
+`, isResourceRoot: true, schema: &structuralschema.Structural{
 			Generic: structuralschema.Generic{Type: "object"},
 			Properties: map[string]structuralschema.Structural{
 				"pruned": {
@@ -508,7 +535,7 @@ func TestPrune(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			Prune(in, tt.schema, tt.dontPruneMetaAtRoot)
+			Prune(in, tt.schema, tt.isResourceRoot)
 			if !reflect.DeepEqual(in, expected) {
 				var buf bytes.Buffer
 				enc := json.NewEncoder(&buf)
