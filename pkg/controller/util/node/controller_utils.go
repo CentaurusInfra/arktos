@@ -20,6 +20,7 @@ package node
 import (
 	"fmt"
 	"io/ioutil"
+	"k8s.io/client-go/util/clientutil"
 	"net"
 	"net/url"
 	"os"
@@ -464,48 +465,15 @@ func ValidateUrl(urlString string) error {
 	return nil
 }
 
-// TODO: refactor those shared functions: Arktos issue #997
-//
 func GetTenantPartitionClientsFromFiles(kubeconfigFiles []string) ([]clientset.Interface, error) {
-
 	clients := []clientset.Interface{}
-
 	for _, kubeconfig := range kubeconfigFiles {
-		client, err := GetClientFromFile(kubeconfig)
+		client, err := clientutil.CreateClientFromKubeconfigFile(kubeconfig)
 		if err != nil {
-			return nil, fmt.Errorf("Error in getting client for kubeconfi (%v) ： %v", kubeconfig, err)
+			return nil, fmt.Errorf("error in getting client for kubeconfi (%v) ：%v", kubeconfig, err)
 		}
-
 		clients = append(clients, client)
 	}
 
 	return clients, nil
-}
-
-func GetClientFromFile(kubeconfigPath string) (clientset.Interface, error) {
-
-	clientConfig, err := createClientConfigFromFile(kubeconfigPath)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := clientset.NewForConfig(clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("error while creating clientset with %s, error %v", kubeconfigPath, err.Error())
-	}
-
-	return client, nil
-}
-
-func createClientConfigFromFile(kubeconfigPath string) (*rest.Config, error) {
-	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", kubeconfigPath, err)
-	}
-	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
-	}
-
-	return configs, nil
 }

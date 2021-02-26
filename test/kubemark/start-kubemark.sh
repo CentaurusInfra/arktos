@@ -349,7 +349,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       echo "shares token: ${SHARED_APISERVER_TOKEN}"
     fi
 
-    ## reset the scaleout proxy flag to ONLY
+    ## reset the scaleout proxy flag
     export KUBERNETES_SCALEOUT_PROXY=false
   done
 

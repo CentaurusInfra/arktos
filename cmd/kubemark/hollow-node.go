@@ -21,6 +21,7 @@ import (
 	"errors"
 	goflag "flag"
 	"fmt"
+	"k8s.io/client-go/util/clientutil"
 	"math/rand"
 	"os"
 	"time"
@@ -35,7 +36,6 @@ import (
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
@@ -101,24 +101,7 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 }
 
 func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {
-	return c.createClientConfigFromSpecificFile(c.KubeconfigPath)
-}
-
-func (c *hollowNodeConfig) createClientConfigFromSpecificFile(kubeconfigFile string) (*restclient.Config, error) {
-	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigFile)
-	if err != nil {
-		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", c.KubeconfigPath, err)
-	}
-	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
-	}
-	for _, config := range configs.GetAllConfigs() {
-		config.ContentType = c.ContentType
-		config.QPS = 10
-		config.Burst = 20
-	}
-	return configs, nil
+	return clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(c.KubeconfigPath, 10, 20, c.ContentType)
 }
 
 func (c *hollowNodeConfig) createHollowKubeletOptions() *kubemark.HollowKubletOptions {
@@ -199,21 +182,21 @@ func run(config *hollowNodeConfig) {
 	enableInSecurePorts := false
 
 	numberTenantPartitions := len(config.TenantServers)
-	client := make([]clientset.Interface, numberTenantPartitions)
-	for i := 0; i < len(client); i++ {
+	clients := make([]clientset.Interface, numberTenantPartitions)
+	for i := 0; i < numberTenantPartitions; i++ {
 		if enableInSecurePorts == false {
 			kubeconfigFile := config.TenantServers[i]
 			klog.V(2).Infof("create client config from file: %s", kubeconfigFile)
-			config, err := config.createClientConfigFromSpecificFile(kubeconfigFile)
+			cfg, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigFile, 10, 20, config.ContentType)
 			if err != nil {
 				klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 			}
 
-			clientFromConfig, err := clientset.NewForConfig(config)
+			clientFromConfig, err := clientset.NewForConfig(cfg)
 			if err != nil {
 				klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 			}
-			client[i] = clientFromConfig
+			clients[i] = clientFromConfig
 		} else {
 			tenantCfg := restclient.CopyConfigs(clientConfigs)
 			for _, cfg := range tenantCfg.GetAllConfigs() {
@@ -223,7 +206,7 @@ func run(config *hollowNodeConfig) {
 			if err != nil {
 				klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 			}
-			client[i] = clientFromConfig
+			clients[i] = clientFromConfig
 		}
 	}
 
@@ -233,12 +216,12 @@ func run(config *hollowNodeConfig) {
 		var heartbeatClient *clientset.Clientset
 		if enableInSecurePorts == false {
 			klog.V(2).Infof("create client config from file: %s", config.ResourceServer)
-			config, err := config.createClientConfigFromSpecificFile(config.ResourceServer)
+			cfg, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(config.ResourceServer, 10, 20, config.ContentType)
 			if err != nil {
 				klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 			}
 
-			heartbeatClient, err = clientset.NewForConfig(config)
+			heartbeatClient, err = clientset.NewForConfig(cfg)
 			if err != nil {
 				klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 			}
@@ -287,7 +270,7 @@ func run(config *hollowNodeConfig) {
 
 		hollowKubelet := kubemark.NewHollowKubelet(
 			f, c,
-			client,
+			clients,
 			arktosExtClient,
 			heartbeatClient,
 			cadvisorInterface,

@@ -36,6 +36,7 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/leaderelection:go_default_library",
         "//staging/src/k8s.io/client-go/tools/leaderelection/resourcelock:go_default_library",
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
+        "//staging/src/k8s.io/client-go/util/clientutil:go_default_library",
         "//staging/src/k8s.io/component-base/cli/flag:go_default_library",
         "//staging/src/k8s.io/component-base/config:go_default_library",
         "//staging/src/k8s.io/kube-scheduler/config/v1alpha1:go_default_library",
