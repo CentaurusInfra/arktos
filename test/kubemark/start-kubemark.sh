@@ -40,7 +40,7 @@ source "${KUBE_ROOT}/cluster/kubemark/util.sh"
 KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 export RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
-
+export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
 
 ### the list of kubeconfig files to TP masters
@@ -299,9 +299,34 @@ function start-hollow-nodes {
   wait-for-hollow-nodes-to-run-or-timeout ${timeout_seconds}
 }
 
+function generate-shared-ca-cert {
+  echo "Create the shared CA for kubemark test"
+  local -r cert_create_debug_output=$(mktemp "/tmp/cert_create_debug_output.XXXXX")
+  (set -x
+    cd "${SHARED_CA_DIRECTORY}"
+    curl -L -O --connect-timeout 30 --retry 10 --retry-delay 2 https://storage.googleapis.com/kubernetes-release/easy-rsa/easy-rsa.tar.gz
+    tar xzf easy-rsa.tar.gz
+    cd easy-rsa-master/easyrsa3
+    ./easyrsa init-pki
+    ./easyrsa --batch "--req-cn=kubemarktestca" build-ca nopass ) &>${cert_create_debug_output} || {
+    cat "${cert_create_debug_output}" >&2
+    echo "=== Failed to generate shared CA certificates: Aborting ===" >&2
+    exit 2
+  }
+
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/ca.crt ${SHARED_CA_DIRECTORY}/ca.crt
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/private/ca.key ${SHARED_CA_DIRECTORY}/ca.key
+}
+
 detect-project &> /dev/null
 
 rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  rm -f -r "${SHARED_CA_DIRECTORY}"
+  mkdir -p "${SHARED_CA_DIRECTORY}"
+  generate-shared-ca-cert
+fi
 
 ### master_metadata is used in the cloud-int script to create the GCE VMs
 #

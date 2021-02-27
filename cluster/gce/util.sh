@@ -1825,8 +1825,10 @@ function generate-proxy-certs {
     ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
 
     # overwrite the CA by copying the prebuilt CA files
-    cp -f ${RESOURCE_DIRECTORY}/ca.crt ./pki/ca.crt
-    cp -f ${RESOURCE_DIRECTORY}/ca.key ./pki/private/ca.key
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
 
     ./easyrsa --subject-alt-name="${SANS}" build-server-full "${PROXY_NAME}" nopass
 
@@ -1878,8 +1880,10 @@ function   generate-certs {
     ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
 
     # overwrite the CA by copying the prebuilt CA files
-    cp -f ${RESOURCE_DIRECTORY}/ca.crt ./pki/ca.crt
-    cp -f ${RESOURCE_DIRECTORY}/ca.key ./pki/private/ca.key
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
 
     ./easyrsa --subject-alt-name="${SANS}" build-server-full "${MASTER_NAME}" nopass
     ./easyrsa build-client-full kube-apiserver nopass
@@ -1948,8 +1952,10 @@ function generate-aggregator-certs {
     ./easyrsa --batch "--req-cn=${AGGREGATOR_PRIMARY_CN}@$(date +%s)" build-ca nopass
 
     # overwrite the CA by copying the prebuilt CA files
-    cp -f ${RESOURCE_DIRECTORY}/ca.crt ./pki/ca.crt
-    cp -f ${RESOURCE_DIRECTORY}/ca.key ./pki/private/ca.key
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
 
     ./easyrsa --subject-alt-name="${AGGREGATOR_SANS}" build-server-full "${AGGREGATOR_MASTER_NAME}" nopass
     ./easyrsa build-client-full aggregator-apiserver nopass
@@ -2993,9 +2999,11 @@ function setup-proxy() {
   ssh-to-node ${PROXY_NAME} "sudo tar -xpf ~/scaleout-proxy-certs.tar.gz -C /etc/haproxy/"
   ssh-to-node ${PROXY_NAME} "sudo chmod +rx /etc/haproxy/pki"
 
-  echo "DBG: copy over the CA cert to proxy server"
-  gcloud compute scp --zone="${ZONE}" "${RESOURCE_DIRECTORY}/ca.crt" "${PROXY_NAME}:/tmp/"
-  ssh-to-node ${PROXY_NAME} "sudo mv /tmp/ca.crt /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/"
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+    echo "DBG: copy over the CA cert to proxy server"
+    gcloud compute scp --zone="${ZONE}" "${SHARED_CA_DIRECTORY}/ca.crt" "${PROXY_NAME}:/tmp/"
+    ssh-to-node ${PROXY_NAME} "sudo mv /tmp/ca.crt /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/"
+  fi
 
   ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"

@@ -35,6 +35,7 @@ source "${KUBE_ROOT}/cluster/kubemark/util.sh"
 KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
+SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 
 detect-project &> /dev/null
 
@@ -67,6 +68,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
   rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp
+  rm -rf "${SHARED_CA_DIRECTORY}"
 else
   delete-kubemark-master
 fi
