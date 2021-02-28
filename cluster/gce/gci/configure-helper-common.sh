@@ -2335,8 +2335,11 @@ function start-kube-controller-manager {
   ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
   ## TODO: investigate and fix it later
   #
-  params+=" --kubeconfig=/etc/srv/kubernetes/kube-bootstrap/kubeconfig"
- # params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "false" ]]; then
+    params+=" --kubeconfig=/etc/srv/kubernetes/kube-bootstrap/kubeconfig"
+  else
+   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+  fi
 
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then

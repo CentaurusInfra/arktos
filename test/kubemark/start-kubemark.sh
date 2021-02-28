@@ -42,6 +42,7 @@ KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 export RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
+export HAPROXY_TLS_MODE=${HAPROXY_TLS_MODE:-"bridging"}
 
 ### the list of kubeconfig files to TP masters
 export TENANT_SERVERS=""

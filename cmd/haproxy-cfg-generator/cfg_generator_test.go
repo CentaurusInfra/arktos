@@ -28,6 +28,7 @@ type TestCase struct {
 	tp_ips     []string
 	rp_ip      string
 	targetFile string
+	tlsMode    string
 }
 
 func TestCreateHaproxyCfg(t *testing.T) {
@@ -46,16 +47,27 @@ func TestCreateHaproxyCfg(t *testing.T) {
 			tp_ips:     []string{"1.1.1.1", "2.2.2.2", "3.3.3.3"},
 			rp_ip:      "9.9.9.9",
 			targetFile: "data/sample_three_tp_haproxy.cfg",
+			tlsMode:    BRIDGING,
 		},
 		{
 			tp_ips:     []string{"1.1.1.1", "2.2.2.2", "3.3.3.3", "4.4.4.4"},
 			rp_ip:      "9.9.9.9",
 			targetFile: "data/sample_four_tp_haproxy.cfg",
+			tlsMode:    BRIDGING,
+		},
+		{
+			tp_ips:     []string{"1.1.1.1", "2.2.2.2"},
+			rp_ip:      "9.9.9.9",
+			targetFile: "data/sample_two_tp_haproxy_offloading_mode.cfg",
+			tlsMode:    OFFLOADING,
 		},
 	}
 
 	for index, testCase := range testCases {
 		generatorCfg := NewDefaultConfig()
+		if testCase.tlsMode != "" {
+			generatorCfg.tlsMode = testCase.tlsMode
+		}
 		generatorCfg.templateFile = "data/haproxy.cfg.template"
 		generatorCfg.tenantPartititonIPs = testCase.tp_ips
 		generatorCfg.resourcePartitionIP = testCase.rp_ip

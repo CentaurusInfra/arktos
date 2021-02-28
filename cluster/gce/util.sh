@@ -2941,9 +2941,7 @@ function update-proxy() {
 
   local -r proxy_template=${KUBE_ROOT}/cmd/haproxy-cfg-generator/data/haproxy.cfg.template
 
-  ## TODO: use the temp IP file to get the Tenant cluster IP instead of getting it from the tmp config
-  #
-  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}" 
+  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -tls-mode=${HAPROXY_TLS_MODE} -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
 
   if [[ $? != 0 ]]
   then

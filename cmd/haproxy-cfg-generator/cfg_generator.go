@@ -34,6 +34,8 @@ const (
 	CONNECTION_TIMEOUT     = "10m"
 	PROXY_PORT             = 8888
 	TEMPLATE_FILE          = "haproxy.cfg.template"
+	BRIDGING               = "bridging"
+	OFFLOADING             = "offloading"
 )
 
 type Config struct {
@@ -45,11 +47,14 @@ type Config struct {
 	cfgGenerated         string
 	tenantPartititonIPs  []string
 	resourcePartitionIP  string
+	// currently supports bridging and offloading modes, described in below Haproxy doc:
+	// https://www.haproxy.com/documentation/hapee/2-2r1/deployment-guides/tls-infrastructure/
+	tlsMode string
 }
 
 func NewDefaultConfig() *Config {
 	return &Config{
-		arktos_api_port:      ARKTOS_API_PORT,
+		arktos_api_port:      ARKTOS_API_SECURE_PORT,
 		max_conn_per_backend: MAX_CONN_PER_BACKEND,
 		connection_timeout:   CONNECTION_TIMEOUT,
 		proxy_port:           PROXY_PORT,
@@ -57,12 +62,14 @@ func NewDefaultConfig() *Config {
 		cfgGenerated:         "",
 		tenantPartititonIPs:  []string{},
 		resourcePartitionIP:  "",
+		tlsMode:              BRIDGING,
 	}
 }
 
 func initFlags(config *Config) {
 	flag.StringVar(&config.templateFile, "template", TEMPLATE_FILE, "The path to the haproxy cfg file template")
 	flag.StringVar(&config.cfgGenerated, "target", "", "The path to the generated haproxy cfg file")
+	flag.StringVar(&config.tlsMode, "tls-mode", "bridging", "The Haproxy TLS mode, supported bridging | offloading, default to bridging")
 
 	flag.Parse()
 }
@@ -197,16 +204,26 @@ func get_backends(config *Config) string {
 
 	result := ""
 
-	//TODO: add flag to the tool for secure port or insecure port usage
-	//
-	tp_backend := "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
-
-	for index, ip := range config.tenantPartititonIPs {
-		result = result + fmt.Sprintf(tp_backend, index+1, index+1, ip, ARKTOS_API_SECURE_PORT, MAX_CONN_PER_BACKEND)
+	var tp_backend string
+	var rp_backend string
+	backendPort := ARKTOS_API_SECURE_PORT
+	if config.tlsMode == OFFLOADING {
+		backendPort = ARKTOS_API_PORT
 	}
 
-	rp_backend := "backend resource_api\n    server rp %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
-	result = result + fmt.Sprintf(rp_backend, config.resourcePartitionIP, ARKTOS_API_SECURE_PORT, MAX_CONN_PER_BACKEND)
+	if config.tlsMode == BRIDGING {
+		tp_backend = "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+		rp_backend = "backend resource_api\n    server rp %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+	} else {
+		tp_backend = "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v\n\n"
+		rp_backend = "backend resource_api\n    server rp %v:%v maxconn %v\n\n"
+	}
+
+	for index, ip := range config.tenantPartititonIPs {
+		result += fmt.Sprintf(tp_backend, index+1, index+1, ip, backendPort, MAX_CONN_PER_BACKEND)
+	}
+
+	result += fmt.Sprintf(rp_backend, config.resourcePartitionIP, backendPort, MAX_CONN_PER_BACKEND)
 
 	return result
 }
