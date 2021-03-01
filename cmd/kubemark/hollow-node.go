@@ -100,7 +100,7 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 	fs.Var(&bindableNodeLabels, "node-labels", "Additional node labels")
 }
 
-func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {
+func (c *hollowNodeConfig) createClientConfig() (*restclient.Config, error) {
 	return clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(c.KubeconfigPath, 10, 20, c.ContentType)
 }
 
@@ -160,7 +160,7 @@ func run(config *hollowNodeConfig) {
 	}
 
 	// create clients to communicate with API server.
-	clientConfigs, err := config.createClientConfigFromFile()
+	clientConfigs, err := config.createClientConfig()
 	if err != nil {
 		klog.Fatalf("Failed to create a ClientConfig: %v. Exiting.", err)
 	}

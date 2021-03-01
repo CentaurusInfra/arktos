@@ -431,7 +431,7 @@ func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, st
 }
 
 func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
-	clients, err := GetTenantPartitionClientsFromFiles(tenantServers)
+	clients, err := CreateTenantPartitionClients(tenantServers)
 	if err != nil {
 		return nil, err
 	}
@@ -465,7 +465,7 @@ func ValidateUrl(urlString string) error {
 	return nil
 }
 
-func GetTenantPartitionClientsFromFiles(kubeconfigFiles []string) ([]clientset.Interface, error) {
+func CreateTenantPartitionClients(kubeconfigFiles []string) ([]clientset.Interface, error) {
 	clients := []clientset.Interface{}
 	for _, kubeconfig := range kubeconfigFiles {
 		client, err := clientutil.CreateClientFromKubeconfigFile(kubeconfig)
