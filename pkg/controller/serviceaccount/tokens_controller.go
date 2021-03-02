@@ -184,13 +184,13 @@ func (e *TokensController) Run(workers int, stopCh <-chan struct{}) {
 	klog.V(1).Infof("Shutting down")
 }
 
-func (e *TokensController) queueServiceAccountSync(obj interface{}) {
+func (e *TokensController) queueServiceAccountSync(obj interface{}, rpId string) {
 	if serviceAccount, ok := obj.(*v1.ServiceAccount); ok {
 		e.syncServiceAccountQueue.Add(makeServiceAccountKey(serviceAccount))
 	}
 }
 
-func (e *TokensController) queueServiceAccountUpdateSync(oldObj interface{}, newObj interface{}) {
+func (e *TokensController) queueServiceAccountUpdateSync(oldObj interface{}, newObj interface{}, rpId string) {
 	if serviceAccount, ok := newObj.(*v1.ServiceAccount); ok {
 		e.syncServiceAccountQueue.Add(makeServiceAccountKey(serviceAccount))
 	}
@@ -213,13 +213,13 @@ func (e *TokensController) retryOrForget(queue workqueue.RateLimitingInterface, 
 	queue.Forget(key)
 }
 
-func (e *TokensController) queueSecretSync(obj interface{}) {
+func (e *TokensController) queueSecretSync(obj interface{}, rpId string) {
 	if secret, ok := obj.(*v1.Secret); ok {
 		e.syncSecretQueue.Add(makeSecretQueueKey(secret))
 	}
 }
 
-func (e *TokensController) queueSecretUpdateSync(oldObj interface{}, newObj interface{}) {
+func (e *TokensController) queueSecretUpdateSync(oldObj interface{}, newObj interface{}, rpId string) {
 	if secret, ok := newObj.(*v1.Secret); ok {
 		e.syncSecretQueue.Add(makeSecretQueueKey(secret))
 	}

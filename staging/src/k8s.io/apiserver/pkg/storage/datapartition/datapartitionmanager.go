@@ -126,7 +126,7 @@ func (m *DataPartitionConfigManager) syncDataPartition() error {
 	return nil
 }
 
-func (m *DataPartitionConfigManager) addDataPartition(obj interface{}) {
+func (m *DataPartitionConfigManager) addDataPartition(obj interface{}, rpId string) {
 	dp := obj.(*v1.DataPartitionConfig)
 	if dp.DeletionTimestamp != nil {
 		return
@@ -161,7 +161,7 @@ func (m *DataPartitionConfigManager) addDataPartition(obj interface{}) {
 	}
 }
 
-func (m *DataPartitionConfigManager) updateDataPartition(old, cur interface{}) {
+func (m *DataPartitionConfigManager) updateDataPartition(old, cur interface{}, rpId string) {
 	curDp := cur.(*v1.DataPartitionConfig)
 	oldDp := old.(*v1.DataPartitionConfig)
 
@@ -199,7 +199,7 @@ func (m *DataPartitionConfigManager) updateDataPartition(old, cur interface{}) {
 	}
 }
 
-func (m *DataPartitionConfigManager) deleteDataPartition(obj interface{}) {
+func (m *DataPartitionConfigManager) deleteDataPartition(obj interface{}, rpId string) {
 	dp, ok := obj.(*v1.DataPartitionConfig)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

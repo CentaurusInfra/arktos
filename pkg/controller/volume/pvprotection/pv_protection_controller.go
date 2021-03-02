@@ -67,8 +67,8 @@ func NewPVProtectionController(pvInformer coreinformers.PersistentVolumeInformer
 	e.pvListerSynced = pvInformer.Informer().HasSynced
 	pvInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: e.pvAddedUpdated,
-		UpdateFunc: func(old, new interface{}) {
-			e.pvAddedUpdated(new)
+		UpdateFunc: func(old, new interface{}, rpId string) {
+			e.pvAddedUpdated(new, rpId)
 		},
 	})
 
@@ -201,7 +201,7 @@ func (c *Controller) isBeingUsed(pv *v1.PersistentVolume) bool {
 }
 
 // pvAddedUpdated reacts to pv added/updated events
-func (c *Controller) pvAddedUpdated(obj interface{}) {
+func (c *Controller) pvAddedUpdated(obj interface{}, rpId string) {
 	pv, ok := obj.(*v1.PersistentVolume)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("PV informer returned non-PV object: %#v", obj))

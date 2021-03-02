@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -86,9 +87,9 @@ type CIDRAllocator interface {
 	// AllocateOrOccupyCIDR looks at the given node, assigns it a valid
 	// CIDR if it doesn't currently have one or mark the CIDR as used if
 	// the node already have one.
-	AllocateOrOccupyCIDR(node *v1.Node) error
+	AllocateOrOccupyCIDR(node *v1.Node, rpId string) error
 	// ReleaseCIDR releases the CIDR of the removed node
-	ReleaseCIDR(node *v1.Node) error
+	ReleaseCIDR(node *v1.Node, rpId string) error
 	// Run starts all the working logic of the allocator.
 	Run(stopCh <-chan struct{})
 }

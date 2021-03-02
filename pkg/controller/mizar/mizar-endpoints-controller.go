@@ -118,7 +118,7 @@ func (c *MizarEndpointsController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *MizarEndpointsController) createObj(obj interface{}) {
+func (c *MizarEndpointsController) createObj(obj interface{}, rpId string) {
 	key, _ := controller.KeyFunc(obj)
 	if shouldIgnore(key) {
 		return
@@ -127,7 +127,7 @@ func (c *MizarEndpointsController) createObj(obj interface{}) {
 }
 
 // When an object is updated.
-func (c *MizarEndpointsController) updateObj(old, cur interface{}) {
+func (c *MizarEndpointsController) updateObj(old, cur interface{}, rpId string) {
 	curObj := cur.(*v1.Endpoints)
 	oldObj := old.(*v1.Endpoints)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {

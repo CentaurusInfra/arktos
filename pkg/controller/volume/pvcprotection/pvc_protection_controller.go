@@ -71,21 +71,21 @@ func NewPVCProtectionController(pvcInformer coreinformers.PersistentVolumeClaimI
 	e.pvcListerSynced = pvcInformer.Informer().HasSynced
 	pvcInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: e.pvcAddedUpdated,
-		UpdateFunc: func(old, new interface{}) {
-			e.pvcAddedUpdated(new)
+		UpdateFunc: func(old, new interface{}, rpId string) {
+			e.pvcAddedUpdated(new, rpId)
 		},
 	})
 
 	e.podLister = podInformer.Lister()
 	e.podListerSynced = podInformer.Informer().HasSynced
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			e.podAddedDeletedUpdated(obj, false)
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj interface{}, rpId string) {
 			e.podAddedDeletedUpdated(obj, true)
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new interface{}, rpId string) {
 			e.podAddedDeletedUpdated(new, false)
 		},
 	})
@@ -239,7 +239,7 @@ func (c *Controller) isBeingUsed(pvc *v1.PersistentVolumeClaim) (bool, error) {
 }
 
 // pvcAddedUpdated reacts to pvc added/updated/deleted events
-func (c *Controller) pvcAddedUpdated(obj interface{}) {
+func (c *Controller) pvcAddedUpdated(obj interface{}, rpId string) {
 	pvc, ok := obj.(*v1.PersistentVolumeClaim)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("PVC informer returned non-PVC object: %#v", obj))

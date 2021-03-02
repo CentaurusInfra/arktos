@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -105,7 +106,7 @@ func (c *EndpointsConfig) Run(stopCh <-chan struct{}) {
 	}
 }
 
-func (c *EndpointsConfig) handleAddEndpoints(obj interface{}) {
+func (c *EndpointsConfig) handleAddEndpoints(obj interface{}, rpId string) {
 	endpoints, ok := obj.(*v1.Endpoints)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -117,7 +118,7 @@ func (c *EndpointsConfig) handleAddEndpoints(obj interface{}) {
 	}
 }
 
-func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}) {
+func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}, rpId string) {
 	oldEndpoints, ok := oldObj.(*v1.Endpoints)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", oldObj))
@@ -134,7 +135,7 @@ func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}) {
 	}
 }
 
-func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
+func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}, rpId string) {
 	endpoints, ok := obj.(*v1.Endpoints)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -196,7 +197,7 @@ func (c *ServiceConfig) Run(stopCh <-chan struct{}) {
 	}
 }
 
-func (c *ServiceConfig) handleAddService(obj interface{}) {
+func (c *ServiceConfig) handleAddService(obj interface{}, rpId string) {
 	service, ok := obj.(*v1.Service)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -208,7 +209,7 @@ func (c *ServiceConfig) handleAddService(obj interface{}) {
 	}
 }
 
-func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}) {
+func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}, rpId string) {
 	oldService, ok := oldObj.(*v1.Service)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", oldObj))
@@ -225,7 +226,7 @@ func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}) {
 	}
 }
 
-func (c *ServiceConfig) handleDeleteService(obj interface{}) {
+func (c *ServiceConfig) handleDeleteService(obj interface{}, rpId string) {
 	service, ok := obj.(*v1.Service)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -120,13 +120,13 @@ func NewStatefulSetController(
 	setInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: ssc.enqueueStatefulSet,
-			UpdateFunc: func(old, cur interface{}) {
+			UpdateFunc: func(old, cur interface{}, rpId string) {
 				oldPS := old.(*apps.StatefulSet)
 				curPS := cur.(*apps.StatefulSet)
 				if oldPS.Status.Replicas != curPS.Status.Replicas {
 					klog.V(4).Infof("Observed updated replica count for StatefulSet: %v, %d->%d", curPS.Name, oldPS.Status.Replicas, curPS.Status.Replicas)
 				}
-				ssc.enqueueStatefulSet(cur)
+				ssc.enqueueStatefulSet(cur, rpId)
 			},
 			DeleteFunc: ssc.enqueueStatefulSet,
 		},
@@ -158,13 +158,13 @@ func (ssc *StatefulSetController) Run(workers int, stopCh <-chan struct{}) {
 }
 
 // addPod adds the statefulset for the pod to the sync queue
-func (ssc *StatefulSetController) addPod(obj interface{}) {
+func (ssc *StatefulSetController) addPod(obj interface{}, rpId string) {
 	pod := obj.(*v1.Pod)
 
 	if pod.DeletionTimestamp != nil {
 		// on a restart of the controller manager, it's possible a new pod shows up in a state that
 		// is already pending deletion. Prevent the pod from being a creation observation.
-		ssc.deletePod(pod)
+		ssc.deletePod(pod, rpId)
 		return
 	}
 
@@ -175,7 +175,7 @@ func (ssc *StatefulSetController) addPod(obj interface{}) {
 			return
 		}
 		klog.V(4).Infof("Pod %s created, labels: %+v", pod.Name, pod.Labels)
-		ssc.enqueueStatefulSet(set)
+		ssc.enqueueStatefulSet(set, rpId)
 		return
 	}
 
@@ -187,12 +187,12 @@ func (ssc *StatefulSetController) addPod(obj interface{}) {
 	}
 	klog.V(4).Infof("Orphan Pod %s created, labels: %+v", pod.Name, pod.Labels)
 	for _, set := range sets {
-		ssc.enqueueStatefulSet(set)
+		ssc.enqueueStatefulSet(set, rpId)
 	}
 }
 
 // updatePod adds the statefulset for the current and old pods to the sync queue.
-func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
+func (ssc *StatefulSetController) updatePod(old, cur interface{}, rpId string) {
 	curPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 	if curPod.ResourceVersion == oldPod.ResourceVersion {
@@ -209,7 +209,7 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 	if controllerRefChanged && oldControllerRef != nil {
 		// The ControllerRef was changed. Sync the old controller, if any.
 		if set := ssc.resolveControllerRef(oldPod.Tenant, oldPod.Namespace, oldControllerRef); set != nil {
-			ssc.enqueueStatefulSet(set)
+			ssc.enqueueStatefulSet(set, rpId)
 		}
 	}
 
@@ -220,7 +220,7 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 			return
 		}
 		klog.V(4).Infof("Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
-		ssc.enqueueStatefulSet(set)
+		ssc.enqueueStatefulSet(set, rpId)
 		return
 	}
 
@@ -233,13 +233,13 @@ func (ssc *StatefulSetController) updatePod(old, cur interface{}) {
 		}
 		klog.V(4).Infof("Orphan Pod %s updated, objectMeta %+v -> %+v.", curPod.Name, oldPod.ObjectMeta, curPod.ObjectMeta)
 		for _, set := range sets {
-			ssc.enqueueStatefulSet(set)
+			ssc.enqueueStatefulSet(set, rpId)
 		}
 	}
 }
 
 // deletePod enqueues the statefulset for the pod accounting for deletion tombstones.
-func (ssc *StatefulSetController) deletePod(obj interface{}) {
+func (ssc *StatefulSetController) deletePod(obj interface{}, rpId string) {
 	pod, ok := obj.(*v1.Pod)
 
 	// When a delete is dropped, the relist will notice a pod in the store not
@@ -268,7 +268,7 @@ func (ssc *StatefulSetController) deletePod(obj interface{}) {
 		return
 	}
 	klog.V(4).Infof("Pod %s/%s deleted through %v.", pod.Namespace, pod.Name, utilruntime.GetCaller())
-	ssc.enqueueStatefulSet(set)
+	ssc.enqueueStatefulSet(set, rpId)
 }
 
 // getPodsForStatefulSet returns the Pods that a given StatefulSet should manage.
@@ -373,7 +373,7 @@ func (ssc *StatefulSetController) resolveControllerRef(tenant string, namespace 
 }
 
 // enqueueStatefulSet enqueues the given statefulset in the work queue.
-func (ssc *StatefulSetController) enqueueStatefulSet(obj interface{}) {
+func (ssc *StatefulSetController) enqueueStatefulSet(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %+v: %v", obj, err))

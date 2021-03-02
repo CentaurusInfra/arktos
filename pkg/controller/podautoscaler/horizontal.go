@@ -168,12 +168,12 @@ func (a *HorizontalController) Run(stopCh <-chan struct{}) {
 }
 
 // obj could be an *v1.HorizontalPodAutoscaler, or a DeletionFinalStateUnknown marker item.
-func (a *HorizontalController) updateHPA(old, cur interface{}) {
-	a.enqueueHPA(cur)
+func (a *HorizontalController) updateHPA(old, cur interface{}, rpId string) {
+	a.enqueueHPA(cur, rpId)
 }
 
 // obj could be an *v1.HorizontalPodAutoscaler, or a DeletionFinalStateUnknown marker item.
-func (a *HorizontalController) enqueueHPA(obj interface{}) {
+func (a *HorizontalController) enqueueHPA(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))
@@ -186,7 +186,7 @@ func (a *HorizontalController) enqueueHPA(obj interface{}) {
 	a.queue.AddRateLimited(key)
 }
 
-func (a *HorizontalController) deleteHPA(obj interface{}) {
+func (a *HorizontalController) deleteHPA(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %+v: %v", obj, err))

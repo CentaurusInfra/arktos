@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -99,7 +100,7 @@ func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInforme
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc:    e.enqueueSecrets,
-				UpdateFunc: func(oldSecret, newSecret interface{}) { e.enqueueSecrets(newSecret) },
+				UpdateFunc: func(oldSecret, newSecret interface{}, rpId string) { e.enqueueSecrets(newSecret, rpId) },
 			},
 		},
 		options.SecretResync,
@@ -125,7 +126,7 @@ func (tc *TokenCleaner) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (tc *TokenCleaner) enqueueSecrets(obj interface{}) {
+func (tc *TokenCleaner) enqueueSecrets(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(err)

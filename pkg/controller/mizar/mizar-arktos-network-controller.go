@@ -133,7 +133,7 @@ func (c *MizarArktosNetworkController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *MizarArktosNetworkController) createNetwork(obj interface{}) {
+func (c *MizarArktosNetworkController) createNetwork(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for object %#v: %v", obj, err))

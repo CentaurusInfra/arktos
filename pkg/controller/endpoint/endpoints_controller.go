@@ -90,8 +90,8 @@ func NewEndpointController(podInformer coreinformers.PodInformer, serviceInforme
 
 	serviceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: e.enqueueService,
-		UpdateFunc: func(old, cur interface{}) {
-			e.enqueueService(cur)
+		UpdateFunc: func(old, cur interface{}, rpId string) {
+			e.enqueueService(cur, rpId)
 		},
 		DeleteFunc: e.enqueueService,
 	})
@@ -203,7 +203,7 @@ func (e *EndpointController) getPodServiceMemberships(pod *v1.Pod) (sets.String,
 
 // When a pod is added, figure out what services it will be a member of and
 // enqueue them. obj must have *v1.Pod type.
-func (e *EndpointController) addPod(obj interface{}) {
+func (e *EndpointController) addPod(obj interface{}, rpId string) {
 	pod := obj.(*v1.Pod)
 	services, err := e.getPodServiceMemberships(pod)
 	if err != nil {
@@ -273,7 +273,7 @@ func determineNeededServiceUpdates(oldServices, services sets.String, podChanged
 // When a pod is updated, figure out what services it used to be a member of
 // and what services it will be a member of, and enqueue the union of these.
 // old and cur must be *v1.Pod types.
-func (e *EndpointController) updatePod(old, cur interface{}) {
+func (e *EndpointController) updatePod(old, cur interface{}, rpId string) {
 	newPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 	if newPod.ResourceVersion == oldPod.ResourceVersion {
@@ -324,12 +324,12 @@ func hostNameAndDomainAreEqual(pod1, pod2 *v1.Pod) bool {
 
 // When a pod is deleted, enqueue the services the pod used to be a member of.
 // obj could be an *v1.Pod, or a DeletionFinalStateUnknown marker item.
-func (e *EndpointController) deletePod(obj interface{}) {
+func (e *EndpointController) deletePod(obj interface{}, rpId string) {
 	if _, ok := obj.(*v1.Pod); ok {
 		// Enqueue all the services that the pod used to be a member
 		// of. This happens to be exactly the same thing we do when a
 		// pod is added.
-		e.addPod(obj)
+		e.addPod(obj, rpId)
 		return
 	}
 	// If we reached here it means the pod was deleted but its final state is unrecorded.
@@ -344,11 +344,11 @@ func (e *EndpointController) deletePod(obj interface{}) {
 		return
 	}
 	klog.V(4).Infof("Enqueuing services of deleted pod %s/%s/%s having final state unrecorded", pod.Tenant, pod.Namespace, pod.Name)
-	e.addPod(pod)
+	e.addPod(pod, rpId)
 }
 
 // obj could be an *v1.Service, or a DeletionFinalStateUnknown marker item.
-func (e *EndpointController) enqueueService(obj interface{}) {
+func (e *EndpointController) enqueueService(obj interface{}, rpId string) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("Couldn't get key for object %+v: %v", obj, err))

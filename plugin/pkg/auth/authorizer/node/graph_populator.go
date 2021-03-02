@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -73,11 +74,11 @@ func AddGraphEventHandlers(
 	}
 }
 
-func (g *graphPopulator) addNode(obj interface{}) {
-	g.updateNode(nil, obj)
+func (g *graphPopulator) addNode(obj interface{}, rpId string) {
+	g.updateNode(nil, obj, rpId)
 }
 
-func (g *graphPopulator) updateNode(oldObj, obj interface{}) {
+func (g *graphPopulator) updateNode(oldObj, obj interface{}, rpId string) {
 	node := obj.(*corev1.Node)
 	var oldNode *corev1.Node
 	if oldObj != nil {
@@ -113,7 +114,7 @@ func (g *graphPopulator) updateNode(oldObj, obj interface{}) {
 	g.graph.SetNodeConfigMap(node.Name, name, namespace)
 }
 
-func (g *graphPopulator) deleteNode(obj interface{}) {
+func (g *graphPopulator) deleteNode(obj interface{}, rpId string) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
@@ -129,11 +130,11 @@ func (g *graphPopulator) deleteNode(obj interface{}) {
 	g.graph.SetNodeConfigMap(node.Name, "", "")
 }
 
-func (g *graphPopulator) addPod(obj interface{}) {
-	g.updatePod(nil, obj)
+func (g *graphPopulator) addPod(obj interface{}, rpId string) {
+	g.updatePod(nil, obj, rpId)
 }
 
-func (g *graphPopulator) updatePod(oldObj, obj interface{}) {
+func (g *graphPopulator) updatePod(oldObj, obj interface{}, rpId string) {
 	pod := obj.(*corev1.Pod)
 	if len(pod.Spec.NodeName) == 0 {
 		// No node assigned
@@ -151,7 +152,7 @@ func (g *graphPopulator) updatePod(oldObj, obj interface{}) {
 	g.graph.AddPod(pod)
 }
 
-func (g *graphPopulator) deletePod(obj interface{}) {
+func (g *graphPopulator) deletePod(obj interface{}, rpId string) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
@@ -168,17 +169,17 @@ func (g *graphPopulator) deletePod(obj interface{}) {
 	g.graph.DeletePod(pod.Name, pod.Namespace)
 }
 
-func (g *graphPopulator) addPV(obj interface{}) {
-	g.updatePV(nil, obj)
+func (g *graphPopulator) addPV(obj interface{}, rpId string) {
+	g.updatePV(nil, obj, rpId)
 }
 
-func (g *graphPopulator) updatePV(oldObj, obj interface{}) {
+func (g *graphPopulator) updatePV(oldObj, obj interface{}, rpId string) {
 	pv := obj.(*corev1.PersistentVolume)
 	// TODO: skip add if uid, pvc, and secrets are all identical between old and new
 	g.graph.AddPV(pv)
 }
 
-func (g *graphPopulator) deletePV(obj interface{}) {
+func (g *graphPopulator) deletePV(obj interface{}, rpId string) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}
@@ -190,11 +191,11 @@ func (g *graphPopulator) deletePV(obj interface{}) {
 	g.graph.DeletePV(pv.Name)
 }
 
-func (g *graphPopulator) addVolumeAttachment(obj interface{}) {
-	g.updateVolumeAttachment(nil, obj)
+func (g *graphPopulator) addVolumeAttachment(obj interface{}, rpId string) {
+	g.updateVolumeAttachment(nil, obj, rpId)
 }
 
-func (g *graphPopulator) updateVolumeAttachment(oldObj, obj interface{}) {
+func (g *graphPopulator) updateVolumeAttachment(oldObj, obj interface{}, rpId string) {
 	attachment := obj.(*storagev1.VolumeAttachment)
 	if oldObj != nil {
 		// skip add if node name is identical
@@ -206,7 +207,7 @@ func (g *graphPopulator) updateVolumeAttachment(oldObj, obj interface{}) {
 	g.graph.AddVolumeAttachment(attachment.Name, attachment.Spec.NodeName)
 }
 
-func (g *graphPopulator) deleteVolumeAttachment(obj interface{}) {
+func (g *graphPopulator) deleteVolumeAttachment(obj interface{}, rpId string) {
 	if tombstone, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 		obj = tombstone.Obj
 	}

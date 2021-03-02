@@ -136,7 +136,7 @@ func NewExpandController(
 
 	pvcInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
 		AddFunc: expc.enqueuePVC,
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new interface{}, rpId string) {
 			oldPVC, ok := old.(*v1.PersistentVolumeClaim)
 			if !ok {
 				return
@@ -149,7 +149,7 @@ func NewExpandController(
 			}
 			newSize := newPVC.Spec.Resources.Requests[v1.ResourceStorage]
 			if newSize.Cmp(oldSize) > 0 {
-				expc.enqueuePVC(new)
+				expc.enqueuePVC(new, rpId)
 			}
 		},
 		DeleteFunc: expc.enqueuePVC,
@@ -158,7 +158,7 @@ func NewExpandController(
 	return expc, nil
 }
 
-func (expc *expandController) enqueuePVC(obj interface{}) {
+func (expc *expandController) enqueuePVC(obj interface{}, rpId string) {
 	pvc, ok := obj.(*v1.PersistentVolumeClaim)
 	if !ok {
 		return

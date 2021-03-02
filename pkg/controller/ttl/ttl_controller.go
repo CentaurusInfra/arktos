@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -127,7 +128,7 @@ func (ttlc *TTLController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (ttlc *TTLController) addNode(obj interface{}) {
+func (ttlc *TTLController) addNode(obj interface{}, rpId string) {
 	node, ok := obj.(*v1.Node)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -146,7 +147,7 @@ func (ttlc *TTLController) addNode(obj interface{}) {
 	ttlc.enqueueNode(node)
 }
 
-func (ttlc *TTLController) updateNode(_, newObj interface{}) {
+func (ttlc *TTLController) updateNode(_, newObj interface{}, rpId string) {
 	node, ok := newObj.(*v1.Node)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", newObj))
@@ -160,7 +161,7 @@ func (ttlc *TTLController) updateNode(_, newObj interface{}) {
 	ttlc.enqueueNode(node)
 }
 
-func (ttlc *TTLController) deleteNode(obj interface{}) {
+func (ttlc *TTLController) deleteNode(obj interface{}, rpId string) {
 	_, ok := obj.(*v1.Node)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

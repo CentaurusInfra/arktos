@@ -211,8 +211,8 @@ func makeAPIServiceAvailableHealthCheck(name string, apiServices []*apiregistrat
 
 	// Watch add/update events for APIServices
 	apiServiceInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(obj interface{}) { handleAPIServiceChange(obj.(*apiregistration.APIService)) },
-		UpdateFunc: func(old, new interface{}) { handleAPIServiceChange(new.(*apiregistration.APIService)) },
+		AddFunc:    func(obj interface{}, rpId string) { handleAPIServiceChange(obj.(*apiregistration.APIService)) },
+		UpdateFunc: func(old, new interface{}, rpId string) { handleAPIServiceChange(new.(*apiregistration.APIService)) },
 	})
 
 	// Don't return healthy until the pending list is empty

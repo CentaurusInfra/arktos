@@ -146,19 +146,19 @@ func (c *APIServiceRegistrationController) enqueue(obj *apiregistration.APIServi
 	c.queue.Add(key)
 }
 
-func (c *APIServiceRegistrationController) addAPIService(obj interface{}) {
+func (c *APIServiceRegistrationController) addAPIService(obj interface{}, rpId string) {
 	castObj := obj.(*apiregistration.APIService)
 	klog.V(4).Infof("Adding %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *APIServiceRegistrationController) updateAPIService(obj, _ interface{}) {
+func (c *APIServiceRegistrationController) updateAPIService(obj, _ interface{}, rpId string) {
 	castObj := obj.(*apiregistration.APIService)
 	klog.V(4).Infof("Updating %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *APIServiceRegistrationController) deleteAPIService(obj interface{}) {
+func (c *APIServiceRegistrationController) deleteAPIService(obj interface{}, rpId string) {
 	castObj, ok := obj.(*apiregistration.APIService)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
