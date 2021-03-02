@@ -161,7 +161,7 @@ type FitPredicate func(pod *v1.Pod, meta PredicateMetadata, nodeInfo *schedulern
 
 // NodeInfo interface represents anything that can get node object from node ID.
 type NodeInfo interface {
-	GetNodeInfo(nodeID string) (*v1.Node, error)
+	GetNodeInfo(nodeID string) (*v1.Node, string, error)
 }
 
 // PersistentVolumeInfo interface represents anything that can get persistent volume object by PV ID.
@@ -202,22 +202,32 @@ func (c *CachedPersistentVolumeClaimInfo) GetPersistentVolumeClaimInfo(tenant, n
 
 // CachedNodeInfo implements NodeInfo
 type CachedNodeInfo struct {
-	corelisters.NodeLister
+	// A map from RP id to node lister
+	nodelistermaps map[string]corelisters.NodeLister
+}
+
+func NewCachedNodeInfo(nodelistermaps map[string]corelisters.NodeLister) *CachedNodeInfo {
+	return &CachedNodeInfo{nodelistermaps: nodelistermaps}
 }
 
 // GetNodeInfo returns cached data for the node 'id'.
-func (c *CachedNodeInfo) GetNodeInfo(id string) (*v1.Node, error) {
-	node, err := c.Get(id)
+func (c *CachedNodeInfo) GetNodeInfo(id string) (*v1.Node, string, error) {
+	count := 0
+	rpCount := len(c.nodelistermaps)
+	for rpId, nodelister := range c.nodelistermaps {
+		count++
+		node, err := nodelister.Get(id)
 
-	if apierrors.IsNotFound(err) {
-		return nil, err
+		if apierrors.IsNotFound(err) && count >= rpCount {
+			return nil, "", err
+		}
+		if err != nil {
+			return nil, "", fmt.Errorf("error retrieving node '%v' from cache: %v", id, err)
+		}
+		return node, rpId, nil
 	}
 
-	if err != nil {
-		return nil, fmt.Errorf("error retrieving node '%v' from cache: %v", id, err)
-	}
-
-	return node, nil
+	return nil, "", apierrors.NewNotFound(v1.Resource("nodes"), id)
 }
 
 // StorageClassInfo interface represents anything that can get a storage class object by class name.
@@ -1056,7 +1066,7 @@ func (s *ServiceAffinity) checkServiceAffinity(pod *v1.Pod, meta PredicateMetada
 	if len(s.labels) > len(affinityLabels) {
 		if len(services) > 0 {
 			if len(filteredPods) > 0 {
-				nodeWithAffinityLabels, err := s.nodeInfo.GetNodeInfo(filteredPods[0].Spec.NodeName)
+				nodeWithAffinityLabels, _, err := s.nodeInfo.GetNodeInfo(filteredPods[0].Spec.NodeName)
 				if err != nil {
 					return false, nil, err
 				}
@@ -1245,7 +1255,7 @@ func (c *PodAffinityChecker) podMatchesPodAffinityTerms(pod, targetPod *v1.Pod, 
 		return false, false, nil
 	}
 	// Namespace and selector of the terms have matched. Now we check topology of the terms.
-	targetPodNode, err := c.info.GetNodeInfo(targetPod.Spec.NodeName)
+	targetPodNode, _, err := c.info.GetNodeInfo(targetPod.Spec.NodeName)
 	if err != nil {
 		return false, false, err
 	}
@@ -1318,7 +1328,7 @@ func (c *PodAffinityChecker) getMatchingAntiAffinityTopologyPairsOfPods(pod *v1.
 	topologyMaps := newTopologyPairsMaps()
 
 	for _, existingPod := range existingPods {
-		existingPodNode, err := c.info.GetNodeInfo(existingPod.Spec.NodeName)
+		existingPodNode, _, err := c.info.GetNodeInfo(existingPod.Spec.NodeName)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				klog.Errorf("Pod %s has NodeName %q but node is not found",

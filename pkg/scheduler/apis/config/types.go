@@ -102,8 +102,7 @@ type KubeSchedulerConfiguration struct {
 
 	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
 	// optional for single cluster in Arktos deployment model
-	// TODO: make it an array for future release when multiple RP is supported
-	ResourceProviderClientConnection componentbaseconfig.ClientConnectionConfiguration
+	ResourceProviderKubeConfig string
 }
 
 // SchedulerAlgorithmSource is the source of a scheduler algorithm. One source

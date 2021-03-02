@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,8 +67,10 @@ func (w *predicateAdmitHandler) Admit(attrs *PodAdmitAttributes) PodAdmitResult 
 	}
 	admitPod := attrs.Pod
 	pods := attrs.OtherPods
+	// TODO - fill in resourceProviderId
 	nodeInfo := schedulernodeinfo.NewNodeInfo(pods...)
 	nodeInfo.SetNode(node)
+	// TODO: nodeInfo.SetResourceProviderId
 	// ensure the node has enough plugin resources for that required in pods
 	if err = w.pluginResourceUpdateFunc(nodeInfo, attrs); err != nil {
 		message := fmt.Sprintf("Update plugin resources failed due to %v, which is unexpected.", err)

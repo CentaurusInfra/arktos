@@ -111,16 +111,16 @@ func NewCloudCIDRAllocator(client clientset.Interface, cloud cloudprovider.Inter
 
 	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: nodeutil.CreateAddNodeHandler(ca.AllocateOrOccupyCIDR),
-		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node) error {
+		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node, rpId string) error {
 			if newNode.Spec.PodCIDR == "" {
-				return ca.AllocateOrOccupyCIDR(newNode)
+				return ca.AllocateOrOccupyCIDR(newNode, rpId)
 			}
 			// Even if PodCIDR is assigned, but NetworkUnavailable condition is
 			// set to true, we need to process the node to set the condition.
 			networkUnavailableTaint := &v1.Taint{Key: schedulerapi.TaintNodeNetworkUnavailable, Effect: v1.TaintEffectNoSchedule}
 			_, cond := nodeutil.GetNodeCondition(&newNode.Status, v1.NodeNetworkUnavailable)
 			if cond == nil || cond.Status != v1.ConditionFalse || utiltaints.TaintExists(newNode.Spec.Taints, networkUnavailableTaint) {
-				return ca.AllocateOrOccupyCIDR(newNode)
+				return ca.AllocateOrOccupyCIDR(newNode, rpId)
 			}
 			return nil
 		}),
@@ -156,7 +156,8 @@ func (ca *cloudCIDRAllocator) worker(stopChan <-chan struct{}) {
 				klog.Warning("Channel nodeCIDRUpdateChannel was unexpectedly closed")
 				return
 			}
-			if err := ca.updateCIDRAllocation(workItem); err == nil {
+			// TODO
+			if err := ca.updateCIDRAllocation(workItem, "resourceProviderId"); err == nil {
 				klog.V(3).Infof("Updated CIDR for %q", workItem)
 			} else {
 				klog.Errorf("Error updating CIDR for %q: %v", workItem, err)
@@ -226,7 +227,7 @@ func (ca *cloudCIDRAllocator) removeNodeFromProcessing(nodeName string) {
 // WARNING: If you're adding any return calls or defer any more work from this
 // function you have to make sure to update nodesInProcessing properly with the
 // disposition of the node when the work is done.
-func (ca *cloudCIDRAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
+func (ca *cloudCIDRAllocator) AllocateOrOccupyCIDR(node *v1.Node, rpId string) error {
 	if node == nil {
 		return nil
 	}
@@ -241,7 +242,7 @@ func (ca *cloudCIDRAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
 }
 
 // updateCIDRAllocation assigns CIDR to Node and sends an update to the API server.
-func (ca *cloudCIDRAllocator) updateCIDRAllocation(nodeName string) error {
+func (ca *cloudCIDRAllocator) updateCIDRAllocation(nodeName string, rpId string) error {
 	node, err := ca.nodeLister.Get(nodeName)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -304,7 +305,7 @@ func (ca *cloudCIDRAllocator) updateCIDRAllocation(nodeName string) error {
 	return err
 }
 
-func (ca *cloudCIDRAllocator) ReleaseCIDR(node *v1.Node) error {
+func (ca *cloudCIDRAllocator) ReleaseCIDR(node *v1.Node, rpId string) error {
 	klog.V(2).Infof("Node %v PodCIDR (%v) will be released by external cloud provider (not managed by controller)",
 		node.Name, node.Spec.PodCIDR)
 	return nil

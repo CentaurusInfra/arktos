@@ -135,10 +135,10 @@ func ExampleNewInformer() {
 		&v1.Pod{},
 		time.Millisecond*100,
 		ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
+			AddFunc: func(obj interface{}, rpId string) {
 				source.Delete(obj.(runtime.Object))
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(obj interface{}, rpId string) {
 				key, err := DeletionHandlingMetaNamespaceKeyFunc(obj)
 				if err != nil {
 					key = "oops something went wrong with the key"
@@ -148,6 +148,7 @@ func ExampleNewInformer() {
 				deletionCounter <- key
 			},
 		},
+		"resourceProviderId",
 	)
 
 	// Run the controller and run it until we close stop.
@@ -211,10 +212,11 @@ func TestHammerController(t *testing.T) {
 		&v1.Pod{},
 		time.Millisecond*100,
 		ResourceEventHandlerFuncs{
-			AddFunc:    func(obj interface{}) { recordFunc("add", obj) },
-			UpdateFunc: func(oldObj, newObj interface{}) { recordFunc("update", newObj) },
-			DeleteFunc: func(obj interface{}) { recordFunc("delete", obj) },
+			AddFunc:    func(obj interface{}, rpId string) { recordFunc("add", obj) },
+			UpdateFunc: func(oldObj, newObj interface{}, rpId string) { recordFunc("update", newObj) },
+			DeleteFunc: func(obj interface{}, rpId string) { recordFunc("delete", obj) },
 		},
+		"resourceProviderId",
 	)
 
 	if controller.HasSynced() {
@@ -366,7 +368,7 @@ func TestUpdate(t *testing.T) {
 		&v1.Pod{},
 		0,
 		ResourceEventHandlerFuncs{
-			UpdateFunc: func(oldObj, newObj interface{}) {
+			UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
 				o, n := oldObj.(*v1.Pod), newObj.(*v1.Pod)
 				from, to := o.Labels["check"], n.Labels["check"]
 				if !allowedTransitions[pair{from, to}] {
@@ -376,10 +378,11 @@ func TestUpdate(t *testing.T) {
 					source.Delete(n)
 				}
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(obj interface{}, rpId string) {
 				testDoneWG.Done()
 			},
 		},
+		"resourceProviderId",
 	)
 
 	// Run the controller and run it until we close stop.

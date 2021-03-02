@@ -50,7 +50,6 @@ func (in *KubeSchedulerConfiguration) DeepCopyInto(out *KubeSchedulerConfigurati
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	out.ResourceProviderClientConnection = in.ResourceProviderClientConnection
 	return
 }
 

@@ -84,6 +84,9 @@ type podState struct {
 	deadline *time.Time
 	// Used to block cache from expiring assumedPod if binding still runs
 	bindingFinished bool
+	// Used for scale out multiple RPs - use array row number for now
+	// Consider change to string later for universal cluster naming
+	resourceProviderId int
 }
 
 type imageState struct {
@@ -350,6 +353,7 @@ func (cache *schedulerCache) ForgetPod(pod *v1.Pod) error {
 func (cache *schedulerCache) addPod(pod *v1.Pod) {
 	n, ok := cache.nodes[pod.Spec.NodeName]
 	if !ok {
+		// TODO - check whether RP id should be availalble now
 		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
 		cache.nodes[pod.Spec.NodeName] = n
 	}
@@ -530,13 +534,15 @@ func (cache *schedulerCache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 	return podState.pod, nil
 }
 
-func (cache *schedulerCache) AddNode(node *v1.Node) error {
+func (cache *schedulerCache) AddNode(node *v1.Node, resourceProviderId string) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[node.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		nodeInfo := schedulernodeinfo.NewNodeInfo()
+		nodeInfo.SetResourceProviderId(resourceProviderId)
+		n = newNodeInfoListItem(nodeInfo)
 		cache.nodes[node.Name] = n
 	} else {
 		cache.removeNodeImageStates(n.info.Node())
@@ -548,13 +554,15 @@ func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	return n.info.SetNode(node)
 }
 
-func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
+func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node, resourceProviderId string) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[newNode.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		nodeInfo := schedulernodeinfo.NewNodeInfo()
+		nodeInfo.SetResourceProviderId(resourceProviderId)
+		n = newNodeInfoListItem(nodeInfo)
 		cache.nodes[newNode.Name] = n
 	} else {
 		cache.removeNodeImageStates(n.info.Node())
@@ -566,6 +574,7 @@ func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
 	return n.info.SetNode(newNode)
 }
 
+// Assume there is no conflict of node name across multipe RPs
 func (cache *schedulerCache) RemoveNode(node *v1.Node) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()

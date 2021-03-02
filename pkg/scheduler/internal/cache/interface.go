@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -87,10 +88,10 @@ type Cache interface {
 	IsAssumedPod(pod *v1.Pod) (bool, error)
 
 	// AddNode adds overall information about node.
-	AddNode(node *v1.Node) error
+	AddNode(node *v1.Node, resourceProviderId string) error
 
 	// UpdateNode updates overall information about node.
-	UpdateNode(oldNode, newNode *v1.Node) error
+	UpdateNode(oldNode, newNode *v1.Node, resourceProviderId string) error
 
 	// RemoveNode removes overall information about node.
 	RemoveNode(node *v1.Node) error
