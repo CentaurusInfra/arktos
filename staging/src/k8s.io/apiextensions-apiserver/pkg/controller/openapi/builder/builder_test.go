@@ -433,42 +433,61 @@ func TestCRDRouteParameterBuilder(t *testing.T) {
 	testCases := []struct {
 		scope apiextensions.ResourceScope
 		paths map[string]struct {
+			expectTenantParam    bool
 			expectNamespaceParam bool
 			expectNameParam      bool
 			expectedActions      sets.String
 		}
 	}{
 		{
-			scope: apiextensions.NamespaceScoped,
+			scope: apiextensions.TenantScoped,
 			paths: map[string]struct {
+				expectTenantParam    bool
 				expectNamespaceParam bool
 				expectNameParam      bool
 				expectedActions      sets.String
 			}{
-				"/apis/foo-group/foo-version/foos":                                      {expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("list")},
-				"/apis/foo-group/foo-version/namespaces/{namespace}/foos":               {expectNamespaceParam: true, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
-				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}":        {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
-				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}/scale":  {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
-				"/apis/foo-group/foo-version/namespaces/{namespace}/foos/{name}/status": {expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/foos":                                {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("list")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/foos":               {expectTenantParam: true, expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/foos/{name}":        {expectTenantParam: true, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/foos/{name}/scale":  {expectTenantParam: true, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/foos/{name}/status": {expectTenantParam: true, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+			},
+		},
+		{
+			scope: apiextensions.NamespaceScoped,
+			paths: map[string]struct {
+				expectTenantParam    bool
+				expectNamespaceParam bool
+				expectNameParam      bool
+				expectedActions      sets.String
+			}{
+				"/apis/foo-group/foo-version/foos":                                                       {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("list")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/foos":                                      {expectTenantParam: true, expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("list")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/namespaces/{namespace}/foos":               {expectTenantParam: true, expectNamespaceParam: true, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/namespaces/{namespace}/foos/{name}":        {expectTenantParam: true, expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/namespaces/{namespace}/foos/{name}/scale":  {expectTenantParam: true, expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/tenants/{tenant}/namespaces/{namespace}/foos/{name}/status": {expectTenantParam: true, expectNamespaceParam: true, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
 			},
 		},
 		{
 			scope: apiextensions.ClusterScoped,
 			paths: map[string]struct {
+				expectTenantParam    bool
 				expectNamespaceParam bool
 				expectNameParam      bool
 				expectedActions      sets.String
 			}{
-				"/apis/foo-group/foo-version/foos":               {expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
-				"/apis/foo-group/foo-version/foos/{name}":        {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
-				"/apis/foo-group/foo-version/foos/{name}/scale":  {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
-				"/apis/foo-group/foo-version/foos/{name}/status": {expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/foos":               {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: false, expectedActions: sets.NewString("post", "list", "deletecollection")},
+				"/apis/foo-group/foo-version/foos/{name}":        {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "put", "patch", "delete")},
+				"/apis/foo-group/foo-version/foos/{name}/scale":  {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
+				"/apis/foo-group/foo-version/foos/{name}/status": {expectTenantParam: false, expectNamespaceParam: false, expectNameParam: true, expectedActions: sets.NewString("get", "patch", "put")},
 			},
 		},
 	}
 
 	for _, testCase := range testCases {
-		testNamespacedCRD := &apiextensions.CustomResourceDefinition{
+		testCRDs := &apiextensions.CustomResourceDefinition{
 			Spec: apiextensions.CustomResourceDefinitionSpec{
 				Scope: testCase.scope,
 				Group: testCRDGroup,
@@ -487,7 +506,7 @@ func TestCRDRouteParameterBuilder(t *testing.T) {
 				},
 			},
 		}
-		swagger, err := BuildSwagger(testNamespacedCRD, testCRDVersion, Options{V2: true, StripDefaults: true})
+		swagger, err := BuildSwagger(testCRDs, testCRDVersion, Options{V2: true, StripDefaults: true})
 		require.NoError(t, err)
 		require.Equal(t, len(testCase.paths), len(swagger.Paths.Paths), testCase.scope)
 		for path, expected := range testCase.paths {
@@ -497,9 +516,13 @@ func TestCRDRouteParameterBuilder(t *testing.T) {
 					t.Errorf("unexpected path %v", path)
 				}
 
+				hasTenantParam := false
 				hasNamespaceParam := false
 				hasNameParam := false
 				for _, param := range path.Parameters {
+					if param.In == "path" && param.Name == "tenant" {
+						hasTenantParam = true
+					}
 					if param.In == "path" && param.Name == "namespace" {
 						hasNamespaceParam = true
 					}
@@ -507,6 +530,7 @@ func TestCRDRouteParameterBuilder(t *testing.T) {
 						hasNameParam = true
 					}
 				}
+				assert.Equal(t, expected.expectTenantParam, hasTenantParam)
 				assert.Equal(t, expected.expectNamespaceParam, hasNamespaceParam)
 				assert.Equal(t, expected.expectNameParam, hasNameParam)
 
