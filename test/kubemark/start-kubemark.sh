@@ -394,9 +394,9 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export KUBERNETES_RESOURCE_PARTITION=false
   export KUBERNETES_SCALEOUT_PROXY=false
 
-  echo "DBG: tenant-servers: ${TENANT_SERVERS}"
+  echo "DBG: tenant-server-kubeconfigs: ${TENANT_SERVERS}"
   export RESOURCE_SERVER="rp.kubeconfig"
-  echo "DBG: resource-server: " ${RESOURCE_SERVER}
+  echo "DBG: resource-server-kubeconfig: " ${RESOURCE_SERVER}
 
   if [[ "${LOCAL_KUBECONFIG}" != "${RP_KUBECONFIG}" ]]; then
     cp -f ${LOCAL_KUBECONFIG} ${RP_KUBECONFIG}

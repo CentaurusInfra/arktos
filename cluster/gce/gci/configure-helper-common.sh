@@ -2408,8 +2408,8 @@ function start-kube-controller-manager {
   fi
 
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    echo "DBG:Set tenant-servers parameters:  ${TENANT_SERVERS}"
-    params+=" --tenant-servers=${TENANT_SERVERS}"
+    echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVERS}"
+    params+=" --tenant-server-kubeconfigs=${TENANT_SERVERS}"
   fi
 
   if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
