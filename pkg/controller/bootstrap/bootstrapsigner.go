@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -121,8 +122,8 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 				}
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc:    func(_ interface{}) { e.pokeConfigMapSync() },
-				UpdateFunc: func(_, _ interface{}) { e.pokeConfigMapSync() },
+				AddFunc:    func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
+				UpdateFunc: func(_, _ interface{}, rpId string) { e.pokeConfigMapSync() },
 			},
 		},
 		options.ConfigMapResync,
@@ -140,9 +141,9 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 				}
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc:    func(_ interface{}) { e.pokeConfigMapSync() },
-				UpdateFunc: func(_, _ interface{}) { e.pokeConfigMapSync() },
-				DeleteFunc: func(_ interface{}) { e.pokeConfigMapSync() },
+				AddFunc:    func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
+				UpdateFunc: func(_, _ interface{}, rpId string) { e.pokeConfigMapSync() },
+				DeleteFunc: func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
 			},
 		},
 		options.SecretResync,

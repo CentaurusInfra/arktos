@@ -130,7 +130,7 @@ func (ts *TenantStorageMapManager) syncTenants() error {
 	return utilerrors.NewAggregate(aggErr)
 }
 
-func (ts *TenantStorageMapManager) addTenant(obj interface{}) {
+func (ts *TenantStorageMapManager) addTenant(obj interface{}, rpId string) {
 	tenant := obj.(*v1.Tenant)
 	if tenant.DeletionTimestamp != nil {
 		return
@@ -172,7 +172,7 @@ func (ts *TenantStorageMapManager) addTenant(obj interface{}) {
 	klog.V(4).Infof("mux released addTenant.")
 }
 
-func (ts *TenantStorageMapManager) updateTenant(old, cur interface{}) {
+func (ts *TenantStorageMapManager) updateTenant(old, cur interface{}, rpId string) {
 	curTenant := cur.(*v1.Tenant)
 	oldTenant := old.(*v1.Tenant)
 
@@ -222,7 +222,7 @@ func (ts *TenantStorageMapManager) updateTenant(old, cur interface{}) {
 	}
 }
 
-func (ts *TenantStorageMapManager) deleteTenant(obj interface{}) {
+func (ts *TenantStorageMapManager) deleteTenant(obj interface{}, rpId string) {
 	tenant, ok := obj.(*v1.Tenant)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -130,7 +130,7 @@ func (c *ServiceAccountsController) Run(workers int, stopCh <-chan struct{}) {
 }
 
 // serviceAccountDeleted reacts to a ServiceAccount deletion by recreating a default ServiceAccount in the namespace if needed
-func (c *ServiceAccountsController) serviceAccountDeleted(obj interface{}) {
+func (c *ServiceAccountsController) serviceAccountDeleted(obj interface{}, rpId string) {
 	sa, ok := obj.(*v1.ServiceAccount)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -148,13 +148,13 @@ func (c *ServiceAccountsController) serviceAccountDeleted(obj interface{}) {
 }
 
 // namespaceAdded reacts to a Namespace creation by creating a default ServiceAccount object
-func (c *ServiceAccountsController) namespaceAdded(obj interface{}) {
+func (c *ServiceAccountsController) namespaceAdded(obj interface{}, rpId string) {
 	namespace := obj.(*v1.Namespace)
 	c.queue.Add(namespace.Tenant + "/" + namespace.Name)
 }
 
 // namespaceUpdated reacts to a Namespace update (or re-list) by creating a default ServiceAccount in the namespace if needed
-func (c *ServiceAccountsController) namespaceUpdated(oldObj interface{}, newObj interface{}) {
+func (c *ServiceAccountsController) namespaceUpdated(oldObj interface{}, newObj interface{}, rpId string) {
 	newNamespace := newObj.(*v1.Namespace)
 	c.queue.Add(newNamespace.Tenant + "/" + newNamespace.Name)
 }

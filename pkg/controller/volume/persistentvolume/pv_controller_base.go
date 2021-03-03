@@ -103,9 +103,9 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 
 	p.VolumeInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    func(obj interface{}) { controller.enqueueWork(controller.volumeQueue, obj) },
-			UpdateFunc: func(oldObj, newObj interface{}) { controller.enqueueWork(controller.volumeQueue, newObj) },
-			DeleteFunc: func(obj interface{}) { controller.enqueueWork(controller.volumeQueue, obj) },
+			AddFunc:    func(obj interface{}, rpId string) { controller.enqueueWork(controller.volumeQueue, obj) },
+			UpdateFunc: func(oldObj, newObj interface{}, rpId string) { controller.enqueueWork(controller.volumeQueue, newObj) },
+			DeleteFunc: func(obj interface{}, rpId string) { controller.enqueueWork(controller.volumeQueue, obj) },
 		},
 	)
 	controller.volumeLister = p.VolumeInformer.Lister()
@@ -113,9 +113,9 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 
 	p.ClaimInformer.Informer().AddEventHandler(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc:    func(obj interface{}) { controller.enqueueWork(controller.claimQueue, obj) },
-			UpdateFunc: func(oldObj, newObj interface{}) { controller.enqueueWork(controller.claimQueue, newObj) },
-			DeleteFunc: func(obj interface{}) { controller.enqueueWork(controller.claimQueue, obj) },
+			AddFunc:    func(obj interface{}, rpId string) { controller.enqueueWork(controller.claimQueue, obj) },
+			UpdateFunc: func(oldObj, newObj interface{}, rpId string) { controller.enqueueWork(controller.claimQueue, newObj) },
+			DeleteFunc: func(obj interface{}, rpId string) { controller.enqueueWork(controller.claimQueue, obj) },
 		},
 	)
 	controller.claimLister = p.ClaimInformer.Lister()

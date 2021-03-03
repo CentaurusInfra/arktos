@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -37,7 +38,7 @@ import (
 // InterPodAffinity contains information to calculate inter pod affinity.
 type InterPodAffinity struct {
 	info                  predicates.NodeInfo
-	nodeLister            algorithm.NodeLister
+	nodeListers           []algorithm.NodeLister
 	podLister             algorithm.PodLister
 	hardPodAffinityWeight int32
 }
@@ -45,12 +46,12 @@ type InterPodAffinity struct {
 // NewInterPodAffinityPriority creates an InterPodAffinity.
 func NewInterPodAffinityPriority(
 	info predicates.NodeInfo,
-	nodeLister algorithm.NodeLister,
+	nodeListers []algorithm.NodeLister,
 	podLister algorithm.PodLister,
 	hardPodAffinityWeight int32) PriorityFunction {
 	interPodAffinity := &InterPodAffinity{
 		info:                  info,
-		nodeLister:            nodeLister,
+		nodeListers:           nodeListers,
 		podLister:             podLister,
 		hardPodAffinityWeight: hardPodAffinityWeight,
 	}
@@ -135,7 +136,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 	var maxCount, minCount int64
 
 	processPod := func(existingPod *v1.Pod) error {
-		existingPodNode, err := ipa.info.GetNodeInfo(existingPod.Spec.NodeName)
+		existingPodNode, _, err := ipa.info.GetNodeInfo(existingPod.Spec.NodeName)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				klog.Errorf("Node not found, %v", existingPod.Spec.NodeName)

@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,19 +110,19 @@ func NewIndexerInformerWatcher(lw cache.ListerWatcher, objType runtime.Object) (
 	e := newEventProcessor(ch)
 
 	indexer, informer := cache.NewIndexerInformer(lw, objType, 0, cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			e.push(watch.Event{
 				Type:   watch.Added,
 				Object: obj.(runtime.Object),
 			})
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new interface{}, rpId string) {
 			e.push(watch.Event{
 				Type:   watch.Modified,
 				Object: new.(runtime.Object),
 			})
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj interface{}, rpId string) {
 			staleObj, stale := obj.(cache.DeletedFinalStateUnknown)
 			if stale {
 				// We have no means of passing the additional information down using

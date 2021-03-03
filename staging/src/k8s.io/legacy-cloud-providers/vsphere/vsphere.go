@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -1406,7 +1407,7 @@ func (vs *VSphere) HasClusterID() bool {
 }
 
 // Notification handler when node is added into k8s cluster.
-func (vs *VSphere) NodeAdded(obj interface{}) {
+func (vs *VSphere) NodeAdded(obj interface{}, rpId string) {
 	node, ok := obj.(*v1.Node)
 	if node == nil || !ok {
 		klog.Warningf("NodeAdded: unrecognized object %+v", obj)
@@ -1420,7 +1421,7 @@ func (vs *VSphere) NodeAdded(obj interface{}) {
 }
 
 // Notification handler when node is removed from k8s cluster.
-func (vs *VSphere) NodeDeleted(obj interface{}) {
+func (vs *VSphere) NodeDeleted(obj interface{}, rpId string) {
 	node, ok := obj.(*v1.Node)
 	if node == nil || !ok {
 		klog.Warningf("NodeDeleted: unrecognized object %+v", obj)

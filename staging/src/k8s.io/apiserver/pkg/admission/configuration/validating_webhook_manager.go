@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,9 +54,9 @@ func NewValidatingWebhookConfigurationManager(f informers.SharedInformerFactory)
 
 	// On any change, rebuild the config
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(_ interface{}) { manager.updateConfiguration() },
-		UpdateFunc: func(_, _ interface{}) { manager.updateConfiguration() },
-		DeleteFunc: func(_ interface{}) { manager.updateConfiguration() },
+		AddFunc:    func(_ interface{}, rpId string) { manager.updateConfiguration() },
+		UpdateFunc: func(_, _ interface{}, rpId string) { manager.updateConfiguration() },
+		DeleteFunc: func(_ interface{}, rpId string) { manager.updateConfiguration() },
 	})
 
 	return manager

@@ -177,7 +177,7 @@ func NewCustomResourceDefinitionHandler(
 	}
 	crdInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		UpdateFunc: ret.updateCustomResourceDefinition,
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj interface{}, rpId string) {
 			ret.removeDeadStorage()
 		},
 	})
@@ -368,7 +368,7 @@ func (r *crdHandler) serveScale(w http.ResponseWriter, req *http.Request, reques
 	}
 }
 
-func (r *crdHandler) updateCustomResourceDefinition(oldObj, newObj interface{}) {
+func (r *crdHandler) updateCustomResourceDefinition(oldObj, newObj interface{}, rpId string) {
 	oldCRD := oldObj.(*apiextensions.CustomResourceDefinition)
 	newCRD := newObj.(*apiextensions.CustomResourceDefinition)
 

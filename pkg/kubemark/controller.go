@@ -363,7 +363,7 @@ func (kubemarkCluster *kubemarkCluster) getHollowNodeName() (string, error) {
 	return "", fmt.Errorf("did not find any hollow nodes in the cluster")
 }
 
-func (kubemarkCluster *kubemarkCluster) removeUnneededNodes(oldObj interface{}, newObj interface{}) {
+func (kubemarkCluster *kubemarkCluster) removeUnneededNodes(oldObj interface{}, newObj interface{}, rpId string) {
 	node, ok := newObj.(*apiv1.Node)
 	if !ok {
 		return

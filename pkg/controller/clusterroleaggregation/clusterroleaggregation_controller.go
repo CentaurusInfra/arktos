@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,13 +61,13 @@ func NewClusterRoleAggregation(clusterRoleInformer rbacinformers.ClusterRoleInfo
 	c.syncHandler = c.syncClusterRole
 
 	clusterRoleInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			c.enqueue()
 		},
-		UpdateFunc: func(old, cur interface{}) {
+		UpdateFunc: func(old, cur interface{}, rpId string) {
 			c.enqueue()
 		},
-		DeleteFunc: func(uncast interface{}) {
+		DeleteFunc: func(uncast interface{}, rpId string) {
 			c.enqueue()
 		},
 	})

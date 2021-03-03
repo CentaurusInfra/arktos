@@ -74,17 +74,17 @@ func NewCertificateController(
 
 	// Manage the addition/update of certificate requests
 	csrInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			csr := obj.(*certificates.CertificateSigningRequest)
 			klog.V(4).Infof("Adding certificate request %s", csr.Name)
 			cc.enqueueCertificateRequest(obj)
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new interface{}, rpId string) {
 			oldCSR := old.(*certificates.CertificateSigningRequest)
 			klog.V(4).Infof("Updating certificate request %s", oldCSR.Name)
 			cc.enqueueCertificateRequest(new)
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj interface{}, rpId string) {
 			csr, ok := obj.(*certificates.CertificateSigningRequest)
 			if !ok {
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -20,7 +20,6 @@ package options
 import (
 	"fmt"
 	"github.com/spf13/pflag"
-
 	"k8s.io/apimachinery/pkg/util/validation/field"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/factory"
@@ -66,7 +65,7 @@ func (o *DeprecatedOptions) AddFlags(fs *pflag.FlagSet, cfg *kubeschedulerconfig
 		"RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule corresponding "+
 			"to every RequiredDuringScheduling affinity rule. --hard-pod-affinity-symmetric-weight represents the weight of implicit PreferredDuringScheduling affinity rule. Must be in the range 0-100.")
 	fs.MarkDeprecated("hard-pod-affinity-symmetric-weight", "This option was moved to the policy configuration file")
-	fs.StringVar(&cfg.ResourceProviderClientConnection.Kubeconfig, "resource-providers", cfg.ResourceProviderClientConnection.Kubeconfig, "string representing resource provider kubeconfig files")
+	fs.StringVar(&cfg.ResourceProviderKubeConfig, "resource-providers", cfg.ResourceProviderKubeConfig, "string representing resource provider kubeconfig files")
 }
 
 // Validate validates the deprecated scheduler options.

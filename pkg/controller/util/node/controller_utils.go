@@ -266,30 +266,30 @@ func AddOrUpdateLabelsOnNode(kubeClient clientset.Interface, labelsToUpdate map[
 }
 
 // CreateAddNodeHandler creates an add node handler.
-func CreateAddNodeHandler(f func(node *v1.Node) error) func(obj interface{}) {
-	return func(originalObj interface{}) {
+func CreateAddNodeHandler(f func(node *v1.Node, rpId string) error) func(obj interface{}, rpId string) {
+	return func(originalObj interface{}, rpId string) {
 		node := originalObj.(*v1.Node).DeepCopy()
-		if err := f(node); err != nil {
+		if err := f(node, rpId); err != nil {
 			utilruntime.HandleError(fmt.Errorf("Error while processing Node Add: %v", err))
 		}
 	}
 }
 
 // CreateUpdateNodeHandler creates a node update handler. (Common to lifecycle and ipam)
-func CreateUpdateNodeHandler(f func(oldNode, newNode *v1.Node) error) func(oldObj, newObj interface{}) {
-	return func(origOldObj, origNewObj interface{}) {
+func CreateUpdateNodeHandler(f func(oldNode, newNode *v1.Node, rpId string) error) func(oldObj, newObj interface{}, rpId string) {
+	return func(origOldObj, origNewObj interface{}, rpId string) {
 		node := origNewObj.(*v1.Node).DeepCopy()
 		prevNode := origOldObj.(*v1.Node).DeepCopy()
 
-		if err := f(prevNode, node); err != nil {
+		if err := f(prevNode, node, rpId); err != nil {
 			utilruntime.HandleError(fmt.Errorf("Error while processing Node Add/Delete: %v", err))
 		}
 	}
 }
 
 // CreateDeleteNodeHandler creates a delete node handler. (Common to lifecycle and ipam)
-func CreateDeleteNodeHandler(f func(node *v1.Node) error) func(obj interface{}) {
-	return func(originalObj interface{}) {
+func CreateDeleteNodeHandler(f func(node *v1.Node, rpId string) error) func(obj interface{}, rpId string) {
+	return func(originalObj interface{}, rpId string) {
 		originalNode, isNode := originalObj.(*v1.Node)
 		// We can get DeletedFinalStateUnknown instead of *v1.Node here and
 		// we need to handle that correctly. #34692
@@ -306,7 +306,7 @@ func CreateDeleteNodeHandler(f func(node *v1.Node) error) func(obj interface{}) 
 			}
 		}
 		node := originalNode.DeepCopy()
-		if err := f(node); err != nil {
+		if err := f(node, rpId); err != nil {
 			utilruntime.HandleError(fmt.Errorf("Error while processing Node Add/Delete: %v", err))
 		}
 	}

@@ -341,20 +341,20 @@ func NewNodeLifecycleController(
 			return podLister.PodsWithMultiTenancy(namespace, tenant).Get(name)
 		}
 		podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
+			AddFunc: func(obj interface{}, rpId string) {
 				pod := obj.(*v1.Pod)
 				if nc.taintManager != nil {
 					nc.taintManager.PodUpdated(nil, pod, tenantPartitionClient, podGetter)
 				}
 			},
-			UpdateFunc: func(prev, obj interface{}) {
+			UpdateFunc: func(prev, obj interface{}, rpId string) {
 				prevPod := prev.(*v1.Pod)
 				newPod := obj.(*v1.Pod)
 				if nc.taintManager != nil {
 					nc.taintManager.PodUpdated(prevPod, newPod, tenantPartitionClient, podGetter)
 				}
 			},
-			DeleteFunc: func(obj interface{}) {
+			DeleteFunc: func(obj interface{}, rpId string) {
 				pod, isPod := obj.(*v1.Pod)
 				// We can get DeletedFinalStateUnknown instead of *v1.Pod here and we need to handle that correctly.
 				if !isPod {
@@ -390,15 +390,15 @@ func NewNodeLifecycleController(
 		nodeGetter := func(name string) (*v1.Node, error) { return nodeLister.Get(name) }
 		nc.taintManager = scheduler.NewNoExecuteTaintManager(resourcePartitionClient, tenantPartitionClients, nodeGetter)
 		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-			AddFunc: nodeutil.CreateAddNodeHandler(func(node *v1.Node) error {
+			AddFunc: nodeutil.CreateAddNodeHandler(func(node *v1.Node, rpId string) error {
 				nc.taintManager.NodeUpdated(nil, node)
 				return nil
 			}),
-			UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(oldNode, newNode *v1.Node) error {
+			UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(oldNode, newNode *v1.Node, rpId string) error {
 				nc.taintManager.NodeUpdated(oldNode, newNode)
 				return nil
 			}),
-			DeleteFunc: nodeutil.CreateDeleteNodeHandler(func(node *v1.Node) error {
+			DeleteFunc: nodeutil.CreateDeleteNodeHandler(func(node *v1.Node, rpId string) error {
 				nc.taintManager.NodeUpdated(node, nil)
 				return nil
 			}),
@@ -407,11 +407,11 @@ func NewNodeLifecycleController(
 
 	klog.Infof("Controller will reconcile labels.")
 	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: nodeutil.CreateAddNodeHandler(func(node *v1.Node) error {
+		AddFunc: nodeutil.CreateAddNodeHandler(func(node *v1.Node, rpId string) error {
 			nc.nodeUpdateQueue.Add(node.Name)
 			return nil
 		}),
-		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node) error {
+		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node, rpId string) error {
 			nc.nodeUpdateQueue.Add(newNode.Name)
 			return nil
 		}),

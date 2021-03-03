@@ -217,10 +217,10 @@ func NewAttachDetachController(
 	})
 
 	pvcInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			adc.enqueuePVC(obj)
 		},
-		UpdateFunc: func(old, new interface{}) {
+		UpdateFunc: func(old, new interface{}, rpId string) {
 			adc.enqueuePVC(new)
 		},
 	})
@@ -429,7 +429,8 @@ func (adc *attachDetachController) populateDesiredStateOfWorld() error {
 	}
 	for _, pod := range pods {
 		podToAdd := pod
-		adc.podAdd(podToAdd)
+		// TODO
+		adc.podAdd(podToAdd, "resourceProviderId")
 		for _, podVolume := range podToAdd.Spec.Volumes {
 			// The volume specs present in the ActualStateOfWorld are nil, let's replace those
 			// with the correct ones found on pods. The present in the ASW with no corresponding
@@ -483,7 +484,7 @@ func (adc *attachDetachController) populateDesiredStateOfWorld() error {
 	return nil
 }
 
-func (adc *attachDetachController) podAdd(obj interface{}) {
+func (adc *attachDetachController) podAdd(obj interface{}, rpId string) {
 	pod, ok := obj.(*v1.Pod)
 	if pod == nil || !ok {
 		return
@@ -507,7 +508,7 @@ func (adc *attachDetachController) GetDesiredStateOfWorld() cache.DesiredStateOf
 	return adc.desiredStateOfWorld
 }
 
-func (adc *attachDetachController) podUpdate(oldObj, newObj interface{}) {
+func (adc *attachDetachController) podUpdate(oldObj, newObj interface{}, rpId string) {
 	pod, ok := newObj.(*v1.Pod)
 	if pod == nil || !ok {
 		return
@@ -526,7 +527,7 @@ func (adc *attachDetachController) podUpdate(oldObj, newObj interface{}) {
 		adc.desiredStateOfWorld, &adc.volumePluginMgr, adc.pvcLister, adc.pvLister)
 }
 
-func (adc *attachDetachController) podDelete(obj interface{}) {
+func (adc *attachDetachController) podDelete(obj interface{}, rpId string) {
 	pod, ok := obj.(*v1.Pod)
 	if pod == nil || !ok {
 		return
@@ -536,7 +537,7 @@ func (adc *attachDetachController) podDelete(obj interface{}) {
 		adc.desiredStateOfWorld, &adc.volumePluginMgr, adc.pvcLister, adc.pvLister)
 }
 
-func (adc *attachDetachController) nodeAdd(obj interface{}) {
+func (adc *attachDetachController) nodeAdd(obj interface{}, rpId string) {
 	node, ok := obj.(*v1.Node)
 	// TODO: investigate if nodeName is empty then if we can return
 	// kubernetes/kubernetes/issues/37777
@@ -544,7 +545,7 @@ func (adc *attachDetachController) nodeAdd(obj interface{}) {
 		return
 	}
 	nodeName := types.NodeName(node.Name)
-	adc.nodeUpdate(nil, obj)
+	adc.nodeUpdate(nil, obj, rpId)
 	// kubernetes/kubernetes/issues/37586
 	// This is to workaround the case when a node add causes to wipe out
 	// the attached volumes field. This function ensures that we sync with
@@ -552,7 +553,7 @@ func (adc *attachDetachController) nodeAdd(obj interface{}) {
 	adc.actualStateOfWorld.SetNodeStatusUpdateNeeded(nodeName)
 }
 
-func (adc *attachDetachController) nodeUpdate(oldObj, newObj interface{}) {
+func (adc *attachDetachController) nodeUpdate(oldObj, newObj interface{}, rpId string) {
 	node, ok := newObj.(*v1.Node)
 	// TODO: investigate if nodeName is empty then if we can return
 	if node == nil || !ok {
@@ -564,7 +565,7 @@ func (adc *attachDetachController) nodeUpdate(oldObj, newObj interface{}) {
 	adc.processVolumesInUse(nodeName, node.Status.VolumesInUse)
 }
 
-func (adc *attachDetachController) nodeDelete(obj interface{}) {
+func (adc *attachDetachController) nodeDelete(obj interface{}, rpId string) {
 	node, ok := obj.(*v1.Node)
 	if node == nil || !ok {
 		return

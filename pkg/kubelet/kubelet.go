@@ -454,7 +454,10 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
-	nodeInfo := &predicates.CachedNodeInfo{NodeLister: corelisters.NewNodeLister(nodeIndexer)}
+
+	cacheNodeInfos := make(map[string]corelisters.NodeLister, 1)
+	cacheNodeInfos["0"] = corelisters.NewNodeLister(nodeIndexer)
+	nodeInfo := predicates.NewCachedNodeInfo(cacheNodeInfos)
 
 	// TODO: get the real node object of ourself,
 	// and use the real node name and UID.

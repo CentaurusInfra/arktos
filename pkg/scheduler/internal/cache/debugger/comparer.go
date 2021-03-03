@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,10 +32,10 @@ import (
 
 // CacheComparer is an implementation of the Scheduler's cache comparer.
 type CacheComparer struct {
-	NodeLister corelisters.NodeLister
-	PodLister  corelisters.PodLister
-	Cache      internalcache.Cache
-	PodQueue   internalqueue.SchedulingQueue
+	NodeListers []corelisters.NodeLister
+	PodLister   corelisters.PodLister
+	Cache       internalcache.Cache
+	PodQueue    internalqueue.SchedulingQueue
 }
 
 // Compare compares the nodes and pods of NodeLister with Cache.Snapshot.
@@ -42,9 +43,17 @@ func (c *CacheComparer) Compare() error {
 	klog.V(3).Info("cache comparer started")
 	defer klog.V(3).Info("cache comparer finished")
 
-	nodes, err := c.NodeLister.List(labels.Everything())
-	if err != nil {
-		return err
+	var nodes []*v1.Node
+	var err error
+	if len(c.NodeListers) > 0 {
+		nodes, err = c.NodeListers[0].List(labels.Everything())
+	}
+	for i := 1; i < len(c.NodeListers); i++ {
+		newNodes, err := c.NodeListers[i].List(labels.Everything())
+		if err != nil {
+			return err
+		}
+		nodes = append(nodes, newNodes...)
 	}
 
 	pods, err := c.PodLister.List(labels.Everything())

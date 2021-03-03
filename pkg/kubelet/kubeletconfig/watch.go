@@ -35,9 +35,9 @@ import (
 // newSharedNodeInformer returns a shared informer that uses `client` to watch the Node with
 // `nodeName` for changes and respond with `addFunc`, `updateFunc`, and `deleteFunc`.
 func newSharedNodeInformer(client clientset.Interface, nodeName string,
-	addFunc func(newObj interface{}),
-	updateFunc func(oldObj interface{}, newObj interface{}),
-	deleteFunc func(deletedObj interface{})) cache.SharedInformer {
+	addFunc func(newObj interface{}, rpId string),
+	updateFunc func(oldObj interface{}, newObj interface{}, rpId string),
+	deleteFunc func(deletedObj interface{}, rpId string)) cache.SharedInformer {
 	// select nodes by name
 	fieldselector := fields.OneTermEqualSelector("metadata.name", nodeName)
 
@@ -73,13 +73,13 @@ func newSharedNodeInformer(client clientset.Interface, nodeName string,
 }
 
 // onAddNodeEvent calls onUpdateNodeEvent with the new object and a nil old object
-func (cc *Controller) onAddNodeEvent(newObj interface{}) {
-	cc.onUpdateNodeEvent(nil, newObj)
+func (cc *Controller) onAddNodeEvent(newObj interface{}, rpId string) {
+	cc.onUpdateNodeEvent(nil, newObj, rpId)
 }
 
 // onUpdateNodeEvent checks whether the configSource changed between oldObj and newObj, and pokes the
 // configuration sync worker if there was a change
-func (cc *Controller) onUpdateNodeEvent(oldObj interface{}, newObj interface{}) {
+func (cc *Controller) onUpdateNodeEvent(oldObj interface{}, newObj interface{}, rpId string) {
 	newNode, ok := newObj.(*apiv1.Node)
 	if !ok {
 		utillog.Errorf("failed to cast new object to Node, couldn't handle event")
@@ -107,7 +107,7 @@ func (cc *Controller) onUpdateNodeEvent(oldObj interface{}, newObj interface{}) 
 // a Node with unexpected externalID and is attempting to delete and re-create the Node
 // (see pkg/kubelet/kubelet_node_status.go), or that someone accidentally deleted the Node
 // (the Kubelet will re-create it).
-func (cc *Controller) onDeleteNodeEvent(deletedObj interface{}) {
+func (cc *Controller) onDeleteNodeEvent(deletedObj interface{}, rpId string) {
 	// For this case, we just log the event.
 	// We don't want to poke the worker, because a temporary deletion isn't worth reporting an error for.
 	// If the Node is deleted because the VM is being deleted, then the Kubelet has nothing to do.
@@ -115,13 +115,13 @@ func (cc *Controller) onDeleteNodeEvent(deletedObj interface{}) {
 }
 
 // onAddRemoteConfigSourceEvent calls onUpdateConfigMapEvent with the new object and a nil old object
-func (cc *Controller) onAddRemoteConfigSourceEvent(newObj interface{}) {
-	cc.onUpdateRemoteConfigSourceEvent(nil, newObj)
+func (cc *Controller) onAddRemoteConfigSourceEvent(newObj interface{}, rpId string) {
+	cc.onUpdateRemoteConfigSourceEvent(nil, newObj, rpId)
 }
 
 // onUpdateRemoteConfigSourceEvent checks whether the configSource changed between oldObj and newObj,
 // and pokes the sync worker if there was a change
-func (cc *Controller) onUpdateRemoteConfigSourceEvent(oldObj interface{}, newObj interface{}) {
+func (cc *Controller) onUpdateRemoteConfigSourceEvent(oldObj interface{}, newObj interface{}, rpId string) {
 	// since ConfigMap is currently the only source type, we handle that here
 	newConfigMap, ok := newObj.(*apiv1.ConfigMap)
 	if !ok {
@@ -146,7 +146,7 @@ func (cc *Controller) onUpdateRemoteConfigSourceEvent(oldObj interface{}, newObj
 }
 
 // onDeleteRemoteConfigSourceEvent logs a message if the ConfigMap was deleted and pokes the sync worker
-func (cc *Controller) onDeleteRemoteConfigSourceEvent(deletedObj interface{}) {
+func (cc *Controller) onDeleteRemoteConfigSourceEvent(deletedObj interface{}, rpId string) {
 	// If the ConfigMap we're watching is deleted, we log the event and poke the sync worker.
 	// This requires a sync, because if the Node is still configured to use the deleted ConfigMap,
 	// the Kubelet should report a DownloadError.

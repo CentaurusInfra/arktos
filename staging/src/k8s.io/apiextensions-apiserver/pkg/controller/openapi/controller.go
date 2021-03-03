@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -219,19 +220,19 @@ func (c *Controller) updateSpecLocked() error {
 	return c.openAPIService.UpdateSpec(mergeSpecs(c.staticSpec, crdSpecs...))
 }
 
-func (c *Controller) addCustomResourceDefinition(obj interface{}) {
+func (c *Controller) addCustomResourceDefinition(obj interface{}, rpId string) {
 	castObj := obj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Adding customresourcedefinition %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *Controller) updateCustomResourceDefinition(oldObj, newObj interface{}) {
+func (c *Controller) updateCustomResourceDefinition(oldObj, newObj interface{}, rpId string) {
 	castNewObj := newObj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Updating customresourcedefinition %s", castNewObj.Name)
 	c.enqueue(castNewObj)
 }
 
-func (c *Controller) deleteCustomResourceDefinition(obj interface{}) {
+func (c *Controller) deleteCustomResourceDefinition(obj interface{}, rpId string) {
 	castObj, ok := obj.(*apiextensions.CustomResourceDefinition)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -222,7 +222,7 @@ function kube::common::generate_certs {
       kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
       # serving cert for kube-apiserver
-      kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${RESOURCE_SERVER:-}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
+      kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
     fi
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
@@ -385,29 +385,39 @@ EOF
     kube::util::wait_for_url "https://${API_HOST_IP}:$secureport/healthz" "apiserver: " 1 "${WAIT_FOR_URL_API_SERVER}" "${MAX_TIME_FOR_URL_API_SERVER}" \
         || { echo "check apiserver logs: ${APISERVER_LOG}" ; exit 1 ; }
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
+    #if [[ "${REUSE_CERTS}" != true ]]; then
         # Create kubeconfigs for all components, using client certs
         # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
         ADMIN_CONFIG_API_HOST=${PUBLIC_IP:-${API_HOST}}
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "$secureport" admin
+
         ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
 
         if [[ "${IS_SCALE_OUT}" == "true" ]]; then
           # in scale out poc, point api server to proxy
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" controller "" "http"
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" scheduler "" "http"
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" admin "" "http"
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" scheduler "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
 
           # generate kubeconfig for scheduler in TP to access api server in RP
           if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
-            echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
-            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVER}" "6443" resource-provider-scheduler "" "https"
+            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" controller "" "http"
+
+            serverCount=${#RESOURCE_SERVERS[@]}
+            for (( pos=0; pos<${serverCount}; pos++ ));
+            do
+              kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVERS[${pos}]}" "${API_PORT}" resource-provider-scheduler "" "http"
+              ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-scheduler.kubeconfig" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
+              ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
+            done
+          else
+            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
           fi
 
           # generate kubelet/kubeproxy certs at TP as we use same cert for the entire cluster
           kube::common::generate_kubelet_certs
           kube::common::generate_kubeproxy_certs
         else
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "$secureport" admin
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
@@ -439,7 +449,7 @@ EOF
         # Copy workload controller manager config to run path
         ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
         ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
-    fi
+    #fi
 }
 
 function kube::common::test_apiserver_off {
@@ -559,7 +569,14 @@ function kube::common::start_kubescheduler {
     SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
 
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
-      RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers=${CERT_DIR}/resource-provider-scheduler.kubeconfig"
+      RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
+      serverCount=${#RESOURCE_SERVERS[@]}
+      for (( pos=0; pos<${serverCount}; pos++ ));
+      do
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS="${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig,"
+      done
+      RESOURCE_PROVIDER_KUBECONFIG_FLAGS=${RESOURCE_PROVIDER_KUBECONFIG_FLAGS::-1}
+
       echo RESOURCE_PROVIDER_KUBECONFIG_FLAGS for new scheduler commandline --resource-providers
       echo ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}
 
@@ -731,7 +748,7 @@ function kube::common::generate_kubelet_certs {
         CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
         kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
         if [[ "${IS_SCALE_OUT}" == "true" ]]; then
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" kubelet "" "http"
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_PORT}" kubelet "" "http"
         else
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
         fi
@@ -743,7 +760,7 @@ function kube::common::generate_kubeproxy_certs {
         CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
         kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
         if [[ "${IS_SCALE_OUT}" == "true" ]]; then
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" kube-proxy "" "http"
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_PORT}" kube-proxy "" "http"
         else
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
         fi

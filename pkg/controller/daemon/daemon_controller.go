@@ -173,12 +173,12 @@ func NewDaemonSetsController(
 	}
 
 	daemonSetInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			ds := obj.(*apps.DaemonSet)
 			klog.V(4).Infof("Adding daemon set %s/%s/%s", ds.Tenant, ds.Namespace, ds.Name)
 			dsc.enqueueDaemonSet(ds)
 		},
-		UpdateFunc: func(old, cur interface{}) {
+		UpdateFunc: func(old, cur interface{}, rpId string) {
 			oldDS := old.(*apps.DaemonSet)
 			curDS := cur.(*apps.DaemonSet)
 			klog.V(4).Infof("Updating daemon set %s/%s/%s", oldDS.Tenant, oldDS.Namespace, oldDS.Name)
@@ -242,7 +242,7 @@ func indexByPodNodeName(obj interface{}) ([]string, error) {
 	return []string{pod.Spec.NodeName}, nil
 }
 
-func (dsc *DaemonSetsController) deleteDaemonset(obj interface{}) {
+func (dsc *DaemonSetsController) deleteDaemonset(obj interface{}, rpId string) {
 	ds, ok := obj.(*apps.DaemonSet)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -370,12 +370,12 @@ func (dsc *DaemonSetsController) getDaemonSetsForHistory(history *apps.Controlle
 
 // addHistory enqueues the DaemonSet that manages a ControllerRevision when the ControllerRevision is created
 // or when the controller manager is restarted.
-func (dsc *DaemonSetsController) addHistory(obj interface{}) {
+func (dsc *DaemonSetsController) addHistory(obj interface{}, rpId string) {
 	history := obj.(*apps.ControllerRevision)
 	if history.DeletionTimestamp != nil {
 		// On a restart of the controller manager, it's possible for an object to
 		// show up in a state that is already pending deletion.
-		dsc.deleteHistory(history)
+		dsc.deleteHistory(history, rpId)
 		return
 	}
 
@@ -404,7 +404,7 @@ func (dsc *DaemonSetsController) addHistory(obj interface{}) {
 // updateHistory figures out what DaemonSet(s) manage a ControllerRevision when the ControllerRevision
 // is updated and wake them up. If anything of the ControllerRevision has changed, we need to  awaken
 // both the old and new DaemonSets.
-func (dsc *DaemonSetsController) updateHistory(old, cur interface{}) {
+func (dsc *DaemonSetsController) updateHistory(old, cur interface{}, rpId string) {
 	curHistory := cur.(*apps.ControllerRevision)
 	oldHistory := old.(*apps.ControllerRevision)
 	if curHistory.ResourceVersion == oldHistory.ResourceVersion {
@@ -451,7 +451,7 @@ func (dsc *DaemonSetsController) updateHistory(old, cur interface{}) {
 // deleteHistory enqueues the DaemonSet that manages a ControllerRevision when
 // the ControllerRevision is deleted. obj could be an *app.ControllerRevision, or
 // a DeletionFinalStateUnknown marker item.
-func (dsc *DaemonSetsController) deleteHistory(obj interface{}) {
+func (dsc *DaemonSetsController) deleteHistory(obj interface{}, rpId string) {
 	history, ok := obj.(*apps.ControllerRevision)
 
 	// When a delete is dropped, the relist will notice a ControllerRevision in the store not
@@ -484,13 +484,13 @@ func (dsc *DaemonSetsController) deleteHistory(obj interface{}) {
 	dsc.enqueueDaemonSet(ds)
 }
 
-func (dsc *DaemonSetsController) addPod(obj interface{}) {
+func (dsc *DaemonSetsController) addPod(obj interface{}, rpId string) {
 	pod := obj.(*v1.Pod)
 
 	if pod.DeletionTimestamp != nil {
 		// on a restart of the controller manager, it's possible a new pod shows up in a state that
 		// is already pending deletion. Prevent the pod from being a creation observation.
-		dsc.deletePod(pod)
+		dsc.deletePod(pod, rpId)
 		return
 	}
 
@@ -527,7 +527,7 @@ func (dsc *DaemonSetsController) addPod(obj interface{}) {
 // When a pod is updated, figure out what sets manage it and wake them
 // up. If the labels of the pod have changed we need to awaken both the old
 // and new set. old and cur must be *v1.Pod types.
-func (dsc *DaemonSetsController) updatePod(old, cur interface{}) {
+func (dsc *DaemonSetsController) updatePod(old, cur interface{}, rpId string) {
 	curPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 	if curPod.ResourceVersion == oldPod.ResourceVersion {
@@ -541,7 +541,7 @@ func (dsc *DaemonSetsController) updatePod(old, cur interface{}) {
 		// and after such time has passed, the kubelet actually deletes it from the store. We receive an update
 		// for modification of the deletion timestamp and expect an ds to create more replicas asap, not wait
 		// until the kubelet actually deletes the pod.
-		dsc.deletePod(curPod)
+		dsc.deletePod(curPod, rpId)
 		return
 	}
 
@@ -649,7 +649,7 @@ func (dsc *DaemonSetsController) removeSuspendedDaemonPods(node, ds string) {
 	}
 }
 
-func (dsc *DaemonSetsController) deletePod(obj interface{}) {
+func (dsc *DaemonSetsController) deletePod(obj interface{}, rpId string) {
 	pod, ok := obj.(*v1.Pod)
 	// When a delete is dropped, the relist will notice a pod in the store not
 	// in the list, leading to the insertion of a tombstone object which contains
@@ -695,7 +695,7 @@ func (dsc *DaemonSetsController) deletePod(obj interface{}) {
 	dsc.enqueueDaemonSet(ds)
 }
 
-func (dsc *DaemonSetsController) addNode(obj interface{}) {
+func (dsc *DaemonSetsController) addNode(obj interface{}, rpId string) {
 	// TODO: it'd be nice to pass a hint with these enqueues, so that each ds would only examine the added node (unless it has other work to do, too).
 	dsList, err := dsc.dsLister.List(labels.Everything())
 	if err != nil {
@@ -752,7 +752,7 @@ func shouldIgnoreNodeUpdate(oldNode, curNode v1.Node) bool {
 	return apiequality.Semantic.DeepEqual(oldNode, curNode)
 }
 
-func (dsc *DaemonSetsController) updateNode(old, cur interface{}) {
+func (dsc *DaemonSetsController) updateNode(old, cur interface{}, rpId string) {
 	oldNode := old.(*v1.Node)
 	curNode := cur.(*v1.Node)
 	if shouldIgnoreNodeUpdate(*oldNode, *curNode) {
@@ -1316,6 +1316,7 @@ func (dsc *DaemonSetsController) simulate(newPod *v1.Pod, node *v1.Node, ds *app
 
 	nodeInfo := schedulernodeinfo.NewNodeInfo()
 	nodeInfo.SetNode(node)
+	// TODO: nodeInfo.SetResourceProviderId
 
 	for _, obj := range objects {
 		// Ignore pods that belong to the daemonset when taking into account whether a daemonset should bind to a node.

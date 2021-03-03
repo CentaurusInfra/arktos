@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -128,13 +129,13 @@ func NewBackend(c *Config) (audit.Backend, error) {
 	manager.delegates.Store(syncedDelegates{})
 
 	c.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}) {
+		AddFunc: func(obj interface{}, rpId string) {
 			manager.addSink(obj.(*auditregv1alpha1.AuditSink))
 		},
-		UpdateFunc: func(oldObj, newObj interface{}) {
+		UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
 			manager.updateSink(oldObj.(*auditregv1alpha1.AuditSink), newObj.(*auditregv1alpha1.AuditSink))
 		},
-		DeleteFunc: func(obj interface{}) {
+		DeleteFunc: func(obj interface{}, rpId string) {
 			sink, ok := obj.(*auditregv1alpha1.AuditSink)
 			if !ok {
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

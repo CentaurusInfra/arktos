@@ -45,9 +45,11 @@ fi
 
 if [[ -z "${RESOURCE_SERVER}" ]]; then
   if ! [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-    echo ERROR: Please set RESOURCE_SERVER for in tenant partition for RP. For example: RESOURCE_SERVER=\"http://192.168.0.2:8080\"
+    echo ERROR: Please set RESOURCE_SERVER for in tenant partition for RP. For example: RESOURCE_SERVER=192.168.0.2 or RESOURCE_SERVER=192.168.0.2,192.168.10.123
     exit 1
   fi
+else
+  RESOURCE_SERVERS=(${RESOURCE_SERVER//,/ })
 fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..

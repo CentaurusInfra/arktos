@@ -336,19 +336,19 @@ func (c *NamingConditionController) enqueue(obj *apiextensions.CustomResourceDef
 	c.queue.Add(key)
 }
 
-func (c *NamingConditionController) addCustomResourceDefinition(obj interface{}) {
+func (c *NamingConditionController) addCustomResourceDefinition(obj interface{}, rpId string) {
 	castObj := obj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Adding %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *NamingConditionController) updateCustomResourceDefinition(obj, _ interface{}) {
+func (c *NamingConditionController) updateCustomResourceDefinition(obj, _ interface{}, rpId string) {
 	castObj := obj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Updating %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *NamingConditionController) deleteCustomResourceDefinition(obj interface{}) {
+func (c *NamingConditionController) deleteCustomResourceDefinition(obj interface{}, rpId string) {
 	castObj, ok := obj.(*apiextensions.CustomResourceDefinition)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

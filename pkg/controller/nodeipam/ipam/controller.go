@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -170,7 +171,7 @@ func (c *Controller) newSyncer(name string) *nodesync.NodeSync {
 	return nodesync.New(ns, c.adapter, c.adapter, c.config.Mode, name, c.set)
 }
 
-func (c *Controller) onAdd(node *v1.Node) error {
+func (c *Controller) onAdd(node *v1.Node, rpId string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -187,7 +188,7 @@ func (c *Controller) onAdd(node *v1.Node) error {
 	return nil
 }
 
-func (c *Controller) onUpdate(_, node *v1.Node) error {
+func (c *Controller) onUpdate(_, node *v1.Node, rpId string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -201,7 +202,7 @@ func (c *Controller) onUpdate(_, node *v1.Node) error {
 	return nil
 }
 
-func (c *Controller) onDelete(node *v1.Node) error {
+func (c *Controller) onDelete(node *v1.Node, rpId string) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

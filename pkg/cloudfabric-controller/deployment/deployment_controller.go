@@ -177,20 +177,20 @@ func (dc *DeploymentController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (dc *DeploymentController) addDeployment(obj interface{}) {
+func (dc *DeploymentController) addDeployment(obj interface{}, rpId string) {
 	d := obj.(*apps.Deployment)
 	klog.V(4).Infof("Adding deployment %s. hashkey %v. rv %s", d.Name, d.HashKey, d.ResourceVersion)
 	dc.enqueueDeployment(d)
 }
 
-func (dc *DeploymentController) updateDeployment(old, cur interface{}) {
+func (dc *DeploymentController) updateDeployment(old, cur interface{}, rpId string) {
 	oldD := old.(*apps.Deployment)
 	curD := cur.(*apps.Deployment)
 	klog.V(4).Infof("Updating deployment %s", oldD.Name)
 	dc.enqueueDeployment(curD)
 }
 
-func (dc *DeploymentController) deleteDeployment(obj interface{}) {
+func (dc *DeploymentController) deleteDeployment(obj interface{}, rpId string) {
 	d, ok := obj.(*apps.Deployment)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -209,13 +209,13 @@ func (dc *DeploymentController) deleteDeployment(obj interface{}) {
 }
 
 // addReplicaSet enqueues the deployment that manages a ReplicaSet when the ReplicaSet is created.
-func (dc *DeploymentController) addReplicaSet(obj interface{}) {
+func (dc *DeploymentController) addReplicaSet(obj interface{}, rpId string) {
 	rs := obj.(*apps.ReplicaSet)
 
 	if rs.DeletionTimestamp != nil {
 		// On a restart of the controller manager, it's possible for an object to
 		// show up in a state that is already pending deletion.
-		dc.deleteReplicaSet(rs)
+		dc.deleteReplicaSet(rs, rpId)
 		return
 	}
 
@@ -266,7 +266,7 @@ func (dc *DeploymentController) getDeploymentsForReplicaSet(rs *apps.ReplicaSet)
 // is updated and wake them up. If the anything of the ReplicaSets have changed, we need to
 // awaken both the old and new deployments. old and cur must be *apps.ReplicaSet
 // types.
-func (dc *DeploymentController) updateReplicaSet(old, cur interface{}) {
+func (dc *DeploymentController) updateReplicaSet(old, cur interface{}, rpId string) {
 	curRS := cur.(*apps.ReplicaSet)
 	oldRS := old.(*apps.ReplicaSet)
 	if curRS.ResourceVersion == oldRS.ResourceVersion {
@@ -314,7 +314,7 @@ func (dc *DeploymentController) updateReplicaSet(old, cur interface{}) {
 // deleteReplicaSet enqueues the deployment that manages a ReplicaSet when
 // the ReplicaSet is deleted. obj could be an *apps.ReplicaSet, or
 // a DeletionFinalStateUnknown marker item.
-func (dc *DeploymentController) deleteReplicaSet(obj interface{}) {
+func (dc *DeploymentController) deleteReplicaSet(obj interface{}, rpId string) {
 	rs, ok := obj.(*apps.ReplicaSet)
 
 	// When a delete is dropped, the relist will notice a pod in the store not
@@ -348,7 +348,7 @@ func (dc *DeploymentController) deleteReplicaSet(obj interface{}) {
 }
 
 // deletePod will enqueue a Recreate Deployment once all of its pods have stopped running.
-func (dc *DeploymentController) deletePod(obj interface{}) {
+func (dc *DeploymentController) deletePod(obj interface{}, rpId string) {
 	pod, ok := obj.(*v1.Pod)
 
 	// When a delete is dropped, the relist will notice a pod in the store not

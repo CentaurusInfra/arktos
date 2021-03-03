@@ -150,7 +150,7 @@ func NewAssumeCache(informer cache.SharedIndexInformer, description, indexName s
 	return c
 }
 
-func (c *assumeCache) add(obj interface{}) {
+func (c *assumeCache) add(obj interface{}, rpId string) {
 	if obj == nil {
 		return
 	}
@@ -190,11 +190,11 @@ func (c *assumeCache) add(obj interface{}) {
 	klog.V(10).Infof("Added %v %v to assume cache: %+v ", c.description, name, obj)
 }
 
-func (c *assumeCache) update(oldObj interface{}, newObj interface{}) {
-	c.add(newObj)
+func (c *assumeCache) update(oldObj interface{}, newObj interface{}, rpId string) {
+	c.add(newObj, rpId)
 }
 
-func (c *assumeCache) delete(obj interface{}) {
+func (c *assumeCache) delete(obj interface{}, rpId string) {
 	if obj == nil {
 		return
 	}

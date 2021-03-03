@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -109,7 +110,7 @@ func (c *Publisher) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *Publisher) configMapDeleted(obj interface{}) {
+func (c *Publisher) configMapDeleted(obj interface{}, rpId string) {
 	cm, err := convertToCM(obj)
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -121,7 +122,7 @@ func (c *Publisher) configMapDeleted(obj interface{}) {
 	c.queue.Add(cm.Namespace)
 }
 
-func (c *Publisher) configMapUpdated(_, newObj interface{}) {
+func (c *Publisher) configMapUpdated(_, newObj interface{}, rpId string) {
 	cm, err := convertToCM(newObj)
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -133,12 +134,12 @@ func (c *Publisher) configMapUpdated(_, newObj interface{}) {
 	c.queue.Add(cm.Namespace)
 }
 
-func (c *Publisher) namespaceAdded(obj interface{}) {
+func (c *Publisher) namespaceAdded(obj interface{}, rpId string) {
 	namespace := obj.(*v1.Namespace)
 	c.queue.Add(namespace.Name)
 }
 
-func (c *Publisher) namespaceUpdated(oldObj interface{}, newObj interface{}) {
+func (c *Publisher) namespaceUpdated(oldObj interface{}, newObj interface{}, rpId string) {
 	newNamespace := newObj.(*v1.Namespace)
 	if newNamespace.Status.Phase != v1.NamespaceActive {
 		return

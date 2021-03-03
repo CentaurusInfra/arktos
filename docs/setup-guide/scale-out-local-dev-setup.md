@@ -4,7 +4,7 @@
 
 1. Two Tenant Partitions
 
-1. Single Resource Partition (2/19/2021)
+1. Two Resource Partitions (3/2/2021)
 
 1. HA proxy
 
@@ -37,8 +37,7 @@ export RESOURCE_PARTITION_IP=[RP_IP]
 export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
 export IS_RESOURCE_PARTITION=false
-export RESOURCE_SERVER=[RP_IP]
-export REUSE_CERTS=true
+export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
 ```
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
@@ -47,15 +46,7 @@ export REUSE_CERTS=true
 
 Note:
 
-1. As we start to picking up secure mode in scale out, api server certificates will be shared across all partitions in 
-development environment. The first TP that started needs to generate api server certificates and be copied over to other
-TP/RP before they start.
-
-1. To generate first set of certs, run `REUSE_CERTS=false; ./hack/arktos-up-scale-out-poc.sh`
-
-1. After the first TP started, copy all files in /var/run/kubernetes to other TP/RP hosts. To avoid recopy the certificate
-files, don't use `REUSE_CERTS=false`
-
+1. As certificates generating and sharing is confusing and time consuming in local test environment. We will use insecure mode for local test for now. Secured mode can be added back later when main goal is acchieved.
 
 ### Setting up RP
 1. Make sure hack/arktos-up.sh can be run at the box
@@ -67,7 +58,6 @@ export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVERS=http://[TP1_IP]:8080,http://[TP2_IP]:8080
-export REUSE_CERTS=true
 ```
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
@@ -123,5 +113,8 @@ etcdctl get "" --prefix=true --keys-only | grep pods
 
 1. If there is no code changes, can use "./hack/arktos-up-scale-out-poc.sh -O" to save compile time
 
-1. Currently tested with 2TP/1RP. Pods can be scheduled for both TPs.
+1. After switched all kubeconfigs from proxy, system tenant appears in both TPs. This is not ideal. Trying to point KCM kubeconfig to HA proxy. 
 
+1. Currently tested with 2TP/2RP.
+
+1. Haven't made changes to HA proxy 2RP, kubectl get nodes only has nodes from first RP, which is expected.

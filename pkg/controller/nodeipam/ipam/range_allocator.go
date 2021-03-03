@@ -122,7 +122,7 @@ func NewCIDRRangeAllocator(client clientset.Interface, nodeInformer informers.No
 
 	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: nodeutil.CreateAddNodeHandler(ra.AllocateOrOccupyCIDR),
-		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node) error {
+		UpdateFunc: nodeutil.CreateUpdateNodeHandler(func(_, newNode *v1.Node, rpId string) error {
 			// If the PodCIDR is not empty we either:
 			// - already processed a Node that already had a CIDR after NC restarted
 			//   (cidr is marked as used),
@@ -143,7 +143,7 @@ func NewCIDRRangeAllocator(client clientset.Interface, nodeInformer informers.No
 			// state is correct.
 			// Restart of NC fixes the issue.
 			if newNode.Spec.PodCIDR == "" {
-				return ra.AllocateOrOccupyCIDR(newNode)
+				return ra.AllocateOrOccupyCIDR(newNode, rpId)
 			}
 			return nil
 		}),
@@ -222,7 +222,7 @@ func (r *rangeAllocator) occupyCIDR(node *v1.Node) error {
 // WARNING: If you're adding any return calls or defer any more work from this
 // function you have to make sure to update nodesInProcessing properly with the
 // disposition of the node when the work is done.
-func (r *rangeAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
+func (r *rangeAllocator) AllocateOrOccupyCIDR(node *v1.Node, rpId string) error {
 	if node == nil {
 		return nil
 	}
@@ -248,7 +248,7 @@ func (r *rangeAllocator) AllocateOrOccupyCIDR(node *v1.Node) error {
 	return nil
 }
 
-func (r *rangeAllocator) ReleaseCIDR(node *v1.Node) error {
+func (r *rangeAllocator) ReleaseCIDR(node *v1.Node, rpId string) error {
 	if node == nil || node.Spec.PodCIDR == "" {
 		return nil
 	}
