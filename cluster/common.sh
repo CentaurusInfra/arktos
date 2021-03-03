@@ -96,14 +96,10 @@ function create-kubeconfig() {
       cluster_args=(
           "--server=${KUBE_SERVER:-https://${PROXY_RESERVED_IP}}:443"
        )
-    elif [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    elif [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       cluster_args=(
           "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
        )
-      else
-        cluster_args=(
-          "--server=${KUBE_SERVER:-https://${KUBE_MASTER_IP}}:443"
-        )
       fi
   fi
 

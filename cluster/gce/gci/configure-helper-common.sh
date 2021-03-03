@@ -626,7 +626,7 @@ function create-master-auth {
     for extra_component in "${extra_components[@]}"; do
       local token="$(secure_random 32)"
       append_or_replace_prefixed_line "${known_tokens_csv}" "${token}," "system:${extra_component},uid:system:${extra_component}"
-      if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
         create-kubeconfig "${extra_component}" "${token}" "localhost" "8080" "http"
       else
         create-kubeconfig "${extra_component}" "${token}"
@@ -1079,7 +1079,7 @@ function create-master-kubelet-auth {
   # set in the environment.
   if [[ -n "${KUBELET_APISERVER:-}" && -n "${KUBELET_CERT:-}" && -n "${KUBELET_KEY:-}" ]]; then
     REGISTER_MASTER_KUBELET="true"
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       create-kubelet-kubeconfig ${KUBELET_APISERVER} "8080" "http"
     else
       create-kubelet-kubeconfig ${KUBELET_APISERVER}
@@ -1757,7 +1757,7 @@ function compute-master-manifest-variables {
   fi
 
   INSECURE_PORT_MAPPING=""
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
     INSECURE_PORT_MAPPING="{ \"name\": \"local\", \"containerPort\": 8080, \"hostPort\": 8080},"
   fi
 }
@@ -1814,7 +1814,7 @@ function start-kube-apiserver {
     params+=" --etcd-servers-overrides=${ETCD_SERVERS_OVERRIDES:-}"
   fi
   params+=" --secure-port=443"
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "false" ]]; then
+  if [[ "${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}" == "false" ]]; then
     # Default is :8080
     params+=" --insecure-port=0"
   fi
@@ -2320,7 +2320,7 @@ function apply-encryption-config() {
 #   DOCKER_REGISTRY
 function start-kube-controller-manager {
   echo "Start kubernetes controller-manager"
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
     create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
   else
     create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
@@ -2335,7 +2335,7 @@ function start-kube-controller-manager {
   ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
   ## TODO: investigate and fix it later
   #
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "false" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "false" ]]; then
     params+=" --kubeconfig=/etc/srv/kubernetes/kube-bootstrap/kubeconfig"
   else
    params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
@@ -2454,7 +2454,7 @@ function start-workload-controller-manager {
   mkdir -p /etc/srv/kubernetes/workload-controller-manager
   echo "Start workload controller-manager"
   local master_ip=${1:-}  #optional
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
     create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip} "8080" "http"
   else
     create-kubeconfig "workload-controller-manager" ${WORKLOAD_CONTROLLER_MANAGER_TOKEN} ${master_ip}
@@ -2504,7 +2504,7 @@ function start-workload-controller-manager {
 #   DOCKER_REGISTRY
 function start-kube-scheduler {
   echo "Start kubernetes scheduler"
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
     create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN} "localhost" "8080" "http"
   else
     create-kubeconfig "kube-scheduler" ${KUBE_SCHEDULER_TOKEN}
@@ -2560,7 +2560,7 @@ function start-cluster-autoscaler {
   if [[ "${ENABLE_CLUSTER_AUTOSCALER:-}" == "true" ]]; then
     echo "Start kubernetes cluster autoscaler"
     setup-addon-manifests "addons" "rbac/cluster-autoscaler"
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN} "localhost" "8080" "http"
     else
       create-kubeconfig "cluster-autoscaler" ${KUBE_CLUSTER_AUTOSCALER_TOKEN}
@@ -2910,7 +2910,7 @@ function start-kube-addons {
   local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
   local -r dst_dir="/etc/kubernetes/addons"
 
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
     create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN} "localhost" "8080" "http"
   else
     create-kubeconfig "addon-manager" ${ADDON_MANAGER_TOKEN}
@@ -3149,7 +3149,7 @@ function start-lb-controller {
     prepare-log-file /var/log/glbc.log
     setup-addon-manifests "addons" "cluster-loadbalancing/glbc"
     setup-addon-manifests "addons" "rbac/cluster-loadbalancing/glbc"
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN} "localhost" "8080" "http"
     else
       create-kubeconfig "l7-lb-controller" ${GCE_GLBC_TOKEN}
@@ -3310,7 +3310,7 @@ function ensure-master-bootstrap-kubectl-auth {
   # If the insecure port is disabled, kubectl will need to use an admin-authenticated kubeconfig.
   local master_ip=${1:-localhost}
   if [[ -n "${KUBE_BOOTSTRAP_TOKEN:-}" ]]; then
-    if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+    if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}" "8080" "http"
     else
       create-kubeconfig "kube-bootstrap" "${KUBE_BOOTSTRAP_TOKEN}" "${master_ip}"

@@ -529,7 +529,7 @@ function load-or-gen-kube-clienttoken() {
     GCE_GLBC_TOKEN="$(secure_random 32)"
   fi
   ADDON_MANAGER_TOKEN="$(secure_random 32)"
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" != "true" ]]; then
     KUBE_BOOTSTRAP_TOKEN="$(secure_random 32)"
   fi
 }
@@ -1417,7 +1417,7 @@ ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
 ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
+USE_INSECURE_SCALEOUT_CLUSTER_MODE: $(yaml-quote ${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
@@ -1434,6 +1434,7 @@ KUBE_CONTROLLER_EXTRA_ARGS: $(yaml-quote ${KUBE_CONTROLLER_EXTRA_ARGS:-})
 KUBE_SCHEDULER_EXTRA_ARGS: $(yaml-quote ${KUBE_SCHEDULER_EXTRA_ARGS:-})
 SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
 SHARED_APISERVER_TOKEN: $(yaml-quote ${SHARED_APISERVER_TOKEN:-})
+KUBE_ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false})
 EOF
     # KUBE_APISERVER_REQUEST_TIMEOUT_SEC (if set) controls the --request-timeout
     # flag
@@ -1577,7 +1578,7 @@ EOF
     # Node-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "false")
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
+USE_INSECURE_SCALEOUT_CLUSTER_MODE: $(yaml-quote ${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false})
 EXTRA_DOCKER_OPTS: $(yaml-quote ${EXTRA_DOCKER_OPTS:-})
 EOF
     if [ -n "${KUBEPROXY_TEST_ARGS:-}" ]; then
@@ -1870,7 +1871,7 @@ function generate-proxy-certs {
 #   SANS: Subject alternate names
 #
 #
-function   generate-certs {
+function generate-certs {
   local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
   # Note: This was heavily cribbed from make-ca-cert.sh
   (set -x

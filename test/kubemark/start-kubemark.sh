@@ -21,7 +21,7 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export ENABLE_APISERVER_INSECURE_PORT="${ENABLE_APISERVER_INSECURE_PORT:-false}"
+export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
 
 TMP_ROOT="$(dirname "${BASH_SOURCE[@]}")/../.."
 KUBE_ROOT=$(readlink -e "${TMP_ROOT}" 2> /dev/null || perl -MCwd -e 'print Cwd::abs_path shift' "${TMP_ROOT}")
@@ -335,7 +335,9 @@ MASTER_METADATA=""
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   echo "DBG: Starting ${SCALEOUT_TP_COUNT} tenant partitions ..."
-  export KUBE_ENABLE_APISERVER_INSECURE_PORT=${ENABLE_APISERVER_INSECURE_PORT:-false}
+
+  export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
   export KUBERNETES_TENANT_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
   export PROXY_KUBECONFIG

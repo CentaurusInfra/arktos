@@ -74,7 +74,7 @@ for k,v in yaml.load(sys.stdin).iteritems():
   )
 }
 
-function download-tenantpartition-kubeconfigs {
+function download-tenantpartition-kubeconfig {
   local -r dest="$1"
   local -r tp_num="$2"
 
@@ -93,6 +93,18 @@ function download-tenantpartition-kubeconfigs {
       exit 1
     fi
   )
+}
+
+function download-tenantpartition-kubeconfigs {
+  local tpconfigs_directory="/etc/srv/kubernetes/tp-kubeconfigs"
+  mkdir -p ${tpconfigs_directory}
+
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    config="${tpconfigs_directory}/tp-${tp_num}-kubeconfig"
+    echo "DBG: download tenant partition kubeconfig: ${config}"
+    download-tenantpartition-kubeconfig "${config}" "${tp_num}"
+  done
 }
 
 function download-kubelet-config {
@@ -604,15 +616,7 @@ download-controller-config "${KUBE_HOME}/controllerconfig.json"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-  tpconfigs="/etc/srv/kubernetes/tp-kubeconfigs"
-  mkdir -p ${tpconfigs}
-
-  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
-  do
-    config="${tpconfigs}/tp-${tp_num}-kubeconfig"
-    echo "DBG: download tenant partition kubeconfig: ${config}"
-    download-tenantpartition-kubeconfigs  "${config}" "${tp_num}"
-  done
+    download-tenantpartition-kubeconfigs
 fi
 
 # master certs
