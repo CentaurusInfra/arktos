@@ -261,7 +261,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
 		c.NodeInformers[0] = c.InformerFactory.Core().V1().Nodes()
 	} else {
-		kubeConfigFiles, existed := kubeconfigFileExists(c.ComponentConfig.ResourceProviderKubeConfig)
+		kubeConfigFiles, existed := parseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
 		if !existed {
 			klog.Fatalf("ResourceProvider kubeConfig is not valid. value=%s", c.ComponentConfig.ResourceProviderKubeConfig)
 		}
@@ -291,7 +291,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	return c, nil
 }
 
-func kubeconfigFileExists(kubeConfigFilenames string) ([]string, bool) {
+func parseKubeConfigFiles(kubeConfigFilenames string) ([]string, bool) {
 	kubeConfigs := strings.Split(kubeConfigFilenames, ",")
 	for _, kubeConfig := range kubeConfigs {
 		_, err := os.Stat(kubeConfig)

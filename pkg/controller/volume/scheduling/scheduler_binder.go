@@ -473,7 +473,8 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 	var err error
 	for _, nodeInformer := range b.nodeInformers {
 		node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
-		if err != nil { // TODO - check error type, continue to search next RP if no found
+		if err != nil { // TODO - check error type, continue to search next RP if not found
+			klog.Errorf("Error getting node from current node informer. error [%v]. TODO - check error type, continue to search next RP if not found", err)
 			return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
 		}
 		break
