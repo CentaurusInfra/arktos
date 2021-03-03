@@ -511,6 +511,17 @@ func GetEtcdStorageDataForNamespaceWithMultiTenancy(tenant, namespace string) ma
 			Stub:             `{"metadata": {"name": "gryffindors.hogwarts.io"},"spec": {"scope": "Tenant","group": "hogwarts.io","version": "v1alpha1","names": {"kind": "gryffindor","plural": "gryffindors","singular": "gryffindor"}}}`,
 			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + tenant + "/gryffindors.hogwarts.io",
 		},
+
+		// k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
+		gvr("apiextensions.k8s.io", "v1", "customresourcedefinitions"): {
+			Stub: `{"metadata": {"name": "openshiftwebconsoleconfigs.webconsole2.operator.openshift.io"},"spec": {` +
+				`"scope": "Cluster","group": "webconsole2.operator.openshift.io",` +
+				`"versions": [{"name":"v1alpha1","storage":true,"served":true,"schema":{"openAPIV3Schema":{"type":"object"}}}],` +
+				`"names": {"kind": "OpenShiftWebConsoleConfig","plural": "openshiftwebconsoleconfigs","singular": "openshiftwebconsoleconfig"}}}`,
+			ExpectedEtcdPath: "/registry/apiextensions.k8s.io/customresourcedefinitions/" + tenant + "/openshiftwebconsoleconfigs.webconsole2.operator.openshift.io",
+			ExpectedGVK:      gvkP("apiextensions.k8s.io", "v1beta1", "CustomResourceDefinition"),
+		},
+
 		gvr("cr.bar.com", "v1", "foos"): {
 			Stub:             `{"kind": "Foo", "apiVersion": "cr.bar.com/v1", "metadata": {"name": "cr1foo"}, "color": "blue"}`, // requires TypeMeta due to CRD scheme's UnstructuredObjectTyper
 			ExpectedEtcdPath: "/registry/cr.bar.com/foos/" + tenant + "/" + namespace + "/cr1foo",
