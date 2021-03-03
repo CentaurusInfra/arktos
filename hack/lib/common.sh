@@ -385,7 +385,7 @@ EOF
     kube::util::wait_for_url "https://${API_HOST_IP}:$secureport/healthz" "apiserver: " 1 "${WAIT_FOR_URL_API_SERVER}" "${MAX_TIME_FOR_URL_API_SERVER}" \
         || { echo "check apiserver logs: ${APISERVER_LOG}" ; exit 1 ; }
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
+    #if [[ "${REUSE_CERTS}" != true ]]; then
         # Create kubeconfigs for all components, using client certs
         # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
         ADMIN_CONFIG_API_HOST=${PUBLIC_IP:-${API_HOST}}
@@ -395,12 +395,13 @@ EOF
         if [[ "${IS_SCALE_OUT}" == "true" ]]; then
           # in scale out poc, point api server to proxy
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" admin "" "http"
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" scheduler "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
 
           # generate kubeconfig for scheduler in TP to access api server in RP
           if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
+            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" controller "" "http"
+
             serverCount=${#RESOURCE_SERVERS[@]}
             for (( pos=0; pos<${serverCount}; pos++ ));
             do
@@ -408,6 +409,8 @@ EOF
               ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-scheduler.kubeconfig" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
               ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
             done
+          else
+            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
           fi
 
           # generate kubelet/kubeproxy certs at TP as we use same cert for the entire cluster
@@ -446,7 +449,7 @@ EOF
         # Copy workload controller manager config to run path
         ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
         ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
-    fi
+    #fi
 }
 
 function kube::common::test_apiserver_off {
