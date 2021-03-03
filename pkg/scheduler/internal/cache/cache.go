@@ -86,7 +86,7 @@ type podState struct {
 	bindingFinished bool
 	// Used for scale out multiple RPs - use array row number for now
 	// Consider change to string later for universal cluster naming
-	resourceProviderId int
+	resourceProviderId string
 }
 
 type imageState struct {
