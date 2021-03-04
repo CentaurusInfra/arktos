@@ -10,14 +10,11 @@ metadata:
   - "15"
   generateName: "3"
   generation: 5828590068104375683
-  hashKey: 2234230302359329354
+  hashKey: 3414760188119455639
   labels:
     "8": "9"
   managedFields:
   - apiVersion: "18"
-    fields:
-      "19":
-        "20": null
     manager: "17"
     operation: 鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]
   name: "2"
@@ -30,32 +27,31 @@ metadata:
     kind: "13"
     name: "14"
     uid: z廔ȇ{sŊƏ
-  resourceVersion: "16964250748386560239"
+  resourceVersion: "11042405498087606203"
   selfLink: "6"
   tenant: "4"
-  uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
+  uid: "7"
 spec:
   extra:
-    "37":
-    - "38"
+    "31":
+    - "32"
   groups:
-  - "36"
+  - "30"
   nonResourceAttributes:
-    path: "33"
-    verb: "34"
+    path: "27"
+    verb: "28"
   resourceAttributes:
-    group: "27"
-    name: "31"
-    namespace: "25"
-    resource: "29"
-    subresource: "30"
-    tenant: "32"
-    verb: "26"
-    version: "28"
-  uid: "39"
-  user: "35"
+    group: "21"
+    name: "25"
+    namespace: "19"
+    resource: "23"
+    subresource: "24"
+    tenant: "26"
+    verb: "20"
+    version: "22"
+  uid: "33"
+  user: "29"
 status:
   allowed: false
-  denied: true
-  evaluationError: "41"
-  reason: "40"
+  evaluationError: "35"
+  reason: "34"

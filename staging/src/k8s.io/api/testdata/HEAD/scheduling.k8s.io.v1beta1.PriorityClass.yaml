@@ -1,5 +1,6 @@
 apiVersion: scheduling.k8s.io/v1beta1
-description: "25"
+description: "19"
+globalDefault: true
 kind: PriorityClass
 metadata:
   annotations:
@@ -11,14 +12,11 @@ metadata:
   - "15"
   generateName: "3"
   generation: 5828590068104375683
-  hashKey: 2234230302359329354
+  hashKey: 3414760188119455639
   labels:
     "8": "9"
   managedFields:
   - apiVersion: "18"
-    fields:
-      "19":
-        "20": null
     manager: "17"
     operation: 鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]
   name: "2"
@@ -31,9 +29,9 @@ metadata:
     kind: "13"
     name: "14"
     uid: z廔ȇ{sŊƏ
-  resourceVersion: "16964250748386560239"
+  resourceVersion: "11042405498087606203"
   selfLink: "6"
   tenant: "4"
-  uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
-preemptionPolicy: Ƣ6/ʕVŚ(ĿȊ甞
-value: -2052872833
+  uid: "7"
+preemptionPolicy: J枊a
+value: -595102844
