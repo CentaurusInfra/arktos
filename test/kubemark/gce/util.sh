@@ -39,25 +39,20 @@ function create-kubemark-master {
     # All calls to e2e-grow-cluster must share temp dir with initial e2e-up.sh.
     kube::util::ensure-temp-dir
     export KUBE_TEMP="${KUBE_TEMP}"
-    export LOCAL_KUBECONFIG
 
-    ## TODO: those logic should be handled by the caller function
-    ##       i.e. the create-kubemark-master function should just create the kubefig under the resource folder
-    ##       and name it kubeconfig.kubemark, the call to rename it as needed for scaleout env
-    KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+    echo "DBG: Using kubeconfig file: ${KUBEMARK_CLUSTER_KUBECONFIG}"
+    export KUBECONFIG=${KUBEMARK_CLUSTER_KUBECONFIG}
+
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
     SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
     if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      KUBECONFIG="${RP_KUBECONFIG}"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      KUBECONFIG="${TP_KUBECONFIG}-${TENANT_PARTITION_SEQUENCE}"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
     fi
 
     export SCALEOUT_PROXY_NAME
-    export KUBECONFIG
     export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_CREATE_NODES=false

@@ -1421,7 +1421,7 @@ function start-prometheus {
   export RELEASE="2.2.1"
   wget https://github.com/prometheus/prometheus/releases/download/v${RELEASE}/prometheus-${RELEASE}.linux-amd64.tar.gz
   tar xvf prometheus-${RELEASE}.linux-amd64.tar.gz
-  cd prometheus-2.2.1.linux-amd64/
+  cd prometheus-${RELEASE}.linux-amd64/
   echo "configing prometheus-metrics"
   cat <<EOF >/tmp/prometheus-metrics.yaml
 global:
@@ -1757,7 +1757,7 @@ function compute-master-manifest-variables {
   fi
 
   INSECURE_PORT_MAPPING=""
-  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]] || [[ "${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
     INSECURE_PORT_MAPPING="{ \"name\": \"local\", \"containerPort\": 8080, \"hostPort\": 8080},"
   fi
 }
@@ -2408,8 +2408,8 @@ function start-kube-controller-manager {
   fi
 
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVERS}"
-    params+=" --tenant-server-kubeconfigs=${TENANT_SERVERS}"
+    echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+    params+=" --tenant-server-kubeconfigs=${TENANT_SERVER_KUBECONFIGS}"
   fi
 
   if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then

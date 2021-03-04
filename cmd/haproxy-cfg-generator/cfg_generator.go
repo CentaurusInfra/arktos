@@ -28,14 +28,14 @@ import (
 )
 
 const (
-	ARKTOS_API_SECURE_PORT = 443
-	ARKTOS_API_PORT        = 8080
-	MAX_CONN_PER_BACKEND   = 500000
-	CONNECTION_TIMEOUT     = "10m"
-	PROXY_PORT             = 8888
-	TEMPLATE_FILE          = "haproxy.cfg.template"
-	BRIDGING               = "bridging"
-	OFFLOADING             = "offloading"
+	ARKTOS_API_SECURE_PORT  = 443
+	ARKTOS_API_INSECUREPORT = 8080
+	MAX_CONN_PER_BACKEND    = 500000
+	CONNECTION_TIMEOUT      = "10m"
+	PROXY_PORT              = 8888
+	TEMPLATE_FILE           = "haproxy.cfg.template"
+	BRIDGING                = "bridging"
+	OFFLOADING              = "offloading"
 )
 
 type Config struct {
@@ -208,7 +208,7 @@ func get_backends(config *Config) string {
 	var rp_backend string
 	backendPort := ARKTOS_API_SECURE_PORT
 	if config.tlsMode == OFFLOADING {
-		backendPort = ARKTOS_API_PORT
+		backendPort = ARKTOS_API_INSECUREPORT
 	}
 
 	if config.tlsMode == BRIDGING {

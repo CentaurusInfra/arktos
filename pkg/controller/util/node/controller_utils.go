@@ -356,8 +356,8 @@ func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, st
 	return tpAccessors, nil
 }
 
-func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
-	clients, err := CreateTenantPartitionClients(tenantServers)
+func GetTenantPartitionManagersFromServerNames(tenantServerKubeconfigs []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	clients, err := CreateTenantPartitionClients(tenantServerKubeconfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -370,7 +370,7 @@ func CreateTenantPartitionClients(kubeconfigFiles []string) ([]clientset.Interfa
 	for _, kubeconfig := range kubeconfigFiles {
 		client, err := clientutil.CreateClientFromKubeconfigFile(kubeconfig)
 		if err != nil {
-			return nil, fmt.Errorf("error in getting client for kubeconfi (%v) ：%v", kubeconfig, err)
+			return nil, fmt.Errorf("error in getting client for kubeconfig (%v) ：%v", kubeconfig, err)
 		}
 		clients = append(clients, client)
 	}

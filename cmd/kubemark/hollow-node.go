@@ -82,8 +82,8 @@ const (
 var knownMorphs = sets.NewString("kubelet", "proxy")
 
 func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.ResourceServerKubeconfig, "resource-server-kubeconfig", c.ResourceServerKubeconfig, "url to the resource partition master.")
-	fs.StringSliceVar(&c.TenantServerKubeconfigs, "tenant-server-kubeconfigs", c.TenantServerKubeconfigs, "Comma separated string representing tenant api-server URLs.")
+	fs.StringVar(&c.ResourceServerKubeconfig, "resource-server-kubeconfig", c.ResourceServerKubeconfig, "url to the resource partition api-server kubeconfig.")
+	fs.StringSliceVar(&c.TenantServerKubeconfigs, "tenant-server-kubeconfigs", c.TenantServerKubeconfigs, "Comma separated string representing tenant api-server kubeconfigs.")
 	fs.StringVar(&c.KubeconfigPath, "kubeconfig", "/kubeconfig/kubeconfig", "Path to kubeconfig file.")
 	fs.IntVar(&c.KubeletPort, "kubelet-port", ports.KubeletPort, "Port on which HollowKubelet should be listening.")
 	fs.IntVar(&c.KubeletReadOnlyPort, "kubelet-read-only-port", ports.KubeletReadOnlyPort, "Read-only port on which Kubelet is listening.")

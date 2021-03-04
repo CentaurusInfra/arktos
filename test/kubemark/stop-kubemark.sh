@@ -56,7 +56,6 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     export TENANT_PARTITION_SEQUENCE=${tp_num}
     delete-kubemark-master
     rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}"
-    rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}-proxy"
   done
 
   export KUBERNETES_TENANT_PARTITION=false
@@ -64,12 +63,11 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export KUBERNETES_SCALEOUT_PROXY=true
   delete-kubemark-master
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
-  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp
-  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-*
-  rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp
   rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp
   rm -rf "${SHARED_CA_DIRECTORY}"
 else
   delete-kubemark-master
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark
 fi

@@ -1620,9 +1620,9 @@ EOF
 MAX_PODS_PER_NODE: $(yaml-quote ${MAX_PODS_PER_NODE})
 EOF
   fi
-  if [ -n "${TENANT_SERVERS:-}" ]; then
+  if [ -n "${TENANT_SERVER_KUBECONFIGS:-}" ]; then
       cat >>$file <<EOF
-TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
     fi
 }
@@ -2486,18 +2486,7 @@ function kube-up() {
     fi
     check-cluster
 
-    ## TODO: RP, or TP kubeconfig naming convention
-    ##       if the convention and naming is agreed upon all components, the COPY can be removed and the start-kubemark
-    ##       script can use the kubeconfig created here
-    ##
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-      if [ -z "${LOCAL_KUBECONFIG:-}" ]; then
-        echo "Local_kubeconfig not set"
-      else
-        cp -f ${KUBECONFIG} ${LOCAL_KUBECONFIG}
-        echo "DBG:" $(grep -i "server:" ${LOCAL_KUBECONFIG})
-      fi
-
       if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
         echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
         echo "-----------------------------"
