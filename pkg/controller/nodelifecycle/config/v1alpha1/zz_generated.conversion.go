@@ -104,7 +104,7 @@ func autoConvert_v1alpha1_NodeLifecycleControllerConfiguration_To_config_NodeLif
 	out.PodEvictionTimeout = in.PodEvictionTimeout
 	out.LargeClusterSizeThreshold = in.LargeClusterSizeThreshold
 	out.UnhealthyZoneThreshold = in.UnhealthyZoneThreshold
-	out.TenantServers = *(*[]string)(unsafe.Pointer(&in.TenantServers))
+	out.TenantPartitionKubeConfigs = *(*[]string)(unsafe.Pointer(&in.TenantPartitionKubeConfigs))
 	return nil
 }
 
@@ -119,6 +119,6 @@ func autoConvert_config_NodeLifecycleControllerConfiguration_To_v1alpha1_NodeLif
 	out.PodEvictionTimeout = in.PodEvictionTimeout
 	out.LargeClusterSizeThreshold = in.LargeClusterSizeThreshold
 	out.UnhealthyZoneThreshold = in.UnhealthyZoneThreshold
-	out.TenantServers = *(*[]string)(unsafe.Pointer(&in.TenantServers))
+	out.TenantPartitionKubeConfigs = *(*[]string)(unsafe.Pointer(&in.TenantPartitionKubeConfigs))
 	return nil
 }

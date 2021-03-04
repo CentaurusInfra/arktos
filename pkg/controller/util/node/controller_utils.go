@@ -19,10 +19,7 @@ package node
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net"
-	"net/url"
-	"os"
+	"k8s.io/client-go/util/clientutil"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -49,8 +46,6 @@ import (
 	appsv1informers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	"k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
 // DeletePods will delete all pods from master running on given node,
@@ -328,80 +323,12 @@ func GetNodeCondition(status *v1.NodeStatus, conditionType v1.NodeConditionType)
 
 // The following are util functions for the node lifecycle ontroller, which is in the resource partition, to connect to the Resource Partition.
 // For the time being, the connection is insecure, as the scalablility work is still on the way.
-// TODO: upgrade the connection to secure.
 type TenantPartitionManager struct {
 	Client            clientset.Interface
 	PodInformer       coreinformers.PodInformer
 	PodGetter         corelisters.PodLister
 	DaemonSetInformer appsv1informers.DaemonSetInformer
 	DaemonSetStore    appsv1listers.DaemonSetLister
-}
-
-func GetTenantPartitionInsecureClient(ipAddr string) (clientset.Interface, error) {
-	cfg, err := GetTenantPartitionInsecureConfig(ipAddr)
-	if err != nil {
-		return nil, fmt.Errorf("Error building Tenant Partition Config to %v: %s", ipAddr, err.Error())
-	}
-
-	client, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		return nil, fmt.Errorf("Error building kubernetes clientset to %v: %s", ipAddr, err.Error())
-	}
-
-	return client, nil
-}
-
-func GetTenantPartitionInsecureConfig(tenantServerUrl string) (*rest.Config, error) {
-	template := `
-apiVersion: v1
-kind: Config
-clusters:
-- cluster:
-    server: %v
-  name: tenant-partition-cluster
-contexts:
-- context:
-    cluster: tenant-partition-cluster
-  name: node-controller-context
-current-context: node-controller-context
-`
-
-	content := fmt.Sprintf(template, tenantServerUrl)
-
-	tmpfile, err := ioutil.TempFile("", "kubeconfig")
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(tmpfile.Name())
-
-	if err := ioutil.WriteFile(tmpfile.Name(), []byte(content), 0666); err != nil {
-		return nil, err
-	}
-
-	return clientcmd.BuildConfigFromFlags("", tmpfile.Name())
-}
-
-func GetTenantPartitionClients(tenantServers []string) ([]clientset.Interface, error) {
-
-	for _, tenantServer := range tenantServers {
-		if err := ValidateUrl(tenantServer); err != nil {
-			return nil, err
-		}
-	}
-
-	clients := []clientset.Interface{}
-
-	for _, tenantServer := range tenantServers {
-		tenantServerUrl := strings.TrimSpace(tenantServer)
-		client, err := GetTenantPartitionInsecureClient(tenantServerUrl)
-		if err != nil {
-			return nil, fmt.Errorf("Error in getting client for tenant partition (%v) ： %v", tenantServerUrl, err)
-		}
-
-		clients = append(clients, client)
-	}
-
-	return clients, nil
 }
 
 func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan struct{}) *TenantPartitionManager {
@@ -429,8 +356,8 @@ func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, st
 	return tpAccessors, nil
 }
 
-func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
-	clients, err := GetTenantPartitionClients(tenantServers)
+func GetTenantPartitionManagersFromServerNames(tenantServerKubeconfigs []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	clients, err := CreateTenantPartitionClients(tenantServerKubeconfigs)
 	if err != nil {
 		return nil, err
 	}
@@ -438,28 +365,15 @@ func GetTenantPartitionManagersFromServerNames(tenantServers []string, stop <-ch
 	return GetTenantPartitionManagersFromKubeClients(clients, stop)
 }
 
-// this check enforce the tenant-server option use the format [scheme];//[IP addrese]:port to specify the url
-func ValidateUrl(urlString string) error {
-	_, err := url.ParseRequestURI(urlString)
-	if err != nil {
-		return err
+func CreateTenantPartitionClients(kubeconfigFiles []string) ([]clientset.Interface, error) {
+	clients := []clientset.Interface{}
+	for _, kubeconfig := range kubeconfigFiles {
+		client, err := clientutil.CreateClientFromKubeconfigFile(kubeconfig)
+		if err != nil {
+			return nil, fmt.Errorf("error in getting client for kubeconfi (%v) ：%v", kubeconfig, err)
+		}
+		clients = append(clients, client)
 	}
 
-	u, err := url.Parse(urlString)
-	if err != nil {
-		return err
-	}
-	if u.Scheme == "" {
-		return fmt.Errorf("Invalid url (%v): missing scheme", urlString)
-	}
-	if u.Host == "" {
-		return fmt.Errorf("Invalid url (%v): missing host", urlString)
-	}
-
-	host, _, _ := net.SplitHostPort(u.Host)
-	if net.ParseIP(host) == nil {
-		return fmt.Errorf("Invalid url (%v): invalid host IP", urlString)
-	}
-
-	return nil
+	return clients, nil
 }
