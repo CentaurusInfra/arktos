@@ -20,4 +20,5 @@ limitations under the License.
 // +k8s:conversion-gen=k8s.io/code-generator/_examples/apiserver/apis/example
 // +groupName=example.apiserver.code-generator.k8s.io
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package v1

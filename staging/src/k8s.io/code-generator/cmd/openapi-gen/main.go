@@ -15,6 +15,7 @@ limitations under the License.
 // definition for a specific type or package add "+k8s:openapi-gen=true" tag to the type/package comment lines. To
 // exclude a type from a tagged package, add "+k8s:openapi-gen=false" tag to the type comment lines.
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package main
 
 import (

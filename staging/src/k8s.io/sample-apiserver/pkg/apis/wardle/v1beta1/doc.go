@@ -21,4 +21,5 @@ limitations under the License.
 // +groupName=wardle.k8s.io
 
 // Package v1beta1 is the v1beta1 version of the API.
+// File modified by cherrypick from kubernetes on 03/04/2021
 package v1beta1 // import "k8s.io/sample-apiserver/pkg/apis/wardle/v1beta1"

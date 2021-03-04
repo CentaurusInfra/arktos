@@ -14,6 +14,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# File modified by cherrypick from kubernetes on 03/04/2021
+
 set -o errexit
 set -o nounset
 set -o pipefail
