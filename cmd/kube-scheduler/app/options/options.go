@@ -21,10 +21,10 @@ import (
 	"fmt"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"net"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -262,7 +262,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
 		c.NodeInformers[0] = c.InformerFactory.Core().V1().Nodes()
 	} else {
-		kubeConfigFiles, existed := parseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
+		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
 		if !existed {
 			klog.Fatalf("ResourceProvider kubeConfig is not valid. value=%s", c.ComponentConfig.ResourceProviderKubeConfig)
 		}
@@ -290,17 +290,6 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.LeaderElection = leaderElectionConfig
 
 	return c, nil
-}
-
-func parseKubeConfigFiles(kubeConfigFilenames string) ([]string, bool) {
-	kubeConfigs := strings.Split(kubeConfigFilenames, ",")
-	for _, kubeConfig := range kubeConfigs {
-		_, err := os.Stat(kubeConfig)
-		if err != nil {
-			return nil, false
-		}
-	}
-	return kubeConfigs, true
 }
 
 // makeLeaderElectionConfig builds a leader election configuration. It will

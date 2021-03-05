@@ -18,12 +18,12 @@
 IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-"false"}
 SCALE_OUT_PROXY_IP=${SCALE_OUT_PROXY_IP:-}
 SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-"8888"}
-TENANT_SERVERS=${TENANT_SERVERS:-}
+TENANT_SERVER=${TENANT_SERVER:-}
 RESOURCE_SERVER=${RESOURCE_SERVER:-}
 IS_SCALE_OUT=${IS_SCALE_OUT:-"true"}
 
 echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
-echo "TENANT_SERVERS: |${TENANT_SERVERS}|"
+echo "TENANT_SERVER: |${TENANT_SERVER}|"
 echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
 echo "IS_SCALE_OUT: |${IS_SCALE_OUT}|"
 
@@ -34,13 +34,13 @@ fi
 
 SCALE_OUT_PROXY_ENDPOINT="https://${SCALE_OUT_PROXY_IP}:${SCALE_OUT_PROXY_PORT}/"
 
-if [[ -z "${TENANT_SERVERS}" ]]; then
+if [[ -z "${TENANT_SERVER}" ]]; then
   if [ IS_RESOURCE_PARTITION == "true" ]; then
-    echo ERROR: Please set TENANT_SERVERS for RP. For example: TENANT_SERVERS=\"http://192.168.0.2:8080,http://192.168.0.3:8080\"
-  else
-    echo "Missing TENANT_SERVERS, default to SCALE_OUT_PROXY_ENDPOINT: ${SCALE_OUT_PROXY_ENDPOINT}"
-    TENANT_SERVERS=${SCALE_OUT_PROXY_ENDPOINT}
+    echo ERROR: Please set TENANT_SERVER for RP. For example: TENANT_SERVER=192.168.0.2 or TENANT_SERVER=192.168.0.3,192.168.0.5
+    exit 1
   fi
+else
+  TENANT_SERVERS=(${TENANT_SERVER//,/ })
 fi
 
 if [[ -z "${RESOURCE_SERVER}" ]]; then
@@ -55,12 +55,7 @@ fi
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 # for POC, the kubelet_flags is used for the new temporary kubelet commandline args
-KUBELET_FLAGS="--tenant-servers="${TENANT_SERVERS}
-# --tenant-servers set the tenant server urls for node-lifecycle controller
-CONTROLLER_MANAGER_EXTRA_FLAGS="--tenant-servers="${TENANT_SERVERS}
-
-echo KUBELET_FLAGS for new kubelet commandline --tenant-servers
-echo ${KUBELET_FLAGS}
+KUBELET_FLAGS="--tenant-servers=http://172.30.0.148:8080,http://172.30.0.24:8080"
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -519,6 +514,21 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
 
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
+  KCM_TENANT_SERVER_KUBECONFIG_FLAG="--tenant-server-kubeconfig="
+  kubeconfig_filename="tenant-server-controller"
+  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+    serverCount=${#TENANT_SERVERS[@]}
+    for (( pos=0; pos<${serverCount}; pos++ ));
+    do
+      # here generate kubeconfig for remote API server. Only work in non secure mode for now
+      kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${TENANT_SERVERS[${pos}]}" "${API_PORT}" tenant-server-controller "" "http"
+      ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/${kubeconfig_filename}.kubeconfig" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+      ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+
+      KCM_TENANT_SERVER_KUBECONFIG_FLAG="${KCM_TENANT_SERVER_KUBECONFIG_FLAG}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
+    done
+    KCM_TENANT_SERVER_KUBECONFIG_FLAG=${KCM_TENANT_SERVER_KUBECONFIG_FLAG::-1}
+  fi
 
   kube::common::start_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then

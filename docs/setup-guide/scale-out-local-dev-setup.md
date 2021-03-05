@@ -57,7 +57,7 @@ Note:
 export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
 export IS_RESOURCE_PARTITION=true
-export TENANT_SERVERS=http://[TP1_IP]:8080,http://[TP2_IP]:8080
+export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
 ```
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
@@ -118,3 +118,8 @@ etcdctl get "" --prefix=true --keys-only | grep pods
 1. Currently tested with 2TP/2RP.
 
 1. Haven't made changes to HA proxy 2RP, kubectl get nodes only has nodes from first RP, which is expected.
+
+1. Currently local RP started as node tained to be NoSchedule. Need to manually remove the taint so that pod can be scheduled.
+```
+kubectl --kubeconfig <kubeconfig points to RP api server> taint nodes <node_name> node.kubernetes.io/not-ready:NoSchedule-
+``` 

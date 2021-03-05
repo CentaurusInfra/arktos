@@ -135,8 +135,8 @@ func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, er
 	var tpAccessors []*nodeutil.TenantPartitionManager
 	var err error
 	// for backward compatibility, when "--tenant-server-kubeconfigs" option is not specified, we fall back to the traditional kubernetes scenario.
-	if len(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfigs) > 0 {
-		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromServerNames(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfigs, ctx.Stop)
+	if len(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig) > 0 {
+		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeConfig(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig, ctx.Stop)
 	} else {
 		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeclient}, ctx.Stop)
 	}
