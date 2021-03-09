@@ -129,6 +129,24 @@ type Config struct {
 	SchedulingQueue internalqueue.SchedulingQueue
 }
 
+// AggregateNodeLister enhances the underlying Config with NodeLister behavior
+type AggregateNodeLister Config
+
+// List lists all Nodes
+func (a AggregateNodeLister) List() ([]*v1.Node, error) {
+	var allNodes []*v1.Node
+	for i, nl := range a.NodeListers {
+		nodes, err :=  nl.List()
+		if err != nil {
+			klog.Warningf("failed to list nodes from RP %d: %v", i, err)
+			continue
+		}
+		allNodes = append(allNodes, nodes...)
+	}
+
+	return allNodes, nil
+}
+
 // PodPreemptor has methods needed to delete a pod and to update 'NominatedPod'
 // field of the preemptor pod.
 type PodPreemptor interface {
