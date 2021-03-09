@@ -17,6 +17,7 @@ go_library(
     deps = [
         "//pkg/apis/core/v1/helper:go_default_library",
         "//pkg/controller:go_default_library",
+        "//pkg/controller/util/node:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/util/metrics:go_default_library",
         "//pkg/util/slice:go_default_library",

@@ -98,6 +98,7 @@ func NewCloudNodeController(
 // via a goroutine
 func (cnc *CloudNodeController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
+	klog.Info("Starting CloudNodeController")
 
 	// The following loops run communicate with the APIServer with a worst case complexity
 	// of O(num_nodes) per cycle. These functions are justified here because these events fire
