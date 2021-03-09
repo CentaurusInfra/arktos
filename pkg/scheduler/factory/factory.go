@@ -134,13 +134,20 @@ type AggregateNodeLister Config
 
 // List lists all Nodes
 func (a AggregateNodeLister) List() ([]*v1.Node, error) {
-	var allNodes []*v1.Node
+	count := 0
+	rpNodes := make([][]*v1.Node, len(a.NodeListers))
 	for i, nl := range a.NodeListers {
-		nodes, err :=  nl.List()
-		if err != nil {
+		var err error
+		if rpNodes[i], err = nl.List(); err != nil {
 			klog.Warningf("failed to list nodes from RP %d: %v", i, err)
 			continue
 		}
+		count += len(rpNodes[i])
+	}
+
+	// pre-allocate adequate capacity to reduce slice allocation cost in large scale multi-RP env
+	allNodes := make([]*v1.Node, 0, count)
+	for _, nodes := range rpNodes {
 		allNodes = append(allNodes, nodes...)
 	}
 
