@@ -395,24 +395,29 @@ EOF
         ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
 
         if [[ "${IS_SCALE_OUT}" == "true" ]]; then
-          # in scale out poc, point api server to proxy
+          # in scale out poc, use insecured mode in local dev test
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" admin "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" scheduler "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
 
-          # generate kubeconfig for scheduler in TP to access api server in RP
-          if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
-            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" controller "" "http"
+          # controller kubeconfig points to local api server
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
 
+          # generate kubeconfig for K8s components in TP to access api servers in RP
+          if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
             serverCount=${#RESOURCE_SERVERS[@]}
             for (( pos=0; pos<${serverCount}; pos++ ));
             do
+              # generate kubeconfig for scheduler in TP to access api servers in RP
               kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVERS[${pos}]}" "${API_PORT}" resource-provider-scheduler "" "http"
               ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-scheduler.kubeconfig" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
               ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
+
+              # generate kubeconfig for controllers in TP to access api servers in RP
+              kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVERS[${pos}]}" "${API_PORT}" resource-provider-controller "" "http"
+              ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-controller.kubeconfig" "${CERT_DIR}/resource-provider-controller${pos}.kubeconfig"
+              ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-controller${pos}.kubeconfig"
             done
-          else
-            kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
           fi
 
           # generate kubelet/kubeproxy certs at TP as we use same cert for the entire cluster
@@ -515,7 +520,7 @@ function kube::common::start_controller_manager {
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
       # scale out resource partition
       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-        KUBE_CONTROLLERS="nodelifecycle"
+        KUBE_CONTROLLERS="daemonset,nodelifecycle,ttl"
 
         ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
           --v="${LOG_LEVEL}" \
@@ -538,7 +543,18 @@ function kube::common::start_controller_manager {
           --cert-dir="${CERT_DIR}" \
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
       else
-        KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam"
+        KUBE_CONTROLLERS="*,-daemonset,-nodelifecycle,-nodeipam,-ttl"
+
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
+        serverCount=${#RESOURCE_SERVERS[@]}
+        for (( pos=0; pos<${serverCount}; pos++ ));
+        do
+          RESOURCE_PROVIDER_KUBECONFIG_FLAGS="${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}${CERT_DIR}/resource-provider-controller${pos}.kubeconfig,"
+        done
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS=${RESOURCE_PROVIDER_KUBECONFIG_FLAGS::-1}
+
+        echo RESOURCE_PROVIDER_KUBECONFIG_FLAGS for new controller commandline --resource-providers
+        echo ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}
 
         ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
           --v="${LOG_LEVEL}" \
@@ -555,6 +571,7 @@ function kube::common::start_controller_manager {
           --feature-gates="${FEATURE_GATES}" \
           "${cloud_config_arg[@]}" \
           --kubeconfig "${kubeconfigfilepaths}" \
+          ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS} \
           --use-service-account-credentials \
           --controllers="${KUBE_CONTROLLERS}" \
           --leader-elect=false \
