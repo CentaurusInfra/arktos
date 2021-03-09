@@ -58,6 +58,7 @@ export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
+export TENANT_SERVERS_KUBELET=http://[TP1_IP]:8080,<http://[TP2_IP]:8080>  # this is a temp solution before kubelet is ready to use TENANT_SERVER 
 ```
 
 1. Run ./hack/arktos-up-scale-out-poc.sh

@@ -45,7 +45,7 @@ fi
 
 if [[ -z "${RESOURCE_SERVER}" ]]; then
   if ! [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-    echo ERROR: Please set RESOURCE_SERVER for in tenant partition for RP. For example: RESOURCE_SERVER=192.168.0.2 or RESOURCE_SERVER=192.168.0.2,192.168.10.123
+    echo ERROR: Please set RESOURCE_SERVER in tenant partition for RP. For example: RESOURCE_SERVER=192.168.0.2 or RESOURCE_SERVER=192.168.0.2,192.168.10.123
     exit 1
   fi
 else
@@ -54,8 +54,17 @@ fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
-# for POC, the kubelet_flags is used for the new temporary kubelet commandline args
-KUBELET_FLAGS="--tenant-servers=http://172.30.0.148:8080,http://172.30.0.24:8080"
+
+TENANT_SERVERS_KUBELET=${TENANT_SERVERS_KUBELET:-}
+if [[ -z "${TENANT_SERVERS_KUBELET}" ]]; then
+  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+    # for POC, the kubelet_flags is used for the new temporary kubelet commandline args
+    echo ERROR: Please set TENANT_SERVERS_KUBELET in resource parition for TP. For example: TENANT_SERVERS_KUBELET=http://192.168.0.2:8080,http://192.168.0.5:8080
+    exit 1
+  fi
+else
+  KUBELET_FLAGS="--tenant-servers=${TENANT_SERVERS_KUBELET}"
+fi
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
