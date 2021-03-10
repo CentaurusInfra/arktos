@@ -117,7 +117,7 @@ func (tc *Controller) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (tc *Controller) addJob(obj interface{}, rpId string) {
+func (tc *Controller) addJob(obj interface{}) {
 	job := obj.(*batch.Job)
 	klog.V(4).Infof("Adding job %s/%s", job.Namespace, job.Name)
 
@@ -126,7 +126,7 @@ func (tc *Controller) addJob(obj interface{}, rpId string) {
 	}
 }
 
-func (tc *Controller) updateJob(old, cur interface{}, rpId string) {
+func (tc *Controller) updateJob(old, cur interface{}) {
 	job := cur.(*batch.Job)
 	klog.V(4).Infof("Updating job %s/%s", job.Namespace, job.Name)
 

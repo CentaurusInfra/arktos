@@ -220,19 +220,19 @@ func (c *Controller) updateSpecLocked() error {
 	return c.openAPIService.UpdateSpec(mergeSpecs(c.staticSpec, crdSpecs...))
 }
 
-func (c *Controller) addCustomResourceDefinition(obj interface{}, rpId string) {
+func (c *Controller) addCustomResourceDefinition(obj interface{}) {
 	castObj := obj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Adding customresourcedefinition %s", castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *Controller) updateCustomResourceDefinition(oldObj, newObj interface{}, rpId string) {
+func (c *Controller) updateCustomResourceDefinition(oldObj, newObj interface{}) {
 	castNewObj := newObj.(*apiextensions.CustomResourceDefinition)
 	klog.V(4).Infof("Updating customresourcedefinition %s", castNewObj.Name)
 	c.enqueue(castNewObj)
 }
 
-func (c *Controller) deleteCustomResourceDefinition(obj interface{}, rpId string) {
+func (c *Controller) deleteCustomResourceDefinition(obj interface{}) {
 	castObj, ok := obj.(*apiextensions.CustomResourceDefinition)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

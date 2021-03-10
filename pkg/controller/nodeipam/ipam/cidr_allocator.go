@@ -87,9 +87,9 @@ type CIDRAllocator interface {
 	// AllocateOrOccupyCIDR looks at the given node, assigns it a valid
 	// CIDR if it doesn't currently have one or mark the CIDR as used if
 	// the node already have one.
-	AllocateOrOccupyCIDR(node *v1.Node, rpId string) error
+	AllocateOrOccupyCIDR(node *v1.Node) error
 	// ReleaseCIDR releases the CIDR of the removed node
-	ReleaseCIDR(node *v1.Node, rpId string) error
+	ReleaseCIDR(node *v1.Node) error
 	// Run starts all the working logic of the allocator.
 	Run(stopCh <-chan struct{})
 }

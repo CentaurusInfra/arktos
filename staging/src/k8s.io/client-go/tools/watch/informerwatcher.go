@@ -110,19 +110,19 @@ func NewIndexerInformerWatcher(lw cache.ListerWatcher, objType runtime.Object) (
 	e := newEventProcessor(ch)
 
 	indexer, informer := cache.NewIndexerInformer(lw, objType, 0, cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			e.push(watch.Event{
 				Type:   watch.Added,
 				Object: obj.(runtime.Object),
 			})
 		},
-		UpdateFunc: func(old, new interface{}, rpId string) {
+		UpdateFunc: func(old, new interface{}) {
 			e.push(watch.Event{
 				Type:   watch.Modified,
 				Object: new.(runtime.Object),
 			})
 		},
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			staleObj, stale := obj.(cache.DeletedFinalStateUnknown)
 			if stale {
 				// We have no means of passing the additional information down using

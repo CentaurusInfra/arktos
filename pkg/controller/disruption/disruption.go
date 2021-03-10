@@ -350,26 +350,26 @@ func (dc *DisruptionController) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (dc *DisruptionController) addDb(obj interface{}, rpId string) {
+func (dc *DisruptionController) addDb(obj interface{}) {
 	pdb := obj.(*policy.PodDisruptionBudget)
 	klog.V(4).Infof("add DB %q", pdb.Name)
 	dc.enqueuePdb(pdb)
 }
 
-func (dc *DisruptionController) updateDb(old, cur interface{}, rpId string) {
+func (dc *DisruptionController) updateDb(old, cur interface{}) {
 	// TODO(mml) ignore updates where 'old' is equivalent to 'cur'.
 	pdb := cur.(*policy.PodDisruptionBudget)
 	klog.V(4).Infof("update DB %q", pdb.Name)
 	dc.enqueuePdb(pdb)
 }
 
-func (dc *DisruptionController) removeDb(obj interface{}, rpId string) {
+func (dc *DisruptionController) removeDb(obj interface{}) {
 	pdb := obj.(*policy.PodDisruptionBudget)
 	klog.V(4).Infof("remove DB %q", pdb.Name)
 	dc.enqueuePdb(pdb)
 }
 
-func (dc *DisruptionController) addPod(obj interface{}, rpId string) {
+func (dc *DisruptionController) addPod(obj interface{}) {
 	pod := obj.(*v1.Pod)
 	klog.V(4).Infof("addPod called on pod %q", pod.Name)
 	pdb := dc.getPdbForPod(pod)
@@ -381,7 +381,7 @@ func (dc *DisruptionController) addPod(obj interface{}, rpId string) {
 	dc.enqueuePdb(pdb)
 }
 
-func (dc *DisruptionController) updatePod(old, cur interface{}, rpId string) {
+func (dc *DisruptionController) updatePod(old, cur interface{}) {
 	pod := cur.(*v1.Pod)
 	klog.V(4).Infof("updatePod called on pod %q", pod.Name)
 	pdb := dc.getPdbForPod(pod)
@@ -393,7 +393,7 @@ func (dc *DisruptionController) updatePod(old, cur interface{}, rpId string) {
 	dc.enqueuePdb(pdb)
 }
 
-func (dc *DisruptionController) deletePod(obj interface{}, rpId string) {
+func (dc *DisruptionController) deletePod(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	// When a delete is dropped, the relist will notice a pod in the store not
 	// in the list, leading to the insertion of a tombstone object which contains

@@ -129,13 +129,13 @@ func NewBackend(c *Config) (audit.Backend, error) {
 	manager.delegates.Store(syncedDelegates{})
 
 	c.Informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			manager.addSink(obj.(*auditregv1alpha1.AuditSink))
 		},
-		UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
+		UpdateFunc: func(oldObj, newObj interface{}) {
 			manager.updateSink(oldObj.(*auditregv1alpha1.AuditSink), newObj.(*auditregv1alpha1.AuditSink))
 		},
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			sink, ok := obj.(*auditregv1alpha1.AuditSink)
 			if !ok {
 				tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -585,11 +585,11 @@ func (az *Cloud) SetInformers(informerFactory informers.SharedInformerFactory) {
 	klog.Infof("Setting up informers for Azure cloud provider")
 	nodeInformer := informerFactory.Core().V1().Nodes().Informer()
 	nodeInformer.AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			node := obj.(*v1.Node)
 			az.updateNodeCaches(nil, node)
 		},
-		UpdateFunc: func(prev, obj interface{}, rpId string) {
+		UpdateFunc: func(prev, obj interface{}) {
 			prevNode := prev.(*v1.Node)
 			newNode := obj.(*v1.Node)
 			if newNode.Labels[v1.LabelZoneFailureDomain] ==
@@ -598,7 +598,7 @@ func (az *Cloud) SetInformers(informerFactory informers.SharedInformerFactory) {
 			}
 			az.updateNodeCaches(prevNode, newNode)
 		},
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			node, isNode := obj.(*v1.Node)
 			// We can get DeletedFinalStateUnknown instead of *v1.Node here
 			// and we need to handle that correctly.

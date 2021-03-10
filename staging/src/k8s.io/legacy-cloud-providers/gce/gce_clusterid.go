@@ -75,7 +75,7 @@ func (g *Cloud) watchClusterID(stop <-chan struct{}) {
 	}
 
 	mapEventHandler := cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			m, ok := obj.(*v1.ConfigMap)
 			if !ok || m == nil {
 				klog.Errorf("Expected v1.ConfigMap, item=%+v, typeIsOk=%v", obj, ok)
@@ -89,7 +89,7 @@ func (g *Cloud) watchClusterID(stop <-chan struct{}) {
 			klog.V(4).Infof("Observed new configmap for clusteriD: %v, %v; setting local values", m.Name, m.Data)
 			g.ClusterID.update(m)
 		},
-		UpdateFunc: func(old, cur interface{}, rpId string) {
+		UpdateFunc: func(old, cur interface{}) {
 			m, ok := cur.(*v1.ConfigMap)
 			if !ok || m == nil {
 				klog.Errorf("Expected v1.ConfigMap, item=%+v, typeIsOk=%v", cur, ok)

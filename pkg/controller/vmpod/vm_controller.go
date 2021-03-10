@@ -55,7 +55,7 @@ func NewVMPod(kubeClient clientset.Interface, podInformer coreinformers.PodInfor
 	return vmc
 }
 
-func (vmc *VMPodController) updatePod(old, cur interface{}, rpId string) {
+func (vmc *VMPodController) updatePod(old, cur interface{}) {
 	newPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 

@@ -111,11 +111,11 @@ func NewJobController(podInformer coreinformers.PodInformer, jobInformer batchin
 	}
 
 	jobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			jm.enqueueController(obj, true)
 		},
 		UpdateFunc: jm.updateJob,
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			jm.enqueueController(obj, true)
 		},
 	})
@@ -195,12 +195,12 @@ func (jm *JobController) resolveControllerRef(tenant, namespace string, controll
 }
 
 // When a pod is created, enqueue the controller that manages it and update it's expectations.
-func (jm *JobController) addPod(obj interface{}, rpId string) {
+func (jm *JobController) addPod(obj interface{}) {
 	pod := obj.(*v1.Pod)
 	if pod.DeletionTimestamp != nil {
 		// on a restart of the controller controller, it's possible a new pod shows up in a state that
 		// is already pending deletion. Prevent the pod from being a creation observation.
-		jm.deletePod(pod, rpId)
+		jm.deletePod(pod)
 		return
 	}
 
@@ -231,7 +231,7 @@ func (jm *JobController) addPod(obj interface{}, rpId string) {
 // When a pod is updated, figure out what job/s manage it and wake them up.
 // If the labels of the pod have changed we need to awaken both the old
 // and new job. old and cur must be *v1.Pod types.
-func (jm *JobController) updatePod(old, cur interface{}, rpId string) {
+func (jm *JobController) updatePod(old, cur interface{}) {
 	curPod := cur.(*v1.Pod)
 	oldPod := old.(*v1.Pod)
 	if curPod.ResourceVersion == oldPod.ResourceVersion {
@@ -244,7 +244,7 @@ func (jm *JobController) updatePod(old, cur interface{}, rpId string) {
 		// and after such time has passed, the kubelet actually deletes it from the store. We receive an update
 		// for modification of the deletion timestamp and expect an job to create more pods asap, not wait
 		// until the kubelet actually deletes the pod.
-		jm.deletePod(curPod, rpId)
+		jm.deletePod(curPod)
 		return
 	}
 
@@ -283,7 +283,7 @@ func (jm *JobController) updatePod(old, cur interface{}, rpId string) {
 
 // When a pod is deleted, enqueue the job that manages the pod and update its expectations.
 // obj could be an *v1.Pod, or a DeletionFinalStateUnknown marker item.
-func (jm *JobController) deletePod(obj interface{}, rpId string) {
+func (jm *JobController) deletePod(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 
 	// When a delete is dropped, the relist will notice a pod in the store not
@@ -320,7 +320,7 @@ func (jm *JobController) deletePod(obj interface{}, rpId string) {
 	jm.enqueueController(job, true)
 }
 
-func (jm *JobController) updateJob(old, cur interface{}, rpId string) {
+func (jm *JobController) updateJob(old, cur interface{}) {
 	oldJob := old.(*batch.Job)
 	curJob := cur.(*batch.Job)
 

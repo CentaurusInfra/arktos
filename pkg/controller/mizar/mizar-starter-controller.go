@@ -103,7 +103,7 @@ func (c *MizarStarterController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *MizarStarterController) createObj(obj interface{}, rpId string) {
+func (c *MizarStarterController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	c.queue.Add(key)
 }

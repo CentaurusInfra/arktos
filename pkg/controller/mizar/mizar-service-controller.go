@@ -135,7 +135,7 @@ func (c *MizarServiceController) processNextWorkItem() bool {
 	return true
 }
 
-func (c *MizarServiceController) createService(obj interface{}, rpId string) {
+func (c *MizarServiceController) createService(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for service %#v: %v", obj, err))
@@ -144,7 +144,7 @@ func (c *MizarServiceController) createService(obj interface{}, rpId string) {
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
 }
 
-func (c *MizarServiceController) updateService(old, cur interface{}, rpId string) {
+func (c *MizarServiceController) updateService(old, cur interface{}) {
 	new := cur.(*v1.Service)
 	pre := old.(*v1.Service)
 
@@ -160,7 +160,7 @@ func (c *MizarServiceController) updateService(old, cur interface{}, rpId string
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: new.ResourceVersion})
 }
 
-func (c *MizarServiceController) deleteService(obj interface{}, rpId string) {
+func (c *MizarServiceController) deleteService(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for service %#v: %v", obj, err))

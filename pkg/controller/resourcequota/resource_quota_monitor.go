@@ -135,7 +135,7 @@ func (qm *QuotaMonitor) controllerFor(resource schema.GroupVersionResource) (cac
 	// TODO: pass this down
 	clock := clock.RealClock{}
 	handlers := cache.ResourceEventHandlerFuncs{
-		UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
+		UpdateFunc: func(oldObj, newObj interface{}) {
 			// TODO: leaky abstraction!  live w/ it for now, but should pass down an update filter func.
 			// we only want to queue the updates we care about though as too much noise will overwhelm queue.
 			notifyUpdate := false
@@ -159,7 +159,7 @@ func (qm *QuotaMonitor) controllerFor(resource schema.GroupVersionResource) (cac
 				qm.resourceChanges.Add(event)
 			}
 		},
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			// delta fifo may wrap the object in a cache.DeletedFinalStateUnknown, unwrap it
 			if deletedFinalStateUnknown, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 				obj = deletedFinalStateUnknown.Obj

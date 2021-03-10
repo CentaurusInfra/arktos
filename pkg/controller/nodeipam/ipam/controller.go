@@ -171,7 +171,7 @@ func (c *Controller) newSyncer(name string) *nodesync.NodeSync {
 	return nodesync.New(ns, c.adapter, c.adapter, c.config.Mode, name, c.set)
 }
 
-func (c *Controller) onAdd(node *v1.Node, rpId string) error {
+func (c *Controller) onAdd(node *v1.Node) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -188,7 +188,7 @@ func (c *Controller) onAdd(node *v1.Node, rpId string) error {
 	return nil
 }
 
-func (c *Controller) onUpdate(_, node *v1.Node, rpId string) error {
+func (c *Controller) onUpdate(_, node *v1.Node) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -202,7 +202,7 @@ func (c *Controller) onUpdate(_, node *v1.Node, rpId string) error {
 	return nil
 }
 
-func (c *Controller) onDelete(node *v1.Node, rpId string) error {
+func (c *Controller) onDelete(node *v1.Node) error {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 

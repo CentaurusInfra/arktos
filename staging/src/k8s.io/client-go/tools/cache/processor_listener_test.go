@@ -37,7 +37,7 @@ func BenchmarkListener(b *testing.B) {
 	b.SetParallelism(concurrencyLevel)
 	// Preallocate enough space so that benchmark does not run out of it
 	pl := newProcessListener(&ResourceEventHandlerFuncs{
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			swg.Done()
 		},
 	}, 0, 0, time.Now(), 1024*1024)

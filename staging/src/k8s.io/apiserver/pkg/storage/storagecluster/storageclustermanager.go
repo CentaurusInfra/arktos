@@ -130,7 +130,7 @@ func (s *StorageClusterManager) syncClusters() error {
 	return utilerrors.NewAggregate(aggErr)
 }
 
-func (s *StorageClusterManager) addCluster(obj interface{}, rpId string) {
+func (s *StorageClusterManager) addCluster(obj interface{}) {
 	c := obj.(*v1.StorageCluster)
 	if c.DeletionTimestamp != nil {
 		return
@@ -169,7 +169,7 @@ func (s *StorageClusterManager) addCluster(obj interface{}, rpId string) {
 	klog.V(4).Infof("mux released addCluster.")
 }
 
-func (s *StorageClusterManager) updateCluster(old, cur interface{}, rpId string) {
+func (s *StorageClusterManager) updateCluster(old, cur interface{}) {
 	curCluster := cur.(*v1.StorageCluster)
 	oldCluster := old.(*v1.StorageCluster)
 
@@ -217,7 +217,7 @@ func (s *StorageClusterManager) updateCluster(old, cur interface{}, rpId string)
 	}
 }
 
-func (s *StorageClusterManager) deleteCluster(obj interface{}, rpId string) {
+func (s *StorageClusterManager) deleteCluster(obj interface{}) {
 	cluster, ok := obj.(*v1.StorageCluster)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

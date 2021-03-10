@@ -57,7 +57,7 @@ func TestDynamicSharedInformerFactory(t *testing.T) {
 			},
 			handler: func(rcvCh chan<- *unstructured.Unstructured) *cache.ResourceEventHandlerFuncs {
 				return &cache.ResourceEventHandlerFuncs{
-					AddFunc: func(obj interface{}, rpId string) {
+					AddFunc: func(obj interface{}) {
 						rcvCh <- obj.(*unstructured.Unstructured)
 					},
 				}
@@ -80,7 +80,7 @@ func TestDynamicSharedInformerFactory(t *testing.T) {
 			},
 			handler: func(rcvCh chan<- *unstructured.Unstructured) *cache.ResourceEventHandlerFuncs {
 				return &cache.ResourceEventHandlerFuncs{
-					UpdateFunc: func(old, updated interface{}, rpId string) {
+					UpdateFunc: func(old, updated interface{}) {
 						rcvCh <- updated.(*unstructured.Unstructured)
 					},
 				}
@@ -102,7 +102,7 @@ func TestDynamicSharedInformerFactory(t *testing.T) {
 			},
 			handler: func(rcvCh chan<- *unstructured.Unstructured) *cache.ResourceEventHandlerFuncs {
 				return &cache.ResourceEventHandlerFuncs{
-					DeleteFunc: func(obj interface{}, rpId string) {
+					DeleteFunc: func(obj interface{}) {
 						rcvCh <- obj.(*unstructured.Unstructured)
 					},
 				}

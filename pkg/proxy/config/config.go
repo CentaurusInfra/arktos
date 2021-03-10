@@ -106,7 +106,7 @@ func (c *EndpointsConfig) Run(stopCh <-chan struct{}) {
 	}
 }
 
-func (c *EndpointsConfig) handleAddEndpoints(obj interface{}, rpId string) {
+func (c *EndpointsConfig) handleAddEndpoints(obj interface{}) {
 	endpoints, ok := obj.(*v1.Endpoints)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -118,7 +118,7 @@ func (c *EndpointsConfig) handleAddEndpoints(obj interface{}, rpId string) {
 	}
 }
 
-func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}, rpId string) {
+func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}) {
 	oldEndpoints, ok := oldObj.(*v1.Endpoints)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", oldObj))
@@ -135,7 +135,7 @@ func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}, rpId
 	}
 }
 
-func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}, rpId string) {
+func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
 	endpoints, ok := obj.(*v1.Endpoints)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -197,7 +197,7 @@ func (c *ServiceConfig) Run(stopCh <-chan struct{}) {
 	}
 }
 
-func (c *ServiceConfig) handleAddService(obj interface{}, rpId string) {
+func (c *ServiceConfig) handleAddService(obj interface{}) {
 	service, ok := obj.(*v1.Service)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -209,7 +209,7 @@ func (c *ServiceConfig) handleAddService(obj interface{}, rpId string) {
 	}
 }
 
-func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}, rpId string) {
+func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}) {
 	oldService, ok := oldObj.(*v1.Service)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", oldObj))
@@ -226,7 +226,7 @@ func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}, rpId str
 	}
 }
 
-func (c *ServiceConfig) handleDeleteService(obj interface{}, rpId string) {
+func (c *ServiceConfig) handleDeleteService(obj interface{}) {
 	service, ok := obj.(*v1.Service)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

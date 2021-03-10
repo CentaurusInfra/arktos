@@ -191,7 +191,7 @@ func (cnc *CloudNodeController) updateNodeAddress(node *v1.Node, instances cloud
 	}
 }
 
-func (cnc *CloudNodeController) UpdateCloudNode(_, newObj interface{}, rpId string) {
+func (cnc *CloudNodeController) UpdateCloudNode(_, newObj interface{}) {
 	node, ok := newObj.(*v1.Node)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", newObj))
@@ -208,7 +208,7 @@ func (cnc *CloudNodeController) UpdateCloudNode(_, newObj interface{}, rpId stri
 }
 
 // AddCloudNode handles initializing new nodes registered with the cloud taint.
-func (cnc *CloudNodeController) AddCloudNode(obj interface{}, rpId string) {
+func (cnc *CloudNodeController) AddCloudNode(obj interface{}) {
 	node := obj.(*v1.Node)
 
 	cloudTaint := getCloudTaint(node.Spec.Taints)
