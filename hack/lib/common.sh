@@ -232,9 +232,11 @@ function kube::common::generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin system:admin system:masters
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver system:kube-apiserver
 
-    # in scale out poc, generate client certkey for TP components accessing RP api servers
-    if [[ "${IS_SCALE_OUT}" == "true" ]] && [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
-      kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' resource-provider-scheduler  system:kube-scheduler
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
+        # Generate client certkey for TP components accessing RP api servers
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' resource-provider-scheduler  system:kube-scheduler
+      fi
     fi
 
     # Create matching certificates for kube-aggregator
@@ -510,51 +512,79 @@ function kube::common::start_controller_manager {
 
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
 
-    if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-      KUBE_CONTROLLERS="nodelifecycle"
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      # scale out resource partition
+      if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+        KUBE_CONTROLLERS="nodelifecycle"
 
-      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
-        --v="${LOG_LEVEL}" \
-        --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
-        --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
-        --vmodule="${LOG_SPEC}" \
-        --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
-        --root-ca-file="${ROOT_CA_FILE}" \
-        --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
-        --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-        --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
-        ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-        --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-        --feature-gates="${FEATURE_GATES}" \
-        "${cloud_config_arg[@]}" \
-        --kubeconfig "${kubeconfigfilepaths}" \
-        --controllers="${KUBE_CONTROLLERS}" \
-        --leader-elect=false \
-        --cert-dir="${CERT_DIR}" \
-        --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          ${KCM_TENANT_SERVER_KUBECONFIG_FLAG} \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+      else
+        KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam"
+
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          --use-service-account-credentials \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+      fi
     else
-      KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam"
+        # single cluster
+        KUBE_CONTROLLERS="*"
 
-      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
-        --v="${LOG_LEVEL}" \
-        --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
-        --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
-        --vmodule="${LOG_SPEC}" \
-        --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
-        --root-ca-file="${ROOT_CA_FILE}" \
-        --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
-        --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-        --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
-        ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-        --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-        --feature-gates="${FEATURE_GATES}" \
-        "${cloud_config_arg[@]}" \
-        --kubeconfig "${kubeconfigfilepaths}" \
-        --use-service-account-credentials \
-        --controllers="${KUBE_CONTROLLERS}" \
-        --leader-elect=false \
-        --cert-dir="${CERT_DIR}" \
-        --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          --use-service-account-credentials \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
     fi
 
     CTLRMGR_PID=$!
