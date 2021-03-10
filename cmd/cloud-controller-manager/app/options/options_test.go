@@ -59,6 +59,7 @@ func TestDefaultFlags(t *testing.T) {
 			},
 			Debugging: &cmoptions.DebuggingOptions{
 				DebuggingConfiguration: &componentbaseconfig.DebuggingConfiguration{
+					EnableProfiling:           true,
 					EnableContentionProfiling: false,
 				},
 			},
@@ -188,6 +189,7 @@ func TestAddFlags(t *testing.T) {
 			},
 			Debugging: &cmoptions.DebuggingOptions{
 				DebuggingConfiguration: &componentbaseconfig.DebuggingConfiguration{
+					EnableProfiling:           false,
 					EnableContentionProfiling: true,
 				},
 			},

@@ -284,6 +284,10 @@ pluginConfig:
 				HardPodAffinitySymmetricWeight: 1,
 				HealthzBindAddress:             "0.0.0.0:10251",
 				MetricsBindAddress:             "0.0.0.0:10251",
+				DebuggingConfiguration: componentbaseconfig.DebuggingConfiguration{
+					EnableProfiling:           true,
+					EnableContentionProfiling: true,
+				},
 				LeaderElection: kubeschedulerconfig.KubeSchedulerLeaderElectionConfiguration{
 					LeaderElectionConfiguration: componentbaseconfig.LeaderElectionConfiguration{
 						LeaderElect:   true,
@@ -364,6 +368,10 @@ pluginConfig:
 				HardPodAffinitySymmetricWeight: 1,
 				HealthzBindAddress:             "", // defaults empty when not running from config file
 				MetricsBindAddress:             "", // defaults empty when not running from config file
+				DebuggingConfiguration: componentbaseconfig.DebuggingConfiguration{
+					EnableProfiling:           true,
+					EnableContentionProfiling: true,
+				},
 				LeaderElection: kubeschedulerconfig.KubeSchedulerLeaderElectionConfiguration{
 					LeaderElectionConfiguration: componentbaseconfig.LeaderElectionConfiguration{
 						LeaderElect:   true,
@@ -425,6 +433,10 @@ pluginConfig:
 				HardPodAffinitySymmetricWeight: 1,
 				HealthzBindAddress:             "0.0.0.0:10251",
 				MetricsBindAddress:             "0.0.0.0:10251",
+				DebuggingConfiguration: componentbaseconfig.DebuggingConfiguration{
+					EnableProfiling:           true,
+					EnableContentionProfiling: true,
+				},
 				LeaderElection: kubeschedulerconfig.KubeSchedulerLeaderElectionConfiguration{
 					LeaderElectionConfiguration: componentbaseconfig.LeaderElectionConfiguration{
 						LeaderElect:   true,

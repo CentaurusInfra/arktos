@@ -53,10 +53,10 @@ type LeaderElectionConfiguration struct {
 // DebuggingConfiguration holds configuration for Debugging related features.
 type DebuggingConfiguration struct {
 	// enableProfiling enables profiling via web interface host:port/debug/pprof/
-	EnableProfiling bool `json:"enableProfiling"`
+	EnableProfiling *bool `json:"enableProfiling"`
 	// enableContentionProfiling enables lock contention profiling, if
 	// enableProfiling is true.
-	EnableContentionProfiling bool `json:"enableContentionProfiling"`
+	EnableContentionProfiling *bool `json:"enableContentionProfiling"`
 }
 
 // ClientConnectionConfiguration contains details for constructing a client.

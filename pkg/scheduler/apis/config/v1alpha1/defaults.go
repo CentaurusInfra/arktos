@@ -20,7 +20,7 @@ import (
 	"net"
 	"strconv"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
 	kubescedulerconfigv1alpha1 "k8s.io/kube-scheduler/config/v1alpha1"
@@ -102,5 +102,17 @@ func SetDefaults_KubeSchedulerConfiguration(obj *kubescedulerconfigv1alpha1.Kube
 	if obj.BindTimeoutSeconds == nil {
 		defaultBindTimeoutSeconds := int64(600)
 		obj.BindTimeoutSeconds = &defaultBindTimeoutSeconds
+	}
+
+	// Enable profiling by default in the scheduler
+	if obj.EnableProfiling == nil {
+		enableProfiling := true
+		obj.EnableProfiling = &enableProfiling
+	}
+
+	// Enable contention profiling by default if profiling is enabled
+	if *obj.EnableProfiling && obj.EnableContentionProfiling == nil {
+		enableContentionProfiling := true
+		obj.EnableContentionProfiling = &enableContentionProfiling
 	}
 }
