@@ -28,6 +28,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"k8s.io/client-go/datapartition"
@@ -47,6 +48,7 @@ import (
 	"k8s.io/apiserver/pkg/util/term"
 	cacheddiscovery "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/metadata"
 	"k8s.io/client-go/metadata/metadatainformer"
@@ -237,6 +239,26 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		}
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
+		// start client to resource providers
+		if len(c.ResourceProviderClients) > 0 {
+			controllerContext.ResourceProviderClients = make(map[string]clientset.Interface)
+			controllerContext.ResourceProviderNodeInformers = make(map[string]coreinformers.NodeInformer)
+			for i, rpClient := range c.ResourceProviderClients {
+				rpId := "rp" + strconv.Itoa(i)
+				resourceInformerFactory := informers.NewSharedInformerFactory(rpClient, 0)
+				resourceInformerFactory.Start(controllerContext.Stop)
+				controllerContext.ResourceProviderClients[rpId] = rpClient
+				controllerContext.ResourceProviderNodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
+				klog.V(2).Infof("Created the node informer %p from resource provider %s",
+					controllerContext.ResourceProviderNodeInformers[rpId].Informer(), rpId)
+				go controllerContext.ResourceProviderNodeInformers[rpId].Informer().Run(controllerContext.Stop)
+			}
+		} else {
+			// There is no additional resource provider, fall back to single cluster case
+			controllerContext.ResourceProviderNodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+			controllerContext.ResourceProviderNodeInformers["0"] = controllerContext.InformerFactory.Core().V1().Nodes()
+		}
+
 		if err := StartControllers(controllerContext, saTokenControllerInitFunc, NewControllerInitializers(controllerContext.LoopMode), unsecuredMux); err != nil {
 			klog.Fatalf("error starting controllers: %v", err)
 		}
@@ -341,6 +363,12 @@ type ControllerContext struct {
 	// multiple controllers don't get into lock-step and all hammer the apiserver
 	// with list requests simultaneously.
 	ResyncPeriod func() time.Duration
+
+	// Resource provider client map (resourceProviderId->resource client)
+	ResourceProviderClients map[string]clientset.Interface
+
+	// Resource provider node informers map (resourceProviderId->nodeInformer)
+	ResourceProviderNodeInformers map[string]coreinformers.NodeInformer
 }
 
 // IsControllerEnabled checks if the context's controllers enabled or not
