@@ -381,7 +381,7 @@ func (s *ServiceController) syncLoadBalancerIfNeeded(service *v1.Service, key st
 	return op, nil
 }
 
-// Will this work for multiple resource partition clusters?
+// TODO - Will this work for multiple resource partition clusters?
 func (s *ServiceController) ensureLoadBalancer(service *v1.Service) (*v1.LoadBalancerStatus, error) {
 	allNodes := make([]*v1.Node, 0)
 	for _, nodeLister := range s.nodeListers {

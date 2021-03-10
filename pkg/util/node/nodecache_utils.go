@@ -17,8 +17,8 @@ limitations under the License.
 package node
 
 import (
-	"fmt"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -32,13 +32,16 @@ func GetNodeFromNodelisters(nodeListers map[string]corelisters.NodeLister, nodeN
 	for rpId, nodeLister := range nodeListers {
 		node, err := nodeLister.Get(nodeName)
 		if err != nil {
-			// TODO - skip not found error and checking next node lister
+			if errors.IsNotFound(err) {
+				continue
+			}
+			klog.Errorf("Encountered error at GetNodeFromNodelisters, rpId %s. error %v", rpId, err)
 			return nil, "", err
 		}
 		return node, rpId, nil
 	}
 
-	return nil, "", fmt.Errorf("Node listers are empty.")
+	return nil, "", errors.NewNotFound(v1.Resource("node"), nodeName)
 }
 
 func GetNodeListersAndSyncedFromNodeInformers(nodeinformers map[string]coreinformers.NodeInformer) (nodeListers map[string]corelisters.NodeLister, nodeListersSynced map[string]cache.InformerSynced) {

@@ -254,6 +254,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 				go controllerContext.ResourceProviderNodeInformers[rpId].Informer().Run(controllerContext.Stop)
 			}
 		} else {
+			// There is no additional resource provider, fall back to single cluster case
 			controllerContext.ResourceProviderNodeInformers = make(map[string]coreinformers.NodeInformer, 1)
 			controllerContext.ResourceProviderNodeInformers["0"] = controllerContext.InformerFactory.Core().V1().Nodes()
 		}
