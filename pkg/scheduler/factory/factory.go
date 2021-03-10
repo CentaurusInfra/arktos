@@ -129,6 +129,31 @@ type Config struct {
 	SchedulingQueue internalqueue.SchedulingQueue
 }
 
+// AggregateNodeLister enhances the underlying Config with NodeLister behavior
+type AggregateNodeLister Config
+
+// List lists all Nodes
+func (a AggregateNodeLister) List() ([]*v1.Node, error) {
+	count := 0
+	rpNodes := make([][]*v1.Node, len(a.NodeListers))
+	for i, nl := range a.NodeListers {
+		var err error
+		if rpNodes[i], err = nl.List(); err != nil {
+			klog.Warningf("failed to list nodes from RP %d: %v", i, err)
+			continue
+		}
+		count += len(rpNodes[i])
+	}
+
+	// pre-allocate adequate capacity to reduce slice allocation cost in large scale multi-RP env
+	allNodes := make([]*v1.Node, 0, count)
+	for _, nodes := range rpNodes {
+		allNodes = append(allNodes, nodes...)
+	}
+
+	return allNodes, nil
+}
+
 // PodPreemptor has methods needed to delete a pod and to update 'NominatedPod'
 // field of the preemptor pod.
 type PodPreemptor interface {
