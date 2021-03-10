@@ -512,7 +512,6 @@ function kube::common::start_controller_manager {
 
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
 
-    KUBE_CONTROLLERS="*"
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
       # scale out resource partition
       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
