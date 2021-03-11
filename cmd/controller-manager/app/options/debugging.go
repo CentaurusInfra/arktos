@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +26,16 @@ import (
 // DebuggingOptions holds the Debugging options.
 type DebuggingOptions struct {
 	*componentbaseconfig.DebuggingConfiguration
+}
+
+// RecommendedDebuggingOptions returns the currently recommended debugging options.  These are subject to change
+// between releases as we add options and decide which features should be exposed or not by default.
+func RecommendedDebuggingOptions() *DebuggingOptions {
+	return &DebuggingOptions{
+		DebuggingConfiguration: &componentbaseconfig.DebuggingConfiguration{
+			EnableProfiling: true, // profile debugging is cheap to have exposed and standard on kube binaries
+		},
+	}
 }
 
 // AddFlags adds flags related to debugging for controller manager to the specified FlagSet.
