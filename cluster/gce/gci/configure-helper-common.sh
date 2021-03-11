@@ -2408,6 +2408,9 @@ function start-kube-controller-manager {
   fi
 
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
+    sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
+    sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
     echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVER_KUBECONFIGS}"
     params+=" --tenant-server-kubeconfigs=${TENANT_SERVER_KUBECONFIGS}"
   fi

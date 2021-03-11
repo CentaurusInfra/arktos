@@ -80,7 +80,7 @@ function download-tenantpartition-kubeconfig {
 
   echo "Downloading tenant partition kubeconfig file, if it exists"
   (
-    umask 022
+    umask 077
     local -r tmp_tenantpartition_kubeconfig="/tmp/tenant_parition_kubeconfig"
     if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
         -H "X-Google-Metadata-Request: True" \
@@ -88,6 +88,7 @@ function download-tenantpartition-kubeconfig {
         "http://metadata.google.internal/computeMetadata/v1/instance/attributes/tp-${tp_num}"; then
       # only write to the final location if curl succeeds
       mv "${tmp_tenantpartition_kubeconfig}" "${dest}"
+      chmod 755 ${dest}
     else
       echo "== Failed to download required tenant partition config file from metadata server =="
       exit 1
@@ -96,7 +97,7 @@ function download-tenantpartition-kubeconfig {
 }
 
 function download-tenantpartition-kubeconfigs {
-  local tpconfigs_directory="/etc/srv/kubernetes/tp-kubeconfigs"
+  local -r tpconfigs_directory="${KUBE_HOME}/tp-kubeconfigs"
   mkdir -p ${tpconfigs_directory}
 
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
