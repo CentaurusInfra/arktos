@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,10 +54,10 @@ type LeaderElectionConfiguration struct {
 // DebuggingConfiguration holds configuration for Debugging related features.
 type DebuggingConfiguration struct {
 	// enableProfiling enables profiling via web interface host:port/debug/pprof/
-	EnableProfiling bool `json:"enableProfiling"`
+	EnableProfiling *bool `json:"enableProfiling"`
 	// enableContentionProfiling enables lock contention profiling, if
 	// enableProfiling is true.
-	EnableContentionProfiling bool `json:"enableContentionProfiling"`
+	EnableContentionProfiling *bool `json:"enableContentionProfiling"`
 }
 
 // ClientConnectionConfiguration contains details for constructing a client.

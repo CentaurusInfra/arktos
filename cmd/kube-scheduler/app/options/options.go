@@ -42,6 +42,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	cliflag "k8s.io/component-base/cli/flag"
 	componentbaseconfig "k8s.io/component-base/config"
+	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
 	"k8s.io/klog"
 	kubeschedulerconfigv1alpha1 "k8s.io/kube-scheduler/config/v1alpha1"
 	schedulerappconfig "k8s.io/kubernetes/cmd/kube-scheduler/app/config"
@@ -133,6 +134,7 @@ func splitHostIntPort(s string) (string, int, error) {
 
 func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
 	cfgv1alpha1 := kubeschedulerconfigv1alpha1.KubeSchedulerConfiguration{}
+	cfgv1alpha1.DebuggingConfiguration = *configv1alpha1.NewRecommendedDebuggingConfiguration()
 	kubeschedulerscheme.Scheme.Default(&cfgv1alpha1)
 	cfg := kubeschedulerconfig.KubeSchedulerConfiguration{}
 	if err := kubeschedulerscheme.Scheme.Convert(&cfgv1alpha1, &cfg, nil); err != nil {

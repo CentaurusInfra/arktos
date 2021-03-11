@@ -1429,7 +1429,7 @@ global:
 scrape_configs:
   - job_name: prometheus-metrics
     static_configs:
-    - targets: ['127.0.0.1:2379','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
+    - targets: ['127.0.0.1:2382','127.0.0.1:8080','127.0.0.1:10251','127.0.0.1:10252']
 EOF
   nohup ./prometheus --config.file="/tmp/prometheus-metrics.yaml" --web.listen-address=":9090" --web.enable-admin-api > prometheus.log 2>&1 &
 
@@ -1469,7 +1469,7 @@ function start-collect-pprof {
     echo "Collecting kube-apiserver pprof at ${CURRENTTIME}"
     collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
 
-    COMPONENTS_PORTS="2379"
+    COMPONENTS_PORTS="2382"
     COMPONENTS_NAME="etcd"
     echo "Collecting etcd pprof at ${CURRENTTIME}"
     collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
@@ -1516,7 +1516,7 @@ function start-collect-partitionserver-pprof {
     fi
 
     if [[ "${ENABLE_ETCD}" == "true" ]]; then
-      COMPONENTS_PORTS="2379"
+      COMPONENTS_PORTS="2382"
       COMPONENTS_NAME="etcd"
       echo "Collecting etcd pprof at ${CURRENTTIME}"
       collecting-pprof ${COMPONENTS_PORTS} ${COMPONENTS_NAME} 
