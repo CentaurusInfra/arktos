@@ -26,9 +26,11 @@ import (
 	govalidate "github.com/go-openapi/validate"
 	schemaobjectmeta "k8s.io/apiextensions-apiserver/pkg/apiserver/schema/objectmeta"
 
+	"k8s.io/apiextensions-apiserver/pkg/apihelpers"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	genericvalidation "k8s.io/apimachinery/pkg/api/validation"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/sets"
 	utilvalidation "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/validation/field"
@@ -46,10 +48,11 @@ import (
 var (
 	printerColumnDatatypes                = sets.NewString("integer", "number", "string", "boolean", "date")
 	customResourceColumnDefinitionFormats = sets.NewString("int32", "int64", "float", "double", "byte", "date", "date-time", "password")
+	openapiV3Types                        = sets.NewString("string", "number", "integer", "boolean", "array", "object")
 )
 
 // ValidateCustomResourceDefinition statically validates
-func ValidateCustomResourceDefinition(obj *apiextensions.CustomResourceDefinition) field.ErrorList {
+func ValidateCustomResourceDefinition(obj *apiextensions.CustomResourceDefinition, requestGV schema.GroupVersion) field.ErrorList {
 	nameValidationFn := func(name string, prefix bool) []string {
 		ret := genericvalidation.NameIsDNSSubdomain(name, prefix)
 		requiredName := obj.Spec.Names.Plural + "." + obj.Spec.Group
@@ -59,19 +62,57 @@ func ValidateCustomResourceDefinition(obj *apiextensions.CustomResourceDefinitio
 		return ret
 	}
 
+	opts := validationOptions{
+		allowDefaults:                            allowDefaults(requestGV, nil),
+		requireRecognizedConversionReviewVersion: true,
+		requireImmutableNames:                    false,
+		requireOpenAPISchema:                     requireOpenAPISchema(requestGV, nil),
+		requireValidPropertyType:                 requireValidPropertyType(requestGV, nil),
+		requireStructuralSchema:                  requireStructuralSchema(requestGV, nil),
+	}
+
 	allErrs := genericvalidation.ValidateObjectMeta(&obj.ObjectMeta, true, false, nameValidationFn, field.NewPath("metadata"))
-	allErrs = append(allErrs, ValidateCustomResourceDefinitionSpec(&obj.Spec, field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionSpec(&obj.Spec, opts, field.NewPath("spec"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStatus(&obj.Status, field.NewPath("status"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStoredVersions(obj.Status.StoredVersions, obj.Spec.Versions, field.NewPath("status").Child("storedVersions"))...)
+	allErrs = append(allErrs, validateAPIApproval(obj, nil, requestGV)...)
+	allErrs = append(allErrs, validatePreserveUnknownFields(obj, nil, requestGV)...)
 	return allErrs
 }
 
+// validationOptions groups several validation options, to avoid passing multiple bool parameters to methods
+type validationOptions struct {
+	// allowDefaults permits the validation schema to contain default attributes
+	allowDefaults bool
+	// requireRecognizedConversionReviewVersion requires accepted webhook conversion versions to contain a recognized version
+	requireRecognizedConversionReviewVersion bool
+	// requireImmutableNames disables changing spec.names
+	requireImmutableNames bool
+	// requireOpenAPISchema requires an openapi V3 schema be specified
+	requireOpenAPISchema bool
+	// requireValidPropertyType requires property types specified in the validation schema to be valid openapi v3 types
+	requireValidPropertyType bool
+	// requireStructuralSchema indicates that any schemas present must be structural
+	requireStructuralSchema bool
+}
+
 // ValidateCustomResourceDefinitionUpdate statically validates
-func ValidateCustomResourceDefinitionUpdate(obj, oldObj *apiextensions.CustomResourceDefinition) field.ErrorList {
+func ValidateCustomResourceDefinitionUpdate(obj, oldObj *apiextensions.CustomResourceDefinition, requestGV schema.GroupVersion) field.ErrorList {
+	opts := validationOptions{
+		allowDefaults:                            allowDefaults(requestGV, &oldObj.Spec),
+		requireRecognizedConversionReviewVersion: oldObj.Spec.Conversion == nil || hasValidConversionReviewVersionOrEmpty(oldObj.Spec.Conversion.ConversionReviewVersions),
+		requireImmutableNames:                    apiextensions.IsCRDConditionTrue(oldObj, apiextensions.Established),
+		requireOpenAPISchema:                     requireOpenAPISchema(requestGV, &oldObj.Spec),
+		requireValidPropertyType:                 requireValidPropertyType(requestGV, &oldObj.Spec),
+		requireStructuralSchema:                  requireStructuralSchema(requestGV, &oldObj.Spec),
+	}
+
 	allErrs := genericvalidation.ValidateObjectMetaUpdate(&obj.ObjectMeta, &oldObj.ObjectMeta, field.NewPath("metadata"))
-	allErrs = append(allErrs, ValidateCustomResourceDefinitionSpecUpdate(&obj.Spec, &oldObj.Spec, apiextensions.IsCRDConditionTrue(oldObj, apiextensions.Established), field.NewPath("spec"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionSpecUpdate(&obj.Spec, &oldObj.Spec, opts, field.NewPath("spec"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStatus(&obj.Status, field.NewPath("status"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionStoredVersions(obj.Status.StoredVersions, obj.Spec.Versions, field.NewPath("status").Child("storedVersions"))...)
+	allErrs = append(allErrs, validateAPIApproval(obj, oldObj, requestGV)...)
+	allErrs = append(allErrs, validatePreserveUnknownFields(obj, oldObj, requestGV)...)
 	return allErrs
 }
 
@@ -109,10 +150,10 @@ func ValidateUpdateCustomResourceDefinitionStatus(obj, oldObj *apiextensions.Cus
 	return allErrs
 }
 
-// ValidateCustomResourceDefinitionVersion statically validates.
-func ValidateCustomResourceDefinitionVersion(version *apiextensions.CustomResourceDefinitionVersion, fldPath *field.Path, mustBeStructural, statusEnabled, allowDefaults bool) field.ErrorList {
+// validateCustomResourceDefinitionVersion statically validates.
+func validateCustomResourceDefinitionVersion(version *apiextensions.CustomResourceDefinitionVersion, fldPath *field.Path, statusEnabled bool, opts validationOptions) field.ErrorList {
 	allErrs := field.ErrorList{}
-	allErrs = append(allErrs, ValidateCustomResourceDefinitionValidation(version.Schema, mustBeStructural, statusEnabled, allowDefaults, fldPath.Child("schema"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(version.Schema, statusEnabled, opts, fldPath.Child("schema"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSubresources(version.Subresources, fldPath.Child("subresources"))...)
 	for i := range version.AdditionalPrinterColumns {
 		allErrs = append(allErrs, ValidateCustomResourceColumnDefinition(&version.AdditionalPrinterColumns[i], fldPath.Child("additionalPrinterColumns").Index(i))...)
@@ -120,13 +161,7 @@ func ValidateCustomResourceDefinitionVersion(version *apiextensions.CustomResour
 	return allErrs
 }
 
-// ValidateCustomResourceDefinitionSpec statically validates
-func ValidateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefinitionSpec, fldPath *field.Path) field.ErrorList {
-	allowDefaults := utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceDefaulting)
-	return validateCustomResourceDefinitionSpec(spec, true, allowDefaults, fldPath)
-}
-
-func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefinitionSpec, requireRecognizedVersion, allowDefaults bool, fldPath *field.Path) field.ErrorList {
+func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefinitionSpec, opts validationOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if len(spec.Group) == 0 {
@@ -139,10 +174,22 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 
 	allErrs = append(allErrs, validateEnumStrings(fldPath.Child("scope"), string(spec.Scope), []string{string(apiextensions.ClusterScoped), string(apiextensions.TenantScoped), string(apiextensions.NamespaceScoped)}, true)...)
 
-	mustBeStructural := false
+	// enabling pruning requires structural schemas
 	if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == false {
-		mustBeStructural = true
-		// check that either a global schema or versioned schemas are set
+		opts.requireStructuralSchema = true
+	}
+
+	if opts.requireOpenAPISchema {
+		// check that either a global schema or versioned schemas are set in all versions
+		if spec.Validation == nil || spec.Validation.OpenAPIV3Schema == nil {
+			for i, v := range spec.Versions {
+				if v.Schema == nil || v.Schema.OpenAPIV3Schema == nil {
+					allErrs = append(allErrs, field.Required(fldPath.Child("versions").Index(i).Child("schema").Child("openAPIV3Schema"), "schemas are required"))
+				}
+			}
+		}
+	} else if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == false {
+		// check that either a global schema or versioned schemas are set in served versions
 		if spec.Validation == nil || spec.Validation.OpenAPIV3Schema == nil {
 			for i, v := range spec.Versions {
 				schemaPath := fldPath.Child("versions").Index(i).Child("schema", "openAPIV3Schema")
@@ -152,14 +199,14 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 			}
 		}
 	}
-	if allowDefaults && specHasDefaults(spec) {
-		mustBeStructural = true
+	if opts.allowDefaults && specHasDefaults(spec) {
+		opts.requireStructuralSchema = true
 		if spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields == true {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("preserveUnknownFields"), true, "must be false in order to use defaults in the schema"))
 		}
 	}
 	if specHasKubernetesExtensions(spec) {
-		mustBeStructural = true
+		opts.requireStructuralSchema = true
 	}
 
 	storageFlagCount := 0
@@ -178,7 +225,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("versions").Index(i).Child("name"), spec.Versions[i].Name, strings.Join(errs, ",")))
 		}
 		subresources := getSubresourcesForVersion(spec, version.Name)
-		allErrs = append(allErrs, ValidateCustomResourceDefinitionVersion(&version, fldPath.Child("versions").Index(i), mustBeStructural, hasStatusEnabled(subresources), allowDefaults)...)
+		allErrs = append(allErrs, validateCustomResourceDefinitionVersion(&version, fldPath.Child("versions").Index(i), hasStatusEnabled(subresources), opts)...)
 	}
 
 	// The top-level and per-version fields are mutual exclusive
@@ -233,7 +280,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 	}
 
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionNames(&spec.Names, fldPath.Child("names"))...)
-	allErrs = append(allErrs, ValidateCustomResourceDefinitionValidation(spec.Validation, mustBeStructural, hasAnyStatusEnabled(spec), allowDefaults, fldPath.Child("validation"))...)
+	allErrs = append(allErrs, validateCustomResourceDefinitionValidation(spec.Validation, hasAnyStatusEnabled(spec), opts, fldPath.Child("validation"))...)
 	allErrs = append(allErrs, ValidateCustomResourceDefinitionSubresources(spec.Subresources, fldPath.Child("subresources"))...)
 
 	for i := range spec.AdditionalPrinterColumns {
@@ -245,7 +292,7 @@ func validateCustomResourceDefinitionSpec(spec *apiextensions.CustomResourceDefi
 	if (spec.Conversion != nil && spec.Conversion.Strategy != apiextensions.NoneConverter) && (spec.PreserveUnknownFields == nil || *spec.PreserveUnknownFields) {
 		allErrs = append(allErrs, field.Invalid(fldPath.Child("conversion").Child("strategy"), spec.Conversion.Strategy, "must be None if spec.preserveUnknownFields is true"))
 	}
-	allErrs = append(allErrs, validateCustomResourceConversion(spec.Conversion, requireRecognizedVersion, fldPath.Child("conversion"))...)
+	allErrs = append(allErrs, validateCustomResourceConversion(spec.Conversion, opts.requireRecognizedConversionReviewVersion, fldPath.Child("conversion"))...)
 
 	return allErrs
 }
@@ -360,16 +407,11 @@ func validateCustomResourceConversion(conversion *apiextensions.CustomResourceCo
 	return allErrs
 }
 
-// ValidateCustomResourceDefinitionSpecUpdate statically validates
-func ValidateCustomResourceDefinitionSpecUpdate(spec, oldSpec *apiextensions.CustomResourceDefinitionSpec, established bool, fldPath *field.Path) field.ErrorList {
-	requireRecognizedVersion := oldSpec.Conversion == nil || hasValidConversionReviewVersionOrEmpty(oldSpec.Conversion.ConversionReviewVersions)
+// validateCustomResourceDefinitionSpecUpdate statically validates
+func validateCustomResourceDefinitionSpecUpdate(spec, oldSpec *apiextensions.CustomResourceDefinitionSpec, opts validationOptions, fldPath *field.Path) field.ErrorList {
+	allErrs := validateCustomResourceDefinitionSpec(spec, opts, fldPath)
 
-	// find out whether any schema had default before. Then we keep allowing it.
-	allowDefaults := utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceDefaulting) || specHasDefaults(oldSpec)
-
-	allErrs := validateCustomResourceDefinitionSpec(spec, requireRecognizedVersion, allowDefaults, fldPath)
-
-	if established {
+	if opts.requireImmutableNames {
 		// these effect the storage and cannot be changed therefore
 		allErrs = append(allErrs, genericvalidation.ValidateImmutableField(spec.Scope, oldSpec.Scope, fldPath.Child("scope"))...)
 		allErrs = append(allErrs, genericvalidation.ValidateImmutableField(spec.Names.Kind, oldSpec.Names.Kind, fldPath.Child("names", "kind"))...)
@@ -574,8 +616,8 @@ type specStandardValidator interface {
 	withInsideResourceMeta() specStandardValidator
 }
 
-// ValidateCustomResourceDefinitionValidation statically validates
-func ValidateCustomResourceDefinitionValidation(customResourceValidation *apiextensions.CustomResourceValidation, mustBeStructural, statusSubresourceEnabled, allowDefaults bool, fldPath *field.Path) field.ErrorList {
+// validateCustomResourceDefinitionValidation statically validates
+func validateCustomResourceDefinitionValidation(customResourceValidation *apiextensions.CustomResourceValidation, statusSubresourceEnabled bool, opts validationOptions, fldPath *field.Path) field.ErrorList {
 	allErrs := field.ErrorList{}
 
 	if customResourceValidation == nil {
@@ -616,11 +658,12 @@ func ValidateCustomResourceDefinitionValidation(customResourceValidation *apiext
 		}
 
 		openAPIV3Schema := &specStandardValidatorV3{
-			allowDefaults: allowDefaults,
+			allowDefaults:            opts.allowDefaults,
+			requireValidPropertyType: opts.requireValidPropertyType,
 		}
 		allErrs = append(allErrs, ValidateCustomResourceDefinitionOpenAPISchema(schema, fldPath.Child("openAPIV3Schema"), openAPIV3Schema, true)...)
 
-		if mustBeStructural {
+		if opts.requireStructuralSchema {
 			if ss, err := structuralschema.NewStructural(schema); err != nil {
 				// if the generic schema validation did its job, we should never get an error here. Hence, we hide it if there are validation errors already.
 				if len(allErrs) == 0 {
@@ -745,9 +788,10 @@ func ValidateCustomResourceDefinitionOpenAPISchema(schema *apiextensions.JSONSch
 }
 
 type specStandardValidatorV3 struct {
-	allowDefaults          bool
-	disallowDefaultsReason string
-	isInsideResourceMeta   bool
+	allowDefaults            bool
+	disallowDefaultsReason   string
+	isInsideResourceMeta     bool
+	requireValidPropertyType bool
 }
 
 func (v *specStandardValidatorV3) withForbiddenDefaults(reason string) specStandardValidator {
@@ -779,6 +823,10 @@ func (v *specStandardValidatorV3) validate(schema *apiextensions.JSONSchemaProps
 	// WARNING: if anything new is allowed below, NewStructural must be adapted to support it.
 	//
 
+	if v.requireValidPropertyType && len(schema.Type) > 0 && !openapiV3Types.Has(schema.Type) {
+		allErrs = append(allErrs, field.NotSupported(fldPath.Child("type"), schema.Type, openapiV3Types.List()))
+	}
+
 	if schema.Default != nil {
 		if v.allowDefaults {
 			if s, err := structuralschema.NewStructural(schema); err == nil {
@@ -806,9 +854,8 @@ func (v *specStandardValidatorV3) validate(schema *apiextensions.JSONSchemaProps
 
 				// validate the default value with user the provided schema.
 				validator := govalidate.NewSchemaValidator(s.ToGoOpenAPI(), nil, "", strfmt.Default)
-				if err := apiservervalidation.ValidateCustomResource(interface{}(*schema.Default), validator); err != nil {
-					allErrs = append(allErrs, field.Invalid(fldPath.Child("default"), schema.Default, fmt.Sprintf("must validate: %v", err)))
-				}
+
+				allErrs = append(allErrs, apiservervalidation.ValidateCustomResource(fldPath.Child("default"), interface{}(*schema.Default), validator)...)
 			}
 		} else {
 			detail := "must not be set"
@@ -928,6 +975,45 @@ func allowedAtRootSchema(field string) bool {
 		}
 	}
 	return false
+}
+
+// requireOpenAPISchema returns true if the request group version requires a schema
+func requireOpenAPISchema(requestGV schema.GroupVersion, oldCRDSpec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// for backwards compatibility
+		return false
+	}
+	if oldCRDSpec != nil && !allVersionsSpecifyOpenAPISchema(oldCRDSpec) {
+		// don't tighten validation on existing persisted data
+		return false
+	}
+	return true
+}
+func allVersionsSpecifyOpenAPISchema(spec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if spec.Validation != nil && spec.Validation.OpenAPIV3Schema != nil {
+		return true
+	}
+	for _, v := range spec.Versions {
+		if v.Schema == nil || v.Schema.OpenAPIV3Schema == nil {
+			return false
+		}
+	}
+	return true
+}
+
+// allowDefaults returns true if the defaulting feature is enabled and the request group version allows adding defaults
+func allowDefaults(requestGV schema.GroupVersion, oldCRDSpec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if oldCRDSpec != nil && specHasDefaults(oldCRDSpec) {
+		// don't tighten validation on existing persisted data
+		return true
+	}
+	if !utilfeature.DefaultFeatureGate.Enabled(apiextensionsfeatures.CustomResourceDefaulting) {
+		return false
+	}
+	if requestGV == v1beta1.SchemeGroupVersion {
+		return false
+	}
+	return true
 }
 
 func specHasDefaults(spec *apiextensions.CustomResourceDefinitionSpec) bool {
@@ -1089,6 +1175,198 @@ func schemaHasKubernetesExtensions(s *apiextensions.JSONSchemaProps) bool {
 	}
 	for _, d := range s.Dependencies {
 		if schemaHasKubernetesExtensions(d.Schema) {
+			return true
+		}
+	}
+
+	return false
+}
+
+// requireStructuralSchema returns true if schemas specified must be structural
+func requireStructuralSchema(requestGV schema.GroupVersion, oldCRDSpec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// for compatibility
+		return false
+	}
+	if oldCRDSpec != nil && specHasNonStructuralSchema(oldCRDSpec) {
+		// don't tighten validation on existing persisted data
+		return false
+	}
+	return true
+}
+
+func specHasNonStructuralSchema(spec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if spec.Validation != nil && schemaIsNonStructural(spec.Validation.OpenAPIV3Schema) {
+		return true
+	}
+	for _, v := range spec.Versions {
+		if v.Schema != nil && schemaIsNonStructural(v.Schema.OpenAPIV3Schema) {
+			return true
+		}
+	}
+	return false
+}
+func schemaIsNonStructural(schema *apiextensions.JSONSchemaProps) bool {
+	if schema == nil {
+		return false
+	}
+	ss, err := structuralschema.NewStructural(schema)
+	if err != nil {
+		return true
+	}
+	return len(structuralschema.ValidateStructural(ss, nil)) > 0
+}
+
+// requireValidPropertyType returns true if valid openapi v3 types should be required for the given API version
+func requireValidPropertyType(requestGV schema.GroupVersion, oldCRDSpec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// for compatibility
+		return false
+	}
+	if oldCRDSpec != nil && specHasInvalidTypes(oldCRDSpec) {
+		// don't tighten validation on existing persisted data
+		return false
+	}
+	return true
+}
+
+// validateAPIApproval returns a list of errors if the API approval annotation isn't valid
+func validateAPIApproval(newCRD, oldCRD *apiextensions.CustomResourceDefinition, requestGV schema.GroupVersion) field.ErrorList {
+	// check to see if we need confirm API approval for kube group.
+
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// no-op for compatibility with v1beta1
+		return nil
+	}
+	if !apihelpers.IsProtectedCommunityGroup(newCRD.Spec.Group) {
+		// no-op for non-protected groups
+		return nil
+	}
+
+	// default to a state that allows missing values to continue to be missing
+	var oldApprovalState *apihelpers.APIApprovalState
+	if oldCRD != nil {
+		t, _ := apihelpers.GetAPIApprovalState(oldCRD.Annotations)
+		oldApprovalState = &t
+	}
+	newApprovalState, reason := apihelpers.GetAPIApprovalState(newCRD.Annotations)
+
+	// if the approval state hasn't changed, never fail on approval validation
+	// this is allowed so that a v1 client that is simply updating spec and not mutating this value doesn't get rejected.  Imagine a controller controlling a CRD spec.
+	if oldApprovalState != nil && *oldApprovalState == newApprovalState {
+		return nil
+	}
+
+	// in v1, we require valid approval strings
+	switch newApprovalState {
+	case apihelpers.APIApprovalInvalid:
+		return field.ErrorList{field.Invalid(field.NewPath("metadata", "annotations").Key(v1beta1.KubeAPIApprovedAnnotation), newCRD.Annotations[v1beta1.KubeAPIApprovedAnnotation], reason)}
+	case apihelpers.APIApprovalMissing:
+		return field.ErrorList{field.Required(field.NewPath("metadata", "annotations").Key(v1beta1.KubeAPIApprovedAnnotation), reason)}
+	case apihelpers.APIApproved, apihelpers.APIApprovalBypassed:
+		// success
+		return nil
+	default:
+		return field.ErrorList{field.Invalid(field.NewPath("metadata", "annotations").Key(v1beta1.KubeAPIApprovedAnnotation), newCRD.Annotations[v1beta1.KubeAPIApprovedAnnotation], reason)}
+	}
+}
+
+func validatePreserveUnknownFields(crd, oldCRD *apiextensions.CustomResourceDefinition, requestGV schema.GroupVersion) field.ErrorList {
+	if requestGV == v1beta1.SchemeGroupVersion {
+		// no-op for compatibility with v1beta1
+		return nil
+	}
+
+	if oldCRD != nil && oldCRD.Spec.PreserveUnknownFields != nil && *oldCRD.Spec.PreserveUnknownFields {
+		// no-op for compatibility with existing data
+		return nil
+	}
+
+	var errs field.ErrorList
+	if crd != nil && crd.Spec.PreserveUnknownFields != nil && *crd.Spec.PreserveUnknownFields {
+		// disallow changing spec.preserveUnknownFields=false to spec.preserveUnknownFields=true
+		errs = append(errs, field.Invalid(field.NewPath("spec").Child("preserveUnknownFields"), crd.Spec.PreserveUnknownFields, "cannot set to true, set x-preserve-unknown-fields to true in spec.versions[*].schema instead"))
+	}
+	return errs
+}
+
+func specHasInvalidTypes(spec *apiextensions.CustomResourceDefinitionSpec) bool {
+	if spec.Validation != nil && SchemaHasInvalidTypes(spec.Validation.OpenAPIV3Schema) {
+		return true
+	}
+	for _, v := range spec.Versions {
+		if v.Schema != nil && SchemaHasInvalidTypes(v.Schema.OpenAPIV3Schema) {
+			return true
+		}
+	}
+	return false
+}
+
+// SchemaHasInvalidTypes returns true if it contains invalid offending openapi-v3 specification.
+func SchemaHasInvalidTypes(s *apiextensions.JSONSchemaProps) bool {
+	if s == nil {
+		return false
+	}
+
+	if len(s.Type) > 0 && !openapiV3Types.Has(s.Type) {
+		return true
+	}
+
+	if s.Items != nil {
+		if s.Items != nil && SchemaHasInvalidTypes(s.Items.Schema) {
+			return true
+		}
+		for _, s := range s.Items.JSONSchemas {
+			if SchemaHasInvalidTypes(&s) {
+				return true
+			}
+		}
+	}
+	for _, s := range s.AllOf {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	for _, s := range s.AnyOf {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	for _, s := range s.OneOf {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	if SchemaHasInvalidTypes(s.Not) {
+		return true
+	}
+	for _, s := range s.Properties {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	if s.AdditionalProperties != nil {
+		if SchemaHasInvalidTypes(s.AdditionalProperties.Schema) {
+			return true
+		}
+	}
+	for _, s := range s.PatternProperties {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	if s.AdditionalItems != nil {
+		if SchemaHasInvalidTypes(s.AdditionalItems.Schema) {
+			return true
+		}
+	}
+	for _, s := range s.Definitions {
+		if SchemaHasInvalidTypes(&s) {
+			return true
+		}
+	}
+	for _, d := range s.Dependencies {
+		if SchemaHasInvalidTypes(d.Schema) {
 			return true
 		}
 	}
