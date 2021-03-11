@@ -34,7 +34,7 @@ type CacheDebugger struct {
 
 // New creates a CacheDebugger.
 func New(
-	nodeListers []corelisters.NodeLister,
+	nodeListers map[string]corelisters.NodeLister,
 	podLister corelisters.PodLister,
 	cache internalcache.Cache,
 	podQueue internalqueue.SchedulingQueue,

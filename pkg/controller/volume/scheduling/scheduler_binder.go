@@ -104,7 +104,7 @@ type volumeBinder struct {
 	kubeClient  clientset.Interface
 	classLister storagelisters.StorageClassLister
 
-	nodeInformers []coreinformers.NodeInformer
+	nodeInformers map[string]coreinformers.NodeInformer
 	pvcCache      PVCAssumeCache
 	pvCache       PVAssumeCache
 
@@ -119,7 +119,7 @@ type volumeBinder struct {
 // NewVolumeBinder sets up all the caches needed for the scheduler to make volume binding decisions.
 func NewVolumeBinder(
 	kubeClient clientset.Interface,
-	nodeInformers []coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	storageClassInformer storageinformers.StorageClassInformer,

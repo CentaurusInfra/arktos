@@ -44,8 +44,8 @@ type Config struct {
 	SecureServing          *apiserver.SecureServingInfo
 
 	// explictly define node informer from the resource provider client
-	ResourceProviderClients []clientset.Interface
-	NodeInformers           []coreinformers.NodeInformer
+	ResourceProviderClients map[string]clientset.Interface
+	NodeInformers           map[string]coreinformers.NodeInformer
 
 	Client          clientset.Interface
 	InformerFactory informers.SharedInformerFactory

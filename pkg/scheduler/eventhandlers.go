@@ -19,20 +19,20 @@ package scheduler
 
 import (
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"reflect"
-	"strconv"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/tools/cache"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
-func (sched *Scheduler) onPvAdd(obj interface{}, rpId string) {
+func (sched *Scheduler) onPvAdd(obj interface{}) {
 	// Pods created when there are no PVs available will be stuck in
 	// unschedulable queue. But unbound PVs created for static provisioning and
 	// delay binding storage class are skipped in PV controller dynamic
@@ -42,7 +42,7 @@ func (sched *Scheduler) onPvAdd(obj interface{}, rpId string) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onPvUpdate(old, new interface{}, rpId string) {
+func (sched *Scheduler) onPvUpdate(old, new interface{}) {
 	// Scheduler.bindVolumesWorker may fail to update assumed pod volume
 	// bindings due to conflicts if PVs are updated by PV controller or other
 	// parties, then scheduler will add pod back to unschedulable queue. We
@@ -50,15 +50,15 @@ func (sched *Scheduler) onPvUpdate(old, new interface{}, rpId string) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onPvcAdd(obj interface{}, rpId string) {
+func (sched *Scheduler) onPvcAdd(obj interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onPvcUpdate(old, new interface{}, rpId string) {
+func (sched *Scheduler) onPvcUpdate(old, new interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onStorageClassAdd(obj interface{}, rpId string) {
+func (sched *Scheduler) onStorageClassAdd(obj interface{}) {
 	sc, ok := obj.(*storagev1.StorageClass)
 	if !ok {
 		klog.Errorf("cannot convert to *storagev1.StorageClass: %v", obj)
@@ -76,22 +76,28 @@ func (sched *Scheduler) onStorageClassAdd(obj interface{}, rpId string) {
 	}
 }
 
-func (sched *Scheduler) onServiceAdd(obj interface{}, rpId string) {
+func (sched *Scheduler) onServiceAdd(obj interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onServiceUpdate(oldObj interface{}, newObj interface{}, rpId string) {
+func (sched *Scheduler) onServiceUpdate(oldObj interface{}, newObj interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) onServiceDelete(obj interface{}, rpId string) {
+func (sched *Scheduler) onServiceDelete(obj interface{}) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) addNodeToCache(obj interface{}, rpId string) {
+func (sched *Scheduler) addNodeToCache(obj interface{}) {
 	node, ok := obj.(*v1.Node)
 	if !ok {
 		klog.Errorf("cannot convert to *v1.Node: %v", obj)
+		return
+	}
+
+	_, rpId, err := nodeutil.GetNodeFromNodelisters(sched.config.ResourceProviderNodeListers, node.Name)
+	if err != nil {
+		klog.Error("Unable to find resource provider id from node listers")
 		return
 	}
 
@@ -103,7 +109,7 @@ func (sched *Scheduler) addNodeToCache(obj interface{}, rpId string) {
 	sched.config.SchedulingQueue.MoveAllToActiveQueue()
 }
 
-func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}, rpId string) {
+func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 	oldNode, ok := oldObj.(*v1.Node)
 	if !ok {
 		klog.Errorf("cannot convert oldObj to *v1.Node: %v", oldObj)
@@ -115,7 +121,7 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}, rpId strin
 		return
 	}
 
-	if err := sched.config.SchedulerCache.UpdateNode(oldNode, newNode, rpId); err != nil {
+	if err := sched.config.SchedulerCache.UpdateNode(oldNode, newNode, sched.config.ResourceProviderNodeListers); err != nil {
 		klog.Errorf("scheduler cache UpdateNode failed: %v", err)
 	}
 
@@ -129,7 +135,7 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}, rpId strin
 	}
 }
 
-func (sched *Scheduler) deleteNodeFromCache(obj interface{}, rpId string) {
+func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 	var node *v1.Node
 	switch t := obj.(type) {
 	case *v1.Node:
@@ -154,13 +160,13 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}, rpId string) {
 		klog.Errorf("scheduler cache RemoveNode failed: %v", err)
 	}
 }
-func (sched *Scheduler) addPodToSchedulingQueue(obj interface{}, rpId string) {
+func (sched *Scheduler) addPodToSchedulingQueue(obj interface{}) {
 	if err := sched.config.SchedulingQueue.Add(obj.(*v1.Pod)); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to queue %T: %v", obj, err))
 	}
 }
 
-func (sched *Scheduler) updatePodInSchedulingQueue(oldObj, newObj interface{}, rpId string) {
+func (sched *Scheduler) updatePodInSchedulingQueue(oldObj, newObj interface{}) {
 	pod := newObj.(*v1.Pod)
 	if sched.skipPodUpdate(pod) {
 		return
@@ -170,7 +176,7 @@ func (sched *Scheduler) updatePodInSchedulingQueue(oldObj, newObj interface{}, r
 	}
 }
 
-func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}, rpId string) {
+func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}) {
 	var pod *v1.Pod
 	switch t := obj.(type) {
 	case *v1.Pod:
@@ -195,7 +201,7 @@ func (sched *Scheduler) deletePodFromSchedulingQueue(obj interface{}, rpId strin
 	}
 }
 
-func (sched *Scheduler) addPodToCache(obj interface{}, rpId string) {
+func (sched *Scheduler) addPodToCache(obj interface{}) {
 	pod, ok := obj.(*v1.Pod)
 	if !ok {
 		klog.Errorf("cannot convert to *v1.Pod: %v", obj)
@@ -210,7 +216,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}, rpId string) {
 	sched.config.SchedulingQueue.AssignedPodAdded(pod)
 }
 
-func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}, rpId string) {
+func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}) {
 	oldPod, ok := oldObj.(*v1.Pod)
 	if !ok {
 		klog.Errorf("cannot convert oldObj to *v1.Pod: %v", oldObj)
@@ -258,7 +264,7 @@ func (sched *Scheduler) updatePodInCache(oldObj, newObj interface{}, rpId string
 	sched.config.SchedulingQueue.AssignedPodUpdated(newPod)
 }
 
-func (sched *Scheduler) deletePodFromCache(obj interface{}, rpId string) {
+func (sched *Scheduler) deletePodFromCache(obj interface{}) {
 	var pod *v1.Pod
 	switch t := obj.(type) {
 	case *v1.Pod:
@@ -352,7 +358,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 func AddAllEventHandlers(
 	sched *Scheduler,
 	schedulerName string,
-	nodeInformers []coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
@@ -416,7 +422,6 @@ func AddAllEventHandlers(
 				AddFunc:            sched.addNodeToCache,
 				UpdateFunc:         sched.updateNodeInCache,
 				DeleteFunc:         sched.deleteNodeFromCache,
-				ResourceProviderId: "rp" + strconv.Itoa(i),
 			},
 		)
 		klog.V(3).Infof("Add event handler to node informer %d %p", i, nodeInformers[i].Informer())

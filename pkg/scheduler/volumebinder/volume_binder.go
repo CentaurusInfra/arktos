@@ -35,7 +35,7 @@ type VolumeBinder struct {
 // NewVolumeBinder sets up the volume binding library and binding queue
 func NewVolumeBinder(
 	client clientset.Interface,
-	nodeInformers []coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	storageClassInformer storageinformers.StorageClassInformer,

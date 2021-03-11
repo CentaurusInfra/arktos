@@ -257,29 +257,29 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
 
 	// if the resource provider kubeconfig is not set, default to the local cluster
-	//
 	if c.ComponentConfig.ResourceProviderKubeConfig == "" {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
-		c.NodeInformers[0] = c.InformerFactory.Core().V1().Nodes()
+		c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
 		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
 		if !existed {
 			klog.Fatalf("ResourceProvider kubeConfig is not valid. value=%s", c.ComponentConfig.ResourceProviderKubeConfig)
 		}
 
-		c.ResourceProviderClients = make([]clientset.Interface, len(kubeConfigFiles))
-		c.NodeInformers = make([]coreinformers.NodeInformer, len(kubeConfigFiles))
+		c.ResourceProviderClients = make(map[string]clientset.Interface, len(kubeConfigFiles))
+		c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
 		for i, kubeConfigFile := range kubeConfigFiles {
-			c.ResourceProviderClients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+			rpId := "rp" + strconv.Itoa(i)
+			c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
 			if err != nil {
 				klog.Error("failed to create resource provider rest client, error: %v", err)
 				return nil, err
 			}
 
-			resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[i], 0)
-			c.NodeInformers[i] = resourceInformerFactory.Core().V1().Nodes()
+			resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[rpId], 0)
+			c.NodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
 			klog.V(2).Infof("Created the node informer %p from resourceProvider kubeConfig %d %s",
-				c.NodeInformers[i].Informer(), i, kubeConfigFile)
+				c.NodeInformers[rpId].Informer(), i, kubeConfigFile)
 		}
 	}
 

@@ -19,6 +19,8 @@ package cache
 
 import (
 	"fmt"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"sync"
 	"time"
 
@@ -554,13 +556,17 @@ func (cache *schedulerCache) AddNode(node *v1.Node, resourceProviderId string) e
 	return n.info.SetNode(node)
 }
 
-func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node, resourceProviderId string) error {
+func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[newNode.Name]
 	if !ok {
 		nodeInfo := schedulernodeinfo.NewNodeInfo()
+		_, resourceProviderId, err := nodeutil.GetNodeFromNodelisters(nodeListers, newNode.Name)
+		if err != nil {
+			return fmt.Errorf("Error getting resource provider id from node listers. Error %v", err)
+		}
 		nodeInfo.SetResourceProviderId(resourceProviderId)
 		n = newNodeInfoListItem(nodeInfo)
 		cache.nodes[newNode.Name] = n

@@ -21,7 +21,6 @@ package factory
 
 import (
 	"fmt"
-	"strconv"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -85,6 +84,9 @@ type Config struct {
 	// It is expected that changes made via SchedulerCache will be observed
 	// by NodeLister and Algorithm.
 	SchedulerCache internalcache.Cache
+
+	// ResourceProviderNodeListers is used to find node origin
+	ResourceProviderNodeListers map[string]corelisters.NodeLister
 
 	NodeListers []algorithm.NodeLister
 	Algorithm   core.ScheduleAlgorithm
@@ -175,7 +177,7 @@ type Configurator interface {
 	GetPredicates(predicateKeys sets.String) (map[string]predicates.FitPredicate, error)
 
 	// Needs to be exposed for things like integration tests where we want to make fake nodes.
-	GetNodeListers() []corelisters.NodeLister
+	GetNodeListers() map[string]corelisters.NodeLister
 	// Exposed for testing
 	GetClient() clientset.Interface
 	// Exposed for testing
@@ -195,7 +197,7 @@ type configFactory struct {
 	// a means to list all known scheduled pods and pods assumed to have been scheduled.
 	podLister algorithm.PodLister
 	// a means to list all nodes from multiple resource partition
-	nodeListers []corelisters.NodeLister
+	nodeListers map[string]corelisters.NodeLister
 	// a means to list all PersistentVolumes
 	pVLister corelisters.PersistentVolumeLister
 	// a means to list all PersistentVolumeClaims
@@ -254,7 +256,7 @@ type configFactory struct {
 type ConfigFactoryArgs struct {
 	SchedulerName                  string
 	Client                         clientset.Interface
-	NodeInformers                  []coreinformers.NodeInformer
+	NodeInformers                  map[string]coreinformers.NodeInformer
 	PodInformer                    coreinformers.PodInformer
 	PvInformer                     coreinformers.PersistentVolumeInformer
 	PvcInformer                    coreinformers.PersistentVolumeClaimInformer
@@ -293,7 +295,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 	if args.StorageClassInformer != nil {
 		storageClassLister = args.StorageClassInformer.Lister()
 	}
-	nodeListers := make([]corelisters.NodeLister, len(args.NodeInformers))
+	nodeListers := make(map[string]corelisters.NodeLister, len(args.NodeInformers))
 	for i := range args.NodeInformers {
 		nodeListers[i] = args.NodeInformers[i].Lister()
 	}
@@ -345,7 +347,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 }
 
 // GetNodeStore provides the cache to the nodes, mostly internal use, but may also be called by mock-tests.
-func (c *configFactory) GetNodeListers() []corelisters.NodeLister {
+func (c *configFactory) GetNodeListers() map[string]corelisters.NodeLister {
 	return c.nodeListers
 }
 
@@ -509,6 +511,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 	algorithmNodeLister := convertToAlgorithmNodeListers(c.nodeListers)
 	return &Config{
 		SchedulerCache: c.schedulerCache,
+		ResourceProviderNodeListers: c.nodeListers,
 		// The scheduler only needs to consider schedulable nodes.
 		NodeListers:         algorithmNodeLister,
 		Algorithm:           algo,
@@ -592,7 +595,7 @@ func (c *configFactory) getPluginArgs() (*PluginFactoryArgs, error) {
 	algorithmNodeLister := convertToAlgorithmNodeListers(c.nodeListers)
 	cacheNodeInfos := make(map[string]corelisters.NodeLister, len(c.nodeListers))
 	for i := range c.nodeListers {
-		cacheNodeInfos[strconv.Itoa(i)] = c.nodeListers[i]
+		cacheNodeInfos[i] = c.nodeListers[i]
 	}
 
 	return &PluginFactoryArgs{
@@ -811,10 +814,12 @@ func (p *podPreemptor) RemoveNominatedNodeName(pod *v1.Pod) error {
 	return p.SetNominatedNodeName(pod, "")
 }
 
-func convertToAlgorithmNodeListers(nodelisters []corelisters.NodeLister) []algorithm.NodeLister {
+func convertToAlgorithmNodeListers(nodelisters map[string]corelisters.NodeLister) []algorithm.NodeLister {
 	algorithmNodeLister := make([]algorithm.NodeLister, len(nodelisters))
-	for i := range nodelisters {
-		algorithmNodeLister[i] = &nodeLister{nodelisters[i]}
+	index := 0
+	for _, nodelister := range nodelisters {
+		algorithmNodeLister[index] = &nodeLister{nodelister}
+		index++
 	}
 
 	return algorithmNodeLister
