@@ -110,7 +110,7 @@ func (c *Publisher) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *Publisher) configMapDeleted(obj interface{}, rpId string) {
+func (c *Publisher) configMapDeleted(obj interface{}) {
 	cm, err := convertToCM(obj)
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -122,7 +122,7 @@ func (c *Publisher) configMapDeleted(obj interface{}, rpId string) {
 	c.queue.Add(cm.Namespace)
 }
 
-func (c *Publisher) configMapUpdated(_, newObj interface{}, rpId string) {
+func (c *Publisher) configMapUpdated(_, newObj interface{}) {
 	cm, err := convertToCM(newObj)
 	if err != nil {
 		utilruntime.HandleError(err)
@@ -134,12 +134,12 @@ func (c *Publisher) configMapUpdated(_, newObj interface{}, rpId string) {
 	c.queue.Add(cm.Namespace)
 }
 
-func (c *Publisher) namespaceAdded(obj interface{}, rpId string) {
+func (c *Publisher) namespaceAdded(obj interface{}) {
 	namespace := obj.(*v1.Namespace)
 	c.queue.Add(namespace.Name)
 }
 
-func (c *Publisher) namespaceUpdated(oldObj interface{}, newObj interface{}, rpId string) {
+func (c *Publisher) namespaceUpdated(oldObj interface{}, newObj interface{}) {
 	newNamespace := newObj.(*v1.Namespace)
 	if newNamespace.Status.Phase != v1.NamespaceActive {
 		return

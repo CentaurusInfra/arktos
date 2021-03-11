@@ -105,13 +105,13 @@ func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (c *MizarNodeController) createObj(obj interface{}, rpId string) {
+func (c *MizarNodeController) createObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
 }
 
 // When an object is updated.
-func (c *MizarNodeController) updateObj(old, cur interface{}, rpId string) {
+func (c *MizarNodeController) updateObj(old, cur interface{}) {
 	curObj := cur.(*v1.Node)
 	oldObj := old.(*v1.Node)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {
@@ -128,7 +128,7 @@ func (c *MizarNodeController) updateObj(old, cur interface{}, rpId string) {
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: curObj.ResourceVersion})
 }
 
-func (c *MizarNodeController) deleteObj(obj interface{}, rpId string) {
+func (c *MizarNodeController) deleteObj(obj interface{}) {
 	key, _ := controller.KeyFunc(obj)
 	klog.Infof("%v deleted. key %s.", controllerForMizarNode, key)
 	c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Delete})

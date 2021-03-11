@@ -54,9 +54,9 @@ func NewMutatingWebhookConfigurationManager(f informers.SharedInformerFactory) g
 
 	// On any change, rebuild the config
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    func(_ interface{}, rpId string) { manager.updateConfiguration() },
-		UpdateFunc: func(_, _ interface{}, rpId string) { manager.updateConfiguration() },
-		DeleteFunc: func(_ interface{}, rpId string) { manager.updateConfiguration() },
+		AddFunc:    func(_ interface{}) { manager.updateConfiguration() },
+		UpdateFunc: func(_, _ interface{}) { manager.updateConfiguration() },
+		DeleteFunc: func(_ interface{}) { manager.updateConfiguration() },
 	})
 
 	return manager

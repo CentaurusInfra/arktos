@@ -317,7 +317,7 @@ func (c *CRDFinalizer) enqueue(obj *apiextensions.CustomResourceDefinition) {
 	c.queue.Add(key)
 }
 
-func (c *CRDFinalizer) addCustomResourceDefinition(obj interface{}, rpId string) {
+func (c *CRDFinalizer) addCustomResourceDefinition(obj interface{}) {
 	castObj := obj.(*apiextensions.CustomResourceDefinition)
 	// only queue deleted things
 	if !castObj.DeletionTimestamp.IsZero() && apiextensions.CRDHasFinalizer(castObj, apiextensions.CustomResourceCleanupFinalizer) {
@@ -325,7 +325,7 @@ func (c *CRDFinalizer) addCustomResourceDefinition(obj interface{}, rpId string)
 	}
 }
 
-func (c *CRDFinalizer) updateCustomResourceDefinition(oldObj, newObj interface{}, rpId string) {
+func (c *CRDFinalizer) updateCustomResourceDefinition(oldObj, newObj interface{}) {
 	oldCRD := oldObj.(*apiextensions.CustomResourceDefinition)
 	newCRD := newObj.(*apiextensions.CustomResourceDefinition)
 	// only queue deleted things that haven't been finalized by us

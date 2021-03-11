@@ -128,7 +128,7 @@ func (ttlc *TTLController) Run(workers int, stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (ttlc *TTLController) addNode(obj interface{}, rpId string) {
+func (ttlc *TTLController) addNode(obj interface{}) {
 	node, ok := obj.(*v1.Node)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", obj))
@@ -147,7 +147,7 @@ func (ttlc *TTLController) addNode(obj interface{}, rpId string) {
 	ttlc.enqueueNode(node)
 }
 
-func (ttlc *TTLController) updateNode(_, newObj interface{}, rpId string) {
+func (ttlc *TTLController) updateNode(_, newObj interface{}) {
 	node, ok := newObj.(*v1.Node)
 	if !ok {
 		utilruntime.HandleError(fmt.Errorf("unexpected object type: %v", newObj))
@@ -161,7 +161,7 @@ func (ttlc *TTLController) updateNode(_, newObj interface{}, rpId string) {
 	ttlc.enqueueNode(node)
 }
 
-func (ttlc *TTLController) deleteNode(obj interface{}, rpId string) {
+func (ttlc *TTLController) deleteNode(obj interface{}) {
 	_, ok := obj.(*v1.Node)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

@@ -116,7 +116,7 @@ func NewController(
 	// Set up an event handler for when Foo resources change
 	fooInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.enqueueFoo,
-		UpdateFunc: func(old, new interface{}, rpId string) {
+		UpdateFunc: func(old, new interface{}) {
 			controller.enqueueFoo(new)
 		},
 	})
@@ -128,7 +128,7 @@ func NewController(
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
 	deploymentInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: controller.handleObject,
-		UpdateFunc: func(old, new interface{}, rpId string) {
+		UpdateFunc: func(old, new interface{}) {
 			newDepl := new.(*appsv1.Deployment)
 			oldDepl := old.(*appsv1.Deployment)
 			if newDepl.ResourceVersion == oldDepl.ResourceVersion {
@@ -136,7 +136,7 @@ func NewController(
 				// Two different versions of the same Deployment will always have different RVs.
 				return
 			}
-			controller.handleObject(new, rpId)
+			controller.handleObject(new)
 		},
 		DeleteFunc: controller.handleObject,
 	})
@@ -335,7 +335,7 @@ func (c *Controller) updateFooStatus(foo *samplev1alpha1.Foo, deployment *appsv1
 // enqueueFoo takes a Foo resource and converts it into a namespace/name
 // string which is then put onto the work queue. This method should *not* be
 // passed resources of any type other than Foo.
-func (c *Controller) enqueueFoo(obj interface{}, rpId string) {
+func (c *Controller) enqueueFoo(obj interface{}) {
 	var key string
 	var err error
 	if key, err = cache.MetaNamespaceKeyFunc(obj); err != nil {
@@ -350,7 +350,7 @@ func (c *Controller) enqueueFoo(obj interface{}, rpId string) {
 // objects metadata.ownerReferences field for an appropriate OwnerReference.
 // It then enqueues that Foo resource to be processed. If the object does not
 // have an appropriate OwnerReference, it will simply be skipped.
-func (c *Controller) handleObject(obj interface{}, rpId string) {
+func (c *Controller) handleObject(obj interface{}) {
 	var object metav1.Object
 	var ok bool
 	if object, ok = obj.(metav1.Object); !ok {

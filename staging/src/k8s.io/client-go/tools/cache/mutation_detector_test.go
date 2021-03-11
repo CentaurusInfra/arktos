@@ -62,7 +62,7 @@ func TestMutationDetector(t *testing.T) {
 	}
 	informer.AddEventHandler(
 		ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}, rpId string) {
+			AddFunc: func(obj interface{}) {
 				addReceived <- true
 			},
 		},

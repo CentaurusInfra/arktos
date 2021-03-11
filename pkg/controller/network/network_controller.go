@@ -141,13 +141,13 @@ func (nc *NetworkController) processNextWorkItem() bool {
 	return true
 }
 
-func (nc *NetworkController) createPort(obj interface{}, rpId string) {
+func (nc *NetworkController) createPort(obj interface{}) {
 	// When a pod is created, Scheduler seems always faster than network controller.
 	// So wait for scheduler's update to create port.
 }
 
 // When a pod is updated.
-func (nc *NetworkController) updatePort(old, cur interface{}, rpId string) {
+func (nc *NetworkController) updatePort(old, cur interface{}) {
 	new := cur.(*v1.Pod)
 	prev := old.(*v1.Pod)
 	needCreate := false
@@ -176,7 +176,7 @@ func (nc *NetworkController) updatePort(old, cur interface{}, rpId string) {
 }
 
 // When a pod is deleted, delete ports.
-func (nc *NetworkController) deletePort(obj interface{}, rpId string) {
+func (nc *NetworkController) deletePort(obj interface{}) {
 	pod := obj.(*v1.Pod)
 	client := GetOpenstackClient()
 

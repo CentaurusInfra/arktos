@@ -194,7 +194,7 @@ func syncApiServerConfig(a *APIServerConfigManager) error {
 	return nil
 }
 
-func (a *APIServerConfigManager) updateApiServer(old, cur interface{}, rpId string) {
+func (a *APIServerConfigManager) updateApiServer(old, cur interface{}) {
 	curEp := cur.(*v1.Endpoints)
 	oldEp := old.(*v1.Endpoints)
 	if !isApiServerEndpoint(curEp) || !isApiServerEndpoint(oldEp) {
@@ -226,7 +226,7 @@ func (a *APIServerConfigManager) updateApiServer(old, cur interface{}, rpId stri
 }
 
 // It's ok not to test here since Kubernetes endpoints should never be deleted
-func (a *APIServerConfigManager) deleteApiServer(obj interface{}, rpId string) {
+func (a *APIServerConfigManager) deleteApiServer(obj interface{}) {
 	ep, ok := obj.(*v1.Endpoints)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

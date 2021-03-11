@@ -427,19 +427,19 @@ func (c *AvailableConditionController) enqueue(obj *apiregistration.APIService) 
 	c.queue.Add(key)
 }
 
-func (c *AvailableConditionController) addAPIService(obj interface{}, rpId string) {
+func (c *AvailableConditionController) addAPIService(obj interface{}) {
 	castObj := obj.(*apiregistration.APIService)
 	klog.V(4).Infof("Adding %s/%s", castObj.Tenant, castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *AvailableConditionController) updateAPIService(obj, _ interface{}, rpId string) {
+func (c *AvailableConditionController) updateAPIService(obj, _ interface{}) {
 	castObj := obj.(*apiregistration.APIService)
 	klog.V(4).Infof("Updating %s/%s", castObj.Tenant, castObj.Name)
 	c.enqueue(castObj)
 }
 
-func (c *AvailableConditionController) deleteAPIService(obj interface{}, rpId string) {
+func (c *AvailableConditionController) deleteAPIService(obj interface{}) {
 	castObj, ok := obj.(*apiregistration.APIService)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -481,19 +481,19 @@ func (c *AvailableConditionController) getAPIServicesFor(obj runtime.Object) []*
 
 // TODO, think of a way to avoid checking on every service manipulation
 
-func (c *AvailableConditionController) addService(obj interface{}, rpId string) {
+func (c *AvailableConditionController) addService(obj interface{}) {
 	for _, apiService := range c.getAPIServicesFor(obj.(*v1.Service)) {
 		c.enqueue(apiService)
 	}
 }
 
-func (c *AvailableConditionController) updateService(obj, _ interface{}, rpId string) {
+func (c *AvailableConditionController) updateService(obj, _ interface{}) {
 	for _, apiService := range c.getAPIServicesFor(obj.(*v1.Service)) {
 		c.enqueue(apiService)
 	}
 }
 
-func (c *AvailableConditionController) deleteService(obj interface{}, rpId string) {
+func (c *AvailableConditionController) deleteService(obj interface{}) {
 	castObj, ok := obj.(*v1.Service)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)
@@ -512,19 +512,19 @@ func (c *AvailableConditionController) deleteService(obj interface{}, rpId strin
 	}
 }
 
-func (c *AvailableConditionController) addEndpoints(obj interface{}, rpId string) {
+func (c *AvailableConditionController) addEndpoints(obj interface{}) {
 	for _, apiService := range c.getAPIServicesFor(obj.(*v1.Endpoints)) {
 		c.enqueue(apiService)
 	}
 }
 
-func (c *AvailableConditionController) updateEndpoints(obj, _ interface{}, rpId string) {
+func (c *AvailableConditionController) updateEndpoints(obj, _ interface{}) {
 	for _, apiService := range c.getAPIServicesFor(obj.(*v1.Endpoints)) {
 		c.enqueue(apiService)
 	}
 }
 
-func (c *AvailableConditionController) deleteEndpoints(obj interface{}, rpId string) {
+func (c *AvailableConditionController) deleteEndpoints(obj interface{}) {
 	castObj, ok := obj.(*v1.Endpoints)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

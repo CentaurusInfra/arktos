@@ -118,7 +118,7 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) (*Resou
 	options.ResourceQuotaInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
 			AddFunc: rq.addQuota,
-			UpdateFunc: func(old, cur interface{}, rpId string) {
+			UpdateFunc: func(old, cur interface{}) {
 				// We are only interested in observing updates to quota.spec to drive updates to quota.status.
 				// We ignore all updates to quota.Status because they are all driven by this controller.
 				// IMPORTANT:
@@ -132,7 +132,7 @@ func NewResourceQuotaController(options *ResourceQuotaControllerOptions) (*Resou
 				if quota.V1Equals(oldResourceQuota.Spec.Hard, curResourceQuota.Spec.Hard) {
 					return
 				}
-				rq.addQuota(curResourceQuota, rpId)
+				rq.addQuota(curResourceQuota)
 			},
 			// This will enter the sync loop and no-op, because the controller has been deleted from the store.
 			// Note that deleting a controller immediately after scaling it to 0 will not work. The recommended
@@ -193,7 +193,7 @@ func (rq *ResourceQuotaController) enqueueAll() {
 }
 
 // obj could be an *v1.ResourceQuota, or a DeletionFinalStateUnknown marker item.
-func (rq *ResourceQuotaController) enqueueResourceQuota(obj interface{}, rpId string) {
+func (rq *ResourceQuotaController) enqueueResourceQuota(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		klog.Errorf("Couldn't get key for object %+v: %v", obj, err)
@@ -202,7 +202,7 @@ func (rq *ResourceQuotaController) enqueueResourceQuota(obj interface{}, rpId st
 	rq.queue.Add(key)
 }
 
-func (rq *ResourceQuotaController) addQuota(obj interface{}, rpId string) {
+func (rq *ResourceQuotaController) addQuota(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		klog.Errorf("Couldn't get key for object %+v: %v", obj, err)
@@ -393,7 +393,7 @@ func (rq *ResourceQuotaController) replenishQuota(groupResource schema.GroupReso
 		if intersection := evaluator.MatchingResources(resourceQuotaResources); len(intersection) > 0 {
 			// TODO: make this support targeted replenishment to a specific kind, right now it does a full recalc on that quota.
 			// TODO: fill in RPId
-			rq.enqueueResourceQuota(resourceQuota, "resourceProviderId")
+			rq.enqueueResourceQuota(resourceQuota)
 		}
 	}
 }

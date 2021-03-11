@@ -116,10 +116,10 @@ func NewTenantController(kubeClient clientset.Interface,
 	// configure the tenant informer event handlers
 	tenantInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}, rpId string) {
+			AddFunc: func(obj interface{}) {
 				tenantController.enqueue(obj)
 			},
-			UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
+			UpdateFunc: func(oldObj, newObj interface{}) {
 				tenantController.enqueue(newObj)
 			},
 		},

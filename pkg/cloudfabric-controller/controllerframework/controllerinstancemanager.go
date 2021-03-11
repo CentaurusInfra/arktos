@@ -120,10 +120,10 @@ func GetInstanceId() types.UID {
 	}
 }
 
-func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}, rpId string) {
+func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}) {
 	newControllerInstance := obj.(*v1.ControllerInstance)
 	if newControllerInstance.DeletionTimestamp != nil {
-		cim.deleteControllerInstance(newControllerInstance, rpId)
+		cim.deleteControllerInstance(newControllerInstance)
 		return
 	}
 	klog.V(3).Infof("Received event for NEW controller instance %v. CIM %v", newControllerInstance.Name, cim.instanceId)
@@ -143,7 +143,7 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}, rpI
 		if ok1 {
 			cim.mux.Unlock()
 			klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
-			cim.updateControllerInstance(&existingInstance, newControllerInstance, rpId)
+			cim.updateControllerInstance(&existingInstance, newControllerInstance)
 			klog.V(4).Infof("Got existing controller instance %s in AddFunc. CIM %v", newControllerInstance.Name, cim.instanceId)
 			return
 		}
@@ -157,7 +157,7 @@ func (cim *ControllerInstanceManager) addControllerInstance(obj interface{}, rpI
 	klog.V(4).Infof("mux released addControllerInstance. CIM %v", cim.instanceId)
 }
 
-func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interface{}, rpId string) {
+func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interface{}) {
 	curControllerInstance := cur.(*v1.ControllerInstance)
 	oldControllerInstance := old.(*v1.ControllerInstance)
 
@@ -187,7 +187,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 		klog.Fatalf("Unexpected controller instance type changed from %s to %s. CIM %v", oldControllerInstance.ControllerType, curControllerInstance.ControllerType, cim.instanceId)
 	}
 	if curControllerInstance.DeletionTimestamp != nil {
-		cim.deleteControllerInstance(curControllerInstance, rpId)
+		cim.deleteControllerInstance(curControllerInstance)
 		return
 	}
 
@@ -209,7 +209,7 @@ func (cim *ControllerInstanceManager) updateControllerInstance(old, cur interfac
 	klog.V(4).Infof("mux released updateControllerInstance. CIM %v", cim.instanceId)
 }
 
-func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}, rpId string) {
+func (cim *ControllerInstanceManager) deleteControllerInstance(obj interface{}) {
 	controllerinstance, ok := obj.(*v1.ControllerInstance)
 	if !ok {
 		tombstone, ok := obj.(cache.DeletedFinalStateUnknown)

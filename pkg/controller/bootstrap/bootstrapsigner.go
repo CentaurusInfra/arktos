@@ -122,8 +122,8 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 				}
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc:    func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
-				UpdateFunc: func(_, _ interface{}, rpId string) { e.pokeConfigMapSync() },
+				AddFunc:    func(_ interface{}) { e.pokeConfigMapSync() },
+				UpdateFunc: func(_, _ interface{}) { e.pokeConfigMapSync() },
 			},
 		},
 		options.ConfigMapResync,
@@ -141,9 +141,9 @@ func NewSigner(cl clientset.Interface, secrets informers.SecretInformer, configM
 				}
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
-				AddFunc:    func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
-				UpdateFunc: func(_, _ interface{}, rpId string) { e.pokeConfigMapSync() },
-				DeleteFunc: func(_ interface{}, rpId string) { e.pokeConfigMapSync() },
+				AddFunc:    func(_ interface{}) { e.pokeConfigMapSync() },
+				UpdateFunc: func(_, _ interface{}) { e.pokeConfigMapSync() },
+				DeleteFunc: func(_ interface{}) { e.pokeConfigMapSync() },
 			},
 		},
 		options.SecretResync,

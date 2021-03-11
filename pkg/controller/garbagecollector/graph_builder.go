@@ -128,7 +128,7 @@ type monitors map[schema.GroupVersionResource]*monitor
 func (gb *GraphBuilder) controllerFor(resource schema.GroupVersionResource, kind schema.GroupVersionKind) (cache.Controller, cache.Store, error) {
 	handlers := cache.ResourceEventHandlerFuncs{
 		// add the event to the dependencyGraphBuilder's graphChanges.
-		AddFunc: func(obj interface{}, rpId string) {
+		AddFunc: func(obj interface{}) {
 			event := &event{
 				eventType: addEvent,
 				obj:       obj,
@@ -136,7 +136,7 @@ func (gb *GraphBuilder) controllerFor(resource schema.GroupVersionResource, kind
 			}
 			gb.graphChanges.Add(event)
 		},
-		UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
+		UpdateFunc: func(oldObj, newObj interface{}) {
 			// TODO: check if there are differences in the ownerRefs,
 			// finalizers, and DeletionTimestamp; if not, ignore the update.
 			event := &event{
@@ -147,7 +147,7 @@ func (gb *GraphBuilder) controllerFor(resource schema.GroupVersionResource, kind
 			}
 			gb.graphChanges.Add(event)
 		},
-		DeleteFunc: func(obj interface{}, rpId string) {
+		DeleteFunc: func(obj interface{}) {
 			// delta fifo may wrap the object in a cache.DeletedFinalStateUnknown, unwrap it
 			if deletedFinalStateUnknown, ok := obj.(cache.DeletedFinalStateUnknown); ok {
 				obj = deletedFinalStateUnknown.Obj

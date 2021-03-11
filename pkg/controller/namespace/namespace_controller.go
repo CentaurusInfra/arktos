@@ -83,11 +83,11 @@ func NewNamespaceController(
 	// configure the namespace informer event handlers
 	namespaceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}, rpId string) {
+			AddFunc: func(obj interface{}) {
 				namespace := obj.(*v1.Namespace)
 				namespaceController.enqueueNamespace(namespace)
 			},
-			UpdateFunc: func(oldObj, newObj interface{}, rpId string) {
+			UpdateFunc: func(oldObj, newObj interface{}) {
 				namespace := newObj.(*v1.Namespace)
 				namespaceController.enqueueNamespace(namespace)
 			},

@@ -155,7 +155,7 @@ func New(
 
 	serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
 		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(cur interface{}, rpId string) {
+			AddFunc: func(cur interface{}) {
 				svc, ok := cur.(*v1.Service)
 				if ok && wantsNeutronLB(svc) {
 					s.createNeutronLB(cur)
@@ -163,14 +163,14 @@ func New(
 					s.enqueueService(cur)
 				}
 			},
-			UpdateFunc: func(old, cur interface{}, rpId string) {
+			UpdateFunc: func(old, cur interface{}) {
 				oldSvc, ok1 := old.(*v1.Service)
 				curSvc, ok2 := cur.(*v1.Service)
 				if ok1 && ok2 && (s.needsUpdate(oldSvc, curSvc) || needsCleanup(curSvc)) {
 					s.enqueueService(cur)
 				}
 			},
-			DeleteFunc: func(old interface{}, rpId string) {
+			DeleteFunc: func(old interface{}) {
 				if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.ServiceLoadBalancerFinalizer) {
 					// No need to handle deletion event if finalizer feature gate is
 					// enabled. Because the deletion would be handled by the update

@@ -1407,7 +1407,7 @@ func (vs *VSphere) HasClusterID() bool {
 }
 
 // Notification handler when node is added into k8s cluster.
-func (vs *VSphere) NodeAdded(obj interface{}, rpId string) {
+func (vs *VSphere) NodeAdded(obj interface{}) {
 	node, ok := obj.(*v1.Node)
 	if node == nil || !ok {
 		klog.Warningf("NodeAdded: unrecognized object %+v", obj)
@@ -1421,7 +1421,7 @@ func (vs *VSphere) NodeAdded(obj interface{}, rpId string) {
 }
 
 // Notification handler when node is removed from k8s cluster.
-func (vs *VSphere) NodeDeleted(obj interface{}, rpId string) {
+func (vs *VSphere) NodeDeleted(obj interface{}) {
 	node, ok := obj.(*v1.Node)
 	if node == nil || !ok {
 		klog.Warningf("NodeDeleted: unrecognized object %+v", obj)

@@ -100,7 +100,7 @@ func NewTokenCleaner(cl clientset.Interface, secrets coreinformers.SecretInforme
 			},
 			Handler: cache.ResourceEventHandlerFuncs{
 				AddFunc:    e.enqueueSecrets,
-				UpdateFunc: func(oldSecret, newSecret interface{}, rpId string) { e.enqueueSecrets(newSecret, rpId) },
+				UpdateFunc: func(oldSecret, newSecret interface{}) { e.enqueueSecrets(newSecret) },
 			},
 		},
 		options.SecretResync,
@@ -126,7 +126,7 @@ func (tc *TokenCleaner) Run(stopCh <-chan struct{}) {
 	<-stopCh
 }
 
-func (tc *TokenCleaner) enqueueSecrets(obj interface{}, rpId string) {
+func (tc *TokenCleaner) enqueueSecrets(obj interface{}) {
 	key, err := controller.KeyFunc(obj)
 	if err != nil {
 		utilruntime.HandleError(err)

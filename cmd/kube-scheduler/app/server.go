@@ -234,19 +234,19 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 
 	// only start the ResourceInformer with the separated resource clusters
 	klog.V(3).Infof("Scheduler started with resource provider number=%d", len(cc.NodeInformers))
-	for i := range cc.NodeInformers {
-		go cc.NodeInformers[i].Informer().Run(stopCh)
-		go func(informer cache.SharedIndexInformer, pos int) {
-			klog.V(3).Infof("Waiting for node sync from resource partition %d. Node informer %p", pos, informer)
+	for rpId, informer := range cc.NodeInformers {
+		go informer.Informer().Run(stopCh)
+		go func(informer cache.SharedIndexInformer, rpId string) {
+			klog.V(3).Infof("Waiting for node sync from resource partition %s. Node informer %p", rpId, informer)
 			for {
 				if informer.HasSynced() {
-					klog.V(3).Infof("Node sync from resource partition %d started! Node informer %p", pos, informer)
+					klog.V(3).Infof("Node sync from resource partition %s started! Node informer %p", rpId, informer)
 					break
 				}
-				klog.V(2).Infof("Wait for node sync from resource partition %d. Node informer %p", pos, informer)
+				klog.V(2).Infof("Wait for node sync from resource partition %s. Node informer %p", rpId, informer)
 				time.Sleep(5 * time.Second)
 			}
-		}(cc.NodeInformers[i].Informer(), i)
+		}(informer.Informer(), rpId)
 	}
 
 	// Wait for all caches to sync before scheduling.
