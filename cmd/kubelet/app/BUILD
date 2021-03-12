@@ -39,6 +39,7 @@ go_library(
     ],
     importpath = "k8s.io/kubernetes/cmd/kubelet/app",
     deps = [
+        "//cmd/genutils:go_default_library",
         "//cmd/kubelet/app/options:go_default_library",
         "//pkg/api/legacyscheme:go_default_library",
         "//pkg/apis/core:go_default_library",
@@ -136,6 +137,7 @@ go_library(
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
         "//staging/src/k8s.io/client-go/util/cert:go_default_library",
         "//staging/src/k8s.io/client-go/util/certificate:go_default_library",
+        "//staging/src/k8s.io/client-go/util/clientutil:go_default_library",
         "//staging/src/k8s.io/client-go/util/connrotation:go_default_library",
         "//staging/src/k8s.io/client-go/util/keyutil:go_default_library",
         "//staging/src/k8s.io/cloud-provider:go_default_library",

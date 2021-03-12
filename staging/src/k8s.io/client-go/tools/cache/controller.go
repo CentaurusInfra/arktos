@@ -208,9 +208,9 @@ type ResourceEventHandler interface {
 // as few of the notification functions as you want while still implementing
 // ResourceEventHandler.
 type ResourceEventHandlerFuncs struct {
-	AddFunc            func(obj interface{})
-	UpdateFunc         func(oldObj, newObj interface{})
-	DeleteFunc         func(obj interface{})
+	AddFunc    func(obj interface{})
+	UpdateFunc func(oldObj, newObj interface{})
+	DeleteFunc func(obj interface{})
 }
 
 // OnAdd calls AddFunc if it's not nil.

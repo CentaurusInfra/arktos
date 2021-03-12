@@ -398,7 +398,8 @@ EOF
           # in scale out poc, use insecured mode in local dev test
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" admin "" "http"
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" scheduler "" "http"
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
+          # workload controller is not used for now
+          # kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
 
           # controller kubeconfig points to local api server
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
@@ -427,12 +428,12 @@ EOF
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "$secureport" admin
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
           kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
-          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
+          # kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
         fi
 
         # Move the admin kubeconfig for each apiserver
         ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin$1.kubeconfig"
-        ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
+        #${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
 
         if [[ -z "${AUTH_ARGS}" ]]; then
             AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
@@ -704,6 +705,22 @@ function kube::common::start_kubelet {
     image_service_endpoint_args=()
     if [[ -n "${IMAGE_SERVICE_ENDPOINT}" ]]; then
       image_service_endpoint_args=("--image-service-endpoint=${IMAGE_SERVICE_ENDPOINT}")
+    fi
+
+    KUBELET_FLAGS="--tenant-server-kubeconfig="
+    if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+      serverCount=${#TENANT_SERVERS[@]}
+      kubeconfig_filename="tenant-server-kubelet"
+      for (( pos=0; pos<${serverCount}; pos++ ));
+      do
+        # here generate kubeconfig for remote API server. Only work in non secure mode for now
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${TENANT_SERVERS[${pos}]}" "${API_PORT}" tenant-server-kubelet "" "http"
+        ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/${kubeconfig_filename}.kubeconfig" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+        ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+
+        KUBELET_FLAGS="${KUBELET_FLAGS}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
+      done
+      KUBELET_FLAGS=${KUBELET_FLAGS::-1}
     fi
 
     # shellcheck disable=SC2206
