@@ -16,6 +16,9 @@
 
 # set up variables
 IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-"false"}
+
+# proxy is still used to start cloud KCM. Also useful for system tenant requests.
+# However, don't use proxy to query node list as there is no aggregator for multiple RPs
 SCALE_OUT_PROXY_IP=${SCALE_OUT_PROXY_IP:-}
 SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-"8888"}
 TENANT_SERVER=${TENANT_SERVER:-}
@@ -53,18 +56,6 @@ else
 fi
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-
-
-TENANT_SERVERS_KUBELET=${TENANT_SERVERS_KUBELET:-}
-if [[ -z "${TENANT_SERVERS_KUBELET}" ]]; then
-  if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-    # for POC, the kubelet_flags is used for the new temporary kubelet commandline args
-    echo ERROR: Please set TENANT_SERVERS_KUBELET in resource parition for TP. For example: TENANT_SERVERS_KUBELET=http://192.168.0.2:8080,http://192.168.0.5:8080
-    exit 1
-  fi
-else
-  KUBELET_FLAGS="--tenant-servers=${TENANT_SERVERS_KUBELET}"
-fi
 
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 

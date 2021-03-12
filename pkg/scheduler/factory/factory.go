@@ -510,7 +510,7 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 
 	algorithmNodeLister := convertToAlgorithmNodeListers(c.nodeListers)
 	return &Config{
-		SchedulerCache: c.schedulerCache,
+		SchedulerCache:              c.schedulerCache,
 		ResourceProviderNodeListers: c.nodeListers,
 		// The scheduler only needs to consider schedulable nodes.
 		NodeListers:         algorithmNodeLister,
