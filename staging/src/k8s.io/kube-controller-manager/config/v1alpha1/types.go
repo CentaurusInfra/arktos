@@ -378,7 +378,7 @@ type NodeLifecycleControllerConfiguration struct {
 	// unhealthyZoneThreshold (no less than 3) of Nodes in the zone are NotReady
 	UnhealthyZoneThreshold float32
 
-	TenantServers []string
+	TenantPartitionKubeConfigs []string
 }
 
 // PersistentVolumeBinderControllerConfiguration contains elements describing

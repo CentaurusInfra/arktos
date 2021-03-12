@@ -96,7 +96,7 @@ function create-kubeconfig() {
       cluster_args=(
           "--server=${KUBE_SERVER:-https://${PROXY_RESERVED_IP}}:443"
        )
-    elif [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+    elif [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
       cluster_args=(
           "--server=${KUBE_SERVER:-http://${KUBE_MASTER_IP}}:8080"
        )
@@ -947,9 +947,9 @@ EOF
 ETCD_QUORUM_READ: $(yaml-quote ${ETCD_QUORUM_READ})
 EOF
     fi
-    if [ -n "${TENANT_SERVERS:-}" ]; then
+    if [ -n "${TENANT_SERVER_KUBECONFIGS:-}" ]; then
       cat >>$file <<EOF
-TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
     fi
 
