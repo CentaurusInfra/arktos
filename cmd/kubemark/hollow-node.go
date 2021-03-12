@@ -21,6 +21,9 @@ import (
 	"errors"
 	goflag "flag"
 	"fmt"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/pkg/features"
 	"math/rand"
 	"os"
 	"time"
@@ -31,17 +34,14 @@ import (
 
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	_ "k8s.io/kubernetes/pkg/client/metrics/prometheus" // for client metric registration
-	"k8s.io/kubernetes/pkg/features"
 	cadvisortest "k8s.io/kubernetes/pkg/kubelet/cadvisor/testing"
 	"k8s.io/kubernetes/pkg/kubelet/cm"
 	"k8s.io/kubernetes/pkg/kubelet/dockershim"
@@ -57,21 +57,19 @@ import (
 )
 
 type hollowNodeConfig struct {
-	KubeconfigPath       string
-	KubeletPort          int
-	KubeletReadOnlyPort  int
-	Morph                string
-	NodeName             string
-	ServerPort           int
-	ContentType          string
-	UseRealProxier       bool
-	ProxierSyncPeriod    time.Duration
-	ProxierMinSyncPeriod time.Duration
-	NodeLabels           map[string]string
-	// protocal://ip:port format, e.g.:
-	// http://172.31.8.177.8080
-	TenantServers  []string
-	ResourceServer string
+	KubeconfigPath           string
+	KubeletPort              int
+	KubeletReadOnlyPort      int
+	Morph                    string
+	NodeName                 string
+	ServerPort               int
+	ContentType              string
+	UseRealProxier           bool
+	ProxierSyncPeriod        time.Duration
+	ProxierMinSyncPeriod     time.Duration
+	NodeLabels               map[string]string
+	TenantServerKubeconfigs  []string
+	ResourceServerKubeconfig string
 }
 
 const (
@@ -84,8 +82,8 @@ const (
 var knownMorphs = sets.NewString("kubelet", "proxy")
 
 func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
-	fs.StringVar(&c.ResourceServer, "resource-server", c.ResourceServer, "url to the resource partition master.")
-	fs.StringSliceVar(&c.TenantServers, "tenant-servers", c.TenantServers, "Comma separated string representing tenant api-server URLs.")
+	fs.StringVar(&c.ResourceServerKubeconfig, "resource-server-kubeconfig", c.ResourceServerKubeconfig, "url to the resource partition api-server kubeconfig.")
+	fs.StringSliceVar(&c.TenantServerKubeconfigs, "tenant-server-kubeconfigs", c.TenantServerKubeconfigs, "Comma separated string representing tenant api-server kubeconfigs.")
 	fs.StringVar(&c.KubeconfigPath, "kubeconfig", "/kubeconfig/kubeconfig", "Path to kubeconfig file.")
 	fs.IntVar(&c.KubeletPort, "kubelet-port", ports.KubeletPort, "Port on which HollowKubelet should be listening.")
 	fs.IntVar(&c.KubeletReadOnlyPort, "kubelet-read-only-port", ports.KubeletReadOnlyPort, "Read-only port on which Kubelet is listening.")
@@ -100,21 +98,8 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 	fs.Var(&bindableNodeLabels, "node-labels", "Additional node labels")
 }
 
-func (c *hollowNodeConfig) createClientConfigFromFile() (*restclient.Config, error) {
-	clientConfigs, err := clientcmd.LoadFromFile(c.KubeconfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", c.KubeconfigPath, err)
-	}
-	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
-	}
-	for _, config := range configs.GetAllConfigs() {
-		config.ContentType = c.ContentType
-		config.QPS = 10
-		config.Burst = 20
-	}
-	return configs, nil
+func (c *hollowNodeConfig) createClientConfig() (*restclient.Config, error) {
+	return clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(c.KubeconfigPath, 10, 20, c.ContentType)
 }
 
 func (c *hollowNodeConfig) createHollowKubeletOptions() *kubemark.HollowKubletOptions {
@@ -173,32 +158,35 @@ func run(config *hollowNodeConfig) {
 	}
 
 	// create clients to communicate with API server.
-	clientConfigs, err := config.createClientConfigFromFile()
+	clientConfigs, err := config.createClientConfig()
 	if err != nil {
 		klog.Fatalf("Failed to create a ClientConfig: %v. Exiting.", err)
 	}
 
-	if len(config.TenantServers) == 0 {
+	if len(config.TenantServerKubeconfigs) == 0 {
 		klog.V(3).Infof("TenantServers is not set. Default to single tenant partition and clientConfig setting")
-		config.TenantServers = make([]string, 1)
-		config.TenantServers[0] = clientConfigs.GetConfig().Host
+		config.TenantServerKubeconfigs = make([]string, 1)
+		config.TenantServerKubeconfigs[0] = config.KubeconfigPath
 	}
-	if config.ResourceServer == "" {
+	if config.ResourceServerKubeconfig == "" {
 		klog.V(3).Infof("Resource is not set. Default to clientConfig setting")
-		config.ResourceServer = clientConfigs.GetConfig().Host
+		config.ResourceServerKubeconfig = config.KubeconfigPath
 	}
 
 	// initialize the kubeclient manager
 	kubeclientmanager.NewKubeClientManager()
 
-	numberTenantPartitions := len(config.TenantServers)
+	numberTenantPartitions := len(config.TenantServerKubeconfigs)
 	clients := make([]clientset.Interface, numberTenantPartitions)
-	for i := 0; i < len(clients); i++ {
-		tenantCfg := restclient.CopyConfigs(clientConfigs)
-		for _, cfg := range tenantCfg.GetAllConfigs() {
-			cfg.Host = config.TenantServers[i]
+	for i := 0; i < numberTenantPartitions; i++ {
+		kubeconfigFile := config.TenantServerKubeconfigs[i]
+		klog.V(2).Infof("create client config from file: %s", kubeconfigFile)
+		cfg, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigFile, 10, 20, config.ContentType)
+		if err != nil {
+			klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 		}
-		clientFromConfig, err := clientset.NewForConfig(tenantCfg)
+
+		clientFromConfig, err := clientset.NewForConfig(cfg)
 		if err != nil {
 			klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 		}
@@ -208,22 +196,22 @@ func run(config *hollowNodeConfig) {
 	if config.Morph == "kubelet" {
 		f, c := kubemark.GetHollowKubeletConfig(config.createHollowKubeletOptions())
 
-		heartbeatClientConfigs := restclient.CopyConfigs(clientConfigs)
-		for _, heartbeatClientConfig := range heartbeatClientConfigs.GetAllConfigs() {
-			heartbeatClientConfig.Timeout = c.NodeStatusUpdateFrequency.Duration
-			// if the NodeLease feature is enabled, the timeout is the minimum of the lease duration and status update frequency
-			if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
-				leaseTimeout := time.Duration(c.NodeLeaseDurationSeconds) * time.Second
-				if heartbeatClientConfig.Timeout > leaseTimeout {
-					heartbeatClientConfig.Timeout = leaseTimeout
-				}
-			}
-			heartbeatClientConfig.QPS = float32(-1)
-			if heartbeatClientConfig.Host != config.ResourceServer {
-				heartbeatClientConfig.Host = config.ResourceServer
+		var heartbeatClient *clientset.Clientset
+
+		klog.V(2).Infof("create client config from file: %s", config.ResourceServerKubeconfig)
+		heartbeatClientConfig, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(config.ResourceServerKubeconfig, -1, -1, config.ContentType)
+		if err != nil {
+			klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
+		}
+
+		if utilfeature.DefaultFeatureGate.Enabled(features.NodeLease) {
+			leaseTimeout := time.Duration(c.NodeLeaseDurationSeconds) * time.Second
+			if heartbeatClientConfig.GetConfig().Timeout > leaseTimeout {
+				heartbeatClientConfig.GetConfig().Timeout = leaseTimeout
 			}
 		}
-		heartbeatClient, err := clientset.NewForConfig(heartbeatClientConfigs)
+
+		heartbeatClient, err = clientset.NewForConfig(heartbeatClientConfig)
 		if err != nil {
 			klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 		}

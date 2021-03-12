@@ -50,20 +50,20 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        - name: TENANT_SERVERS
+        - name: TENANT_SERVER_KUBECONFIGS
           valueFrom:
             configMapKeyRef:
               name: node-configmap
-              key: tenant.servers
-        - name: RESOURCE_SERVER
+              key: tenant.server.kubeconfigs
+        - name: RESOURCE_SERVER_KUBECONFIG
           valueFrom:
             configMapKeyRef:
               name: node-configmap
-              key: resource.server
+              key: resource.server.kubeconfig
         command:
         - /bin/sh
         - -c
-        - /kubemark --morph=kubelet --tenant-servers={{tenant_servers}} --resource-server={{resource_server}} --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
+        - /kubemark --morph=kubelet --tenant-server-kubeconfigs={{tenant_server_kubeconfigs}} --resource-server-kubeconfig={{resource_server_kubeconfig}} --name=$(NODE_NAME) {{hollow_kubelet_params}} --kubeconfig=/kubeconfig/kubelet.kubeconfig $(CONTENT_TYPE) --alsologtostderr 1>>/var/log/kubelet-$(NODE_NAME).log 2>&1
         volumeMounts:
         - name: kubeconfig-volume
           mountPath: /kubeconfig

@@ -19,6 +19,7 @@ package options
 
 import (
 	"fmt"
+	"k8s.io/client-go/util/clientutil"
 	"net"
 	"os"
 	"strconv"
@@ -41,6 +42,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	cliflag "k8s.io/component-base/cli/flag"
 	componentbaseconfig "k8s.io/component-base/config"
+	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
 	"k8s.io/klog"
 	kubeschedulerconfigv1alpha1 "k8s.io/kube-scheduler/config/v1alpha1"
 	schedulerappconfig "k8s.io/kubernetes/cmd/kube-scheduler/app/config"
@@ -132,6 +134,7 @@ func splitHostIntPort(s string) (string, int, error) {
 
 func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
 	cfgv1alpha1 := kubeschedulerconfigv1alpha1.KubeSchedulerConfiguration{}
+	cfgv1alpha1.DebuggingConfiguration = *configv1alpha1.NewRecommendedDebuggingConfiguration()
 	kubeschedulerscheme.Scheme.Default(&cfgv1alpha1)
 	cfg := kubeschedulerconfig.KubeSchedulerConfiguration{}
 	if err := kubeschedulerscheme.Scheme.Convert(&cfgv1alpha1, &cfg, nil); err != nil {
@@ -260,9 +263,9 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		c.ResourceInformer = c.InformerFactory.Core().V1().Nodes()
 	} else {
 
-		c.ResourceProviderClient, err = createClientFromFile(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig)
+		c.ResourceProviderClient, err = clientutil.CreateClientFromKubeconfigFile(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig)
 		if err != nil {
-			klog.Error("failed to create resource provider rest client, error: %v", err)
+			klog.Errorf("failed to create resource provider rest client, error: %v", err)
 			return nil, err
 		}
 
@@ -318,11 +321,6 @@ func makeLeaderElectionConfig(config kubeschedulerconfig.KubeSchedulerLeaderElec
 	}, nil
 }
 
-// createClients creates a kube client and an event client from the given config and masterOverride.
-// TODO remove masterOverride when CLI flags are removed.
-//      issue 997: refactor to move the createClients() to shared util package
-//                 optionally set QPS
-//
 func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, v1core.EventsGetter, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
 		klog.Warningf("Neither --kubeconfig nor --master was specified. Using default API client. This might not work.")
@@ -366,32 +364,4 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 	}
 
 	return clients, leaderElectionClient, eventClient.CoreV1(), nil
-}
-
-func createClientFromFile(kubeconfigPath string) (clientset.Interface, error) {
-	klog.V(4).Infof("Create kubeclient from config file: %s", kubeconfigPath)
-	clientCfg, err := createClientConfigFromFile(kubeconfigPath)
-	if err != nil {
-		return nil, err
-	}
-
-	client, err := clientset.NewForConfig(restclient.AddUserAgent(clientCfg, "scheduler"))
-	if err != nil {
-		return nil, fmt.Errorf("error while creating clientset with %s, error %v", kubeconfigPath, err.Error())
-	}
-
-	return client, nil
-}
-
-func createClientConfigFromFile(kubeconfigPath string) (*restclient.Config, error) {
-	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigPath)
-	if err != nil {
-		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", kubeconfigPath, err)
-	}
-	configs, err := clientcmd.NewDefaultClientConfig(*clientConfigs, &clientcmd.ConfigOverrides{}).ClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("error while creating kubeconfig: %v", err)
-	}
-
-	return configs, nil
 }
