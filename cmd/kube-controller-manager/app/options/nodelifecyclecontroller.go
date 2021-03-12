@@ -64,7 +64,6 @@ func (o *NodeLifecycleControllerOptions) ApplyTo(cfg *nodelifecycleconfig.NodeLi
 	cfg.LargeClusterSizeThreshold = o.LargeClusterSizeThreshold
 	cfg.UnhealthyZoneThreshold = o.UnhealthyZoneThreshold
 	cfg.TenantPartitionKubeConfig = o.TenantPartitionKubeConfig
-
 	return nil
 }
 

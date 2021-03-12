@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Package keyutil contains utilities for managing public/private key pairs.
+// Package clientutil contains utilities for creating clientset interface or rest kubeconfig from a given kubeconfig file
 package clientutil
 
 import (
@@ -24,6 +24,9 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
+// Create clientset from the kubeconfig file
+// input: the file path to the kubeconfig file
+// output: a clientset or error
 func CreateClientFromKubeconfigFile(kubeconfigPath string) (clientset.Interface, error) {
 
 	clientConfig, err := CreateClientConfigFromKubeconfigFile(kubeconfigPath)
@@ -39,10 +42,14 @@ func CreateClientFromKubeconfigFile(kubeconfigPath string) (clientset.Interface,
 	return client, nil
 }
 
+// Create a client configuration with a given kubeconfig file, with default QPS, and contentType
+//
 func CreateClientConfigFromKubeconfigFile(kubeconfigPath string) (*restclient.Config, error) {
 	return CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath, 0, 0, "")
 }
 
+// Create a client configuration with a given kubeconfig file, with QPS, and contentType set
+//
 func CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath string, qps float32, burst int, contentType string) (*restclient.Config, error) {
 	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigPath)
 	if err != nil {

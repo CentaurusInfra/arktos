@@ -21,6 +21,8 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+
 TMP_ROOT="$(dirname "${BASH_SOURCE[@]}")/../.."
 KUBE_ROOT=$(readlink -e "${TMP_ROOT}" 2> /dev/null || perl -MCwd -e 'print Cwd::abs_path shift' "${TMP_ROOT}")
 
@@ -37,24 +39,40 @@ source "${KUBE_ROOT}/cluster/kubemark/util.sh"
 
 KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
-RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
-LOCAL_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
-
+export RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
+export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
+export HAPROXY_TLS_MODE=${HAPROXY_TLS_MODE:-"bridging"}
+
+### the list of kubeconfig files to TP masters
+export TENANT_SERVER_KUBECONFIGS=""
+
+### kubeconfig files
+# SCALEOUT_CLUSTER_KUBECONFIG is used to convey the kubeconfig name to the subprocess to create the kubeconfig file with desired names
+# this is used in scale up env
+KUBEMARK_CLUSTER_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
+
+### following kubeconfigs are used in scale-out env
+##
+# TP_KUBECONFIG are saved with the below file names with TP number as suffix
+# ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}"
+
+# RP_KUBECONFIG are sav with the below file names with RP number as suffix
+# ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp-${rp_num}"
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  RP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp"
+  TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp"
+else
+  RP_KUBECONFIG="${KUBEMARK_CLUSTER_KUBECONFIG}"
+  TP_KUBECONFIG="${KUBEMARK_CLUSTER_KUBECONFIG}"
+fi
 
 ### files to explicitly save the kubeconfig to different cluster or proxy
 ### those are used for targeted operations such as tenant creation etc on
 ### desired cluster directly
 ###
 PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
-TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp"
-RP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp"
-if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
-  TP_KUBECONFIG="${LOCAL_KUBECONFIG}"
-  RP_KUBECONFIG="${LOCAL_KUBECONFIG}"
-else
-  LOCAL_KUBECONFIG="${RP_KUBECONFIG}"
-fi
 
 export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
 export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
@@ -62,7 +80,6 @@ export SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
 export KUBE_APISERVER_EXTRA_ARGS=${KUBE_APISERVER_EXTRA_ARGS:-}
 export KUBE_CONTROLLER_EXTRA_ARGS=${KUBE_CONTROLLER_EXTRA_ARGS:-}
 export KUBE_SCHEDULER_EXTRA_ARGS=${KUBE_SCHEDULER_EXTRA_ARGS:-}
-
 export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
@@ -117,24 +134,47 @@ function create-kube-hollow-node-resources {
   "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
     --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
     --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
-    --from-literal=resource.server="${RESOURCE_SERVER:-}" \
-    --from-literal=tenant.servers="${TENANT_SERVERS:-}"
+    --from-literal=resource.server.kubeconfig="${RESOURCE_SERVER_KUBECONFIG:-}" \
+    --from-literal=tenant.server.kubeconfigs="${TENANT_SERVER_KUBECONFIGS:-}"
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
   # TODO(https://github.com/kubernetes/kubernetes/issues/79883): Migrate all components to separate credentials.
+if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
   "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" \
-    --from-file=kubelet.kubeconfig="${KUBEMARK_KUBECONFIG}" \
-    --from-file=kubeproxy.kubeconfig="${KUBEMARK_KUBECONFIG}" \
-    --from-file=npd.kubeconfig="${RP_KUBECONFIG}" \
-    --from-file=heapster.kubeconfig="${KUBEMARK_KUBECONFIG}" \
-    --from-file=cluster_autoscaler.kubeconfig="${KUBEMARK_KUBECONFIG}" \
-    --from-file=dns.kubeconfig="${KUBEMARK_KUBECONFIG}"
+    --from-file=kubelet.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
+    --from-file=kubeproxy.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
+    --from-file=npd.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
+    --from-file=heapster.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
+    --from-file=cluster_autoscaler.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
+    --from-file=dns.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}"
+else
+  # TODO: DNS to proxy to get the service info
+  # TODO: kubeproxy to proxy to get the serivce info
+  #
+  echo "DBG setting up secrets for hollow nodes"
+  create_secret_args="--from-file=kubelet.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}"  --from-file=kubeproxy.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}"  --from-file=npd.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}"  --from-file=heapster.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}" --from-file=cluster_autoscaler.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}" --from-file=dns.kubeconfig="${RP_KUBECONFIG}
+
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    create_secret_args=${create_secret_args}" --from-file=tp${tp_num}.kubeconfig="${TP_KUBECONFIG}-${tp_num}
+  done
+
+  create_secret_args=${create_secret_args}" --from-file=rp.kubeconfig="${RP_KUBECONFIG}
+
+
+  "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" ${create_secret_args}
+fi
 
   # Create addon pods.
   # Heapster.
   mkdir -p "${RESOURCE_DIRECTORY}/addons"
-  MASTER_IP=$(grep server "${LOCAL_KUBECONFIG}" | awk -F "/" '{print $3}')
+  MASTER_IP=$(grep server "${KUBEMARK_CLUSTER_KUBECONFIG}" | awk -F "/" '{print $3}')
   sed "s@{{MASTER_IP}}@${MASTER_IP}@g" "${RESOURCE_DIRECTORY}/heapster_template.json" > "${RESOURCE_DIRECTORY}/addons/heapster.json"
   metrics_mem_per_node=4
   metrics_mem=$((200 + metrics_mem_per_node*NUM_NODES))
@@ -188,12 +228,12 @@ function create-kube-hollow-node-resources {
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_tag}}@${KUBEMARK_IMAGE_TAG}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{master_ip}}@${RESOURCE_SERVER_KUBECONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_kubelet_params}}@${HOLLOW_KUBELET_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{hollow_proxy_params}}@${HOLLOW_PROXY_TEST_ARGS}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_mig_config}}@${KUBEMARK_MIG_CONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{tenant_servers}}@${TENANT_SERVERS:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
-  sed -i'' -e "s@{{resource_server}}@${RESOURCE_SERVER:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{tenant_server_kubeconfigs}}@${TENANT_SERVER_KUBECONFIGS:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
+  sed -i'' -e "s@{{resource_server_kubeconfig}}@${RESOURCE_SERVER_KUBECONFIG:-}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/hollow-node.yaml" --namespace="kubemark"
 
   echo "Created secrets, configMaps, replication-controllers required for hollow-nodes."
@@ -259,13 +299,44 @@ function start-hollow-nodes {
   wait-for-hollow-nodes-to-run-or-timeout ${timeout_seconds}
 }
 
+function generate-shared-ca-cert {
+  echo "Create the shared CA for kubemark test"
+  local -r cert_create_debug_output=$(mktemp "/tmp/cert_create_debug_output.XXXXX")
+  (set -x
+    cd "${SHARED_CA_DIRECTORY}"
+    curl -L -O --connect-timeout 30 --retry 10 --retry-delay 2 https://storage.googleapis.com/kubernetes-release/easy-rsa/easy-rsa.tar.gz
+    tar xzf easy-rsa.tar.gz
+    cd easy-rsa-master/easyrsa3
+    ./easyrsa init-pki
+    ./easyrsa --batch "--req-cn=kubemarktestca" build-ca nopass ) &>${cert_create_debug_output} || {
+    cat "${cert_create_debug_output}" >&2
+    echo "=== Failed to generate shared CA certificates: Aborting ===" >&2
+    exit 2
+  }
+
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/ca.crt ${SHARED_CA_DIRECTORY}/ca.crt
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/private/ca.key ${SHARED_CA_DIRECTORY}/ca.key
+}
+
 detect-project &> /dev/null
 
 rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  rm -f -r "${SHARED_CA_DIRECTORY}"
+  mkdir -p "${SHARED_CA_DIRECTORY}"
+  generate-shared-ca-cert
+fi
+
+### master_metadata is used in the cloud-int script to create the GCE VMs
+#
+MASTER_METADATA=""
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   echo "DBG: Starting ${SCALEOUT_TP_COUNT} tenant partitions ..."
-  export KUBE_ENABLE_APISERVER_INSECURE_PORT=true
+
+  export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
   export KUBERNETES_TENANT_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
   export PROXY_KUBECONFIG
@@ -273,45 +344,90 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     export TENANT_PARTITION_SEQUENCE=${tp_num}
+    export KUBEMARK_CLUSTER_KUBECONFIG="${TP_KUBECONFIG}-${tp_num}"
     create-kubemark-master
 
-    if [[ "${KUBERNETES_SCALEOUT_PROXY}" == "true" ]]; then
-      export KUBERNETES_SCALEOUT_PROXY=false
-      PROXY_RESERVED_IP=$(grep server "${PROXY_KUBECONFIG}" | awk -F "/" '{print $3}' | cut -d: -f1)
-      export PROXY_RESERVED_IP
+    export PROXY_RESERVED_IP=$(cat ${KUBE_TEMP}/proxy-reserved-ip.txt)
+    echo "DBG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
+    
+    export TP_${tp_num}_RESERVED_IP=$(cat ${KUBE_TEMP}/master_reserved_ip.txt)
+
+    # TODO: fix the hardcoded path
+    # the path is what the controller used in master init script on the master machines
+    if [[ ${tp_num} == 1 ]]; then
+      export TENANT_SERVER_KUBECONFIGS="/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
+    else
+      export TENANT_SERVER_KUBECONFIGS="${TENANT_SERVER_KUBECONFIGS},/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
     fi
 
-    TP_SERVER="http://$(cat /tmp/master_reserved_ip.txt):8080"
     if [[ ${tp_num} == 1 ]]; then
-      export TENANT_SERVERS=${TP_SERVER}
+      MASTER_METADATA="tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
     else
-      export TENANT_SERVERS="${TENANT_SERVERS},${TP_SERVER}"
+      MASTER_METADATA=${MASTER_METADATA},"tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
     fi
+
+    # export tp-1 token and share with other clusters
+    if [[ ${tp_num} == 1 ]]; then
+      tp1_token=$(grep token "${KUBEMARK_CLUSTER_KUBECONFIG}" | awk -F ": " '{print $2}')
+      export SHARED_APISERVER_TOKEN=${tp1_token}
+      echo "shares token: ${SHARED_APISERVER_TOKEN}"
+    fi
+
+    ## reset the scaleout proxy flag
+    export KUBERNETES_SCALEOUT_PROXY=false
   done
 
   echo "DBG: Starting resource partition ..."
+
+  export KUBE_MASTER_EXTRA_METADATA="${MASTER_METADATA}"
+  echo "DBG: KUBE_MASTER_EXTRA_METADATA:  ${KUBE_MASTER_EXTRA_METADATA}"
+
+  echo "DBG: set tenant partition flag false"
   export KUBERNETES_TENANT_PARTITION=false
   export KUBERNETES_RESOURCE_PARTITION=true
+  export KUBEMARK_CLUSTER_KUBECONFIG=${RP_KUBECONFIG}
+
   create-kubemark-master
   export KUBERNETES_RESOURCE_PARTITION=false
   export KUBERNETES_SCALEOUT_PROXY=false
 
-  export RESOURCE_SERVER="http://"$(grep server "${RP_KUBECONFIG}" | awk -F "/" '{print $3}')
-
-  echo "DBG: PROXY_RESERVED_IP=${PROXY_RESERVED_IP}"
-  echo "DBG: tenant-servers: ${TENANT_SERVERS}"
-  echo "DBG: resource-server: ${RESOURCE_SERVER}"
+  echo "DBG: tenant-server-kubeconfigs: ${TENANT_SERVER_KUBECONFIGS}"
+  export RESOURCE_SERVER_KUBECONFIG="rp.kubeconfig"
+  echo "DBG: resource-server-kubeconfig: " ${RESOURCE_SERVER_KUBECONFIG}
 else
+# scale-up, just create the master servers
+  export KUBEMARK_CLUSTER_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
   create-kubemark-master
 fi
 
-KUBEMARK_KUBECONFIG="${LOCAL_KUBECONFIG}"
+# master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
+# destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  KUBEMARK_KUBECONFIG="${TP_KUBECONFIG}-${TENANT_PARTITION_SEQUENCE}"
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    tp_vm="${RUN_PREFIX}-kubemark-tp-${tp_num}-master"
+    echo "DBG: reset scheduler on TP master: ${tp_vm}"
+    gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${RP_KUBECONFIG}" "${tp_vm}:/tmp/rp-kubeconfig"
+
+    cmd="sudo mv /tmp/rp-kubeconfig /etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    cmd="sudo pkill kube-scheduler"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+  done
 fi
 
 # start hollow nodes with multiple tenant partition parameters
-#
+export TENANT_SERVER_KUBECONFIGS="/kubeconfig/tp1.kubeconfig"
+for (( tp_num=2; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+do
+  export TENANT_SERVER_KUBECONFIGS="${TENANT_SERVER_KUBECONFIGS},/kubeconfig/tp${tp_num}.kubeconfig"
+done
+
+echo "DBG: TENANT_SERVER_KUBECONFIGS: ${TENANT_SERVER_KUBECONFIGS}"
+
+RESOURCE_SERVER_KUBECONFIG="/kubeconfig/rp.kubeconfig"
+echo "DBG: RESOURCE_SERVER_KUBECONFIG: ${RESOURCE_SERVER_KUBECONFIG}"
+
 start-hollow-nodes
 
 echo ""
@@ -321,7 +437,13 @@ if [ "${CLOUD_PROVIDER}" = "aws" ]; then
 else
   echo "Master IP: ${MASTER_IP}"
 fi
-echo "Kubeconfig for kubemark master is written in ${LOCAL_KUBECONFIG}"
+
+# all kubectl OPs go via the proxy for scale-out env
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  KUBEMARK_KUBECONFIG="${PROXY_KUBECONFIG}"
+else
+  KUBEMARK_KUBECONFIG="${KUBEMARK_CLUSTER_KUBECONFIG}"
+fi
 
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
@@ -343,3 +465,4 @@ echo
 echo -e "Getting ETCD data partition status:" >&2
 "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get etcd
 echo
+

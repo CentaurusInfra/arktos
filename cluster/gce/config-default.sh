@@ -194,8 +194,8 @@ ENABLE_PPROF_DEBUG="${KUBE_ENABLE_PPROF_DEBUG:-false}"
 # TODO(piosz) remove this option once Metrics Server became a stable thing.
 ENABLE_METRICS_SERVER="${KUBE_ENABLE_METRICS_SERVER:-true}"
 
-ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
-
+USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+KUBE_ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
 # Optional: Metadata agent to setup as part of the cluster bring up:
 #   none        - No metadata agent
 #   stackdriver - Stackdriver metadata agent
@@ -546,3 +546,10 @@ PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 KUBERNETES_RESOURCE_PARTITION="${KUBERNETES_RESOURCE_PARTITION:-false}"
 # true if this is a tenant partition cluster
 KUBERNETES_TENANT_PARTITION="${KUBERNETES_TENANT_PARTITION:-false}"
+
+if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == true ]]; then
+  USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+fi
+if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == true ]]; then
+  USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+fi

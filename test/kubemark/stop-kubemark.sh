@@ -17,6 +17,8 @@
 
 # Script that destroys Kubemark cluster and deletes all master resources.
 
+export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/../..
 
 source "${KUBE_ROOT}/test/kubemark/skeleton/util.sh"
@@ -33,6 +35,7 @@ source "${KUBE_ROOT}/cluster/kubemark/util.sh"
 KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
+SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 
 detect-project &> /dev/null
 
@@ -45,22 +48,26 @@ rm -rf "${RESOURCE_DIRECTORY}/addons" \
     "${RESOURCE_DIRECTORY}/hollow-node.yaml"  &> /dev/null || true
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  export KUBE_ENABLE_APISERVER_INSECURE_PORT=true
+  export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
+  export KUBE_ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
   export KUBERNETES_TENANT_PARTITION=true
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     export TENANT_PARTITION_SEQUENCE=${tp_num}
     delete-kubemark-master
+    rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}"
   done
-
 
   export KUBERNETES_TENANT_PARTITION=false
   export KUBERNETES_RESOURCE_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
   delete-kubemark-master
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
-  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-rp
-  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-tp-*
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp
+  rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp
+  rm -rf "${SHARED_CA_DIRECTORY}"
 else
   delete-kubemark-master
+  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark
 fi

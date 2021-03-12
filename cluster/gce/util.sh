@@ -529,7 +529,7 @@ function load-or-gen-kube-clienttoken() {
     GCE_GLBC_TOKEN="$(secure_random 32)"
   fi
   ADDON_MANAGER_TOKEN="$(secure_random 32)"
-  if [[ "${ENABLE_APISERVER_INSECURE_PORT:-false}" != "true" ]]; then
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" != "true" ]]; then
     KUBE_BOOTSTRAP_TOKEN="$(secure_random 32)"
   fi
 }
@@ -1417,7 +1417,7 @@ ENABLE_KCM_LEADER_ELECT: $(yaml-quote ${ENABLE_KCM_LEADER_ELECT})
 ENABLE_SCHEDULER_LEADER_ELECT: $(yaml-quote ${ENABLE_SCHEDULER_LEADER_ELECT})
 ETCD_CLUSTERID: $(yaml-quote ${ETCD_CLUSTERID})
 ENABLE_APISERVER: $(yaml-quote ${ENABLE_APISERVER})
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
+USE_INSECURE_SCALEOUT_CLUSTER_MODE: $(yaml-quote ${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false})
 ENABLE_WORKLOADCONTROLLER: $(yaml-quote ${ENABLE_WORKLOADCONTROLLER})
 ENABLE_KUBESCHEDULER: $(yaml-quote ${ENABLE_KUBESCHEDULER})
 ENABLE_KUBECONTROLLER: $(yaml-quote ${ENABLE_KUBECONTROLLER})
@@ -1432,6 +1432,9 @@ KUBE_APISERVER_MAX_REQUEST_INFLIGHT: $(yaml-quote ${KUBE_APISERVER_MAX_REQUEST_I
 KUBE_APISERVER_EXTRA_ARGS: $(yaml-quote ${KUBE_APISERVER_EXTRA_ARGS:-})
 KUBE_CONTROLLER_EXTRA_ARGS: $(yaml-quote ${KUBE_CONTROLLER_EXTRA_ARGS:-})
 KUBE_SCHEDULER_EXTRA_ARGS: $(yaml-quote ${KUBE_SCHEDULER_EXTRA_ARGS:-})
+SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
+SHARED_APISERVER_TOKEN: $(yaml-quote ${SHARED_APISERVER_TOKEN:-})
+KUBE_ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false})
 EOF
     # KUBE_APISERVER_REQUEST_TIMEOUT_SEC (if set) controls the --request-timeout
     # flag
@@ -1575,7 +1578,7 @@ EOF
     # Node-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "false")
-ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${ENABLE_APISERVER_INSECURE_PORT:-false})
+USE_INSECURE_SCALEOUT_CLUSTER_MODE: $(yaml-quote ${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false})
 EXTRA_DOCKER_OPTS: $(yaml-quote ${EXTRA_DOCKER_OPTS:-})
 EOF
     if [ -n "${KUBEPROXY_TEST_ARGS:-}" ]; then
@@ -1617,9 +1620,9 @@ EOF
 MAX_PODS_PER_NODE: $(yaml-quote ${MAX_PODS_PER_NODE})
 EOF
   fi
-  if [ -n "${TENANT_SERVERS:-}" ]; then
+  if [ -n "${TENANT_SERVER_KUBECONFIGS:-}" ]; then
       cat >>$file <<EOF
-TENANT_SERVERS: $(yaml-quote ${TENANT_SERVERS})
+TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
     fi
 }
@@ -1700,9 +1703,7 @@ function create-certs {
       sans="${sans}IP:${extra},"
     fi
   done
-
   sans="${sans}IP:${service_ip},DNS:kubernetes,DNS:kubernetes.default,DNS:kubernetes.default.svc,DNS:kubernetes.default.svc.${DNS_DOMAIN},DNS:${MASTER_NAME}"
-
   echo "Generating certs for alternate-names: ${sans}"
 
   setup-easyrsa
@@ -1823,6 +1824,13 @@ function generate-proxy-certs {
     ./easyrsa init-pki
     # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
     ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
+
+    # overwrite the CA by copying the prebuilt CA files
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
+
     ./easyrsa --subject-alt-name="${SANS}" build-server-full "${PROXY_NAME}" nopass
 
     # Make a superuser client cert with subject "O=tenant:system, OU=system:masters, CN=kubecfg"
@@ -1871,6 +1879,13 @@ function generate-certs {
     ./easyrsa init-pki
     # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
     ./easyrsa --batch "--req-cn=${PRIMARY_CN}@$(date +%s)" build-ca nopass
+
+    # overwrite the CA by copying the prebuilt CA files
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
+
     ./easyrsa --subject-alt-name="${SANS}" build-server-full "${MASTER_NAME}" nopass
     ./easyrsa build-client-full kube-apiserver nopass
 
@@ -1936,6 +1951,13 @@ function generate-aggregator-certs {
     ./easyrsa init-pki
     # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
     ./easyrsa --batch "--req-cn=${AGGREGATOR_PRIMARY_CN}@$(date +%s)" build-ca nopass
+
+    # overwrite the CA by copying the prebuilt CA files
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+      cp -f ${SHARED_CA_DIRECTORY}/ca.crt ./pki/ca.crt
+      cp -f ${SHARED_CA_DIRECTORY}/ca.key ./pki/private/ca.key
+    fi
+
     ./easyrsa --subject-alt-name="${AGGREGATOR_SANS}" build-server-full "${AGGREGATOR_MASTER_NAME}" nopass
     ./easyrsa build-client-full aggregator-apiserver nopass
 
@@ -2884,6 +2906,10 @@ function create-proxy-vm() {
       export PROXY_RESERVED_IP
       export PROXY_RESERVED_INTERNAL_IP
 
+      # pass back the proxy reserved IP
+      echo ${PROXY_RESERVED_IP} > ${KUBE_TEMP}/proxy-reserved-ip.txt
+      cat ${KUBE_TEMP}/proxy-reserved-ip.txt
+
       return 0
     else
       echo "${result}" >&2
@@ -2905,7 +2931,7 @@ function update-proxy() {
 
   local -r proxy_template=${KUBE_ROOT}/cmd/haproxy-cfg-generator/data/haproxy.cfg.template
 
-  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
+  TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -tls-mode=${HAPROXY_TLS_MODE} -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
 
   if [[ $? != 0 ]]
   then
@@ -2925,7 +2951,9 @@ function load-proxy-cfg {
   ssh-to-node ${PROXY_NAME} "sudo mv ~/${PROXY_CONFIG_FILE} /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
   echo "DBG ========================================"
   cat ${PROXY_CONFIG_FILE_TMP}
-  echo "DBG ========================================"
+  echo "VDBG ========================================"
+
+  echo "Restart proxy service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
 
@@ -2958,6 +2986,12 @@ function setup-proxy() {
   gcloud compute scp --zone="${ZONE}" "${KUBE_TEMP}/easy-rsa-master/proxy/scaleout-proxy-certs.tar.gz" "${PROXY_NAME}:~/"
   ssh-to-node ${PROXY_NAME} "sudo tar -xpf ~/scaleout-proxy-certs.tar.gz -C /etc/haproxy/"
   ssh-to-node ${PROXY_NAME} "sudo chmod +rx /etc/haproxy/pki"
+
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
+    echo "DBG: copy over the CA cert to proxy server"
+    gcloud compute scp --zone="${ZONE}" "${SHARED_CA_DIRECTORY}/ca.crt" "${PROXY_NAME}:/tmp/"
+    ssh-to-node ${PROXY_NAME} "sudo mv /tmp/ca.crt /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/"
+  fi
 
   ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
   ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
@@ -3067,7 +3101,7 @@ function create-master() {
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
-  echo ${MASTER_RESERVED_IP} > /tmp/master_reserved_ip.txt
+  echo ${MASTER_RESERVED_IP} > ${KUBE_TEMP}/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
