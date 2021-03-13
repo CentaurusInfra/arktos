@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package schema
 
 import (
@@ -244,6 +246,8 @@ func newExtensions(s *apiextensions.JSONSchemaProps) (*Extensions, error) {
 	ret := &Extensions{
 		XEmbeddedResource: s.XEmbeddedResource,
 		XIntOrString:      s.XIntOrString,
+		XListMapKeys:      s.XListMapKeys,
+		XListType:         s.XListType,
 	}
 
 	if s.XPreserveUnknownFields != nil {

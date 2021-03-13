@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package internal
 
 import (
@@ -22,7 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/kube-openapi/pkg/schemaconv"
 	"k8s.io/kube-openapi/pkg/util/proto"
-	"sigs.k8s.io/structured-merge-diff/typed"
+	"sigs.k8s.io/structured-merge-diff/v3/typed"
 )
 
 // groupVersionKindExtensionKey is the key used to lookup the
@@ -35,16 +37,17 @@ type gvkParser struct {
 	parser typed.Parser
 }
 
-func (p *gvkParser) Type(gvk schema.GroupVersionKind) typed.ParseableType {
+func (p *gvkParser) Type(gvk schema.GroupVersionKind) *typed.ParseableType {
 	typeName, ok := p.gvks[gvk]
 	if !ok {
 		return nil
 	}
-	return p.parser.Type(typeName)
+	t := p.parser.Type(typeName)
+	return &t
 }
 
-func newGVKParser(models proto.Models) (*gvkParser, error) {
-	typeSchema, err := schemaconv.ToSchema(models)
+func newGVKParser(models proto.Models, preserveUnknownFields bool) (*gvkParser, error) {
+	typeSchema, err := schemaconv.ToSchemaWithPreserveUnknownFields(models, preserveUnknownFields)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert models to schema: %v", err)
 	}

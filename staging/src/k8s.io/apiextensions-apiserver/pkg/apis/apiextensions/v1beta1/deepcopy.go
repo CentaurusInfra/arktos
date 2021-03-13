@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package v1beta1
 
 // TODO: Update this after a tag is created for interface fields in DeepCopy
@@ -240,6 +242,22 @@ func (in *JSONSchemaProps) DeepCopy() *JSONSchemaProps {
 			*out = nil
 		} else {
 			*out = new(bool)
+			**out = **in
+		}
+	}
+
+	if in.XListMapKeys != nil {
+		in, out := &in.XListMapKeys, &out.XListMapKeys
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
+
+	if in.XListType != nil {
+		in, out := &in.XListType, &out.XListType
+		if *in == nil {
+			*out = nil
+		} else {
+			*out = new(string)
 			**out = **in
 		}
 	}

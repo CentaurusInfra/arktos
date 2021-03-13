@@ -10,14 +10,11 @@ metadata:
   - "15"
   generateName: "3"
   generation: 5828590068104375683
-  hashKey: 2234230302359329354
+  hashKey: 3414760188119455639
   labels:
     "8": "9"
   managedFields:
   - apiVersion: "18"
-    fields:
-      "19":
-        "20": null
     manager: "17"
     operation: 鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]
   name: "2"
@@ -30,24 +27,24 @@ metadata:
     kind: "13"
     name: "14"
     uid: z廔ȇ{sŊƏ
-  resourceVersion: "16964250748386560239"
+  resourceVersion: "11042405498087606203"
   selfLink: "6"
   tenant: "4"
-  uid: ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e
+  uid: "7"
 spec:
   audiences:
-  - "26"
-  token: "25"
+  - "20"
+  token: "19"
 status:
   audiences:
-  - "33"
-  error: "34"
+  - "27"
+  error: "28"
   user:
     extra:
-      "30":
-      - "31"
+      "24":
+      - "25"
     groups:
-    - "29"
-    tenant: "32"
-    uid: "28"
-    username: "27"
+    - "23"
+    tenant: "26"
+    uid: "22"
+    username: "21"

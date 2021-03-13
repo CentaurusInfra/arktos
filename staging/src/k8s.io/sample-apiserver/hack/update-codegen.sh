@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2017 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# File modified by cherrypick from kubernetes on 03/04/2021
 
 set -o errexit
 set -o nounset
@@ -31,7 +34,7 @@ bash "${CODEGEN_PKG}/generate-groups.sh" all \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
   --go-header-file "${SCRIPT_ROOT}"/hack/boilerplate.go.txt
 
-bash "${CODEGEN_PKG}/generate-internal-groups.sh" "deepcopy,defaulter,conversion" \
+bash "${CODEGEN_PKG}/generate-internal-groups.sh" "deepcopy,defaulter,conversion,openapi" \
   k8s.io/sample-apiserver/pkg/generated k8s.io/sample-apiserver/pkg/apis k8s.io/sample-apiserver/pkg/apis \
   "wardle:v1alpha1,v1beta1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \

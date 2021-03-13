@@ -7,9 +7,9 @@
     "tenant": "4",
     "namespace": "5",
     "selfLink": "6",
-    "uid": "ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e",
-    "hashKey": 2234230302359329354,
-    "resourceVersion": "16964250748386560239",
+    "uid": "7",
+    "hashKey": 3414760188119455639,
+    "resourceVersion": "11042405498087606203",
     "generation": 5828590068104375683,
     "creationTimestamp": null,
     "deletionGracePeriodSeconds": 6797158496028726353,
@@ -38,42 +38,41 @@
       {
         "manager": "17",
         "operation": "鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]",
-        "apiVersion": "18",
-        "fields": {"19":{"20":null}}
+        "apiVersion": "18"
       }
     ]
   },
   "spec": {
-    "namespace": "25"
+    "namespace": "19"
   },
   "status": {
     "resourceRules": [
       {
         "verbs": [
-          "26"
+          "20"
         ],
         "apiGroups": [
-          "27"
+          "21"
         ],
         "resources": [
-          "28"
+          "22"
         ],
         "resourceNames": [
-          "29"
+          "23"
         ]
       }
     ],
     "nonResourceRules": [
       {
         "verbs": [
-          "30"
+          "24"
         ],
         "nonResourceURLs": [
-          "31"
+          "25"
         ]
       }
     ],
-    "incomplete": false,
-    "evaluationError": "32"
+    "incomplete": true,
+    "evaluationError": "26"
   }
 }

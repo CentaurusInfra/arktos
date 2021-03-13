@@ -7,9 +7,9 @@
     "tenant": "4",
     "namespace": "5",
     "selfLink": "6",
-    "uid": "ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e",
-    "hashKey": 2234230302359329354,
-    "resourceVersion": "16964250748386560239",
+    "uid": "7",
+    "hashKey": 3414760188119455639,
+    "resourceVersion": "11042405498087606203",
     "generation": 5828590068104375683,
     "creationTimestamp": null,
     "deletionGracePeriodSeconds": 6797158496028726353,
@@ -38,29 +38,28 @@
       {
         "manager": "17",
         "operation": "鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]",
-        "apiVersion": "18",
-        "fields": {"19":{"20":null}}
+        "apiVersion": "18"
       }
     ]
   },
   "spec": {
     "limits": [
       {
-        "type": "脽ěĂ凗蓏Ŋ蛊ĉy緅縕",
+        "type": "@Hr鯹)晿",
         "max": {
-          "Ž燹憍峕?狱³-Ǐ忄*齧獚敆Ȏț": "2"
+          "o,c鮽ort昍řČ扷5Ɨ": "647"
         },
         "min": {
-          "峅x": "826"
+          "Ă凗蓏Ŋ蛊ĉy": "361"
         },
         "default": {
-          ";Ơ歿:狞夌碕ʂ": "737"
+          "甞谐颋ǅS": "632"
         },
         "defaultRequest": {
-          "Ƽ@hDrȮO励鹗塢": "874"
+          "狱³-Ǐ忄*齧獚": "502"
         },
         "maxLimitRequestRatio": {
-          "UɦOŖ": "746"
+          "亞螩B峅x4%a鯿rŎǀ朲^苣fƼ@h": "494"
         }
       }
     ]

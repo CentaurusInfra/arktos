@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package schema
 
 import (
@@ -304,6 +306,12 @@ func validateNestedValueValidation(v *NestedValueValidation, skipAnyOf, skipAllO
 	}
 	if v.ForbiddenExtensions.XIntOrString {
 		allErrs = append(allErrs, field.Forbidden(fldPath.Child("x-kubernetes-int-or-string"), "must be false to be structural"))
+	}
+	if len(v.ForbiddenExtensions.XListMapKeys) > 0 {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("x-kubernetes-list-map-keys"), "must be empty to be structural"))
+	}
+	if v.ForbiddenExtensions.XListType != nil {
+		allErrs = append(allErrs, field.Forbidden(fldPath.Child("x-kubernetes-list-type"), "must be undefined to be structural"))
 	}
 
 	// forbid reasoning about metadata because it can lead to metadata restriction we don't want

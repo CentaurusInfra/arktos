@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package schema
 
 import (
@@ -21,8 +23,6 @@ import (
 	"testing"
 
 	fuzz "github.com/google/gofuzz"
-
-	"k8s.io/apimachinery/pkg/util/rand"
 )
 
 func TestValidateNestedValueValidationComplete(t *testing.T) {
@@ -46,7 +46,6 @@ func TestValidateNestedValueValidationComplete(t *testing.T) {
 	for i := 0; i < tt.NumField(); i++ {
 		vv := &NestedValueValidation{}
 		x := reflect.ValueOf(&vv.ForbiddenGenerics).Elem()
-		i := rand.Intn(x.NumField())
 		fuzzer.Fuzz(x.Field(i).Addr().Interface())
 
 		errs := validateNestedValueValidation(vv, false, false, fieldLevel, nil)
@@ -60,7 +59,6 @@ func TestValidateNestedValueValidationComplete(t *testing.T) {
 	for i := 0; i < tt.NumField(); i++ {
 		vv := &NestedValueValidation{}
 		x := reflect.ValueOf(&vv.ForbiddenExtensions).Elem()
-		i := rand.Intn(x.NumField())
 		fuzzer.Fuzz(x.Field(i).Addr().Interface())
 
 		errs := validateNestedValueValidation(vv, false, false, fieldLevel, nil)
