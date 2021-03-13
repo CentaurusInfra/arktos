@@ -1476,6 +1476,7 @@ func (e *Store) CompleteWithOptions(options *generic.StoreOptions) error {
 func (e *Store) startObservingCount(period time.Duration) func() {
 	ctx := genericapirequest.NewContext()
 	ctx = genericapirequest.WithTenant(ctx, metav1.TenantAll)
+	ctx = genericapirequest.WithNamespace(ctx, metav1.NamespaceAll)
 	prefix := e.KeyRootFunc(ctx)
 	resourceName := e.DefaultQualifiedResource.String()
 	klog.V(2).Infof("Monitoring %v count at <storage-prefix>/%v", resourceName, prefix)
