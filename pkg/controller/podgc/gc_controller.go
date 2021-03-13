@@ -62,7 +62,7 @@ func NewPodGC(kubeClient clientset.Interface, rpClients map[string]clientset.Int
 		resourceProviderClients: rpClients,
 		terminatedPodThreshold:  terminatedPodThreshold,
 		deletePod: func(tenant, namespace, name string) error {
-			klog.Infof("PodGC is force deleting Pod: %v/%v", namespace, name)
+			klog.Infof("PodGC is force deleting Pod: %v/%v/%v", tenant, namespace, name)
 			return kubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, metav1.NewDeleteOptions(0))
 		},
 	}
