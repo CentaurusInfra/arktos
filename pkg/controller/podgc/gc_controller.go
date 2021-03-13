@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,25 +43,27 @@ const (
 )
 
 type PodGCController struct {
-	kubeClient clientset.Interface
+	kubeClient              clientset.Interface
+	resourceProviderClients map[string]clientset.Interface
 
 	podLister       corelisters.PodLister
 	podListerSynced cache.InformerSynced
 
-	deletePod              func(namespace, name string) error
+	deletePod              func(tenant, namespace, name string) error
 	terminatedPodThreshold int
 }
 
-func NewPodGC(kubeClient clientset.Interface, podInformer coreinformers.PodInformer, terminatedPodThreshold int) *PodGCController {
+func NewPodGC(kubeClient clientset.Interface, rpClients map[string]clientset.Interface, podInformer coreinformers.PodInformer, terminatedPodThreshold int) *PodGCController {
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("gc_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
 	gcc := &PodGCController{
-		kubeClient:             kubeClient,
-		terminatedPodThreshold: terminatedPodThreshold,
-		deletePod: func(namespace, name string) error {
+		kubeClient:              kubeClient,
+		resourceProviderClients: rpClients,
+		terminatedPodThreshold:  terminatedPodThreshold,
+		deletePod: func(tenant, namespace, name string) error {
 			klog.Infof("PodGC is force deleting Pod: %v/%v", namespace, name)
-			return kubeClient.CoreV1().Pods(namespace).Delete(name, metav1.NewDeleteOptions(0))
+			return kubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, metav1.NewDeleteOptions(0))
 		},
 	}
 
@@ -128,13 +131,13 @@ func (gcc *PodGCController) gcTerminated(pods []*v1.Pod) {
 	var wait sync.WaitGroup
 	for i := 0; i < deleteCount; i++ {
 		wait.Add(1)
-		go func(namespace string, name string) {
+		go func(tenant string, namespace string, name string) {
 			defer wait.Done()
-			if err := gcc.deletePod(namespace, name); err != nil {
+			if err := gcc.deletePod(tenant, namespace, name); err != nil {
 				// ignore not founds
 				defer utilruntime.HandleError(err)
 			}
-		}(terminatedPods[i].Namespace, terminatedPods[i].Name)
+		}(terminatedPods[i].Tenant, terminatedPods[i].Namespace, terminatedPods[i].Name)
 	}
 	wait.Wait()
 }
@@ -143,13 +146,43 @@ func (gcc *PodGCController) gcTerminated(pods []*v1.Pod) {
 func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	klog.V(4).Infof("GC'ing orphaned")
 	// We want to get list of Nodes from the etcd, to make sure that it's as fresh as possible.
-	nodes, err := gcc.kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
+
+	// get nodes from resource provider clients
+	allRpNodes := make(map[string]*v1.NodeList, len(gcc.resourceProviderClients))
+	errs := make(map[string]error, len(gcc.resourceProviderClients))
+	var wg sync.WaitGroup
+	wg.Add(len(gcc.resourceProviderClients))
+	var lock sync.Mutex
+	for rpId, client := range gcc.resourceProviderClients {
+		go func(resourceProviderId string, rpClient clientset.Interface, nodeLists map[string]*v1.NodeList, errs map[string]error, writeLock *sync.Mutex) {
+			defer wg.Done()
+			nodes, err := rpClient.CoreV1().Nodes().List(metav1.ListOptions{})
+			if err != nil {
+				writeLock.Lock()
+				errs[resourceProviderId] = err
+				klog.Errorf("Error listing nodes. err: %v", errs)
+				writeLock.Unlock()
+				return
+			}
+			writeLock.Lock()
+			nodeLists[resourceProviderId] = nodes
+			writeLock.Unlock()
+		}(rpId, client, allRpNodes, errs, &lock)
+	}
+	wg.Wait()
+
+	// check errors and aggregate nodes
+	if len(errs) == len(gcc.resourceProviderClients) {
+		// avoid garbage collection when
+		klog.Errorf("Error listing nodes from all resource partition. err: %v", errs)
 		return
 	}
+
 	nodeNames := sets.NewString()
-	for i := range nodes.Items {
-		nodeNames.Insert(nodes.Items[i].Name)
+	for _, nodes := range allRpNodes {
+		for _, node := range nodes.Items {
+			nodeNames.Insert(node.Name)
+		}
 	}
 
 	for _, pod := range pods {
@@ -159,11 +192,11 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 		if nodeNames.Has(pod.Spec.NodeName) {
 			continue
 		}
-		klog.V(2).Infof("Found orphaned Pod %v/%v assigned to the Node %v. Deleting.", pod.Namespace, pod.Name, pod.Spec.NodeName)
-		if err := gcc.deletePod(pod.Namespace, pod.Name); err != nil {
+		klog.V(2).Infof("Found orphaned Pod %v/%v/%v assigned to the Node %v. Deleting.", pod.Tenant, pod.Namespace, pod.Name, pod.Spec.NodeName)
+		if err := gcc.deletePod(pod.Tenant, pod.Namespace, pod.Name); err != nil {
 			utilruntime.HandleError(err)
 		} else {
-			klog.V(0).Infof("Forced deletion of orphaned Pod %v/%v succeeded", pod.Namespace, pod.Name)
+			klog.V(0).Infof("Forced deletion of orphaned Pod %v/%v/%v succeeded", pod.Tenant, pod.Namespace, pod.Name)
 		}
 	}
 }
@@ -177,11 +210,11 @@ func (gcc *PodGCController) gcUnscheduledTerminating(pods []*v1.Pod) {
 			continue
 		}
 
-		klog.V(2).Infof("Found unscheduled terminating Pod %v/%v not assigned to any Node. Deleting.", pod.Namespace, pod.Name)
-		if err := gcc.deletePod(pod.Namespace, pod.Name); err != nil {
+		klog.V(2).Infof("Found unscheduled terminating Pod %v/%v/%v not assigned to any Node. Deleting.", pod.Tenant, pod.Namespace, pod.Name)
+		if err := gcc.deletePod(pod.Tenant, pod.Namespace, pod.Name); err != nil {
 			utilruntime.HandleError(err)
 		} else {
-			klog.V(0).Infof("Forced deletion of unscheduled terminating Pod %v/%v succeeded", pod.Namespace, pod.Name)
+			klog.V(0).Infof("Forced deletion of unscheduled terminating Pod %v/%v/%v succeeded", pod.Tenant, pod.Namespace, pod.Name)
 		}
 	}
 }
