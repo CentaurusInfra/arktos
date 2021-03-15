@@ -419,9 +419,9 @@ func AddAllEventHandlers(
 	for i := range nodeInformers {
 		nodeInformers[i].Informer().AddEventHandler(
 			cache.ResourceEventHandlerFuncs{
-				AddFunc:            sched.addNodeToCache,
-				UpdateFunc:         sched.updateNodeInCache,
-				DeleteFunc:         sched.deleteNodeFromCache,
+				AddFunc:    sched.addNodeToCache,
+				UpdateFunc: sched.updateNodeInCache,
+				DeleteFunc: sched.deleteNodeFromCache,
 			},
 		)
 		klog.V(3).Infof("Add event handler to node informer %d %p", i, nodeInformers[i].Informer())

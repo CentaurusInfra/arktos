@@ -217,9 +217,9 @@ func NewAttachDetachController(
 
 	for _, nodeInformer := range nodeInformers {
 		nodeInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
-			AddFunc:            adc.nodeAdd,
-			UpdateFunc:         adc.nodeUpdate,
-			DeleteFunc:         adc.nodeDelete,
+			AddFunc:    adc.nodeAdd,
+			UpdateFunc: adc.nodeUpdate,
+			DeleteFunc: adc.nodeDelete,
 		})
 	}
 
