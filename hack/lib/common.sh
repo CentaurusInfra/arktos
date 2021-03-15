@@ -521,7 +521,7 @@ function kube::common::start_controller_manager {
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
       # scale out resource partition
       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-        KUBE_CONTROLLERS="daemonset,nodelifecycle,ttl"
+        KUBE_CONTROLLERS="daemonset,nodelifecycle,ttl,serviceaccount,serviceaccount-token"
 
         ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
           --v="${LOG_LEVEL}" \
