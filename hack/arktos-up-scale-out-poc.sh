@@ -23,6 +23,10 @@ IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-"false"}
 
 # proxy is still used to start cloud KCM. Also useful for system tenant requests.
 # However, don't use proxy to query node list as there is no aggregator for multiple RPs
+# As we are tring to remove HA proxy, SCALE_OUT_PROXY_IP and SCALE_OUT_PROXY_PORT are both no longer
+#  required in local cluster up. When they are not provided, they will be default to API server host
+#  ip and port. If you need proxy to be running, please set environment variable SCALE_OUT_PROXY_IP
+#  and SCALE_OUT_PROXY_PORT explicitly.
 SCALE_OUT_PROXY_IP=${SCALE_OUT_PROXY_IP:-}
 SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-}
 TENANT_SERVER=${TENANT_SERVER:-}
