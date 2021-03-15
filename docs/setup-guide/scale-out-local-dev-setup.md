@@ -4,13 +4,13 @@
 
 1. Two Tenant Partitions
 
-1. Two Resource Partitions (3/2/2021)
+1. Two Resource Partitions
 
-1. HA proxy
+1. HA proxy (not required if not using cloud KCM)
 
 ## Prerequsite
 
-1. 3 dev box (tested on ubuntu 16.04), 1 for RP, 2 for TPs. Record ip as TP1_IP, TP2_IP, RP_IP
+1. 4 dev box (tested on ubuntu 16.04), 2 for RP, 2 for TPs. Record ip as TP1_IP, TP2_IP, RP1_IP, RP2_IP
 
 1. One dev box for HA proxy, can share with dev boxes used for TP or RP. Record ip as PROXY_IP
 
@@ -19,11 +19,11 @@
 ### Setting up HA proxy
 1. Install HA proxy 2.3.0
 
-1. Set up environment variables
+1. Set up environment variables (no changes have been made for RP2 nor tested)
 
 ```
-export TENANT_PARTITION_IP=[TP1_IP],[TP2_IP]`
-export RESOURCE_PARTITION_IP=[RP_IP]
+export TENANT_PARTITION_IP=[TP1_IP],[TP2_IP]
+export RESOURCE_PARTITION_IP=[RP1_IP]
 ```
 
 1. Run ./hack/scalability/setup_haproxy.sh (depends on your HA proxy version and environment setup, you might need to comment out some code in the script)
@@ -34,8 +34,11 @@ export RESOURCE_PARTITION_IP=[RP_IP]
 1. Set up environment variables
 
 ```
+# optional, used for cloud KCM only but not tested
 export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
+
+# required
 export IS_RESOURCE_PARTITION=false
 export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
 ```
@@ -48,17 +51,14 @@ Note:
 
 1. As certificates generating and sharing is confusing and time consuming in local test environment. We will use insecure mode for local test for now. Secured mode can be added back later when main goal is acchieved.
 
-### Setting up RP
+### Setting up RPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
 1. Set up environment variables
 
 ```
-export SCALE_OUT_PROXY_IP=[PROXY_IP]
-export SCALE_OUT_PROXY_PORT=8888
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
-export TENANT_SERVERS_KUBELET=http://[TP1_IP]:8080,<http://[TP2_IP]:8080>  # this is a temp solution before kubelet is ready to use TENANT_SERVER 
 ```
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
