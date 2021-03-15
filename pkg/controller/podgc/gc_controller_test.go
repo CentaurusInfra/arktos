@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -116,7 +117,7 @@ func TestGCTerminated(t *testing.T) {
 		gcc, podInformer := NewFromClient(client, test.threshold)
 		deletedPodNames := make([]string, 0)
 		var lock sync.Mutex
-		gcc.deletePod = func(_, name string) error {
+		gcc.deletePod = func(_, _, name string) error {
 			lock.Lock()
 			defer lock.Unlock()
 			deletedPodNames = append(deletedPodNames, name)
@@ -183,7 +184,7 @@ func TestGCOrphaned(t *testing.T) {
 		gcc, podInformer := NewFromClient(client, test.threshold)
 		deletedPodNames := make([]string, 0)
 		var lock sync.Mutex
-		gcc.deletePod = func(_, name string) error {
+		gcc.deletePod = func(_, _, name string) error {
 			lock.Lock()
 			defer lock.Unlock()
 			deletedPodNames = append(deletedPodNames, name)
@@ -260,7 +261,7 @@ func TestGCUnscheduledTerminating(t *testing.T) {
 		gcc, podInformer := NewFromClient(client, -1)
 		deletedPodNames := make([]string, 0)
 		var lock sync.Mutex
-		gcc.deletePod = func(_, name string) error {
+		gcc.deletePod = func(_, _, name string) error {
 			lock.Lock()
 			defer lock.Unlock()
 			deletedPodNames = append(deletedPodNames, name)
