@@ -15,12 +15,20 @@
 # limitations under the License.
 
 # set up variables
+KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+echo KUBE_ROOT ${KUBE_ROOT}
+source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
+
 IS_RESOURCE_PARTITION=${IS_RESOURCE_PARTITION:-"false"}
 
 # proxy is still used to start cloud KCM. Also useful for system tenant requests.
 # However, don't use proxy to query node list as there is no aggregator for multiple RPs
+# As we are tring to remove HA proxy, SCALE_OUT_PROXY_IP and SCALE_OUT_PROXY_PORT are both no longer
+#  required in local cluster up. When they are not provided, they will be default to API server host
+#  ip and port. If you need proxy to be running, please set environment variable SCALE_OUT_PROXY_IP
+#  and SCALE_OUT_PROXY_PORT explicitly.
 SCALE_OUT_PROXY_IP=${SCALE_OUT_PROXY_IP:-}
-SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-"8888"}
+SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-}
 TENANT_SERVER=${TENANT_SERVER:-}
 RESOURCE_SERVER=${RESOURCE_SERVER:-}
 IS_SCALE_OUT=${IS_SCALE_OUT:-"true"}
@@ -31,8 +39,13 @@ echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
 echo "IS_SCALE_OUT: |${IS_SCALE_OUT}|"
 
 if [[ -z "${SCALE_OUT_PROXY_IP}" ]]; then
-  echo ERROR: Please set SCALE_OUT_PROXY_IP.
-  exit 1
+  echo SCALE_OUT_PROXY_IP is missing. Default to local host ip ${API_HOST}
+  SCALE_OUT_PROXY_IP=${API_HOST}
+fi
+
+if [[ -z "${SCALE_OUT_PROXY_PORT}" ]]; then
+  echo SCALE_OUT_PROXY_PORT is missing. Default to local host non secure port ${API_PORT}
+  SCALE_OUT_PROXY_PORT=${API_PORT}
 fi
 
 SCALE_OUT_PROXY_ENDPOINT="https://${SCALE_OUT_PROXY_IP}:${SCALE_OUT_PROXY_PORT}/"
@@ -54,10 +67,6 @@ if [[ -z "${RESOURCE_SERVER}" ]]; then
 else
   RESOURCE_SERVERS=(${RESOURCE_SERVER//,/ })
 fi
-
-KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-
-source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
 # sanity check for OpenStack provider
 if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
