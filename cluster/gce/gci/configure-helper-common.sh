@@ -2398,10 +2398,10 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle"
+    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset"
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
@@ -2411,8 +2411,8 @@ function start-kube-controller-manager {
     # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
     sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
     sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
-    echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVER_KUBECONFIGS}"
-    params+=" --tenant-server-kubeconfigs=${TENANT_SERVER_KUBECONFIGS}"
+    echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+    params+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
   fi
 
   if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
