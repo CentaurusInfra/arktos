@@ -798,12 +798,18 @@ EOF
     fi >>/tmp/kube-proxy.yaml
 
     kube::common::generate_kubeproxy_certs
+    local port=${API_SECURE_PORT}
+    local protocol="https"
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      port=${API_PORT}
+      protocol="http"
+    fi
 
     # shellcheck disable=SC2024
     sudo "${GO_OUT}/hyperkube" kube-proxy \
       --v="${LOG_LEVEL}" \
       --config=/tmp/kube-proxy.yaml \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
+      --master="${protocol}://${API_HOST}:${port}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
 }
 
