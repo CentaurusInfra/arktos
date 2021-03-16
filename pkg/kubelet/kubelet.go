@@ -450,7 +450,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 	if kubeDeps.HeartbeatClient != nil {
 		fieldSelector := fields.Set{api.ObjectNameField: string(nodeName)}.AsSelector()
-		nodeLW := cache.NewListWatchFromClient(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector)
+		nodeLW := cache.NewListWatchFromClientWithMultiTenancy(kubeDeps.HeartbeatClient.CoreV1(), "nodes", metav1.NamespaceAll, fieldSelector, metav1.TenantNone)
 		r := cache.NewReflector(nodeLW, &v1.Node{}, nodeIndexer, 0)
 		go r.Run(wait.NeverStop)
 	}
