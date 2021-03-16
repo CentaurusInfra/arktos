@@ -42,6 +42,7 @@ KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 export RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
 export SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
+export SCALEOUT_RP_COUNT="${SCALEOUT_RP_COUNT:-1}"
 export HAPROXY_TLS_MODE=${HAPROXY_TLS_MODE:-"bridging"}
 
 ### the list of kubeconfig files to TP masters
@@ -123,24 +124,32 @@ function delete-kubemark-image {
   delete-image "${KUBEMARK_IMAGE_REGISTRY}/kubemark:${KUBEMARK_IMAGE_TAG}"
 }
 
+RESOURCE_SERVER_KUBECONFIG=""
+RP_NUM=""
 # Generate secret and configMap for the hollow-node pods to work, prepare
 # manifests of the hollow-node and heapster replication controllers from
 # templates, and finally create these resources through kubectl.
 function create-kube-hollow-node-resources {
-  # Create kubemark namespace.
-  "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
+  echo "DBG: RP number: ${RP_NUM}"
+  local -r current_rp_kubeconfig=${RP_KUBECONFIG}-${RP_NUM}
+  echo "DBG: PR kubeconfig: ${current_rp_kubeconfig}"
 
-  # Create configmap for configuring hollow- kubelet, proxy and npd.
-  "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
-    --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
-    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
-    --from-literal=resource.server.kubeconfig="${RESOURCE_SERVER_KUBECONFIG:-}" \
-    --from-literal=tenant.server.kubeconfigs="${TENANT_SERVER_KUBECONFIGS:-}"
+  # Create kubemark namespace.
+  if [[ ${RP_NUM} == 1 ]]; then
+    "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/kubemark-ns.json"
+  fi
 
   # Create secret for passing kubeconfigs to kubelet, kubeproxy and npd.
   # It's bad that all component shares the same kubeconfig.
   # TODO(https://github.com/kubernetes/kubernetes/issues/79883): Migrate all components to separate credentials.
 if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+  # Create configmap for configuring hollow- kubelet, proxy and npd.
+  "${KUBECTL}" create configmap "node-configmap" --namespace="kubemark" \
+    --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
+    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
+    --from-literal=resource.server.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG:-}" \
+    --from-literal=tenant.server.kubeconfigs="${KUBEMARK_CLUSTER_KUBECONFIG:-}"
+
   "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" \
     --from-file=kubelet.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
     --from-file=kubeproxy.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
@@ -149,29 +158,39 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
     --from-file=cluster_autoscaler.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}" \
     --from-file=dns.kubeconfig="${KUBEMARK_CLUSTER_KUBECONFIG}"
 else
+  # Create configmap for configuring hollow- kubelet, proxy and npd.
+  "${KUBECTL}" create configmap "node-configmap-${RP_NUM}" --namespace="kubemark" \
+    --from-literal=content.type="${TEST_CLUSTER_API_CONTENT_TYPE}" \
+    --from-file=kernel.monitor="${RESOURCE_DIRECTORY}/kernel-monitor.json" \
+    --from-literal=resource.server.kubeconfig="${RESOURCE_SERVER_KUBECONFIG:-}" \
+    --from-literal=tenant.server.kubeconfigs="${TENANT_SERVER_KUBECONFIGS:-}"
+
   # TODO: DNS to proxy to get the service info
   # TODO: kubeproxy to proxy to get the serivce info
   #
   echo "DBG setting up secrets for hollow nodes"
-  create_secret_args="--from-file=kubelet.kubeconfig="${RP_KUBECONFIG}
-  create_secret_args=${create_secret_args}"  --from-file=kubeproxy.kubeconfig="${RP_KUBECONFIG}
-  create_secret_args=${create_secret_args}"  --from-file=npd.kubeconfig="${RP_KUBECONFIG}
-  create_secret_args=${create_secret_args}"  --from-file=heapster.kubeconfig="${RP_KUBECONFIG}
-  create_secret_args=${create_secret_args}" --from-file=cluster_autoscaler.kubeconfig="${RP_KUBECONFIG}
-  create_secret_args=${create_secret_args}" --from-file=dns.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args="--from-file=kubelet.kubeconfig="${current_rp_kubeconfig}
+  create_secret_args=${create_secret_args}"  --from-file=kubeproxy.kubeconfig="${current_rp_kubeconfig}
+  create_secret_args=${create_secret_args}"  --from-file=npd.kubeconfig="${current_rp_kubeconfig}
+  create_secret_args=${create_secret_args}"  --from-file=heapster.kubeconfig="${current_rp_kubeconfig}
+  create_secret_args=${create_secret_args}" --from-file=cluster_autoscaler.kubeconfig="${current_rp_kubeconfig}
+  create_secret_args=${create_secret_args}" --from-file=dns.kubeconfig="${current_rp_kubeconfig}
 
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     create_secret_args=${create_secret_args}" --from-file=tp${tp_num}.kubeconfig="${TP_KUBECONFIG}-${tp_num}
   done
 
-  create_secret_args=${create_secret_args}" --from-file=rp.kubeconfig="${RP_KUBECONFIG}
+  create_secret_args=${create_secret_args}" --from-file=rp.kubeconfig-${RP_NUM}="${current_rp_kubeconfig}
 
 
-  "${KUBECTL}" create secret generic "kubeconfig" --type=Opaque --namespace="kubemark" ${create_secret_args}
+  "${KUBECTL}" create secret generic "kubeconfig-${RP_NUM}" --type=Opaque --namespace="kubemark" ${create_secret_args}
 fi
 
+if [[ ${RP_NUM} == 1 ]]; then
   # Create addon pods.
+  ## TODO: verify addon-s are for the host or hollow-node, if they are for hollow-nodes
+  ## TODO: for multiple RPs, identify if they should be multiple instances
   # Heapster.
   mkdir -p "${RESOURCE_DIRECTORY}/addons"
   MASTER_IP=$(grep server "${KUBEMARK_CLUSTER_KUBECONFIG}" | awk -F "/" '{print $3}')
@@ -209,7 +228,10 @@ fi
   fi
 
   "${KUBECTL}" create -f "${RESOURCE_DIRECTORY}/addons" --namespace="kubemark"
+fi
 
+  ## the replicaication controller should be per RP cluster
+  ##
   # Create the replication controller for hollow-nodes.
   # We allow to override the NUM_REPLICAS when running Cluster Autoscaler.
   NUM_REPLICAS=${NUM_REPLICAS:-${NUM_NODES}}
@@ -218,12 +240,14 @@ fi
   else
     sed "s@{{numreplicas}}@${NUM_REPLICAS}@g" "${RESOURCE_DIRECTORY}/hollow-node_template.yaml" > "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   fi
+
   proxy_cpu=20
   if [ "${NUM_NODES}" -gt 1000 ]; then
     proxy_cpu=50
   fi
   proxy_mem_per_node=50
   proxy_mem=$((100 * 1024 + proxy_mem_per_node*NUM_NODES))
+  sed -i'' -e "s@{{rp_num}}@${RP_NUM}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{HOLLOW_PROXY_CPU}}@${proxy_cpu}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{HOLLOW_PROXY_MEM}}@${proxy_mem}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
   sed -i'' -e "s@{{kubemark_image_registry}}@${KUBEMARK_IMAGE_REGISTRY}@g" "${RESOURCE_DIRECTORY}/hollow-node.yaml"
@@ -241,10 +265,14 @@ fi
 
 # Wait until all hollow-nodes are running or there is a timeout.
 function wait-for-hollow-nodes-to-run-or-timeout {
+  echo "DBG: RP number: ${RP_NUM}"
+  local -r current_rp_kubeconfig=${RP_KUBECONFIG}-${RP_NUM}
+  echo "DBG: PR kubeconfig: ${current_rp_kubeconfig}"
+
   timeout_seconds=$1
   echo -n "Waiting for all hollow-nodes to become Running"
   start=$(date +%s)
-  nodes=$("${KUBECTL}" --kubeconfig="${RP_KUBECONFIG}" get node 2> /dev/null) || true
+  nodes=$("${KUBECTL}" --kubeconfig="${current_rp_kubeconfig}" get node 2> /dev/null) || true
   ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
 
   until [[ "${ready}" -ge "${NUM_REPLICAS}" ]]; do
@@ -256,12 +284,12 @@ function wait-for-hollow-nodes-to-run-or-timeout {
       # shellcheck disable=SC2154 # Color defined in sourced script
       echo -e "${color_red} Timeout waiting for all hollow-nodes to become Running. ${color_norm}"
       # Try listing nodes again - if it fails it means that API server is not responding
-      if "${KUBECTL}" --kubeconfig="${RP_KUBECONFIG}" get node &> /dev/null; then
+      if "${KUBECTL}" --kubeconfig="${current_rp_kubeconfig}" get node &> /dev/null; then
         echo "Found only ${ready} ready hollow-nodes while waiting for ${NUM_NODES}."
       else
         echo "Got error while trying to list hollow-nodes. Probably API server is down."
       fi
-      pods=$("${KUBECTL}" get pods -l name=hollow-node --namespace=kubemark) || true
+      pods=$("${KUBECTL}" get pods -l name=hollow-node-${RP_NUM} --namespace=kubemark) || true
       running=$(($(echo "${pods}" | grep -c "Running")))
       echo "${running} hollow-nodes are reported as 'Running'"
       not_running=$(($(echo "${pods}" | grep -vc "Running") - 1))
@@ -269,7 +297,7 @@ function wait-for-hollow-nodes-to-run-or-timeout {
       echo "${pods}" | grep -v Running
       exit 1
     fi
-    nodes=$("${KUBECTL}" --kubeconfig="${RP_KUBECONFIG}" get node 2> /dev/null) || true
+    nodes=$("${KUBECTL}" --kubeconfig="${current_rp_kubeconfig}" get node 2> /dev/null) || true
     ready=$(($(echo "${nodes}" | grep -vc "NotReady") - 1))
   done
   # shellcheck disable=SC2154 # Color defined in sourced script
@@ -385,15 +413,15 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   echo "DBG: set tenant partition flag false"
   export KUBERNETES_TENANT_PARTITION=false
   export KUBERNETES_RESOURCE_PARTITION=true
-  export KUBEMARK_CLUSTER_KUBECONFIG=${RP_KUBECONFIG}
 
-  create-kubemark-master
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+  do
+    export KUBEMARK_CLUSTER_KUBECONFIG="${RP_KUBECONFIG}-${rp_num}"
+    export RESOURCE_PARTITION_SEQUENCE=${rp_num}
+    create-kubemark-master
+  done
+
   export KUBERNETES_RESOURCE_PARTITION=false
-  export KUBERNETES_SCALEOUT_PROXY=false
-
-  echo "DBG: tenant-server-kubeconfigs: ${TENANT_SERVER_KUBECONFIGS}"
-  export RESOURCE_SERVER_KUBECONFIG="rp.kubeconfig"
-  echo "DBG: resource-server-kubeconfig: " ${RESOURCE_SERVER_KUBECONFIG}
 else
 # scale-up, just create the master servers
   export KUBEMARK_CLUSTER_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
@@ -402,21 +430,31 @@ fi
 
 # master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
 # destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+# TODO: do the same for kube-controller-manager for each TP as well
+#
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     tp_vm="${RUN_PREFIX}-kubemark-tp-${tp_num}-master"
     echo "DBG: reset scheduler on TP master: ${tp_vm}"
-    gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${RP_KUBECONFIG}" "${tp_vm}:/tmp/rp-kubeconfig"
+    for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfig="${RP_KUBECONFIG}-${rp_num}"
+      gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${rp_kubeconfig}" "${tp_vm}:/tmp/rp-kubeconfig-${rp_num}"
 
-    cmd="sudo mv /tmp/rp-kubeconfig /etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
-    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+      cmd="sudo mv /tmp/rp-kubeconfig-${rp_num} /etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-${rp_num}"
+      gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    done
+
     cmd="sudo pkill kube-scheduler"
     gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
   done
 fi
 
 # start hollow nodes with multiple tenant partition parameters
+# TENANT_SERVER_KUBECONFIGS and RESOURCE_SERVER_KUBECONFIG if the directory
+# where the hollow-node kubelet container to get the kubeconfig files
+#
 export TENANT_SERVER_KUBECONFIGS="/kubeconfig/tp1.kubeconfig"
 for (( tp_num=2; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
 do
@@ -425,10 +463,14 @@ done
 
 echo "DBG: TENANT_SERVER_KUBECONFIGS: ${TENANT_SERVER_KUBECONFIGS}"
 
-RESOURCE_SERVER_KUBECONFIG="/kubeconfig/rp.kubeconfig"
-echo "DBG: RESOURCE_SERVER_KUBECONFIG: ${RESOURCE_SERVER_KUBECONFIG}"
+for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+do
+  RP_NUM=${rp_num}
+  RESOURCE_SERVER_KUBECONFIG="/kubeconfig/rp.kubeconfig-${rp_num}"
+  echo "DBG: RESOURCE_SERVER_KUBECONFIG: ${RESOURCE_SERVER_KUBECONFIG}"
 
-start-hollow-nodes
+  start-hollow-nodes
+done
 
 echo ""
 if [ "${CLOUD_PROVIDER}" = "aws" ]; then
@@ -453,6 +495,16 @@ echo
 echo -e "Getting total hollow-nodes number:" >&2
 "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get node | grep "hollow-node" | wc -l
 echo
+
+for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+do
+  rp_kubeconfig="${RP_KUBECONFIG}-${rp_num}"
+  echo
+  echo -e "Getting total hollow-nodes number for RP-${rp_num}" >&2
+  "${KUBECTL}" --kubeconfig="${rp_kubeconfig}" get node | grep "hollow-node" | wc -l
+  echo
+done
+
 echo -e "Getting endpoints status:" >&2
 "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get endpoints -A
 echo
