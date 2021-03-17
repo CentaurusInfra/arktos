@@ -32,7 +32,7 @@
 * Implementation location: new data type in storage (config map is watched by all nodes. This design has health probe data and will be updated frequently. Not suitable for config map.)
 
 ### Design Details
-See [ExploredSolutionDetails-NotUsed.md](ExploredSolutionDetails-NotUsed.md)
+See [ExploredSolutionsDetails-NotUsed.md](ExploredSolutionsDetails-NotUsed.md)
 
 ## Proposal B - All controller runs in each controller manager, with fixed # of workers configured
 ### Configuration
@@ -43,7 +43,7 @@ See [ExploredSolutionDetails-NotUsed.md](ExploredSolutionDetails-NotUsed.md)
 * Implementation location: config map
 
 ### Design Details
-See [ExploredSolutionDetails-NotUsed.md](ExploredSolutionDetails-NotUsed.md)
+See [ExploredSolutionsDetails-NotUsed.md](ExploredSolutionsDetails-NotUsed.md)
 
 ## Proposal C - All controller runs in each controller manager, with fixed # of workers in location file configuration (or hard code)
 
@@ -95,7 +95,7 @@ See [ExploredSolutionDetails-NotUsed.md](ExploredSolutionDetails-NotUsed.md)
 * Controllers are centrally registered
 
 #### Design Details
-See [ExploredSolutionDetails-NotUsed.md](ExploredSolutionDetails-NotUsed.md)
+See [ExploredSolutionsDetails-NotUsed.md](ExploredSolutionsDetails-NotUsed.md)
 
 
 ### Solution B - Unbalanced workload distribution
