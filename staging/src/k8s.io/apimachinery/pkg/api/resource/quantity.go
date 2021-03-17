@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -632,6 +633,11 @@ func (q Quantity) MarshalJSON() ([]byte, error) {
 	result = append(result, suffix...)
 	result = append(result, '"')
 	return result, nil
+}
+
+// ToUnstructured implements the value.UnstructuredConverter interface.
+func (q Quantity) ToUnstructured() interface{} {
+	return q.String()
 }
 
 // UnmarshalJSON implements the json.Unmarshaller interface.

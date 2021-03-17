@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2017 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+# File modified by cherrypick from kubernetes on 03/04/2021
 
 set -o errexit
 set -o nounset
@@ -28,12 +31,12 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-
 #
 # we skip informers and listers for metrics, because we don't quite support the requisite operations yet
 # we skip generating the internal clientset as it's not really needed
-"${CODEGEN_PKG}/generate-internal-groups.sh" deepcopy,conversion \
+bash "${CODEGEN_PKG}/generate-internal-groups.sh" deepcopy,conversion \
   k8s.io/metrics/pkg/client k8s.io/metrics/pkg/apis k8s.io/metrics/pkg/apis \
   "metrics:v1alpha1,v1beta1 custom_metrics:v1beta1 external_metrics:v1beta1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
   --go-header-file "${SCRIPT_ROOT}/hack/boilerplate.go.txt"
-"${CODEGEN_PKG}/generate-groups.sh" client \
+bash "${CODEGEN_PKG}/generate-groups.sh" client \
   k8s.io/metrics/pkg/client k8s.io/metrics/pkg/apis \
   "metrics:v1alpha1,v1beta1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \

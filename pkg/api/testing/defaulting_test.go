@@ -197,7 +197,7 @@ func TestDefaulting(t *testing.T) {
 				if !expectedChanged || changedOnce {
 					break
 				}
-				if iter > 600 {
+				if iter > 900 {
 					t.Errorf("expected %s to trigger defaulting due to fuzzing", gvk)
 					break
 				}

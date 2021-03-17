@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package fieldmanager
 
 import (
@@ -29,8 +31,8 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager/internal"
 	"k8s.io/klog"
 	openapiproto "k8s.io/kube-openapi/pkg/util/proto"
-	"sigs.k8s.io/structured-merge-diff/fieldpath"
-	"sigs.k8s.io/structured-merge-diff/merge"
+	"sigs.k8s.io/structured-merge-diff/v3/fieldpath"
+	"sigs.k8s.io/structured-merge-diff/v3/merge"
 	"sigs.k8s.io/yaml"
 )
 
@@ -48,7 +50,7 @@ type FieldManager struct {
 // NewFieldManager creates a new FieldManager that merges apply requests
 // and update managed fields for other types of requests.
 func NewFieldManager(models openapiproto.Models, objectConverter runtime.ObjectConvertor, objectDefaulter runtime.ObjectDefaulter, gv schema.GroupVersion, hub schema.GroupVersion) (*FieldManager, error) {
-	typeConverter, err := internal.NewTypeConverter(models)
+	typeConverter, err := internal.NewTypeConverter(models, false)
 	if err != nil {
 		return nil, err
 	}
@@ -66,19 +68,26 @@ func NewFieldManager(models openapiproto.Models, objectConverter runtime.ObjectC
 }
 
 // NewCRDFieldManager creates a new FieldManager specifically for
-// CRDs. This doesn't use openapi models (and it doesn't support the
-// validation field right now).
-func NewCRDFieldManager(objectConverter runtime.ObjectConvertor, objectDefaulter runtime.ObjectDefaulter, gv schema.GroupVersion, hub schema.GroupVersion) *FieldManager {
+// CRDs. This allows for the possibility of fields which are not defined
+// in models, as well as having no models defined at all.
+func NewCRDFieldManager(models openapiproto.Models, objectConverter runtime.ObjectConvertor, objectDefaulter runtime.ObjectDefaulter, gv schema.GroupVersion, hub schema.GroupVersion, preserveUnknownFields bool) (_ *FieldManager, err error) {
+	var typeConverter internal.TypeConverter = internal.DeducedTypeConverter{}
+	if models != nil {
+		typeConverter, err = internal.NewTypeConverter(models, preserveUnknownFields)
+		if err != nil {
+			return nil, err
+		}
+	}
 	return &FieldManager{
-		typeConverter:   internal.DeducedTypeConverter{},
+		typeConverter:   typeConverter,
 		objectConverter: objectConverter,
 		objectDefaulter: objectDefaulter,
 		groupVersion:    gv,
 		hubVersion:      hub,
 		updater: merge.Updater{
-			Converter: internal.NewCRDVersionConverter(internal.DeducedTypeConverter{}, objectConverter, hub),
+			Converter: internal.NewCRDVersionConverter(typeConverter, objectConverter, hub),
 		},
-	}
+	}, nil
 }
 
 // Update is used when the object has already been merged (non-apply
@@ -132,7 +141,8 @@ func (f *FieldManager) Update(liveObj, newObj runtime.Object, manager string) (r
 		return nil, fmt.Errorf("failed to build manager identifier: %v", err)
 	}
 
-	managed, err = f.updater.Update(liveObjTyped, newObjTyped, apiVersion, managed, manager)
+	// TODO(apelisse) use the first return value when unions are implemented
+	_, managed, err = f.updater.Update(liveObjTyped, newObjTyped, apiVersion, managed, manager)
 	if err != nil {
 		return nil, fmt.Errorf("failed to update ManagedFields: %v", err)
 	}
@@ -177,7 +187,7 @@ func (f *FieldManager) Apply(liveObj runtime.Object, patch []byte, fieldManager 
 	}
 	internal.RemoveObjectManagedFields(liveObjVersioned)
 
-	patchObjTyped, err := f.typeConverter.YAMLToTyped(patch)
+	patchObjTyped, err := f.typeConverter.ObjectToTyped(patchObj)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create typed patch object: %v", err)
 	}
@@ -247,6 +257,7 @@ func (f *FieldManager) buildManagerInfo(prefix string, operation metav1.ManagedF
 var stripSet = fieldpath.NewSet(
 	fieldpath.MakePathOrDie("apiVersion"),
 	fieldpath.MakePathOrDie("kind"),
+	fieldpath.MakePathOrDie("metadata"),
 	fieldpath.MakePathOrDie("metadata", "name"),
 	fieldpath.MakePathOrDie("metadata", "namespace"),
 	fieldpath.MakePathOrDie("metadata", "creationTimestamp"),
@@ -265,9 +276,11 @@ func (f *FieldManager) stripFields(managed fieldpath.ManagedFields, manager stri
 		if vs == nil {
 			panic(fmt.Sprintf("Found unexpected nil manager which should never happen: %s", manager))
 		}
-		vs.Set = vs.Set.Difference(stripSet)
-		if vs.Set.Empty() {
+		newSet := vs.Set().Difference(stripSet)
+		if newSet.Empty() {
 			delete(managed, manager)
+		} else {
+			managed[manager] = fieldpath.NewVersionedSet(newSet, vs.APIVersion(), vs.Applied())
 		}
 	}
 

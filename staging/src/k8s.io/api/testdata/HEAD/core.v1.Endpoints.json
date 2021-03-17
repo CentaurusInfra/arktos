@@ -7,9 +7,9 @@
     "tenant": "4",
     "namespace": "5",
     "selfLink": "6",
-    "uid": "ą飋īqJ枊a8衍`Ĩɘ.蘯6ċV夸e",
-    "hashKey": 2234230302359329354,
-    "resourceVersion": "16964250748386560239",
+    "uid": "7",
+    "hashKey": 3414760188119455639,
+    "resourceVersion": "11042405498087606203",
     "generation": 5828590068104375683,
     "creationTimestamp": null,
     "deletionGracePeriodSeconds": 6797158496028726353,
@@ -38,8 +38,7 @@
       {
         "manager": "17",
         "operation": "鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]",
-        "apiVersion": "18",
-        "fields": {"19":{"20":null}}
+        "apiVersion": "18"
       }
     ]
   },
@@ -47,46 +46,46 @@
     {
       "addresses": [
         {
-          "ip": "25",
-          "hostname": "26",
-          "nodeName": "27",
+          "ip": "19",
+          "hostname": "20",
+          "nodeName": "21",
           "targetRef": {
-            "kind": "28",
-            "namespace": "29",
-            "name": "30",
-            "uid": "ěĂ凗蓏Ŋ蛊ĉy緅縕",
-            "apiVersion": "31",
-            "resourceVersion": "32",
-            "fieldPath": "33",
-            "tenant": "34"
+            "kind": "22",
+            "namespace": "23",
+            "name": "24",
+            "uid": "Hr鯹)晿\u003co,c鮽ort昍řČ扷5Ɨ",
+            "apiVersion": "25",
+            "resourceVersion": "26",
+            "fieldPath": "27",
+            "tenant": "28"
           }
         }
       ],
       "notReadyAddresses": [
         {
-          "ip": "35",
-          "hostname": "36",
-          "nodeName": "37",
+          "ip": "29",
+          "hostname": "30",
+          "nodeName": "31",
           "targetRef": {
-            "kind": "38",
-            "namespace": "39",
-            "name": "40",
-            "uid": "颋ǅ",
-            "apiVersion": "41",
-            "resourceVersion": "42",
-            "fieldPath": "43",
-            "tenant": "44"
+            "kind": "32",
+            "namespace": "33",
+            "name": "34",
+            "uid": "Ă凗蓏Ŋ蛊ĉy",
+            "apiVersion": "35",
+            "resourceVersion": "36",
+            "fieldPath": "37",
+            "tenant": "38"
           }
         }
       ],
       "ports": [
         {
-          "name": "45",
-          "port": 1575426699,
-          "protocol": "ƏS$+½H牗洝尿"
+          "name": "39",
+          "port": 1546792211,
+          "protocol": "\u003eŽ燹憍峕?狱³-Ǐ忄*"
         }
       ],
-      "serviceGroupId": "46"
+      "serviceGroupId": "40"
     }
   ]
 }

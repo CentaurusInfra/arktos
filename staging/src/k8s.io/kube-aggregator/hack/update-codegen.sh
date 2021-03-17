@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# File modified by cherrypick from kubernetes on 03/04/2021
+
 set -o errexit
 set -o nounset
 set -o pipefail
@@ -23,7 +26,7 @@ CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-
 
 CLIENTSET_NAME_VERSIONED=clientset \
 CLIENTSET_PKG_NAME=clientset_generated \
-"${CODEGEN_PKG}/generate-groups.sh" deepcopy,client,lister,informer \
+bash "${CODEGEN_PKG}/generate-groups.sh" deepcopy,client,lister,informer \
   k8s.io/kube-aggregator/pkg/client k8s.io/kube-aggregator/pkg/apis \
   "apiregistration:v1beta1,v1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \
@@ -32,7 +35,7 @@ CLIENTSET_PKG_NAME=clientset_generated \
 CLIENTSET_NAME_VERSIONED=clientset \
 CLIENTSET_PKG_NAME=clientset_generated \
 CLIENTSET_NAME_INTERNAL=internalclientset \
-"${CODEGEN_PKG}/generate-internal-groups.sh" deepcopy,client,lister,informer,conversion \
+bash "${CODEGEN_PKG}/generate-internal-groups.sh" deepcopy,client,lister,informer,conversion \
   k8s.io/kube-aggregator/pkg/client k8s.io/kube-aggregator/pkg/apis k8s.io/kube-aggregator/pkg/apis \
   "apiregistration:v1beta1,v1" \
   --output-base "$(dirname "${BASH_SOURCE[0]}")/../../.." \

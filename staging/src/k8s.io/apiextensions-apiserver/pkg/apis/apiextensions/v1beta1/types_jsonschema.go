@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package v1beta1
 
 // JSONSchemaProps is a JSON-Schema following Specification Draft 4 (http://json-schema.org/).
@@ -90,6 +92,33 @@ type JSONSchemaProps struct {
 	//      - type: string
 	//    - ... zero or more
 	XIntOrString bool `json:"x-kubernetes-int-or-string,omitempty" protobuf:"bytes,40,opt,name=xKubernetesIntOrString"`
+
+	// x-kubernetes-list-map-keys annotates an array with the x-kubernetes-list-type `map` by specifying the keys used
+	// as the index of the map.
+	//
+	// This tag MUST only be used on lists that have the "x-kubernetes-list-type"
+	// extension set to "map". Also, the values specified for this attribute must
+	// be a scalar typed field of the child structure (no nesting is supported).
+	//
+	// +optional
+	XListMapKeys []string `json:"x-kubernetes-list-map-keys,omitempty" protobuf:"bytes,41,rep,name=xKubernetesListMapKeys"`
+
+	// x-kubernetes-list-type annotates an array to further describe its topology.
+	// This extension must only be used on lists and may have 3 possible values:
+	//
+	// 1) `atomic`: the list is treated as a single entity, like a scalar.
+	//      Atomic lists will be entirely replaced when updated. This extension
+	//      may be used on any type of list (struct, scalar, ...).
+	// 2) `set`:
+	//      Sets are lists that must not have multiple items with the same value. Each
+	//      value must be a scalar (or another atomic type).
+	// 3) `map`:
+	//      These lists are like maps in that their elements have a non-index key
+	//      used to identify them. Order is preserved upon merge. The map tag
+	//      must only be used on a list with elements of type object.
+	// Defaults to atomic for arrays.
+	// +optional
+	XListType *string `json:"x-kubernetes-list-type,omitempty" protobuf:"bytes,42,opt,name=xKubernetesListType"`
 }
 
 // JSON represents any valid JSON value.

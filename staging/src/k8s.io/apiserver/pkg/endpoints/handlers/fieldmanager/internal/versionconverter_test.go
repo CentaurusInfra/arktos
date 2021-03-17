@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package internal_test
 
 import (
@@ -26,7 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/fieldmanager/internal"
 	"k8s.io/kube-openapi/pkg/util/proto"
-	"sigs.k8s.io/structured-merge-diff/fieldpath"
+	"sigs.k8s.io/structured-merge-diff/v3/fieldpath"
 )
 
 // TestVersionConverter tests the version converter
@@ -39,7 +41,7 @@ func TestVersionConverter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to build OpenAPI models: %v", err)
 	}
-	tc, err := internal.NewTypeConverter(m)
+	tc, err := internal.NewTypeConverter(m, false)
 	if err != nil {
 		t.Fatalf("Failed to build TypeConverter: %v", err)
 	}

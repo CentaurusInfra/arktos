@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by cherrypick from kubernetes on 03/04/2021
 package internal
 
 import (
@@ -25,7 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"sigs.k8s.io/structured-merge-diff/fieldpath"
+	"sigs.k8s.io/structured-merge-diff/v3/fieldpath"
 )
 
 // RemoveObjectManagedFields removes the ManagedFields from the object
@@ -42,7 +44,7 @@ func RemoveObjectManagedFields(obj runtime.Object) {
 // DecodeObjectManagedFields extracts and converts the objects ManagedFields into a fieldpath.ManagedFields.
 func DecodeObjectManagedFields(from runtime.Object) (fieldpath.ManagedFields, error) {
 	if from == nil {
-		return make(map[string]*fieldpath.VersionedSet), nil
+		return fieldpath.ManagedFields{}, nil
 	}
 	accessor, err := meta.Accessor(from)
 	if err != nil {
@@ -75,7 +77,7 @@ func EncodeObjectManagedFields(obj runtime.Object, fields fieldpath.ManagedField
 // decodeManagedFields converts ManagedFields from the wire format (api format)
 // to the format used by sigs.k8s.io/structured-merge-diff
 func decodeManagedFields(encodedManagedFields []metav1.ManagedFieldsEntry) (managedFields fieldpath.ManagedFields, err error) {
-	managedFields = make(map[string]*fieldpath.VersionedSet, len(encodedManagedFields))
+	managedFields = make(fieldpath.ManagedFields, len(encodedManagedFields))
 	for _, encodedVersionedSet := range encodedManagedFields {
 		manager, err := BuildManagerIdentifier(&encodedVersionedSet)
 		if err != nil {
@@ -112,14 +114,8 @@ func BuildManagerIdentifier(encodedManager *metav1.ManagedFieldsEntry) (manager 
 	return string(b), nil
 }
 
-func decodeVersionedSet(encodedVersionedSet *metav1.ManagedFieldsEntry) (versionedSet *fieldpath.VersionedSet, err error) {
-	versionedSet = &fieldpath.VersionedSet{}
-	versionedSet.APIVersion = fieldpath.APIVersion(encodedVersionedSet.APIVersion)
-	if encodedVersionedSet.Operation == metav1.ManagedFieldsOperationApply {
-		versionedSet.Applied = true
-	}
-
-	fields := metav1.Fields{}
+func decodeVersionedSet(encodedVersionedSet *metav1.ManagedFieldsEntry) (versionedSet fieldpath.VersionedSet, err error) {
+	fields := EmptyFields
 	if encodedVersionedSet.Fields != nil {
 		fields = *encodedVersionedSet.Fields
 	}
@@ -127,8 +123,7 @@ func decodeVersionedSet(encodedVersionedSet *metav1.ManagedFieldsEntry) (version
 	if err != nil {
 		return nil, fmt.Errorf("error decoding set: %v", err)
 	}
-	versionedSet.Set = &set
-	return versionedSet, nil
+	return fieldpath.NewVersionedSet(&set, fieldpath.APIVersion(encodedVersionedSet.APIVersion), encodedVersionedSet.Operation == metav1.ManagedFieldsOperationApply), nil
 }
 
 // encodeManagedFields converts ManagedFields from the format used by
@@ -178,7 +173,7 @@ func sortEncodedManagedFields(encodedManagedFields []metav1.ManagedFieldsEntry) 
 	return encodedManagedFields, nil
 }
 
-func encodeManagerVersionedSet(manager string, versionedSet *fieldpath.VersionedSet) (encodedVersionedSet *metav1.ManagedFieldsEntry, err error) {
+func encodeManagerVersionedSet(manager string, versionedSet fieldpath.VersionedSet) (encodedVersionedSet *metav1.ManagedFieldsEntry, err error) {
 	encodedVersionedSet = &metav1.ManagedFieldsEntry{}
 
 	// Get as many fields as we can from the manager identifier
@@ -188,11 +183,11 @@ func encodeManagerVersionedSet(manager string, versionedSet *fieldpath.Versioned
 	}
 
 	// Get the APIVersion, Operation, and Fields from the VersionedSet
-	encodedVersionedSet.APIVersion = string(versionedSet.APIVersion)
-	if versionedSet.Applied {
+	encodedVersionedSet.APIVersion = string(versionedSet.APIVersion())
+	if versionedSet.Applied() {
 		encodedVersionedSet.Operation = metav1.ManagedFieldsOperationApply
 	}
-	fields, err := SetToFields(*versionedSet.Set)
+	fields, err := SetToFields(*versionedSet.Set())
 	if err != nil {
 		return nil, fmt.Errorf("error encoding set: %v", err)
 	}

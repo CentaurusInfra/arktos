@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,6 +48,11 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 // MarshalJSON implements the json.Marshaler interface.
 func (d Duration) MarshalJSON() ([]byte, error) {
 	return json.Marshal(d.Duration.String())
+}
+
+// ToUnstructured implements the value.UnstructuredConverter interface.
+func (d Duration) ToUnstructured() interface{} {
+	return d.Duration.String()
 }
 
 // OpenAPISchemaType is used by the kube-openapi generator when constructing
