@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,11 +27,15 @@ import (
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/util/flowcontrol"
+	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller/daemon"
 	"k8s.io/kubernetes/pkg/controller/deployment"
 	"k8s.io/kubernetes/pkg/controller/replicaset"
 	"k8s.io/kubernetes/pkg/controller/statefulset"
+	"k8s.io/kubernetes/pkg/features"
 )
 
 func startDaemonSetController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -70,10 +75,24 @@ func startReplicaSetController(ctx ControllerContext) (http.Handler, bool, error
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "replicasets"}] {
 		return nil, false, nil
 	}
+
+	config := ctx.ClientBuilder.ConfigOrDie("replicaset-controller")
+	if utilfeature.DefaultFeatureGate.Enabled(features.QPSDoubleRSController) {
+		// Increase replicaset controller QPS as during density test create pods step, also trying to acchieve QPS
+		// in larger scale cluster
+		// TODO - re-evaluate RS QPS with perf test data
+		for _, rsKubeconfig := range config.GetAllConfigs() {
+			rsKubeconfig.QPS *= 2
+			rsKubeconfig.Burst *= 2
+		}
+	}
+	klog.Infof("QPS for replicaset controller: %v", config.GetConfig().QPS)
+	rsclient := clientset.NewForConfigOrDie(config)
+
 	go replicaset.NewReplicaSetController(
 		ctx.InformerFactory.Apps().V1().ReplicaSets(),
 		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie("replicaset-controller"),
+		rsclient,
 		replicaset.BurstReplicas,
 	).Run(int(ctx.ComponentConfig.ReplicaSetController.ConcurrentRSSyncs), ctx.Stop)
 	return nil, true, nil

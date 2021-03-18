@@ -469,7 +469,17 @@ func startGarbageCollectorController(ctx ControllerContext) (http.Handler, bool,
 	discoveryClient := cacheddiscovery.NewMemCacheClient(gcClientset.Discovery())
 
 	config := ctx.ClientBuilder.ConfigOrDie("generic-garbage-collector")
+	if utilfeature.DefaultFeatureGate.Enabled(features.QPSDoubleGCController) {
+		// Increase garbage collector QPS as during density test delect pods step, get/delete each took half traffic
+		// TODO - re-evaluate GC QPS with perf test data
+		for _, gcKubeconfig := range config.GetAllConfigs() {
+			gcKubeconfig.QPS *= 2
+			gcKubeconfig.Burst *= 2
+		}
+	}
+
 	metadataClient, err := metadata.NewForConfig(config)
+	klog.Infof("QPS for garbage collector: %v", config.GetConfig().QPS)
 	if err != nil {
 		return nil, true, err
 	}
