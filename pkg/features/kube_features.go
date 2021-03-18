@@ -504,6 +504,12 @@ const (
 	//
 	// Enables WorkloadInfo default values
 	WorkloadInfoDefaulting featuregate.Feature = "WorkloadInfoDefaulting"
+
+	// owner: @sindica
+	// arktos: v0.8
+	//
+	// Enable Garbage controller QPS doubling
+	QPSDoubleGCController featuregate.Feature = "QPSDoubleGCController"
 )
 
 func init() {
@@ -588,6 +594,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
 	MandatoryArktosNetwork:                         {Default: false, PreRelease: featuregate.Alpha},
 	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
+	QPSDoubleGCController:                          {Default: false, PreRelease: featuregate.Alpha},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
