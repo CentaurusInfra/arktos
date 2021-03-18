@@ -239,6 +239,8 @@ func main() {
 	}
 
 	klog.Infof("Using config: %+v", clusterLoaderConfig)
+	testTenant := util.GetTenant()
+	klog.Infof("Test running on tenant [%s]", testTenant)
 
 	if err = createReportDir(); err != nil {
 		klog.Exitf("Cannot create report directory: %v", err)
