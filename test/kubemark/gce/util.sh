@@ -45,8 +45,16 @@ function create-kubemark-master {
 
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
     SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+
+    # the calling function ensures that the cluster is either for RP or TP in scaleout env
+    #
+    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+      echo "Cluster can be either TP or RP. Exit."
+      exit 1
+    fi
+
     if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp-${RESOURCE_PARTITION_SEQUENCE}"
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
@@ -107,7 +115,7 @@ function delete-kubemark-master {
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
     if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
       SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp"
+      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp-${RESOURCE_PARTITION_SEQUENCE}"
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
         KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
