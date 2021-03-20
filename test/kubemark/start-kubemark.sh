@@ -370,23 +370,28 @@ function generate-shared-ca-cert {
 
 # master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
 # destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
-# TODO: do the same for kube-controller-manager for each TP as well
 # TODO: avoid calling GCE compute from here
-function restart_tp_scheduler {
+function restart_tp_scheduler_and_controller {
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     tp_vm="${RUN_PREFIX}-kubemark-tp-${tp_num}-master"
-    echo "DBG: reset scheduler on TP master: ${tp_vm}"
+    echo "DBG: copy rp kubeconfigs for scheduler and controller manager to TP master: ${tp_vm}"
     for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do
       rp_kubeconfig="${RP_KUBECONFIG}-${rp_num}"
       gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${rp_kubeconfig}" "${tp_vm}:/tmp/rp-kubeconfig-${rp_num}"
-
-      cmd="sudo mv /tmp/rp-kubeconfig-${rp_num} /etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-${rp_num}"
-      gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
     done
 
-    cmd="sudo pkill kube-scheduler"
+    echo "DBG: copy rp kubeconfigs to destinations on TP master: ${tp_vm}"
+    cmd="sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-scheduler/ && sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-controller-manager/"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+
+    echo "DBG: restart scheduler on TP master: ${tp_vm}"
+    cmd="sudo pkill -f kube-scheduler"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+
+    echo "DBG: restart controller manager on TP master: ${tp_vm}"
+    cmd="sudo pkill -f kube-controller-manager"
     gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
   done
 }
@@ -397,6 +402,7 @@ function restart_tp_scheduler {
 # to the hollow-node kubelet containers
 #
 function start_hollow_nodes_scaleout {
+  echo "DBG: start hollow nodes for scaleout env"
   export TENANT_SERVER_KUBECONFIGS="/kubeconfig/tp1.kubeconfig"
   for (( tp_num=2; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
@@ -485,7 +491,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 
   export KUBERNETES_RESOURCE_PARTITION=false
 
-  restart_tp_scheduler
+  restart_tp_scheduler_and_controller
   start_hollow_nodes_scaleout
 else
   # scale-up, just create the master servers

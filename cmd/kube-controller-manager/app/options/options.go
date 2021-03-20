@@ -423,16 +423,19 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 	if len(s.ResourceProviderKubeConfig) > 0 {
 		resourceProviderKubeConfigFiles, existed := genutils.ParseKubeConfigFiles(s.ResourceProviderKubeConfig)
 		if !existed {
-			return nil, fmt.Errorf("--resource-providers points to non existed file(s)")
-		}
-		resourceProviderClients = make([]clientset.Interface, len(resourceProviderKubeConfigFiles))
-		for i, kubeConfigFile := range resourceProviderKubeConfigFiles {
-			resourceProviderClient, err := clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create resource provider rest client from kubeconfig [%s], error [%v]", kubeConfigFile, err)
+			klog.Warningf("--resource-providers points to non existed file(s), default to local cluster kubeconfig file")
+			resourceProviderClients = make([]clientset.Interface, 1)
+			resourceProviderClients[0] = client
+		} else {
+			resourceProviderClients = make([]clientset.Interface, len(resourceProviderKubeConfigFiles))
+			for i, kubeConfigFile := range resourceProviderKubeConfigFiles {
+				resourceProviderClient, err := clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create resource provider rest client from kubeconfig [%s], error [%v]", kubeConfigFile, err)
+				}
+				resourceProviderClients[i] = resourceProviderClient
+				klog.V(3).Infof("Created resource provider client %d %p", i, resourceProviderClient)
 			}
-			resourceProviderClients[i] = resourceProviderClient
-			klog.V(3).Infof("Created resource provider client %d %p", i, resourceProviderClient)
 		}
 	}
 
