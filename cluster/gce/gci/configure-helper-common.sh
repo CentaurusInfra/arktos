@@ -2341,6 +2341,16 @@ function start-kube-controller-manager {
    params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
   fi
 
+   # the resource provider kubeconfig
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    local rp_kubeconfigs="/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-1"
+    for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfigs+=",/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-${rp_num}"
+    done
+    params+=" --resource-providers=${rp_kubeconfigs}"
+  fi
+
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
     params+=" --leader-elect=false"
@@ -2518,6 +2528,17 @@ function start-kube-scheduler {
   # Calculate variables and set them in the manifest.
   params="${SCHEDULER_TEST_LOG_LEVEL:-"--v=4"} ${SCHEDULER_TEST_ARGS:-}"
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
+
+  # the resource provider kubeconfig
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    local rp_kubeconfigs="/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1"
+    for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfigs+=",/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-${rp_num}"
+    done
+    params+=" --resource-providers=${rp_kubeconfigs}"
+  fi
+
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_SCHEDULER_LEADER_ELECT:-true}" == "false" ]]; then
     params+=" --leader-elect=false"

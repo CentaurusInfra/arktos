@@ -263,24 +263,28 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
 		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
 		if !existed {
-			klog.Fatalf("ResourceProvider kubeConfig is not valid. value=%s", c.ComponentConfig.ResourceProviderKubeConfig)
-		}
+			klog.Warningf("ResourceProvider kubeConfig is not valid, default to local cluster kubeconfig file")
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+			c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
+		} else {
+			c.ResourceProviderClients = make(map[string]clientset.Interface, len(kubeConfigFiles))
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
+			for i, kubeConfigFile := range kubeConfigFiles {
+				rpId := "rp" + strconv.Itoa(i)
+				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					klog.Error("failed to create resource provider rest client, error: %v", err)
+					return nil, err
+				}
 
-		c.ResourceProviderClients = make(map[string]clientset.Interface, len(kubeConfigFiles))
-		c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
-		for i, kubeConfigFile := range kubeConfigFiles {
-			rpId := "rp" + strconv.Itoa(i)
-			c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
-			if err != nil {
-				klog.Error("failed to create resource provider rest client, error: %v", err)
-				return nil, err
+				resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[rpId], 0)
+				c.NodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
+				klog.V(2).Infof("Created the node informer %p from resourceProvider kubeConfig %d %s",
+					c.NodeInformers[rpId].Informer(), i, kubeConfigFile)
 			}
-
-			resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[rpId], 0)
-			c.NodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
-			klog.V(2).Infof("Created the node informer %p from resourceProvider kubeConfig %d %s",
-				c.NodeInformers[rpId].Informer(), i, kubeConfigFile)
 		}
 	}
 
