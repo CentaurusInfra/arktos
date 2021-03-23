@@ -422,6 +422,8 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 	var resourceProviderClients []clientset.Interface
 	if len(s.ResourceProviderKubeConfig) > 0 {
 		resourceProviderKubeConfigFiles, existed := genutils.ParseKubeConfigFiles(s.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
 		if !existed {
 			klog.Warningf("--resource-providers points to non existed file(s), default to local cluster kubeconfig file")
 			resourceProviderClients = make([]clientset.Interface, 1)

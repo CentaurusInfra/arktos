@@ -263,6 +263,8 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
 		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
 		if !existed {
 			klog.Warningf("ResourceProvider kubeConfig is not valid, default to local cluster kubeconfig file")
 			c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)

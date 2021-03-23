@@ -371,6 +371,12 @@ function generate-shared-ca-cert {
 # master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
 # destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
 # TODO: avoid calling GCE compute from here
+# TODO: currently the same kubeconfig is used by both scheduler and kube-controller-managers on RP clusters
+#       Pending design on how RP kubeconfigs to be used on the TP cluster:
+#       if the current approach continue to be used,  modify the kubeconfigs so the scheduler and controllers
+#       can have different identity for refined RBAC and logging purposes
+#       if future design is to let scheduler and controller managers to point to a generic server to get those RP
+#       kubeconfigs, the generic service should generate different ones for them.
 function restart_tp_scheduler_and_controller {
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
