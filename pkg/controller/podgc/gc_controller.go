@@ -154,7 +154,7 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	// We want to get list of Nodes from the etcd, to make sure that it's as fresh as possible.
 
 	// get nodes from resource provider clients
-	allRpNodes, errs := getFreshNodes(gcc.nodeListers)
+	allRpNodes, errs := getLatestNodes(gcc.nodeListers)
 
 	// check errors and aggregate nodes
 	if len(errs) == len(gcc.nodeListers) {
@@ -186,7 +186,7 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	}
 }
 
-func getFreshNodes(nodeListers map[string]clientset.Interface) (map[string]*v1.NodeList, map[string]error) {
+func getLatestNodes(nodeListers map[string]clientset.Interface) (map[string]*v1.NodeList, map[string]error) {
 	allRpNodes := make(map[string]*v1.NodeList, len(nodeListers))
 	errs := make(map[string]error, len(nodeListers))
 	var wg sync.WaitGroup
