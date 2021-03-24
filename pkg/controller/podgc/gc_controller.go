@@ -68,7 +68,9 @@ func NewPodGC(kubeClient clientset.Interface, rpClients map[string]clientset.Int
 		},
 	}
 
-	gcc.kubeClientForNodes = map[string]clientset.Interface{"tpself": kubeClient}
+	// key "0" is special case for TP client itself
+	// todo: avoid using magic literal "0"
+	gcc.kubeClientForNodes = map[string]clientset.Interface{"0": kubeClient}
 	for key, value := range rpClients {
 		gcc.kubeClientForNodes[key] = value
 	}
