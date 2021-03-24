@@ -188,13 +188,13 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	}
 }
 
-func getLatestNodes(nodeListers map[string]clientset.Interface) (map[string]*v1.NodeList, map[string]error) {
-	allRpNodes := make(map[string]*v1.NodeList, len(nodeListers))
-	errs := make(map[string]error, len(nodeListers))
+func getLatestNodes(kubeClients map[string]clientset.Interface) (map[string]*v1.NodeList, map[string]error) {
+	allRpNodes := make(map[string]*v1.NodeList, len(kubeClients))
+	errs := make(map[string]error, len(kubeClients))
 	var wg sync.WaitGroup
-	wg.Add(len(nodeListers))
+	wg.Add(len(kubeClients))
 	var lock sync.Mutex
-	for rpId, client := range nodeListers {
+	for rpId, client := range kubeClients {
 		go func(resourceProviderId string, rpClient clientset.Interface, nodeLists map[string]*v1.NodeList, errs map[string]error, writeLock *sync.Mutex) {
 			defer wg.Done()
 			nodes, err := rpClient.CoreV1().Nodes().List(metav1.ListOptions{})
