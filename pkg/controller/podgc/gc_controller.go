@@ -46,7 +46,7 @@ type PodGCController struct {
 	kubeClient              clientset.Interface
 
 	// all clients to list nodes it cares about, particularly including the current TP client
-	nodeListers map[string]clientset.Interface
+	kubeClientForNodes map[string]clientset.Interface
 
 	podLister       corelisters.PodLister
 	podListerSynced cache.InformerSynced
@@ -68,9 +68,9 @@ func NewPodGC(kubeClient clientset.Interface, rpClients map[string]clientset.Int
 		},
 	}
 
-	gcc.nodeListers = map[string]clientset.Interface{"tpself": kubeClient}
+	gcc.kubeClientForNodes = map[string]clientset.Interface{"tpself": kubeClient}
 	for key, value := range rpClients {
-		gcc.nodeListers[key] = value
+		gcc.kubeClientForNodes[key] = value
 	}
 
 	gcc.podLister = podInformer.Lister()
@@ -154,10 +154,10 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	// We want to get list of Nodes from the etcd, to make sure that it's as fresh as possible.
 
 	// get nodes from resource provider clients
-	allRpNodes, errs := getLatestNodes(gcc.nodeListers)
+	allRpNodes, errs := getLatestNodes(gcc.kubeClientForNodes)
 
 	// check errors and aggregate nodes
-	if len(errs) == len(gcc.nodeListers) {
+	if len(errs) == len(gcc.kubeClientForNodes) {
 		// avoid garbage collection when
 		klog.Errorf("Error listing nodes from all resource partition. err: %v", errs)
 		return
