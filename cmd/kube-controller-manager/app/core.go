@@ -76,7 +76,7 @@ func startServiceController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.Cloud,
 		ctx.ClientBuilder.ClientOrDie("service-controller"),
 		ctx.InformerFactory.Core().V1().Services(),
-		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.ResourceProviderNodeInformers,
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.ComponentConfig.KubeCloudShared.ClusterName,
 	)
@@ -135,8 +135,8 @@ func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, er
 	var tpAccessors []*nodeutil.TenantPartitionManager
 	var err error
 	// for backward compatibility, when "--tenant-server-kubeconfigs" option is not specified, we fall back to the traditional kubernetes scenario.
-	if len(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfigs) > 0 {
-		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromServerNames(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfigs, ctx.Stop)
+	if len(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig) > 0 {
+		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeConfig(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig, ctx.Stop)
 	} else {
 		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeclient}, ctx.Stop)
 	}
@@ -223,7 +223,7 @@ func startPersistentVolumeBinderController(ctx ControllerContext) (http.Handler,
 		ClaimInformer:             ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
 		ClassInformer:             ctx.InformerFactory.Storage().V1().StorageClasses(),
 		PodInformer:               ctx.InformerFactory.Core().V1().Pods(),
-		NodeInformer:              ctx.InformerFactory.Core().V1().Nodes(),
+		NodeInformers:             ctx.ResourceProviderNodeInformers,
 		EnableDynamicProvisioning: ctx.ComponentConfig.PersistentVolumeBinderController.VolumeConfiguration.EnableDynamicProvisioning,
 	}
 	volumeController, volumeControllerErr := persistentvolumecontroller.NewController(params)
@@ -242,8 +242,9 @@ func startAttachDetachController(ctx ControllerContext) (http.Handler, bool, err
 	attachDetachController, attachDetachControllerErr :=
 		attachdetach.NewAttachDetachController(
 			ctx.ClientBuilder.ClientOrDie("attachdetach-controller"),
+			ctx.ResourceProviderClients,
 			ctx.InformerFactory.Core().V1().Pods(),
-			ctx.InformerFactory.Core().V1().Nodes(),
+			ctx.ResourceProviderNodeInformers,
 			ctx.InformerFactory.Core().V1().PersistentVolumeClaims(),
 			ctx.InformerFactory.Core().V1().PersistentVolumes(),
 			ctx.InformerFactory.Storage().V1beta1().CSINodes(),
@@ -304,6 +305,7 @@ func startReplicationController(ctx ControllerContext) (http.Handler, bool, erro
 func startPodGCController(ctx ControllerContext) (http.Handler, bool, error) {
 	go podgc.NewPodGC(
 		ctx.ClientBuilder.ClientOrDie("pod-garbage-collector"),
+		ctx.ResourceProviderClients,
 		ctx.InformerFactory.Core().V1().Pods(),
 		int(ctx.ComponentConfig.PodGCController.TerminatedPodGCThreshold),
 	).Run(ctx.Stop)
@@ -454,6 +456,7 @@ func startTTLController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.InformerFactory.Core().V1().Nodes(),
 		ctx.ClientBuilder.ClientOrDie("ttl-controller"),
 	).Run(5, ctx.Stop)
+
 	return nil, true, nil
 }
 

@@ -55,7 +55,7 @@ const defaultRootDir = "/var/lib/kubelet"
 // In general, please try to avoid adding flags or configuration fields,
 // we already have a confusingly large amount of them.
 type KubeletFlags struct {
-	TenantPartitionApiservers []string
+	TenantPartitionKubeConfig string
 	KubeConfig                string
 	BootstrapKubeconfig       string
 
@@ -360,6 +360,9 @@ func (f *KubeletFlags) AddFlags(mainfs *pflag.FlagSet) {
 	f.ContainerRuntimeOptions.AddFlags(fs)
 	f.addOSFlags(fs)
 
+	//TODO: post POC, move this to a separated kubeconfig file dedicated for tenant servers
+	//
+	fs.StringVar(&f.TenantPartitionKubeConfig, "tenant-server-kubeconfig", f.TenantPartitionKubeConfig, "Comma separated string representing kubeconfig files point to tenant api servers.")
 	fs.StringVar(&f.KubeletConfigFile, "config", f.KubeletConfigFile, "The Kubelet will load its initial configuration from this file. The path may be absolute or relative; relative paths start at the Kubelet's current working directory. Omit this flag to use the built-in default configuration values. Command-line flags override configuration from this file.")
 	fs.StringVar(&f.KubeConfig, "kubeconfig", f.KubeConfig, "Path to kubeconfig files, specifying how to connect to  API servers. Providing --kubeconfig enables API server mode, omitting --kubeconfig enables standalone mode.")
 

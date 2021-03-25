@@ -104,9 +104,9 @@ type volumeBinder struct {
 	kubeClient  clientset.Interface
 	classLister storagelisters.StorageClassLister
 
-	nodeInformer coreinformers.NodeInformer
-	pvcCache     PVCAssumeCache
-	pvCache      PVAssumeCache
+	nodeInformers map[string]coreinformers.NodeInformer
+	pvcCache      PVCAssumeCache
+	pvCache       PVAssumeCache
 
 	// Stores binding decisions that were made in FindPodVolumes for use in AssumePodVolumes.
 	// AssumePodVolumes modifies the bindings again for use in BindPodVolumes.
@@ -119,7 +119,7 @@ type volumeBinder struct {
 // NewVolumeBinder sets up all the caches needed for the scheduler to make volume binding decisions.
 func NewVolumeBinder(
 	kubeClient clientset.Interface,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	storageClassInformer storageinformers.StorageClassInformer,
@@ -128,7 +128,7 @@ func NewVolumeBinder(
 	b := &volumeBinder{
 		kubeClient:      kubeClient,
 		classLister:     storageClassInformer.Lister(),
-		nodeInformer:    nodeInformer,
+		nodeInformers:   nodeInformers,
 		pvcCache:        NewPVCAssumeCache(pvcInformer.Informer()),
 		pvCache:         NewPVAssumeCache(pvInformer.Informer()),
 		podBindingCache: NewPodBindingCache(),
@@ -469,9 +469,15 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 		return false, fmt.Errorf("failed to get cached claims to provision for pod %q", podName)
 	}
 
-	node, err := b.nodeInformer.Lister().Get(pod.Spec.NodeName)
-	if err != nil {
-		return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
+	var node *v1.Node
+	var err error
+	for _, nodeInformer := range b.nodeInformers {
+		node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
+		if err != nil { // TODO - check error type, continue to search next RP if not found
+			klog.Errorf("Error getting node from current node informer. error [%v]. TODO - check error type, continue to search next RP if not found", err)
+			return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
+		}
+		break
 	}
 
 	// Check for any conditions that might require scheduling retry

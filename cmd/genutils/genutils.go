@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // OutDir creates the absolute path name from path and checks path exists.
@@ -40,4 +42,18 @@ func OutDir(path string) (string, error) {
 	}
 	outDir = outDir + "/"
 	return outDir, nil
+}
+
+// ParseKubeConfigFiles gets a string that contains one or multiple kubeconfig files.
+// If there are more than one file, separated by comma
+// Returns an array of filenames whose existence are validated
+func ParseKubeConfigFiles(kubeConfigFilenames string) ([]string, bool) {
+	kubeConfigs := strings.Split(kubeConfigFilenames, ",")
+	for _, kubeConfig := range kubeConfigs {
+		_, err := os.Stat(kubeConfig)
+		if err != nil {
+			return nil, false
+		}
+	}
+	return kubeConfigs, true
 }

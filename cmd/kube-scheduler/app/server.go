@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"io"
 	"k8s.io/client-go/datapartition"
+	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"os"
 	goruntime "runtime"
@@ -167,7 +168,7 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 
 	// Create the scheduler.
 	sched, err := scheduler.New(cc.Client,
-		cc.ResourceInformer,
+		cc.NodeInformers,
 		cc.PodInformer,
 		cc.InformerFactory.Core().V1().PersistentVolumes(),
 		cc.InformerFactory.Core().V1().PersistentVolumeClaims(),
@@ -232,16 +233,20 @@ func Run(cc schedulerserverconfig.CompletedConfig, stopCh <-chan struct{}) error
 	cc.InformerFactory.Start(stopCh)
 
 	// only start the ResourceInformer with the separated resource clusters
-	//
-	if cc.ResourceProviderClient != nil {
-		go cc.ResourceInformer.Informer().Run(stopCh)
-		for {
-			if cc.ResourceInformer.Informer().HasSynced() {
-				break
+	klog.V(3).Infof("Scheduler started with resource provider number=%d", len(cc.NodeInformers))
+	for rpId, informer := range cc.NodeInformers {
+		go informer.Informer().Run(stopCh)
+		go func(informer cache.SharedIndexInformer, rpId string) {
+			klog.V(3).Infof("Waiting for node sync from resource partition %s. Node informer %p", rpId, informer)
+			for {
+				if informer.HasSynced() {
+					klog.V(3).Infof("Node sync from resource partition %s started! Node informer %p", rpId, informer)
+					break
+				}
+				klog.V(2).Infof("Wait for node sync from resource partition %s. Node informer %p", rpId, informer)
+				time.Sleep(5 * time.Second)
 			}
-			klog.V(6).Infof("Wait for node sync...")
-			time.Sleep(300 * time.Millisecond)
-		}
+		}(informer.Informer(), rpId)
 	}
 
 	// Wait for all caches to sync before scheduling.

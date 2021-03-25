@@ -20,6 +20,7 @@ package node
 import (
 	"fmt"
 	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -356,8 +357,8 @@ func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, st
 	return tpAccessors, nil
 }
 
-func GetTenantPartitionManagersFromServerNames(tenantServerKubeconfigs []string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
-	clients, err := CreateTenantPartitionClients(tenantServerKubeconfigs)
+func GetTenantPartitionManagersFromKubeConfig(tenantServerKubeconfig string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+	clients, err := CreateTenantPartitionClients(tenantServerKubeconfig)
 	if err != nil {
 		return nil, err
 	}
@@ -365,7 +366,12 @@ func GetTenantPartitionManagersFromServerNames(tenantServerKubeconfigs []string,
 	return GetTenantPartitionManagersFromKubeClients(clients, stop)
 }
 
-func CreateTenantPartitionClients(kubeconfigFiles []string) ([]clientset.Interface, error) {
+func CreateTenantPartitionClients(kubeconfigFile string) ([]clientset.Interface, error) {
+	kubeconfigFiles, existed := genutils.ParseKubeConfigFiles(kubeconfigFile)
+	if !existed {
+		return nil, fmt.Errorf("kubeconfig file(s) [%s] do(es) not exist", kubeconfigFile)
+	}
+
 	clients := []clientset.Interface{}
 	for _, kubeconfig := range kubeconfigFiles {
 		client, err := clientutil.CreateClientFromKubeconfigFile(kubeconfig)

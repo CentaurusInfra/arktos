@@ -120,7 +120,7 @@ var defaultSchedulerOptions = schedulerOptions{
 
 // New returns a Scheduler
 func New(client clientset.Interface,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
@@ -146,7 +146,7 @@ func New(client clientset.Interface,
 	configurator := factory.NewConfigFactory(&factory.ConfigFactoryArgs{
 		SchedulerName:                  options.schedulerName,
 		Client:                         client,
-		NodeInformer:                   nodeInformer,
+		NodeInformers:                  nodeInformers,
 		PodInformer:                    podInformer,
 		PvInformer:                     pvInformer,
 		PvcInformer:                    pvcInformer,
@@ -203,7 +203,7 @@ func New(client clientset.Interface,
 	// Create the scheduler.
 	sched := NewFromConfig(config)
 
-	AddAllEventHandlers(sched, options.schedulerName, nodeInformer, podInformer, pvInformer, pvcInformer, serviceInformer, storageClassInformer)
+	AddAllEventHandlers(sched, options.schedulerName, nodeInformers, podInformer, pvInformer, pvcInformer, serviceInformer, storageClassInformer)
 	return sched, nil
 }
 
@@ -282,7 +282,7 @@ func (sched *Scheduler) recordSchedulingFailure(pod *v1.Pod, err error, reason s
 // schedule implements the scheduling algorithm and returns the suggested result(host,
 // evaluated nodes number,feasible nodes number).
 func (sched *Scheduler) schedule(pod *v1.Pod, pluginContext *framework.PluginContext) (core.ScheduleResult, error) {
-	result, err := sched.config.Algorithm.Schedule(pod, sched.config.NodeLister, pluginContext)
+	result, err := sched.config.Algorithm.Schedule(pod, (*factory.AggregateNodeLister)(sched.config), pluginContext)
 	if err != nil {
 		pod = pod.DeepCopy()
 		sched.recordSchedulingFailure(pod, err, v1.PodReasonUnschedulable, err.Error())
@@ -301,7 +301,7 @@ func (sched *Scheduler) preempt(preemptor *v1.Pod, scheduleErr error) (string, e
 		return "", err
 	}
 
-	node, victims, nominatedPodsToClear, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeLister, scheduleErr)
+	node, victims, nominatedPodsToClear, err := sched.config.Algorithm.Preempt(preemptor, sched.config.NodeListers[0], scheduleErr)
 	if err != nil {
 		klog.Errorf("Error preempting victims to make room for %v/%v/%v.", preemptor.Tenant, preemptor.Namespace, preemptor.Name)
 		return "", err

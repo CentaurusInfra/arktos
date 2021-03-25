@@ -49,7 +49,8 @@ type ImageStateSummary struct {
 // NodeInfo is node level aggregated information.
 type NodeInfo struct {
 	// Overall node information.
-	node *v1.Node
+	node               *v1.Node
+	resourceProviderId string
 
 	pods             []*v1.Pod
 	podsWithAffinity []*v1.Pod
@@ -299,6 +300,20 @@ func (n *NodeInfo) Pods() []*v1.Pod {
 // SetPods sets all pods scheduled (including assumed to be) on this node.
 func (n *NodeInfo) SetPods(pods []*v1.Pod) {
 	n.pods = pods
+}
+
+func (n *NodeInfo) GetResourceProviderId() string {
+	return n.resourceProviderId
+}
+
+func (n *NodeInfo) SetResourceProviderId(rpId string) error {
+	if n.resourceProviderId != "" {
+		return fmt.Errorf("Node %s was initialized with resource provider id %s", n.Node().Name, n.resourceProviderId)
+	} else if rpId == "" {
+		return fmt.Errorf("Cannot set resource provider id as empty. Node name %s", n.Node().Name)
+	}
+	n.resourceProviderId = rpId
+	return nil
 }
 
 // UsedPorts returns used ports on this node.

@@ -85,9 +85,12 @@ type Config struct {
 	// by NodeLister and Algorithm.
 	SchedulerCache internalcache.Cache
 
-	NodeLister algorithm.NodeLister
-	Algorithm  core.ScheduleAlgorithm
-	GetBinder  func(pod *v1.Pod) Binder
+	// ResourceProviderNodeListers is used to find node origin
+	ResourceProviderNodeListers map[string]corelisters.NodeLister
+
+	NodeListers []algorithm.NodeLister
+	Algorithm   core.ScheduleAlgorithm
+	GetBinder   func(pod *v1.Pod) Binder
 	// PodConditionUpdater is used only in case of scheduling errors. If we succeed
 	// with scheduling, PodScheduled condition will be updated in apiserver in /bind
 	// handler so that binding and setting PodCondition it is atomic.
@@ -128,6 +131,31 @@ type Config struct {
 	SchedulingQueue internalqueue.SchedulingQueue
 }
 
+// AggregateNodeLister enhances the underlying Config with NodeLister behavior
+type AggregateNodeLister Config
+
+// List lists all Nodes
+func (a AggregateNodeLister) List() ([]*v1.Node, error) {
+	count := 0
+	rpNodes := make([][]*v1.Node, len(a.NodeListers))
+	for i, nl := range a.NodeListers {
+		var err error
+		if rpNodes[i], err = nl.List(); err != nil {
+			klog.Warningf("failed to list nodes from RP %d: %v", i, err)
+			continue
+		}
+		count += len(rpNodes[i])
+	}
+
+	// pre-allocate adequate capacity to reduce slice allocation cost in large scale multi-RP env
+	allNodes := make([]*v1.Node, 0, count)
+	for _, nodes := range rpNodes {
+		allNodes = append(allNodes, nodes...)
+	}
+
+	return allNodes, nil
+}
+
 // PodPreemptor has methods needed to delete a pod and to update 'NominatedPod'
 // field of the preemptor pod.
 type PodPreemptor interface {
@@ -149,7 +177,7 @@ type Configurator interface {
 	GetPredicates(predicateKeys sets.String) (map[string]predicates.FitPredicate, error)
 
 	// Needs to be exposed for things like integration tests where we want to make fake nodes.
-	GetNodeLister() corelisters.NodeLister
+	GetNodeListers() map[string]corelisters.NodeLister
 	// Exposed for testing
 	GetClient() clientset.Interface
 	// Exposed for testing
@@ -168,8 +196,8 @@ type configFactory struct {
 	scheduledPodLister corelisters.PodLister
 	// a means to list all known scheduled pods and pods assumed to have been scheduled.
 	podLister algorithm.PodLister
-	// a means to list all nodes
-	nodeLister corelisters.NodeLister
+	// a means to list all nodes from multiple resource partition
+	nodeListers map[string]corelisters.NodeLister
 	// a means to list all PersistentVolumes
 	pVLister corelisters.PersistentVolumeLister
 	// a means to list all PersistentVolumeClaims
@@ -228,7 +256,7 @@ type configFactory struct {
 type ConfigFactoryArgs struct {
 	SchedulerName                  string
 	Client                         clientset.Interface
-	NodeInformer                   coreinformers.NodeInformer
+	NodeInformers                  map[string]coreinformers.NodeInformer
 	PodInformer                    coreinformers.PodInformer
 	PvInformer                     coreinformers.PersistentVolumeInformer
 	PvcInformer                    coreinformers.PersistentVolumeClaimInformer
@@ -267,11 +295,16 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 	if args.StorageClassInformer != nil {
 		storageClassLister = args.StorageClassInformer.Lister()
 	}
+	nodeListers := make(map[string]corelisters.NodeLister, len(args.NodeInformers))
+	for i := range args.NodeInformers {
+		nodeListers[i] = args.NodeInformers[i].Lister()
+	}
+
 	c := &configFactory{
 		client:                         args.Client,
 		podLister:                      schedulerCache,
 		podQueue:                       internalqueue.NewSchedulingQueue(stopEverything, framework),
-		nodeLister:                     args.NodeInformer.Lister(),
+		nodeListers:                    nodeListers,
 		pVLister:                       args.PvInformer.Lister(),
 		pVCLister:                      args.PvcInformer.Lister(),
 		serviceLister:                  args.ServiceInformer.Lister(),
@@ -291,7 +324,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 		enableNonPreempting:            utilfeature.DefaultFeatureGate.Enabled(features.NonPreemptingPriority),
 	}
 	// Setup volume binder
-	c.volumeBinder = volumebinder.NewVolumeBinder(args.Client, args.NodeInformer, args.PvcInformer, args.PvInformer, args.StorageClassInformer, time.Duration(args.BindTimeoutSeconds)*time.Second)
+	c.volumeBinder = volumebinder.NewVolumeBinder(args.Client, args.NodeInformers, args.PvcInformer, args.PvInformer, args.StorageClassInformer, time.Duration(args.BindTimeoutSeconds)*time.Second)
 	c.scheduledPodsHasSynced = args.PodInformer.Informer().HasSynced
 	// ScheduledPodLister is something we provide to plug-in functions that
 	// they may need to call.
@@ -299,7 +332,7 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 
 	// Setup cache debugger
 	debugger := cachedebugger.New(
-		args.NodeInformer.Lister(),
+		nodeListers,
 		args.PodInformer.Lister(),
 		c.schedulerCache,
 		c.podQueue,
@@ -314,8 +347,8 @@ func NewConfigFactory(args *ConfigFactoryArgs) Configurator {
 }
 
 // GetNodeStore provides the cache to the nodes, mostly internal use, but may also be called by mock-tests.
-func (c *configFactory) GetNodeLister() corelisters.NodeLister {
-	return c.nodeLister
+func (c *configFactory) GetNodeListers() map[string]corelisters.NodeLister {
+	return c.nodeListers
 }
 
 func (c *configFactory) GetHardPodAffinitySymmetricWeight() int32 {
@@ -475,10 +508,12 @@ func (c *configFactory) CreateFromKeys(predicateKeys, priorityKeys sets.String, 
 		c.enableNonPreempting,
 	)
 
+	algorithmNodeLister := convertToAlgorithmNodeListers(c.nodeListers)
 	return &Config{
-		SchedulerCache: c.schedulerCache,
+		SchedulerCache:              c.schedulerCache,
+		ResourceProviderNodeListers: c.nodeListers,
 		// The scheduler only needs to consider schedulable nodes.
-		NodeLister:          &nodeLister{c.nodeLister},
+		NodeListers:         algorithmNodeLister,
 		Algorithm:           algo,
 		GetBinder:           getBinderFunc(c.client, extenders),
 		PodConditionUpdater: &podConditionUpdater{c.client},
@@ -557,15 +592,21 @@ func (c *configFactory) GetPredicates(predicateKeys sets.String) (map[string]pre
 }
 
 func (c *configFactory) getPluginArgs() (*PluginFactoryArgs, error) {
+	algorithmNodeLister := convertToAlgorithmNodeListers(c.nodeListers)
+	cacheNodeInfos := make(map[string]corelisters.NodeLister, len(c.nodeListers))
+	for i := range c.nodeListers {
+		cacheNodeInfos[i] = c.nodeListers[i]
+	}
+
 	return &PluginFactoryArgs{
 		PodLister:                      c.podLister,
 		ServiceLister:                  c.serviceLister,
 		ControllerLister:               c.controllerLister,
 		ReplicaSetLister:               c.replicaSetLister,
 		StatefulSetLister:              c.statefulSetLister,
-		NodeLister:                     &nodeLister{c.nodeLister},
+		NodeListers:                    algorithmNodeLister,
 		PDBLister:                      c.pdbLister,
-		NodeInfo:                       &predicates.CachedNodeInfo{NodeLister: c.nodeLister},
+		NodeInfo:                       predicates.NewCachedNodeInfo(cacheNodeInfos),
 		PVInfo:                         &predicates.CachedPersistentVolumeInfo{PersistentVolumeLister: c.pVLister},
 		PVCInfo:                        &predicates.CachedPersistentVolumeClaimInfo{PersistentVolumeClaimLister: c.pVCLister},
 		StorageClassInfo:               &predicates.CachedStorageClassInfo{StorageClassLister: c.storageClassLister},
@@ -771,4 +812,15 @@ func (p *podPreemptor) RemoveNominatedNodeName(pod *v1.Pod) error {
 		return nil
 	}
 	return p.SetNominatedNodeName(pod, "")
+}
+
+func convertToAlgorithmNodeListers(nodelisters map[string]corelisters.NodeLister) []algorithm.NodeLister {
+	algorithmNodeLister := make([]algorithm.NodeLister, len(nodelisters))
+	index := 0
+	for _, nodelister := range nodelisters {
+		algorithmNodeLister[index] = &nodeLister{nodelister}
+		index++
+	}
+
+	return algorithmNodeLister
 }

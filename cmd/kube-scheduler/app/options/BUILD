@@ -11,6 +11,7 @@ go_library(
     importpath = "k8s.io/kubernetes/cmd/kube-scheduler/app/options",
     visibility = ["//visibility:public"],
     deps = [
+        "//cmd/genutils:go_default_library",
         "//cmd/kube-scheduler/app/config:go_default_library",
         "//pkg/client/leaderelectionconfig:go_default_library",
         "//pkg/master/ports:go_default_library",
@@ -27,6 +28,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/server/options:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
         "//staging/src/k8s.io/client-go/informers:go_default_library",
+        "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/typed/core/v1:go_default_library",

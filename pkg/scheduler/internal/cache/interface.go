@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ package cache
 import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/kubernetes/pkg/scheduler/algorithm"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 )
@@ -87,10 +89,11 @@ type Cache interface {
 	IsAssumedPod(pod *v1.Pod) (bool, error)
 
 	// AddNode adds overall information about node.
-	AddNode(node *v1.Node) error
+	AddNode(node *v1.Node, resourceProviderId string) error
 
 	// UpdateNode updates overall information about node.
-	UpdateNode(oldNode, newNode *v1.Node) error
+	// Here pass nodeLister map instead of resource provider id to skip unnecessary searches
+	UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error
 
 	// RemoveNode removes overall information about node.
 	RemoveNode(node *v1.Node) error

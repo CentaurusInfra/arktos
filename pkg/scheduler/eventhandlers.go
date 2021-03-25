@@ -19,16 +19,17 @@ package scheduler
 
 import (
 	"fmt"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/klog"
 	"reflect"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	storageinformers "k8s.io/client-go/informers/storage/v1"
 	"k8s.io/client-go/tools/cache"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 func (sched *Scheduler) onPvAdd(obj interface{}) {
@@ -94,7 +95,14 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 		return
 	}
 
-	if err := sched.config.SchedulerCache.AddNode(node); err != nil {
+	_, rpId, err := nodeutil.GetNodeFromNodelisters(sched.config.ResourceProviderNodeListers, node.Name)
+	if err != nil {
+		klog.Error("Unable to find resource provider id from node listers")
+		return
+	}
+
+	klog.V(3).Infof("Add node to cache. node [%v], rpId [%v]", node.Name, rpId)
+	if err := sched.config.SchedulerCache.AddNode(node, rpId); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
 
@@ -113,7 +121,7 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 		return
 	}
 
-	if err := sched.config.SchedulerCache.UpdateNode(oldNode, newNode); err != nil {
+	if err := sched.config.SchedulerCache.UpdateNode(oldNode, newNode, sched.config.ResourceProviderNodeListers); err != nil {
 		klog.Errorf("scheduler cache UpdateNode failed: %v", err)
 	}
 
@@ -350,7 +358,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 func AddAllEventHandlers(
 	sched *Scheduler,
 	schedulerName string,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
@@ -408,14 +416,16 @@ func AddAllEventHandlers(
 		},
 	)
 
-	nodeInformer.Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    sched.addNodeToCache,
-			UpdateFunc: sched.updateNodeInCache,
-			DeleteFunc: sched.deleteNodeFromCache,
-		},
-	)
-
+	for i := range nodeInformers {
+		nodeInformers[i].Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				AddFunc:    sched.addNodeToCache,
+				UpdateFunc: sched.updateNodeInCache,
+				DeleteFunc: sched.deleteNodeFromCache,
+			},
+		)
+		klog.V(3).Infof("Add event handler to node informer %d %p", i, nodeInformers[i].Informer())
+	}
 	// On add and delete of PVs, it will affect equivalence cache items
 	// related to persistent volume
 	pvInformer.Informer().AddEventHandler(

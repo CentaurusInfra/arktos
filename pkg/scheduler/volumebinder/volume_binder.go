@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -34,14 +35,14 @@ type VolumeBinder struct {
 // NewVolumeBinder sets up the volume binding library and binding queue
 func NewVolumeBinder(
 	client clientset.Interface,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	storageClassInformer storageinformers.StorageClassInformer,
 	bindTimeout time.Duration) *VolumeBinder {
 
 	return &VolumeBinder{
-		Binder: volumescheduling.NewVolumeBinder(client, nodeInformer, pvcInformer, pvInformer, storageClassInformer, bindTimeout),
+		Binder: volumescheduling.NewVolumeBinder(client, nodeInformers, pvcInformer, pvInformer, storageClassInformer, bindTimeout),
 	}
 }
 

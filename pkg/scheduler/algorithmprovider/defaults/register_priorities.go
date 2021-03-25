@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -70,7 +71,7 @@ func init() {
 		priorities.InterPodAffinityPriority,
 		factory.PriorityConfigFactory{
 			Function: func(args factory.PluginFactoryArgs) priorities.PriorityFunction {
-				return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeLister, args.PodLister, args.HardPodAffinitySymmetricWeight)
+				return priorities.NewInterPodAffinityPriority(args.NodeInfo, args.NodeListers, args.PodLister, args.HardPodAffinitySymmetricWeight)
 			},
 			Weight: 1,
 		},

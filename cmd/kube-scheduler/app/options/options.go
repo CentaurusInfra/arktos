@@ -19,7 +19,9 @@ package options
 
 import (
 	"fmt"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"net"
 	"os"
 	"strconv"
@@ -257,21 +259,35 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
 
 	// if the resource provider kubeconfig is not set, default to the local cluster
-	//
-	if c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig == "" || !kubeconfigFileExists(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig) {
+	if c.ComponentConfig.ResourceProviderKubeConfig == "" {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
-		c.ResourceInformer = c.InformerFactory.Core().V1().Nodes()
+		c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+		c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
+		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
+		if !existed {
+			klog.Warningf("ResourceProvider kubeConfig is not valid, default to local cluster kubeconfig file")
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+			c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
+		} else {
+			c.ResourceProviderClients = make(map[string]clientset.Interface, len(kubeConfigFiles))
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
+			for i, kubeConfigFile := range kubeConfigFiles {
+				rpId := "rp" + strconv.Itoa(i)
+				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					klog.Error("failed to create resource provider rest client, error: %v", err)
+					return nil, err
+				}
 
-		c.ResourceProviderClient, err = clientutil.CreateClientFromKubeconfigFile(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig)
-		if err != nil {
-			klog.Errorf("failed to create resource provider rest client, error: %v", err)
-			return nil, err
+				resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[rpId], 0)
+				c.NodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
+				klog.V(2).Infof("Created the node informer %p from resourceProvider kubeConfig %d %s",
+					c.NodeInformers[rpId].Informer(), i, kubeConfigFile)
+			}
 		}
-
-		klog.V(2).Infof("Create the resource informer from resourceProvider kubeConfig")
-		ResourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClient, 0)
-		c.ResourceInformer = ResourceInformerFactory.Core().V1().Nodes()
 	}
 
 	c.PodInformer = factory.NewPodInformer(client, 0)
@@ -281,11 +297,6 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.LeaderElection = leaderElectionConfig
 
 	return c, nil
-}
-
-func kubeconfigFileExists(name string) bool {
-	_, err := os.Stat(name)
-	return err == nil
 }
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
