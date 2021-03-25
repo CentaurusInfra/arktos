@@ -212,8 +212,9 @@ func get_backends(config *Config) string {
 	}
 
 	if config.tlsMode == BRIDGING {
-		tp_backend = "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
-		rp_backend = "backend resource_api\n    server rp %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+		// perform a TCP check for backend health
+		tp_backend = "backend tenant_api_%v\n    option tcp-check\n    tcp-check connect\n    server tp_%v %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
+		rp_backend = "backend resource_api\n    option tcp-check\n    tcp-check connect\n    server rp %v:%v maxconn %v ssl check ca-file /etc/haproxy/ca.crt\n\n"
 	} else {
 		tp_backend = "backend tenant_api_%v\n    server tp_%v %v:%v maxconn %v\n\n"
 		rp_backend = "backend resource_api\n    server rp %v:%v maxconn %v\n\n"
