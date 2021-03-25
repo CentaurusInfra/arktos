@@ -17,6 +17,7 @@
 {{$ENABLE_CHAOSMONKEY := DefaultParam .ENABLE_CHAOSMONKEY false}}
 {{$PROMETHEUS_SCRAPE_KUBE_PROXY := DefaultParam .PROMETHEUS_SCRAPE_KUBE_PROXY true}}
 {{$ENABLE_PROMETHEUS_API_RESPONSIVENESS := DefaultParam .ENABLE_PROMETHEUS_API_RESPONSIVENESS false}}
+{{$ENABLE_DAEMONSET := DefaultParam .ENABLE_DAEMONSET false}}
 {{$ENABLE_PVS := DefaultParam .CL2_ENABLE_PVS true}}
 {{$ENABLE_NETWORKPOLICIES := DefaultParam .CL2_ENABLE_NETWORKPOLICIES false}}
 {{$ENABLE_SYSTEM_POD_METRICS:= DefaultParam .ENABLE_SYSTEM_POD_METRICS true}}
@@ -135,6 +136,7 @@ steps:
     - basename: small-service
       objectTemplatePath: service.yaml
 
+{{if $ENABLE_DAEMONSET}}
 - name: Creating PriorityClass for DaemonSets
   phases:
   - replicasPerNamespace: 1
@@ -142,6 +144,7 @@ steps:
     objectBundle:
       - basename: daemonset-priorityclass
         objectTemplatePath: daemonset-priorityclass.yaml
+{{end}}
 
 - name: Starting measurement for waiting for pods
   measurements:
@@ -161,6 +164,7 @@ steps:
       kind: StatefulSet
       labelSelector: group = load
       operationTimeout: 15m
+  {{if $ENABLE_DAEMONSET}}
   - Identifier: WaitForRunningDaemonSets
     Method: WaitForControlledPodsRunning
     Params:
@@ -169,6 +173,7 @@ steps:
       kind: DaemonSet
       labelSelector: group = load
       operationTimeout: 15m
+  {{end}}
   - Identifier: WaitForRunningJobs
     Method: WaitForControlledPodsRunning
     Params:
@@ -180,6 +185,7 @@ steps:
 
 - name: Creating objects
   phases:
+  {{if $ENABLE_DAEMONSET}}
   - namespaceRange:
       min: 1
       max: 1
@@ -190,6 +196,7 @@ steps:
       objectTemplatePath: daemonset.yaml
       templateFillMap:
         Image: k8s.gcr.io/pause:3.0
+  {{end}}
   - namespaceRange:
       min: 1
       max: {{$namespaces}}
@@ -320,10 +327,12 @@ steps:
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{if $ENABLE_DAEMONSET}}
   - Identifier: WaitForRunningDaemonSets
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{end}}
   - Identifier: WaitForRunningJobs
     Method: WaitForControlledPodsRunning
     Params:
@@ -389,6 +398,7 @@ steps:
         templateFillMap:
           ReplicasMin: {{MultiplyInt $MEDIUM_GROUP_SIZE 0.5}}
           ReplicasMax: {{MultiplyInt $MEDIUM_GROUP_SIZE 1.5}}
+  {{if $ENABLE_DAEMONSET}}
   - namespaceRange:
       min: 1
       max: 1
@@ -399,6 +409,7 @@ steps:
         objectTemplatePath: daemonset.yaml
         templateFillMap:
           Image: k8s.gcr.io/pause:3.1
+  {{end}}
   - namespaceRange:
       min: 1
       max: {{$namespaces}}
@@ -443,10 +454,12 @@ steps:
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{if $ENABLE_DAEMONSET}}
   - Identifier: WaitForRunningDaemonSets
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{end}}
   - Identifier: WaitForRunningJobs
     Method: WaitForControlledPodsRunning
     Params:
@@ -522,6 +535,7 @@ steps:
         objectTemplatePath: statefulset.yaml
       - basename: medium-statefulset
         objectTemplatePath: statefulset_service.yaml
+  {{if $ENABLE_DAEMONSET}}
   - namespaceRange:
       min: 1
       max: 1
@@ -530,6 +544,7 @@ steps:
     objectBundle:
       - basename: daemonset
         objectTemplatePath: daemonset.yaml
+  {{end}}
   - namespaceRange:
       min: 1
       max: {{$namespaces}}
@@ -596,10 +611,12 @@ steps:
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{if $ENABLE_DAEMONSET}}
   - Identifier: WaitForRunningDaemonSets
     Method: WaitForControlledPodsRunning
     Params:
       action: gather
+  {{end}}
   - Identifier: WaitForRunningJobs
     Method: WaitForControlledPodsRunning
     Params:
@@ -613,6 +630,7 @@ steps:
       timeout: 15m
   {{end}}
 
+{{if $ENABLE_DAEMONSET}}
 - name: Deleting PriorityClass for DaemonSets
   phases:
     - replicasPerNamespace: 0
@@ -620,6 +638,7 @@ steps:
       objectBundle:
         - basename: daemonset-priorityclass
           objectTemplatePath: daemonset-priorityclass.yaml
+{{end}}
 
 - name: Deleting SVCs
   phases:
