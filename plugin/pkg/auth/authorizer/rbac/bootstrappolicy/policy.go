@@ -421,6 +421,12 @@ func ClusterRoles() []rbacv1.ClusterRole {
 				rbacv1helpers.NewRule("delete").Groups(legacyGroup).Resources("secrets").RuleOrDie(),
 				rbacv1helpers.NewRule("get").Groups(legacyGroup).Resources("endpoints", "namespaces", "secrets", "serviceaccounts", "configmaps").RuleOrDie(),
 				rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("endpoints", "secrets", "serviceaccounts").RuleOrDie(),
+				rbacv1helpers.NewRule(ReadWrite...).Groups(appsGroup).Resources(
+					"statefulsets", "statefulsets/scale",
+					"daemonsets",
+					"deployments", "deployments/scale", "deployments/rollback", "deployments/status",
+					"replicasets", "replicasets/scale", "replicasets/status",
+					"controllerrevisions").RuleOrDie(),
 				// Needed to check API access.  These creates are non-mutating
 				rbacv1helpers.NewRule("create").Groups(authenticationGroup).Resources("tokenreviews").RuleOrDie(),
 				rbacv1helpers.NewRule("create").Groups(authorizationGroup).Resources("subjectaccessreviews").RuleOrDie(),
