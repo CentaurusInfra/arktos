@@ -857,10 +857,10 @@ rules:
         resources: ["configmaps"]
   - level: None
     users: ["system:kubelet"] # legacy kubelet identity
-    verbs: ["get"]
+    verbs: ["get", "create"]
     resources:
       - group: "" # core
-        resources: ["nodes", "nodes/status"]
+        resources: ["nodes", "nodes/status", "events"]
   - level: None
     userGroups: ["system:nodes"]
     verbs: ["get"]
