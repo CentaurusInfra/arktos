@@ -137,7 +137,7 @@ function main() {
   prepare-mounter-rootfs
   modprobe configs
   if [[ "${ENABLE_PPROF_DEBUG:-false}" == "true" ]]; then
-    start-collect-partitionserver-pprof &  #### start collect profiling files
+    start-collect-pprof &  #### start collect profiling files
   fi
   if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
     start-prometheus &  #####start prometheus
