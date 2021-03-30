@@ -2905,11 +2905,6 @@ function create-proxy-vm() {
       echo "${result}" >&2
       export PROXY_RESERVED_IP
       export PROXY_RESERVED_INTERNAL_IP
-
-      # pass back the proxy reserved IP
-      echo ${PROXY_RESERVED_IP} > ${KUBE_TEMP}/proxy-reserved-ip.txt
-      cat ${KUBE_TEMP}/proxy-reserved-ip.txt
-
       return 0
     else
       echo "${result}" >&2
@@ -3100,8 +3095,6 @@ function create-master() {
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-
-  echo ${MASTER_RESERVED_IP} > ${KUBE_TEMP}/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')

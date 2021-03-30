@@ -347,11 +347,9 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     export KUBEMARK_CLUSTER_KUBECONFIG="${TP_KUBECONFIG}-${tp_num}"
     create-kubemark-master
 
-    export PROXY_RESERVED_IP=$(cat ${KUBE_TEMP}/proxy-reserved-ip.txt)
+    export PROXY_RESERVED_IP=$(grep server "${PROXY_KUBECONFIG}" | awk -F "//" '{print $2}'  | awk -F ":" '{print $1}')
     echo "DBG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
     
-    export TP_${tp_num}_RESERVED_IP=$(cat ${KUBE_TEMP}/master_reserved_ip.txt)
-
     # TODO: fix the hardcoded path
     # the path is what the controller used in master init script on the master machines
     if [[ ${tp_num} == 1 ]]; then
