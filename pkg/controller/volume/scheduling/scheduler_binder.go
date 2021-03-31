@@ -19,6 +19,7 @@ package scheduling
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"sort"
 	"time"
@@ -473,11 +474,21 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 	var err error
 	for _, nodeInformer := range b.nodeInformers {
 		node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
-		if err != nil { // TODO - check error type, continue to search next RP if not found
-			klog.Errorf("Error getting node from current node informer. error [%v]. TODO - check error type, continue to search next RP if not found", err)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.V(5).Infof("node %q: not found from the current node informer. Continue with the next one.", pod.Spec.NodeName)
+				continue
+			}
+
+			klog.Errorf("Error getting node from current node informer. error [%v].", err)
 			return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
 		}
 		break
+	}
+
+	if err != nil {
+		klog.Errorf("Error getting node from node informers; the last error is [%v].", err)
+		return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
 	}
 
 	// Check for any conditions that might require scheduling retry
