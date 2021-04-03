@@ -229,7 +229,7 @@ func NewObjectTracker(scheme ObjectScheme, decoder runtime.Decoder) ObjectTracke
 }
 
 func (t *tracker) List(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string) (runtime.Object, error) {
-	return t.ListWithMultiTenancy(gvr, gvk, ns, metav1.TenantNone)
+	return t.ListWithMultiTenancy(gvr, gvk, ns, metav1.TenantAll)
 }
 
 func (t *tracker) ListWithMultiTenancy(gvr schema.GroupVersionResource, gvk schema.GroupVersionKind, ns string, tenant string) (runtime.Object, error) {
@@ -272,7 +272,7 @@ func (t *tracker) ListWithMultiTenancy(gvr schema.GroupVersionResource, gvk sche
 }
 
 func (t *tracker) Watch(gvr schema.GroupVersionResource, ns string) (watch.Interface, error) {
-	return t.WatchWithMultiTenancy(gvr, ns, metav1.TenantNone)
+	return t.WatchWithMultiTenancy(gvr, ns, metav1.TenantAll)
 }
 
 func (t *tracker) WatchWithMultiTenancy(gvr schema.GroupVersionResource, ns string, tenant string) (watch.Interface, error) {
