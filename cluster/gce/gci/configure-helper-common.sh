@@ -857,10 +857,10 @@ rules:
         resources: ["configmaps"]
   - level: None
     users: ["system:kubelet"] # legacy kubelet identity
-    verbs: ["get"]
+    verbs: ["get", "create"]
     resources:
       - group: "" # core
-        resources: ["nodes", "nodes/status"]
+        resources: ["nodes", "nodes/status", "events"]
   - level: None
     userGroups: ["system:nodes"]
     verbs: ["get"]
@@ -2269,9 +2269,9 @@ function start-kube-controller-manager {
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
+  #if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
     params+=" --use-service-account-credentials"
-  fi
+  #fi
   params+=" --cloud-provider=gce"
   ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
   ## TODO: investigate and fix it later
