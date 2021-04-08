@@ -339,8 +339,8 @@ function start-hollow-nodes {
     create-kube-hollow-node-resources
   fi
 
-  # the timeout value is set based on default QPS of 20/sec and a buffer time of 10 minutes
-  let timeout_seconds=${KUBEMARK_NUM_NODES:-10}/20+600
+  # the timeout value is set based on default QPS of 20/sec and a buffer time of 15 minutes
+  let timeout_seconds=${KUBEMARK_NUM_NODES:-10}/20+900
   echo -e "$(date): Wait ${timeout_seconds} seconds for ${KUBEMARK_NUM_NODES:-10} hollow nodes to be ready."
 
   wait-for-hollow-nodes-to-run-or-timeout ${timeout_seconds}
