@@ -208,6 +208,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 		return result, err
 	}
 
+	klog.V(2).Infof("DEBUG: Compute predicates pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Computing predicates")
 	startPredicateEvalTime := time.Now()
 	filteredNodes, failedPredicateMap, err := g.findNodesThatFit(pod, nodes)
@@ -227,6 +228,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	metrics.SchedulingLatency.WithLabelValues(metrics.PredicateEvaluation).Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 	metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PredicateEvaluation).Observe(metrics.SinceInSeconds(startPredicateEvalTime))
 
+	klog.V(2).Infof("DEBUG: Prioritizing pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Prioritizing")
 	startPriorityEvalTime := time.Now()
 	// When only one node after predicate, just use it.
@@ -250,6 +252,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	metrics.SchedulingLatency.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 	metrics.DeprecatedSchedulingLatency.WithLabelValues(metrics.PriorityEvaluation).Observe(metrics.SinceInSeconds(startPriorityEvalTime))
 
+	klog.V(2).Infof("DEBUG: Selecting host pod: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 	trace.Step("Selecting host")
 
 	host, err := g.selectHost(priorityList)
@@ -471,6 +474,8 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 		allNodes := int32(g.cache.NodeTree().NumNodes())
 		numNodesToFind := g.numFeasibleNodesToFind(allNodes)
 
+		klog.V(2).Infof("Total nodes: %v, calculated numberNodesToFind: %v", allNodes, numNodesToFind)
+
 		// Create filtered list with enough space to avoid growing it
 		// and allow assigning.
 		filtered = make([]*v1.Node, numNodesToFind)
@@ -496,6 +501,7 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 				g.alwaysCheckAllPredicates,
 			)
 			if err != nil {
+				//TODO: ideally, the error lock should be different one to improve performance
 				predicateResultLock.Lock()
 				errs[err.Error()]++
 				predicateResultLock.Unlock()
@@ -518,6 +524,11 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 
 		// Stops searching for more nodes once the configured number of feasible nodes
 		// are found.
+		klog.V(2).Infof("Number of nodes: %v", int(allNodes))
+		// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
+		//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
+		//       especially the numberNodesToFind is high
+		//
 		workqueue.ParallelizeUntil(ctx, 16, int(allNodes), checkNode)
 
 		filtered = filtered[:filteredLen]
@@ -724,6 +735,9 @@ func PrioritizeNodes(
 		}
 	}
 
+	klog.V(2).Infof("Number of nodes: %v", len(nodes))
+	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
+	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(context.TODO(), 16, len(nodes), func(index int) {
 		nodeInfo := nodeNameToInfo[nodes[index].Name]
 		for i := range priorityConfigs {
@@ -995,6 +1009,10 @@ func selectNodesForPreemption(pod *v1.Pod,
 			resultLock.Unlock()
 		}
 	}
+
+	klog.V(2).Infof("Number of nodes: %v", len(potentialNodes))
+	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
+	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(context.TODO(), 16, len(potentialNodes), checkNode)
 	return nodeToVictims, nil
 }

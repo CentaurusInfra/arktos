@@ -274,6 +274,8 @@ func (cache *schedulerCache) FilteredList(podFilter algorithm.PodFilter, selecto
 			}
 		}
 	}
+
+	klog.V(2).Infof("returning %v pods out of %v nodes", len(pods), len(cache.nodes))
 	return pods, nil
 }
 
@@ -419,6 +421,8 @@ func (cache *schedulerCache) AddPod(pod *v1.Pod) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
+	//klog.V(2).Infof("DEBUG: ADD_DEL: Add pod from cache: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
+
 	currState, ok := cache.podStates[key]
 	switch {
 	case ok && cache.assumedPods[key]:
@@ -482,6 +486,8 @@ func (cache *schedulerCache) RemovePod(pod *v1.Pod) error {
 
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
+
+	//klog.V(2).Infof("DEBUG: ADD_DEL: Remove pod from cache: %v/%v/%v", pod.Tenant, pod.Namespace, pod.Name)
 
 	currState, ok := cache.podStates[key]
 	switch {

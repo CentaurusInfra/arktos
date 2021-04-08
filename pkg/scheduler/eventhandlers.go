@@ -161,6 +161,7 @@ func (sched *Scheduler) deleteNodeFromCache(obj interface{}) {
 	}
 }
 func (sched *Scheduler) addPodToSchedulingQueue(obj interface{}) {
+	klog.V(2).Infof("Getting pod %v from API server", obj.(*v1.Pod).Name )
 	if err := sched.config.SchedulingQueue.Add(obj.(*v1.Pod)); err != nil {
 		utilruntime.HandleError(fmt.Errorf("unable to queue %T: %v", obj, err))
 	}
@@ -207,7 +208,7 @@ func (sched *Scheduler) addPodToCache(obj interface{}) {
 		klog.Errorf("cannot convert to *v1.Pod: %v", obj)
 		return
 	}
-	klog.V(4).Infof("Got ADD pod event. pod name %s, rv %v, status %#v", pod.Name, pod.ResourceVersion, pod.Status)
+	klog.V(2).Infof("Got ADD pod event. pod name %s, rv %v, status %#v", pod.Name, pod.ResourceVersion, pod.Status)
 
 	if err := sched.config.SchedulerCache.AddPod(pod); err != nil {
 		klog.Errorf("scheduler cache AddPod failed: %v", err)
