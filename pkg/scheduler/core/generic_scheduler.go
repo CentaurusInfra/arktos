@@ -459,8 +459,11 @@ func (g *genericScheduler) numFeasibleNodesToFind(numAllNodes int32) (numNodes i
 		return minFeasibleNodesToFind
 	}
 
-	klog.V(2).Infof("Get # of evaluated node. Total nodes %v, percentageOfNodesToScore %v, adaptivePercentage %v, node to evaluate %v",
-		numAllNodes, g.percentageOfNodesToScore, adaptivePercentage, numNodes)
+	if numNodes > 500 {
+		klog.V(2).Infof("Get # of evaluated node. Total nodes %v, percentageOfNodesToScore %v, adaptivePercentage %v, node to evaluate %v, force setting to 500",
+			numAllNodes, g.percentageOfNodesToScore, adaptivePercentage, numNodes)
+		numNodes = 500
+	}
 	return numNodes
 }
 
