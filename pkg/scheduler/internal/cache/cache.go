@@ -275,7 +275,7 @@ func (cache *schedulerCache) FilteredList(podFilter algorithm.PodFilter, selecto
 		}
 	}
 
-	klog.V(2).Infof("returning %v pods out of %v nodes", len(pods), len(cache.nodes))
+	klog.V(6).Infof("returning %v pods out of %v nodes", len(pods), len(cache.nodes))
 	return pods, nil
 }
 

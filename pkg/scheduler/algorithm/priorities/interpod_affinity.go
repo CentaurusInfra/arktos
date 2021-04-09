@@ -119,7 +119,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 	hasAffinityConstraints := affinity != nil && affinity.PodAffinity != nil
 	hasAntiAffinityConstraints := affinity != nil && affinity.PodAntiAffinity != nil
 
-	klog.V(2).Infof(" pod %v-%v, affinity: %v, hasAffinityConstraints: %v, hasAntiAffinityConstraints: %v",
+	klog.V(6).Infof(" pod %v-%v, affinity: %v, hasAffinityConstraints: %v, hasAntiAffinityConstraints: %v",
 		pod.Namespace, pod.Name, affinity, hasAffinityConstraints, hasAntiAffinityConstraints )
 
 	// priorityMap stores the mapping from node name to so-far computed score of
@@ -151,7 +151,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 		existingHasAffinityConstraints := existingPodAffinity != nil && existingPodAffinity.PodAffinity != nil
 		existingHasAntiAffinityConstraints := existingPodAffinity != nil && existingPodAffinity.PodAntiAffinity != nil
 
-		klog.V(2).Infof(" existing pod %v-%v, affinity: %v, hasAffinityConstraints: %v, hasAntiAffinityConstraints: %v",
+		klog.V(4).Infof(" existing pod %v-%v, affinity: %v, hasAffinityConstraints: %v, hasAntiAffinityConstraints: %v",
 			existingPod.Namespace, existingPod.Name, affinity, hasAffinityConstraints, hasAntiAffinityConstraints )
 
 		if hasAffinityConstraints {
@@ -212,7 +212,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 				// The pod doesn't have any constraints - we need to check only existing
 				// ones that have some.
 				existingPods := nodeInfo.PodsWithAffinity()
-				// klog.V(2).Infof("Node %v, Pods with Affinity: %v", nodeInfo.Node().Name, len(existingPods))
+				klog.V(6).Infof("Node %v, Pods with Affinity: %v", nodeInfo.Node().Name, len(existingPods))
 				for _, existingPod := range existingPods {
 					if err := processPod(existingPod); err != nil {
 						pm.setError(err)
@@ -222,7 +222,7 @@ func (ipa *InterPodAffinity) CalculateInterPodAffinityPriority(pod *v1.Pod, node
 		}
 	}
 
-	klog.V(2).Infof("Number of nodes: %v", len(allNodeNames))
+	klog.V(6).Infof("Number of nodes: %v", len(allNodeNames))
 	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(context.TODO(), 16, len(allNodeNames), processNode)

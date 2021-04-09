@@ -476,7 +476,7 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 		allNodes := int32(g.cache.NodeTree().NumNodes())
 		numNodesToFind := g.numFeasibleNodesToFind(allNodes)
 
-		klog.V(2).Infof("Total nodes: %v, calculated numberNodesToFind: %v", allNodes, numNodesToFind)
+		klog.V(6).Infof("Total nodes: %v, calculated numberNodesToFind: %v", allNodes, numNodesToFind)
 
 		// Create filtered list with enough space to avoid growing it
 		// and allow assigning.
@@ -526,7 +526,7 @@ func (g *genericScheduler) findNodesThatFit(pod *v1.Pod, nodes []*v1.Node) ([]*v
 
 		// Stops searching for more nodes once the configured number of feasible nodes
 		// are found.
-		klog.V(2).Infof("Number of nodes: %v", int(allNodes))
+		klog.V(6).Infof("Number of nodes: %v", int(allNodes))
 		// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 		//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 		//       especially the numberNodesToFind is high
@@ -1012,7 +1012,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 		}
 	}
 
-	klog.V(2).Infof("Number of nodes: %v", len(potentialNodes))
+	klog.V(6).Infof("Number of nodes: %v", len(potentialNodes))
 	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 	workqueue.ParallelizeUntil(context.TODO(), 16, len(potentialNodes), checkNode)
