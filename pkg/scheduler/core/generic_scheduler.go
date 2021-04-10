@@ -1088,10 +1088,10 @@ func selectVictimsOnNode(
 	potentialVictims := util.SortableList{CompFunc: util.MoreImportantPod}
 	nodeInfoCopy := nodeInfo.Clone()
 
-	removePod := func(rp *v1.Pod) {
+	removePod := func(rp *v1.Pod, node *v1.Node) {
 		nodeInfoCopy.RemovePod(rp)
 		if meta != nil {
-			meta.RemovePod(rp)
+			meta.RemovePod(rp, node)
 		}
 	}
 	addPod := func(ap *v1.Pod) {
@@ -1106,7 +1106,7 @@ func selectVictimsOnNode(
 	for _, p := range nodeInfoCopy.Pods() {
 		if util.GetPodPriority(p) < podPriority {
 			potentialVictims.Items = append(potentialVictims.Items, p)
-			removePod(p)
+			removePod(p, nodeInfo.Node())
 		}
 	}
 	// If the new pod does not fit after removing all the lower priority pods,
@@ -1132,7 +1132,7 @@ func selectVictimsOnNode(
 		addPod(p)
 		fits, _, _ := podFitsOnNode(pod, meta, nodeInfoCopy, fitPredicates, queue, false)
 		if !fits {
-			removePod(p)
+			removePod(p, nodeInfo.Node())
 			victims = append(victims, p)
 			klog.V(5).Infof("Pod %v/%v is a potential preemption victim on node %v.", p.Namespace, p.Name, nodeInfo.Node().Name)
 		}
