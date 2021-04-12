@@ -430,7 +430,9 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 				cancel()
 				return
 			}
-			appendResult(existingPodTopologyMaps)
+			if existingPodTopologyMaps!=nil {
+				appendTopologyPairsMaps(existingPodTopologyMaps)
+			}
 		}
 	}
 
