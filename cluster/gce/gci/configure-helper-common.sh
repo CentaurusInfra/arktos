@@ -857,10 +857,10 @@ rules:
         resources: ["configmaps"]
   - level: None
     users: ["system:kubelet"] # legacy kubelet identity
-    verbs: ["get"]
+    verbs: ["get", "create"]
     resources:
       - group: "" # core
-        resources: ["nodes", "nodes/status"]
+        resources: ["nodes", "nodes/status", "events"]
   - level: None
     userGroups: ["system:nodes"]
     verbs: ["get"]
@@ -2261,26 +2261,26 @@ function apply-encryption-config() {
 #   DOCKER_REGISTRY
 function start-kube-controller-manager {
   echo "Start kubernetes controller-manager"
-  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
-    create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
-  else
-    create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
-  fi
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    if [[ -n "${SHARED_APISERVER_TOKEN:-}" ]]; then
+      create-kubeconfig "kube-controller-manager" ${SHARED_APISERVER_TOKEN} "${PROXY_RESERVED_IP}" "443" "https"
+    else
+      create-kubeconfig "kube-controller-manager" ${KUBE_BEARER_TOKEN} "${PROXY_RESERVED_IP}" "443" "https"
+    fi
+  elif [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
+      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
+    else
+      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
+   fi
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
+  #if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
     params+=" --use-service-account-credentials"
-  fi
+  #fi
   params+=" --cloud-provider=gce"
-  ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
-  ## TODO: investigate and fix it later
-  #
-  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "false" ]]; then
-    params+=" --kubeconfig=/etc/srv/kubernetes/kube-bootstrap/kubeconfig"
-  else
-   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
-  fi
+
+  params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
 
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
