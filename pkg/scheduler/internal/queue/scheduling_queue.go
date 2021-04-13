@@ -423,7 +423,7 @@ func (p *PriorityQueue) Pop() (*v1.Pod, error) {
 	p.schedulingCycle++
 
 	end := time.Now()
-	klog.V(2).Infof("Pod pod %v-$v, duration %v ms", pInfo.Pod.Namespace, pInfo.Pod.Name, end.Sub(start).Milliseconds())
+	klog.V(2).Infof("Pop pod %v-%v, duration %v ms", pInfo.Pod.Namespace, pInfo.Pod.Name, end.Sub(start).Milliseconds())
 	return pInfo.Pod, err
 }
 
