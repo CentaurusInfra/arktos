@@ -397,13 +397,11 @@ func (p *PriorityQueue) flushUnschedulableQLeftover() {
 // activeQ is empty and waits until a new item is added to the queue. It
 // increments scheduling cycle when a pod is popped.
 func (p *PriorityQueue) Pop() (*v1.Pod, error) {
-	trace := utiltrace.New(fmt.Sprintf("Poping Pod from queue"))
-	defer trace.LogIfLong(3 * time.Millisecond)
+	start := time.Now()
 
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
-	trace.Step("Wait active queue")
 	for p.activeQ.Len() == 0 {
 		// When the queue is empty, invocation of Pop() is blocked until new item is enqueued.
 		// When Close() is called, the p.closed is set and the condition is broadcast,
@@ -414,13 +412,15 @@ func (p *PriorityQueue) Pop() (*v1.Pod, error) {
 		p.cond.Wait()
 	}
 
-	trace.Step("Pod pod")
 	obj, err := p.activeQ.Pop()
 	if err != nil {
 		return nil, err
 	}
 	pInfo := obj.(*framework.PodInfo)
 	p.schedulingCycle++
+
+	end := time.Now()
+	klog.V(2).Infof("Pod pod %v-$v, duration %v ms", pInfo.Pod.Namespace, pInfo.Pod.Name, end.Sub(start).Milliseconds())
 	return pInfo.Pod, err
 }
 
