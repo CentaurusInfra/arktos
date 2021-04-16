@@ -20,6 +20,7 @@ import (
 
 	"google.golang.org/grpc"
 	v1 "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1"
 )
 
 const (
@@ -36,6 +37,9 @@ type IGrpcAdaptor interface {
 	UpdatePod(grpcHost string, pod *v1.Pod) *ReturnCode
 	CreatePod(grpcHost string, pod *v1.Pod) *ReturnCode
 	DeletePod(grpcHost string, pod *v1.Pod) *ReturnCode
+	UpdateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode
+	CreateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode
+	DeleteNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode
 	CreateNode(grpcHost string, node *v1.Node) *ReturnCode
 	UpdateNode(grpcHost string, node *v1.Node) *ReturnCode
 	DeleteNode(grpcHost string, node *v1.Node) *ReturnCode
@@ -218,6 +222,51 @@ func (grpcAdaptor *GrpcAdaptor) DeleteNode(grpcHost string, node *v1.Node) *Retu
 	defer conn.Close()
 	defer cancel()
 	returnCode, err := client.DeleteNode(ctx, ConvertToNodeContract(node))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// UpdateNetworkPolicy is to invoke grpc func of UpdateNetworkPolicy
+func (grpcAdaptor *GrpcAdaptor) UpdateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.UpdateNetworkPolicy(ctx, ConvertToNetworkPolicyContract(policy))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// CreateNetworkPolicy is to invoke grpc func of CreateNetworkPolicy
+func (grpcAdaptor *GrpcAdaptor) CreateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.CreateNetworkPolicy(ctx, ConvertToNetworkPolicyContract(policy))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// DeleteNetworkPolicy is to invoke grpc func of DeleteNetworkPolicy
+func (grpcAdaptor *GrpcAdaptor) DeleteNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.DeleteNetworkPolicy(ctx, ConvertToNetworkPolicyContract(policy))
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
