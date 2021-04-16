@@ -63,7 +63,7 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 	}
 	portsJson, _ := json.Marshal(ports)
 
-	klog.Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
+	klog.V(3).Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
 		endpoints.Name, endpoints.Namespace, endpoints.Tenant, string(backendIpsJson), string(portsJson))
 
 	return &BuiltinsServiceEndpointMessage{
@@ -85,7 +85,7 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		network = ""
 	}
 
-	klog.Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %s",
+	klog.V(3).Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %s",
 		pod.Name, pod.Status.HostIP, pod.Namespace, pod.Tenant, network)
 
 	return &BuiltinsPodMessage{
@@ -107,7 +107,7 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 		}
 	}
 
-	klog.Infof("Node Name: %s, IP: %s", node.Name, ip)
+	klog.V(3).Infof("Node Name: %s, IP: %s", node.Name, ip)
 	return &BuiltinsNodeMessage{
 		Name: node.Name,
 		Ip:   ip,
@@ -115,7 +115,7 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 }
 
 func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsNetworkPolicyMessage {
-	klog.Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
+	klog.V(3).Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
 		policy.Name, policy.Namespace, policy.Tenant)
 
 	return &BuiltinsNetworkPolicyMessage{
