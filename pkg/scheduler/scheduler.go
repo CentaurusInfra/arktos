@@ -523,7 +523,7 @@ func (sched *Scheduler) extendersBinding(pod *v1.Pod, node string) (bool, error)
 			continue
 		}
 		return true, extender.Bind(&v1.Binding{
-			ObjectMeta: metav1.ObjectMeta{Namespace: pod.Namespace, Name: pod.Name, UID: pod.UID},
+			ObjectMeta: metav1.ObjectMeta{Namespace: pod.Namespace, Name: pod.Name, UID: pod.UID, HashKey: pod.HashKey},
 			Target:     v1.ObjectReference{Kind: "Node", Name: node},
 		})
 	}
