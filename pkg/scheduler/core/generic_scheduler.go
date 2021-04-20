@@ -247,7 +247,7 @@ func (g *genericScheduler) Schedule(pod *v1.Pod, nodeLister algorithm.NodeLister
 	}
 
 	metaPrioritiesInterface := g.priorityMetaProducer(pod, g.nodeInfoSnapshot.NodeInfoMap)
-	priorityList, err := PrioritizeNodes(pod, g.nodeInfoSnapshot.NodeInfoMap, metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
+	priorityList, err := PrioritizeNodes(pod, g.nodeInfoSnapshot.NodeInfoMap, g.nodeInfoSnapshot.List(), metaPrioritiesInterface, g.prioritizers, filteredNodes, g.extenders)
 	if err != nil {
 		return result, err
 	}
@@ -701,6 +701,7 @@ func podFitsOnNode(
 func PrioritizeNodes(
 	pod *v1.Pod,
 	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nis []*schedulernodeinfo.NodeInfo,
 	meta interface{},
 	priorityConfigs []priorities.PriorityConfig,
 	nodes []*v1.Node,
@@ -741,7 +742,7 @@ func PrioritizeNodes(
 			go func(index int) {
 				defer wg.Done()
 				var err error
-				results[index], err = priorityConfigs[index].Function(pod, nodeNameToInfo, nodes)
+				results[index], err = priorityConfigs[index].Function(pod, nodeNameToInfo, nis, nodes)
 				if err != nil {
 					appendError(err)
 				}

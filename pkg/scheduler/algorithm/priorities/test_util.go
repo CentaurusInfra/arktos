@@ -41,10 +41,10 @@ func makeNode(node string, milliCPU, memory int64) *v1.Node {
 }
 
 func priorityFunction(mapFn PriorityMapFunction, reduceFn PriorityReduceFunction, metaData interface{}) PriorityFunction {
-	return func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
+	return func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo, nis []*schedulernodeinfo.NodeInfo, nodes []*v1.Node) (schedulerapi.HostPriorityList, error) {
 		result := make(schedulerapi.HostPriorityList, 0, len(nodes))
 		for i := range nodes {
-			hostResult, err := mapFn(pod, metaData, nodeNameToInfo[nodes[i].Name])
+			hostResult, err := mapFn(pod, metaData, nis[i])
 			if err != nil {
 				return nil, err
 			}
