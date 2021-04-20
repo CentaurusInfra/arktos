@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Copyright 2020 Authors of Arktos.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");

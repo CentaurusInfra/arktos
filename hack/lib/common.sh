@@ -216,11 +216,14 @@ function kube::common::generate_certs {
       echo "Skip generating CA as CA files existed and REGENERATE_CA != true. To regenerate CA files, export REGENERATE_CA=true"
     fi
 
-    # Create auth proxy client ca
-    kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
+    # Create Certs
+    if [[ "${REUSE_CERTS}" != true ]]; then
+      # Create auth proxy client ca
+      kube::util::create_signing_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" request-header '"client auth"'
 
-    # serving cert for kube-apiserver
-    kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
+      # serving cert for kube-apiserver
+      kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-apiserver kubernetes.default kubernetes.default.svc "localhost" "${API_HOST_IP}" "${API_HOST}" "${FIRST_SERVICE_CLUSTER_IP}" "${API_HOST_IP_EXTERNAL}" "${APISERVERS_EXTRA:-}" "${PUBLIC_IP:-}"
+    fi
 
     # Create client certs signed with client-ca, given id, given CN and a number of groups
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' controller system:kube-controller-manager
@@ -228,6 +231,13 @@ function kube::common::generate_certs {
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' scheduler  system:kube-scheduler
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' admin system:admin system:masters
     kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-apiserver system:kube-apiserver
+
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
+        # Generate client certkey for TP components accessing RP api servers
+        kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' resource-provider-scheduler  system:kube-scheduler
+      fi
+    fi
 
     # Create matching certificates for kube-aggregator
     kube::util::create_serving_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "server-ca" kube-aggregator api.kube-public.svc "${API_HOST}" "${API_HOST_IP}"
@@ -310,10 +320,7 @@ function kube::common::start_apiserver()  {
       service_group_id="--service-group-id=${APISERVER_SERVICEGROUPID}"
     fi
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
-      # Create Certs
-      kube::common::generate_certs
-    fi
+    kube::common::generate_certs
 
     cloud_config_arg="--cloud-provider=${CLOUD_PROVIDER} --cloud-config=${CLOUD_CONFIG}"
     if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
@@ -380,19 +387,53 @@ EOF
     kube::util::wait_for_url "https://${API_HOST_IP}:$secureport/healthz" "apiserver: " 1 "${WAIT_FOR_URL_API_SERVER}" "${MAX_TIME_FOR_URL_API_SERVER}" \
         || { echo "check apiserver logs: ${APISERVER_LOG}" ; exit 1 ; }
 
-    if [[ "${REUSE_CERTS}" != true ]]; then
+    #if [[ "${REUSE_CERTS}" != true ]]; then
         # Create kubeconfigs for all components, using client certs
         # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
         ADMIN_CONFIG_API_HOST=${PUBLIC_IP:-${API_HOST}}
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "$secureport" admin
+
         ${CONTROLPLANE_SUDO} chown "${USER}" "${CERT_DIR}/client-admin.key" # make readable for kubectl
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
+
+        if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+          # in scale out poc, use insecured mode in local dev test
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" admin "" "http"
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" scheduler "" "http"
+          # workload controller is not used for now
+          # kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${SCALE_OUT_PROXY_IP}" "${SCALE_OUT_PROXY_PORT}" workload-controller "" "http"
+
+          # controller kubeconfig points to local api server
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "${API_PORT}" controller "" "http"
+
+          # generate kubeconfig for K8s components in TP to access api servers in RP
+          if [[ "${IS_RESOURCE_PARTITION}" != "true" ]]; then
+            serverCount=${#RESOURCE_SERVERS[@]}
+            for (( pos=0; pos<${serverCount}; pos++ ));
+            do
+              # generate kubeconfig for scheduler in TP to access api servers in RP
+              kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVERS[${pos}]}" "${API_PORT}" resource-provider-scheduler "" "http"
+              ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-scheduler.kubeconfig" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
+              ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig"
+
+              # generate kubeconfig for controllers in TP to access api servers in RP
+              kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${RESOURCE_SERVERS[${pos}]}" "${API_PORT}" resource-provider-controller "" "http"
+              ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/resource-provider-controller.kubeconfig" "${CERT_DIR}/resource-provider-controller${pos}.kubeconfig"
+              ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/resource-provider-controller${pos}.kubeconfig"
+            done
+          fi
+
+          # generate kubelet/kubeproxy certs at TP as we use same cert for the entire cluster
+          kube::common::generate_kubelet_certs
+          kube::common::generate_kubeproxy_certs
+        else
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${ADMIN_CONFIG_API_HOST}" "$secureport" admin
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" controller
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" scheduler
+          # kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "$secureport" workload-controller
+        fi
 
         # Move the admin kubeconfig for each apiserver
         ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/admin.kubeconfig" "${CERT_DIR}/admin$1.kubeconfig"
-        ${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
+        #${CONTROLPLANE_SUDO} cp "${CERT_DIR}/workload-controller.kubeconfig" "${CERT_DIR}/workload-controller$1.kubeconfig"
 
         if [[ -z "${AUTH_ARGS}" ]]; then
             AUTH_ARGS="--client-key=${CERT_DIR}/client-admin.key --client-certificate=${CERT_DIR}/client-admin.crt"
@@ -416,7 +457,7 @@ EOF
         # Copy workload controller manager config to run path
         ${CONTROLPLANE_SUDO} cp "cmd/workload-controller-manager/config/controllerconfig.json" "${CERT_DIR}/controllerconfig.json"
         ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/controllerconfig.json"
-    fi
+    #fi
 }
 
 function kube::common::test_apiserver_off {
@@ -474,28 +515,96 @@ function kube::common::start_controller_manager {
       cloud_config_arg+=("--external-cloud-volume-plugin=${CLOUD_PROVIDER}")
       cloud_config_arg+=("--cloud-config=${CLOUD_CONFIG}")
     fi
+
     CTLRMGR_LOG=${LOG_DIR}/kube-controller-manager.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
-      --v="${LOG_LEVEL}" \
-      --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
-      --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
-      --vmodule="${LOG_SPEC}" \
-      --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
-      --root-ca-file="${ROOT_CA_FILE}" \
-      --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
-      --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
-      --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
-      ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
-      --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
-      --feature-gates="${FEATURE_GATES}" \
-      "${cloud_config_arg[@]}" \
-      --kubeconfig "${kubeconfigfilepaths}" \
-      --use-service-account-credentials \
-      --controllers="${KUBE_CONTROLLERS}" \
-      --leader-elect=false \
-      --cert-dir="${CERT_DIR}" \
-      --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${CTLRMGR_LOG}" 2>&1 &
+
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      # scale out resource partition
+      if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+        KUBE_CONTROLLERS="daemonset,nodelifecycle,ttl,serviceaccount,serviceaccount-token"
+
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          ${KCM_TENANT_SERVER_KUBECONFIG_FLAG} \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+      else
+        KUBE_CONTROLLERS="*,-daemonset,-nodelifecycle,-nodeipam,-ttl"
+
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
+        serverCount=${#RESOURCE_SERVERS[@]}
+        for (( pos=0; pos<${serverCount}; pos++ ));
+        do
+          RESOURCE_PROVIDER_KUBECONFIG_FLAGS="${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}${CERT_DIR}/resource-provider-controller${pos}.kubeconfig,"
+        done
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS=${RESOURCE_PROVIDER_KUBECONFIG_FLAGS::-1}
+
+        echo RESOURCE_PROVIDER_KUBECONFIG_FLAGS for new controller commandline --resource-providers
+        echo ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}
+
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS} \
+          --use-service-account-credentials \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+      fi
+    else
+        # single cluster
+        KUBE_CONTROLLERS="*"
+
+        ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
+          --v="${LOG_LEVEL}" \
+          --allocate-node-cidrs="${KUBE_CONTROLLER_MANAGER_ALLOCATE_NODE_CIDR}" \
+          --cluster-cidr="${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" \
+          --vmodule="${LOG_SPEC}" \
+          --service-account-private-key-file="${SERVICE_ACCOUNT_KEY}" \
+          --root-ca-file="${ROOT_CA_FILE}" \
+          --cluster-signing-cert-file="${CLUSTER_SIGNING_CERT_FILE}" \
+          --cluster-signing-key-file="${CLUSTER_SIGNING_KEY_FILE}" \
+          --enable-hostpath-provisioner="${ENABLE_HOSTPATH_PROVISIONER}" \
+          ${node_cidr_args[@]+"${node_cidr_args[@]}"} \
+          --pvclaimbinder-sync-period="${CLAIM_BINDER_SYNC_PERIOD}" \
+          --feature-gates="${FEATURE_GATES}" \
+          "${cloud_config_arg[@]}" \
+          --kubeconfig "${kubeconfigfilepaths}" \
+          --use-service-account-credentials \
+          --controllers="${KUBE_CONTROLLERS}" \
+          --leader-elect=false \
+          --cert-dir="${CERT_DIR}" \
+          --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
+    fi
+
     CTLRMGR_PID=$!
 }
 
@@ -506,12 +615,33 @@ function kube::common::start_kubescheduler {
        kubeconfigfilepaths=$@
     fi
     SCHEDULER_LOG=${LOG_DIR}/kube-scheduler.log
-    ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
-      --v="${LOG_LEVEL}" \
-      --leader-elect=false \
-      --kubeconfig "${kubeconfigfilepaths}" \
-      --feature-gates="${FEATURE_GATES}" \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${SCHEDULER_LOG}" 2>&1 &
+
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
+      serverCount=${#RESOURCE_SERVERS[@]}
+      for (( pos=0; pos<${serverCount}; pos++ ));
+      do
+        RESOURCE_PROVIDER_KUBECONFIG_FLAGS="${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}${CERT_DIR}/resource-provider-scheduler${pos}.kubeconfig,"
+      done
+      RESOURCE_PROVIDER_KUBECONFIG_FLAGS=${RESOURCE_PROVIDER_KUBECONFIG_FLAGS::-1}
+
+      echo RESOURCE_PROVIDER_KUBECONFIG_FLAGS for new scheduler commandline --resource-providers
+      echo ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS}
+
+      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
+        --v="${LOG_LEVEL}" \
+        --leader-elect=false \
+        --kubeconfig "${kubeconfigfilepaths}" \
+        ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS} \
+        --feature-gates="${FEATURE_GATES}" >"${SCHEDULER_LOG}" 2>&1 &
+    else
+      ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-scheduler \
+        --v="${LOG_LEVEL}" \
+        --leader-elect=false \
+        --kubeconfig "${kubeconfigfilepaths}" \
+        --feature-gates="${FEATURE_GATES}" >"${SCHEDULER_LOG}" 2>&1 &
+    fi
+
     SCHEDULER_PID=$!
 }
 
@@ -575,6 +705,22 @@ function kube::common::start_kubelet {
     image_service_endpoint_args=()
     if [[ -n "${IMAGE_SERVICE_ENDPOINT}" ]]; then
       image_service_endpoint_args=("--image-service-endpoint=${IMAGE_SERVICE_ENDPOINT}")
+    fi
+
+    KUBELET_FLAGS="--tenant-server-kubeconfig="
+    if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+      serverCount=${#TENANT_SERVERS[@]}
+      kubeconfig_filename="tenant-server-kubelet"
+      for (( pos=0; pos<${serverCount}; pos++ ));
+      do
+        # here generate kubeconfig for remote API server. Only work in non secure mode for now
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${TENANT_SERVERS[${pos}]}" "${API_PORT}" tenant-server-kubelet "" "http"
+        ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/${kubeconfig_filename}.kubeconfig" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+        ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+
+        KUBELET_FLAGS="${KUBELET_FLAGS}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
+      done
+      KUBELET_FLAGS=${KUBELET_FLAGS::-1}
     fi
 
     # shellcheck disable=SC2206
@@ -652,12 +798,18 @@ EOF
     fi >>/tmp/kube-proxy.yaml
 
     kube::common::generate_kubeproxy_certs
+    local port=${API_SECURE_PORT}
+    local protocol="https"
+    if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+      port=${API_PORT}
+      protocol="http"
+    fi
 
     # shellcheck disable=SC2024
     sudo "${GO_OUT}/hyperkube" kube-proxy \
       --v="${LOG_LEVEL}" \
       --config=/tmp/kube-proxy.yaml \
-      --master="https://${API_HOST}:${API_SECURE_PORT}" >"${PROXY_LOG}" 2>&1 &
+      --master="${protocol}://${API_HOST}:${port}" >"${PROXY_LOG}" 2>&1 &
     PROXY_PID=$!
 }
 
@@ -665,7 +817,11 @@ function kube::common::generate_kubelet_certs {
   if [[ "${REUSE_CERTS}" != true ]]; then
         CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
         kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kubelet "system:node:${HOSTNAME_OVERRIDE}" system:nodes
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+        if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_PORT}" kubelet "" "http"
+        else
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kubelet
+        fi
   fi
 }
 
@@ -673,7 +829,11 @@ function kube::common::generate_kubeproxy_certs {
     if [[ "${REUSE_CERTS}" != true ]]; then
         CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
         kube::util::create_client_certkey "${CONTROLPLANE_SUDO}" "${CERT_DIR}" 'client-ca' kube-proxy system:kube-proxy system:nodes
-        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+        if [[ "${IS_SCALE_OUT}" == "true" ]]; then
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_PORT}" kube-proxy "" "http"
+        else
+          kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "${ROOT_CA_FILE}" "${API_HOST}" "${API_SECURE_PORT}" kube-proxy
+        fi
     fi
 }
 
