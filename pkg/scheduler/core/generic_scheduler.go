@@ -344,7 +344,7 @@ func (g *genericScheduler) Preempt(pod *v1.Pod, nodeLister algorithm.NodeLister,
 	if err != nil {
 		return nil, nil, nil, err
 	}
-	nodeToVictims, err := selectNodesForPreemption(pod, g.nodeInfoSnapshot.NodeInfoMap, potentialNodes, g.predicates,
+	nodeToVictims, err := selectNodesForPreemption(pod, g.nodeInfoSnapshot.NodeInfoMap, g.nodeInfoSnapshot.List(), potentialNodes, g.predicates,
 		g.predicateMetaProducer, g.schedulingQueue, pdbs)
 	if err != nil {
 		return nil, nil, nil, err
@@ -498,7 +498,7 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 		ctx, cancel := context.WithCancel(context.Background())
 
 		// We can use the same metadata producer for all nodes.
-		meta := g.predicateMetaProducer(pod, g.nodeInfoSnapshot.NodeInfoMap)
+		meta := g.predicateMetaProducer(pod, g.nodeInfoSnapshot.List())
 
 		checkNode := func(i int) {
 			nodeName := allNodes[(g.nextStartNodeIndex + i ) % numAllNodes].Node().GetName()
@@ -997,6 +997,7 @@ func pickOneNodeForPreemption(nodesToVictims map[*v1.Node]*schedulerapi.Victims)
 // preemption in parallel.
 func selectNodesForPreemption(pod *v1.Pod,
 	nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo,
+	nodes []*schedulernodeinfo.NodeInfo,
 	potentialNodes []*v1.Node,
 	fitPredicates map[string]predicates.FitPredicate,
 	metadataProducer predicates.PredicateMetadataProducer,
@@ -1007,7 +1008,7 @@ func selectNodesForPreemption(pod *v1.Pod,
 	var resultLock sync.Mutex
 
 	// We can use the same metadata producer for all nodes.
-	meta := metadataProducer(pod, nodeNameToInfo)
+	meta := metadataProducer(pod, nodes)
 	checkNode := func(i int) {
 		nodeName := potentialNodes[i].Name
 		var metaCopy predicates.PredicateMetadata

@@ -43,7 +43,7 @@ type PredicateMetadata interface {
 }
 
 // PredicateMetadataProducer is a function that computes predicate metadata for a given pod.
-type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata
+type PredicateMetadataProducer func(pod *v1.Pod, nodeNameToInfo []*schedulernodeinfo.NodeInfo) PredicateMetadata
 
 // PredicateMetadataFactory defines a factory of predicate metadata.
 type PredicateMetadataFactory struct {
@@ -213,7 +213,7 @@ func RegisterPredicateMetadataProducer(predicateName string, precomp predicateMe
 }
 
 // EmptyPredicateMetadataProducer returns a no-op MetadataProducer type.
-func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata {
+func EmptyPredicateMetadataProducer(pod *v1.Pod, nodeNameToInfo []*schedulernodeinfo.NodeInfo) PredicateMetadata {
 	return nil
 }
 
@@ -237,7 +237,7 @@ func NewPredicateMetadataFactory(podLister algorithm.PodLister) PredicateMetadat
 }
 
 // GetMetadata returns the predicateMetadata used which will be used by various predicates.
-func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfo map[string]*schedulernodeinfo.NodeInfo) PredicateMetadata {
+func (pfactory *PredicateMetadataFactory) GetMetadata(pod *v1.Pod, nodeNameToInfo []*schedulernodeinfo.NodeInfo) PredicateMetadata {
 	// If we cannot compute metadata, just return nil
 	if pod == nil {
 		return nil
@@ -386,12 +386,7 @@ func podMatchesAllAffinityTermProperties(pod *v1.Pod, properties []*affinityTerm
 // getTPMapMatchingExistingAntiAffinity calculates the following for each existing pod on each node:
 // (1) Whether it has PodAntiAffinity
 // (2) Whether any AffinityTerm matches the incoming pod
-func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulernodeinfo.NodeInfo) (topologyToMatchedTermCount, error) {
-	allNodeNames := make([]string, 0, len(nodeInfoMap))
-	for name := range nodeInfoMap {
-		allNodeNames = append(allNodeNames, name)
-	}
-
+func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap []*schedulernodeinfo.NodeInfo) (topologyToMatchedTermCount, error) {
 	var lock sync.Mutex
 	var firstError error
 
@@ -413,7 +408,7 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 	ctx, cancel := context.WithCancel(context.Background())
 
 	processNode := func(i int) {
-		nodeInfo := nodeInfoMap[allNodeNames[i]]
+		nodeInfo := nodeInfoMap[i]
 		node:= nodeInfo.Node()
 		if node == nil {
 			catchError(fmt.Errorf("node not found"))
@@ -434,10 +429,10 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 		}
 	}
 
-	klog.V(6).Infof("Number of nodes: %v", len(allNodeNames))
+	klog.V(6).Infof("Number of nodes: %v", len(nodeInfoMap))
 	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
-	workqueue.ParallelizeUntil(ctx, 16, len(allNodeNames), processNode)
+	workqueue.ParallelizeUntil(ctx, 16, len(nodeInfoMap), processNode)
 	return topologyMap, firstError
 }
 
@@ -445,15 +440,10 @@ func getTPMapMatchingExistingAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*s
 // It returns a topologyPairsMaps that are checked later by the affinity
 // predicate. With this topologyPairsMaps available, the affinity predicate does not
 // need to check all the pods in the cluster.
-func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[string]*schedulernodeinfo.NodeInfo) (topologyPairsAffinityPodsMaps, topologyPairsAntiAffinityPodsMaps topologyToMatchedTermCount, err error) {
+func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap []*schedulernodeinfo.NodeInfo) (topologyPairsAffinityPodsMaps, topologyPairsAntiAffinityPodsMaps topologyToMatchedTermCount, err error) {
 	affinity := pod.Spec.Affinity
 	if affinity == nil || (affinity.PodAffinity == nil && affinity.PodAntiAffinity == nil) {
 		return nil, nil, nil
-	}
-
-	allNodeNames := make([]string, 0, len(nodeInfoMap))
-	for name := range nodeInfoMap {
-		allNodeNames = append(allNodeNames, name)
 	}
 
 	var lock sync.Mutex
@@ -491,7 +481,7 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 	}
 
 	processNode := func(i int) {
-		nodeInfo := nodeInfoMap[allNodeNames[i]]
+		nodeInfo := nodeInfoMap[i]
 		node := nodeInfo.Node()
 		if node == nil {
 			catchError(fmt.Errorf("nodeInfo.Node is nil"))
@@ -525,10 +515,10 @@ func getTPMapMatchingIncomingAffinityAntiAffinity(pod *v1.Pod, nodeInfoMap map[s
 		}
 	}
 
-	klog.V(6).Infof("DEBUG: should not see this log in our current perf runs. Number of nodes: %v", len(allNodeNames))
+	klog.V(6).Infof("DEBUG: should not see this log in our current perf runs. Number of nodes: %v", len(nodeInfoMap))
 	// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 	//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
-	workqueue.ParallelizeUntil(context.Background(), 16, len(allNodeNames), processNode)
+	workqueue.ParallelizeUntil(context.Background(), 16, len(nodeInfoMap), processNode)
 
 	return topologyPairsAffinityPodsMaps, topologyPairsAntiAffinityPodsMaps, firstError
 }
