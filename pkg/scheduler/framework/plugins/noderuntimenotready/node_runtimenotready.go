@@ -39,7 +39,14 @@ const (
 	ErrReasonUnknownCondition = "node(s) had unknown conditions"
 	// ErrNodeRuntimeNotReady is used for CheckNodeRuntimeNotReady predicate error.
 	ErrNodeRuntimeNotReady = "node(s) runtime is not ready"
+
+	// noSchedulerToleration of pods will be respected by runtime readiness predicate
 )
+
+var noScheduleToleration = v1.Toleration{
+	Operator:          "Exists",
+	Effect:            v1.TaintEffectNoSchedule,
+}
 
 func (pl *NodeRuntimeNotReady) Name() string {
 	return Name
@@ -48,6 +55,13 @@ func (pl *NodeRuntimeNotReady) Name() string {
 func (pl *NodeRuntimeNotReady) Filter(ctx context.Context, _ *framework.CycleState, pod *v1.Pod, nodeInfo *nodeinfo.NodeInfo) *framework.Status {
 	if nodeInfo == nil || nodeInfo.Node() == nil {
 		return framework.NewStatus(framework.UnschedulableAndUnresolvable, ErrReasonUnknownCondition)
+	}
+
+	// any pod having toleration of Exists NoSchedule bypass the runtime readiness check
+	for _, toleration := range pod.Spec.Tolerations {
+		if toleration == noScheduleToleration {
+			return nil
+		}
 	}
 
 	var podRequestedRuntimeReady v1.NodeConditionType
