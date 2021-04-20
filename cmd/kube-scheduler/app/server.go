@@ -24,9 +24,11 @@ import (
 	"fmt"
 	"io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/cache"
 	"net/http"
 	"os"
 	goruntime "runtime"
+	"time"
 
 	"github.com/spf13/cobra"
 
@@ -178,7 +180,7 @@ func Run(ctx context.Context, cc schedulerserverconfig.CompletedConfig, outOfTre
 	recorderFactory := getRecorderFactory(&cc)
 	// Create the scheduler.
 	sched, err := scheduler.New(cc.Client,
-		cc.InformerFactory,
+		cc.NodeInformers,
 		cc.PodInformer,
 		recorderFactory,
 		ctx.Done(),
@@ -235,6 +237,23 @@ func Run(ctx context.Context, cc schedulerserverconfig.CompletedConfig, outOfTre
 	// Start all informers.
 	go cc.PodInformer.Informer().Run(ctx.Done())
 	cc.InformerFactory.Start(ctx.Done())
+
+	// only start the ResourceInformer with the separated resource clusters
+	klog.V(3).Infof("Scheduler started with resource provider number=%d", len(cc.NodeInformers))
+	for rpId, informer := range cc.NodeInformers {
+		go informer.Informer().Run(ctx.Done())
+		go func(informer cache.SharedIndexInformer, rpId string) {
+			klog.V(3).Infof("Waiting for node sync from resource partition %s. Node informer %p", rpId, informer)
+			for {
+				if informer.HasSynced() {
+					klog.V(3).Infof("Node sync from resource partition %s started! Node informer %p", rpId, informer)
+					break
+				}
+				klog.V(2).Infof("Wait for node sync from resource partition %s. Node informer %p", rpId, informer)
+				time.Sleep(5 * time.Second)
+			}
+		}(informer.Informer(), rpId)
+	}
 
 	// Wait for all caches to sync before scheduling.
 	cc.InformerFactory.WaitForCacheSync(ctx.Done())

@@ -2261,17 +2261,11 @@ function apply-encryption-config() {
 #   DOCKER_REGISTRY
 function start-kube-controller-manager {
   echo "Start kubernetes controller-manager"
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    if [[ -n "${SHARED_APISERVER_TOKEN:-}" ]]; then
-      create-kubeconfig "kube-controller-manager" ${SHARED_APISERVER_TOKEN} "${PROXY_RESERVED_IP}" "443" "https"
-    else
-      create-kubeconfig "kube-controller-manager" ${KUBE_BEARER_TOKEN} "${PROXY_RESERVED_IP}" "443" "https"
-    fi
-  elif [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
-      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
-    else
-      create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
-   fi
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
+    create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN} "localhost" "8080" "http"
+  else
+    create-kubeconfig "kube-controller-manager" ${KUBE_CONTROLLER_MANAGER_TOKEN}
+  fi
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
@@ -2279,8 +2273,24 @@ function start-kube-controller-manager {
     params+=" --use-service-account-credentials"
   #fi
   params+=" --cloud-provider=gce"
+  ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
+  ## TODO: investigate and fix it later
+  #
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "false" ]]; then
+    params+=" --kubeconfig=/etc/srv/kubernetes/kube-bootstrap/kubeconfig"
+  else
+   params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+  fi
 
-  params+=" --kubeconfig=/etc/srv/kubernetes/kube-controller-manager/kubeconfig"
+   # the resource provider kubeconfig
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    local rp_kubeconfigs="/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-1"
+    for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfigs+=",/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-${rp_num}"
+    done
+    params+=" --resource-providers=${rp_kubeconfigs}"
+  fi
 
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
@@ -2339,10 +2349,10 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle"
+    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset"
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
@@ -2352,8 +2362,8 @@ function start-kube-controller-manager {
     # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
     sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
     sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
-    echo "DBG:Set tenant-server-kubeconfigs parameters:  ${TENANT_SERVER_KUBECONFIGS}"
-    params+=" --tenant-server-kubeconfigs=${TENANT_SERVER_KUBECONFIGS}"
+    echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+    params+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
   fi
 
   if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
@@ -2461,7 +2471,14 @@ function start-kube-scheduler {
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
 
   # the resource provider kubeconfig
-  params+=" --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+    local rp_kubeconfigs="/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1"
+    for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfigs+=",/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-${rp_num}"
+    done
+    params+=" --resource-providers=${rp_kubeconfigs}"
+  fi
 
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_SCHEDULER_LEADER_ELECT:-true}" == "false" ]]; then
