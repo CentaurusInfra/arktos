@@ -20,6 +20,7 @@ package plugins
 
 import (
 	"encoding/json"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderuntimenotready"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -105,12 +106,14 @@ const (
 	NoDiskConflictPred = "NoDiskConflict"
 	// PodToleratesNodeTaintsPred defines the name of predicate PodToleratesNodeTaints.
 	PodToleratesNodeTaintsPred = "PodToleratesNodeTaints"
-	// CheckNodeUnschedulablePred defines the name of predicate CheckNodeUnschedulablePredicate.
+	// CheckNodeUnschedulablePred defines the name of predicate CheckNodeUnschedulable.
 	CheckNodeUnschedulablePred = "CheckNodeUnschedulable"
 	// CheckNodeLabelPresencePred defines the name of predicate CheckNodeLabelPresence.
 	CheckNodeLabelPresencePred = "CheckNodeLabelPresence"
 	// CheckServiceAffinityPred defines the name of predicate checkServiceAffinity.
 	CheckServiceAffinityPred = "CheckServiceAffinity"
+	// CheckNodeRuntimeNotReadyPred defines the name of predicate NodeRuntimeNotReady
+	CheckNodeRuntimeNotReadyPred = "NodeRuntimeNotReady"
 	// MaxEBSVolumeCountPred defines the name of predicate MaxEBSVolumeCount.
 	// DEPRECATED
 	// All cloudprovider specific predicates are deprecated in favour of MaxCSIVolumeCountPred.
@@ -137,7 +140,7 @@ const (
 
 // PredicateOrdering returns the ordering of predicate execution.
 func PredicateOrdering() []string {
-	return []string{CheckNodeUnschedulablePred,
+	return []string{CheckNodeRuntimeNotReadyPred, CheckNodeUnschedulablePred,
 		GeneralPred, HostNamePred, PodFitsHostPortsPred,
 		MatchNodeSelectorPred, PodFitsResourcesPred, NoDiskConflictPred,
 		PodToleratesNodeTaintsPred, CheckNodeLabelPresencePred,
@@ -189,6 +192,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 		MandatoryPredicates: sets.NewString(
 			PodToleratesNodeTaintsPred,
 			CheckNodeUnschedulablePred,
+			CheckNodeRuntimeNotReadyPred,
 		),
 
 		// Used as the default set of predicates if Policy was specified, but predicates was nil.
@@ -204,6 +208,7 @@ func NewLegacyRegistry() *LegacyRegistry {
 			PodToleratesNodeTaintsPred,
 			CheckVolumeBindingPred,
 			CheckNodeUnschedulablePred,
+			CheckNodeRuntimeNotReadyPred,
 		),
 
 		// Used as the default set of predicates if Policy was specified, but priorities was nil.
@@ -269,6 +274,11 @@ func NewLegacyRegistry() *LegacyRegistry {
 	registry.registerPredicateConfigProducer(CheckNodeUnschedulablePred,
 		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
 			plugins.Filter = appendToPluginSet(plugins.Filter, nodeunschedulable.Name, nil)
+			return
+		})
+	registry.registerPredicateConfigProducer(CheckNodeRuntimeNotReadyPred,
+		func(args ConfigProducerArgs) (plugins config.Plugins, pluginConfig []config.PluginConfig) {
+			plugins.Filter = appendToPluginSet(plugins.Filter, noderuntimenotready.Name, nil)
 			return
 		})
 	registry.registerPredicateConfigProducer(CheckVolumeBindingPred,
