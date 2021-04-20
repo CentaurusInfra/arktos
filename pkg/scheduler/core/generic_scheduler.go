@@ -170,13 +170,20 @@ type genericScheduler struct {
 	disablePreemption        bool
 	percentageOfNodesToScore int32
 	enableNonPreempting      bool
+
+	nextStartNodeIndex 		 int
 }
 
 // snapshot snapshots scheduler cache and node infos for all fit and priority
 // functions.
 func (g *genericScheduler) snapshot() error {
 	// Used for all fit and priority funcs.
-	return g.cache.UpdateNodeInfoSnapshot(g.nodeInfoSnapshot)
+	err := g.cache.UpdateNodeInfoSnapshot(g.nodeInfoSnapshot)
+	if err == nil {
+		g.nextStartNodeIndex = 0
+		g.nodeInfoSnapshot.GenList()
+	}
+	return err
 }
 
 // Schedule tries to schedule the given pod to one of the nodes in the node list.
@@ -472,10 +479,11 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 			return nil, failedPredicateMap, err
 		}
 	} else {
-		allNodes := int32(g.cache.NodeTree().NumNodes())
-		numNodesToFind := g.numFeasibleNodesToFind(allNodes)
+		allNodes := g.nodeInfoSnapshot.List()
+		numAllNodes := len(allNodes)
+		numNodesToFind := g.numFeasibleNodesToFind(int32(numAllNodes))
 
-		klog.V(6).Infof("Total nodes: %v, calculated numberNodesToFind: %v", allNodes, numNodesToFind)
+		klog.V(6).Infof("Total nodes: %v, calculated numberNodesToFind: %v", numAllNodes, numNodesToFind)
 
 		// Create filtered list with enough space to avoid growing it
 		// and allow assigning.
@@ -484,6 +492,7 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 		var (
 			predicateResultLock sync.Mutex
 			filteredLen         int32
+			cntError            int32
 		)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -492,7 +501,7 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 		meta := g.predicateMetaProducer(pod, g.nodeInfoSnapshot.NodeInfoMap)
 
 		checkNode := func(i int) {
-			nodeName := g.cache.NodeTree().Next()
+			nodeName := allNodes[(g.nextStartNodeIndex + i ) % numAllNodes].Node().GetName()
 			fits, failedPredicates, err := podFitsOnNode(
 				pod,
 				meta,
@@ -506,6 +515,7 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 				predicateResultLock.Lock()
 				errs[err.Error()]++
 				predicateResultLock.Unlock()
+				atomic.AddInt32(&cntError, 1)
 				return
 			}
 			if fits {
@@ -525,14 +535,17 @@ func (g *genericScheduler) findNodesThatFit(pluginContext *framework.PluginConte
 
 		// Stops searching for more nodes once the configured number of feasible nodes
 		// are found.
-		klog.V(6).Infof("Number of nodes: %v", int(allNodes))
+		klog.V(6).Infof("Number of nodes: %v", int(numAllNodes))
 		// TODO: make this configurable so we can test perf impact when increasing or decreasing concurrency
 		//       on a 96 core machine, it can be much more than 16 concurrent threads to run the processNode function
 		//       especially the numberNodesToFind is high
 		//
-		workqueue.ParallelizeUntil(ctx, 16, int(allNodes), checkNode)
+		workqueue.ParallelizeUntil(ctx, 16, int(numAllNodes), checkNode)
 
 		filtered = filtered[:filteredLen]
+		processed := int(filteredLen + cntError) + len(failedPredicateMap)
+		g.nextStartNodeIndex = (g.nextStartNodeIndex + processed) % numAllNodes
+
 		if len(errs) > 0 {
 			return []*v1.Node{}, FailedPredicateMap{}, errors.CreateAggregateFromMessageCountMap(errs)
 		}

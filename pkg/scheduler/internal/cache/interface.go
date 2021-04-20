@@ -128,4 +128,19 @@ type Snapshot struct {
 type NodeInfoSnapshot struct {
 	NodeInfoMap map[string]*schedulernodeinfo.NodeInfo
 	Generation  int64
+
+	NodeInfoList []*schedulernodeinfo.NodeInfo
+}
+
+func (n *NodeInfoSnapshot) GenList() {
+	n.NodeInfoList = make([]*schedulernodeinfo.NodeInfo, len(n.NodeInfoMap))
+	i := 0
+	for _, v := range n.NodeInfoMap {
+		n.NodeInfoList[i] = v
+		i++
+	}
+}
+
+func (n *NodeInfoSnapshot) List() []*schedulernodeinfo.NodeInfo {
+	return n.NodeInfoList
 }
