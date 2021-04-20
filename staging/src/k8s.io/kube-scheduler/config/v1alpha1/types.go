@@ -108,6 +108,10 @@ type KubeSchedulerConfiguration struct {
 	// +listType=map
 	// +listMapKey=name
 	PluginConfig []PluginConfig `json:"pluginConfig,omitempty"`
+
+	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
+	// optional for single cluster in Arktos deployment model
+	ResourceProviderKubeConfig string `json:"resourceProviderKubeConfig,omitempty"`
 }
 
 // SchedulerAlgorithmSource is the source of a scheduler algorithm. One source
