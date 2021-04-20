@@ -69,7 +69,6 @@ func TestGetNamespacesFromPodAffinityTerm(t *testing.T) {
 }
 
 func TestPodMatchesTermsNamespaceAndSelector(t *testing.T) {
-	fakeTenants := sets.String{metav1.TenantSystem: sets.Empty{}}
 	fakeNamespaces := sets.String{metav1.NamespacePublic: sets.Empty{}, metav1.NamespaceSystem: sets.Empty{}}
 	fakeRequirement, _ := labels.NewRequirement("service", selection.In, []string{"topologies_service1", "topologies_service2"})
 	fakeSelector := labels.NewSelector().Add(*fakeRequirement)
@@ -111,7 +110,7 @@ func TestPodMatchesTermsNamespaceAndSelector(t *testing.T) {
 			fakeTestPod.Tenant = test.podTenants
 			fakeTestPod.Labels = test.podLabels
 
-			realValue := PodMatchesTermsNamespaceAndSelector(fakeTestPod, fakeNamespaces, fakeTenants, fakeSelector)
+			realValue := PodMatchesTermsNamespaceAndSelector(fakeTestPod, fakeNamespaces, fakeSelector)
 			assert.EqualValuesf(t, test.expectedResult, realValue, "Failed to test: %s", test.name)
 		})
 	}
