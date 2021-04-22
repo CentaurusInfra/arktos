@@ -50,13 +50,13 @@ func (n FakeNodeInfo) GetNodeInfo(nodeName string) (*v1.Node, error) {
 type FakeNodeListInfo []v1.Node
 
 // GetNodeInfo returns a fake node object in the fake nodes.
-func (nodes FakeNodeListInfo) GetNodeInfo(nodeName string) (*v1.Node, error) {
+func (nodes FakeNodeListInfo) GetNodeInfo(nodeName string) (*v1.Node, string, error) {
 	for _, node := range nodes {
 		if node.Name == nodeName {
-			return &node, nil
+			return &node, nodeName, nil
 		}
 	}
-	return nil, fmt.Errorf("Unable to find node: %s", nodeName)
+	return nil, "", fmt.Errorf("Unable to find node: %s", nodeName)
 }
 
 // FakePersistentVolumeInfo declares a []v1.PersistentVolume type for testing.
