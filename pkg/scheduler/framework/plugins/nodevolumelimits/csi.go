@@ -21,6 +21,8 @@ package nodevolumelimits
 import (
 	"context"
 	"fmt"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/kubernetes/pkg/features"
 
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -72,6 +74,10 @@ func (pl *CSILimits) Name() string {
 
 // Filter invoked at the filter extension point.
 func (pl *CSILimits) Filter(ctx context.Context, _ *framework.CycleState, pod *v1.Pod, nodeInfo *nodeinfo.NodeInfo) *framework.Status {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		return nil
+	}
+
 	// If the new pod doesn't have any volume attached to it, the predicate will always be true
 	if len(pod.Spec.Volumes) == 0 {
 		return nil

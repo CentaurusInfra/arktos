@@ -290,7 +290,7 @@ func (g *genericScheduler) Preempt(ctx context.Context, prof *profile.Profile, s
 	}
 	potentialNodes := nodesWherePreemptionMightHelp(allNodes, fitError)
 	if len(potentialNodes) == 0 {
-		klog.V(3).Infof("Preemption will not help schedule pod %/v%v/%v on any node.", pod.Tenant, pod.Namespace, pod.Name)
+		klog.V(3).Infof("Preemption will not help schedule pod %v/%v/%v on any node.", pod.Tenant, pod.Namespace, pod.Name)
 		// In this case, we should clean-up any existing nominated node name of the pod.
 		return nil, nil, []*v1.Pod{pod}, nil
 	}
