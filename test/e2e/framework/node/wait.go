@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -21,7 +22,7 @@ import (
 	"regexp"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -194,6 +195,15 @@ func waitListSchedulableNodes(c clientset.Interface) (*v1.NodeList, error) {
 		return true, nil
 	}) != nil {
 		return nodes, err
+	}
+	return nodes, nil
+}
+
+// checkWaitListSchedulableNodes is a wrapper around listing nodes supporting retries.
+func checkWaitListSchedulableNodes(c clientset.Interface) (*v1.NodeList, error) {
+	nodes, err := waitListSchedulableNodes(c)
+	if err != nil {
+		return nil, fmt.Errorf("error: %s. Non-retryable failure or timed out while listing nodes for e2e cluster", err)
 	}
 	return nodes, nil
 }
