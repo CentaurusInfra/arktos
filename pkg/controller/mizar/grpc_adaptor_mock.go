@@ -15,6 +15,7 @@ package mizar
 
 import (
 	v1 "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1"
 )
 
 type ReturnCodeFunc func(grpcAdaptorMock *GrpcAdaptorMock) *ReturnCode
@@ -26,6 +27,7 @@ type GrpcAdaptorMock struct {
 	serviceEndpointMessage *BuiltinsServiceEndpointMessage
 	pod                    *v1.Pod
 	node                   *v1.Node
+	policy                 *networking.NetworkPolicy
 	returnCodeFunc         ReturnCodeFunc
 	retryCount             int
 }
@@ -126,6 +128,27 @@ func (grpcAdaptor *GrpcAdaptorMock) UpdateNode(grpcHost string, node *v1.Node) *
 // DeleteNode is to invoke grpc func of DeleteNode
 func (grpcAdaptor *GrpcAdaptorMock) DeleteNode(grpcHost string, node *v1.Node) *ReturnCode {
 	grpcAdaptor.node = node
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// UpdateNetworkPolicy is to invoke grpc func of UpdateNetworkPolicy
+func (grpcAdaptor *GrpcAdaptorMock) UpdateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	grpcAdaptor.policy = policy
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// CreateNetworkPolicy is to invoke grpc func of CreateNetworkPolicy
+func (grpcAdaptor *GrpcAdaptorMock) CreateNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	grpcAdaptor.policy = policy
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// DeleteNetworkPolicy is to invoke grpc func of DeleteNetworkPolicy
+func (grpcAdaptor *GrpcAdaptorMock) DeleteNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
+	grpcAdaptor.policy = policy
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }

@@ -28,6 +28,10 @@ service BuiltinsService {
     rpc CreateArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
     rpc ResumeArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
     rpc UpdateArktosNetwork(BuiltinsArktosMessage) returns (ReturnCode) {}
+
+    rpc UpdateNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
+    rpc CreateNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
+    rpc DeleteNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
 }
 
 message BuiltinsNodeMessage {
@@ -66,6 +70,12 @@ message BuiltinsServiceEndpointMessage {
 message BuiltinsArktosMessage {
   string name = 1;
   string vpc = 2;
+}
+
+message BuiltinsNetworkPolicyMessage {
+  string name = 1;
+  string namespace = 2;
+  string tenant = 3;
 }
 
 message PortsMessage {

@@ -36,6 +36,7 @@ const (
 	mizarNodeControllerWorkerCount          = 2
 	mizarPodControllerWorkerCount           = 4
 	mizarServiceControllerWorkerCount       = 4
+	mizarNetworkPolicyControllerWorkerCount = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -59,6 +60,7 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 	startMizarPodController(&ctx, grpcHost, grpcAdaptor)
 	startMizarServiceController(&ctx, grpcHost, grpcAdaptor)
 	startArktosNetworkController(&ctx, grpcHost, grpcAdaptor)
+	startMizarNetworkPolicyController(&ctx, grpcHost, grpcAdaptor)
 }
 
 func startMizarEndpointsController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
@@ -157,5 +159,18 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 		grpcHost,
 		grpcAdaptor,
 	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startMizarNetworkPolicyController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
+	controllerName := "mizar-network-policy-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	go controllers.NewMizarNetworkPolicyController(
+		ctx.InformerFactory.Networking().V1().NetworkPolicies(),
+		ctx.ClientBuilder.ClientOrDie(controllerName),
+		grpcHost,
+		grpcAdaptor,
+	).Run(mizarNetworkPolicyControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
