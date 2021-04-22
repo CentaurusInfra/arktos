@@ -575,7 +575,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	VolumeScheduling:                            {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIPersistentVolume:                         {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIDriverRegistry:                           {Default: true, PreRelease: featuregate.Beta},
-	CSINodeInfo:                                 {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.19
+	CSINodeInfo:                                 {Default: false, PreRelease: featuregate.Alpha},                  // Introduced due to 1.18 scheduler code backporting
 	CustomPodDNS:                                {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	BlockVolume:                                 {Default: true, PreRelease: featuregate.Beta},
 	StorageObjectInUseProtection:                {Default: true, PreRelease: featuregate.GA},
