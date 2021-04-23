@@ -34,7 +34,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
-	volumeutil "k8s.io/kubernetes/pkg/volume/util"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -765,7 +764,7 @@ func waitForCSIDriver(cs clientset.Interface, driverName string) error {
 
 	e2elog.Logf("waiting up to %v for CSIDriver %q", timeout, driverName)
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(framework.Poll) {
-		_, err := cs.StorageV1().CSIDrivers().Get(driverName, metav1.GetOptions{})
+		_, err := cs.StorageV1beta1().CSIDrivers().Get(driverName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -779,7 +778,7 @@ func destroyCSIDriver(cs clientset.Interface, driverName string) {
 		e2elog.Logf("deleting %s.%s: %s", driverGet.TypeMeta.APIVersion, driverGet.TypeMeta.Kind, driverGet.ObjectMeta.Name)
 		// Uncomment the following line to get full dump of CSIDriver object
 		// e2elog.Logf("%s", framework.PrettyPrint(driverGet))
-		cs.StorageV1().CSIDrivers().Delete(driverName, nil)
+		cs.StorageV1beta1().CSIDrivers().Delete(driverName, nil)
 	}
 }
 
