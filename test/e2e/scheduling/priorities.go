@@ -35,7 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
+	schedutil "k8s.io/kubernetes/pkg/scheduler/util"
 	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -375,7 +375,7 @@ func getNonZeroRequests(pod *v1.Pod) Resource {
 	result := Resource{}
 	for i := range pod.Spec.Containers {
 		container := &pod.Spec.Containers[i]
-		cpu, memory := priorityutil.GetNonzeroRequests(&container.Resources.Requests)
+		cpu, memory := schedutil.GetNonzeroRequests(&container.Resources.Requests)
 		result.MilliCPU += cpu
 		result.Memory += memory
 	}
