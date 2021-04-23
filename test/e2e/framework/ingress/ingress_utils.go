@@ -474,7 +474,7 @@ func (j *TestJig) Update(update func(ing *networkingv1beta1.Ingress)) {
 	for i := 0; i < 3; i++ {
 		j.Ingress, err = j.Client.NetworkingV1beta1().Ingresses(ns).Get(name, metav1.GetOptions{})
 		if err != nil {
-			framework.Failf("failed to get ingress %s/%s: %v", ns, name, err)
+			e2elog.Failf("failed to get ingress %s/%s: %v", ns, name, err)
 		}
 		update(j.Ingress)
 		j.Ingress, err = j.runUpdate(j.Ingress)
@@ -483,10 +483,10 @@ func (j *TestJig) Update(update func(ing *networkingv1beta1.Ingress)) {
 			return
 		}
 		if !apierrs.IsConflict(err) && !apierrs.IsServerTimeout(err) {
-			framework.Failf("failed to update ingress %s/%s: %v", ns, name, err)
+			e2elog.Failf("failed to update ingress %s/%s: %v", ns, name, err)
 		}
 	}
-	framework.Failf("too many retries updating ingress %s/%s", ns, name)
+	e2elog.Failf("too many retries updating ingress %s/%s", ns, name)
 }
 
 // AddHTTPS updates the ingress to add this secret for these hosts.
@@ -544,7 +544,7 @@ func (j *TestJig) GetRootCA(secretName string) (rootCA []byte) {
 	var ok bool
 	rootCA, ok = j.RootCAs[secretName]
 	if !ok {
-		framework.Failf("Failed to retrieve rootCAs, no recorded secret by name %v", secretName)
+		e2elog.Failf("Failed to retrieve rootCAs, no recorded secret by name %v", secretName)
 	}
 	return
 }
@@ -676,7 +676,7 @@ func (j *TestJig) pollIngressWithCert(ing *networkingv1beta1.Ingress, address st
 // WaitForIngress returns when it gets the first 200 response
 func (j *TestJig) WaitForIngress(waitForNodePort bool) {
 	if err := j.WaitForGivenIngressWithTimeout(j.Ingress, waitForNodePort, framework.LoadBalancerPollTimeout); err != nil {
-		framework.Failf("error in waiting for ingress to get an address: %s", err)
+		e2elog.Failf("error in waiting for ingress to get an address: %s", err)
 	}
 }
 
@@ -689,7 +689,7 @@ func (j *TestJig) WaitForIngressToStable() {
 		}
 		return true, nil
 	}); err != nil {
-		framework.Failf("error in waiting for ingress to stablize: %v", err)
+		e2elog.Failf("error in waiting for ingress to stablize: %v", err)
 	}
 }
 
@@ -815,7 +815,7 @@ func (j *TestJig) GetDistinctResponseFromIngress() (sets.String, error) {
 	// Wait for the loadbalancer IP.
 	address, err := j.WaitForIngressAddress(j.Client, j.Ingress.Namespace, j.Ingress.Name, framework.LoadBalancerPollTimeout)
 	if err != nil {
-		framework.Failf("Ingress failed to acquire an IP address within %v", framework.LoadBalancerPollTimeout)
+		e2elog.Failf("Ingress failed to acquire an IP address within %v", framework.LoadBalancerPollTimeout)
 	}
 	responses := sets.NewString()
 	timeoutClient := &http.Client{Timeout: IngressReqTimeout}
@@ -859,7 +859,7 @@ func (cont *NginxIngressController) Init() {
 	pods, err := cont.Client.CoreV1().Pods(cont.Ns).List(metav1.ListOptions{LabelSelector: sel.String()})
 	framework.ExpectNoError(err)
 	if len(pods.Items) == 0 {
-		framework.Failf("Failed to find nginx ingress controller pods with selector %v", sel)
+		e2elog.Failf("Failed to find nginx ingress controller pods with selector %v", sel)
 	}
 	cont.pod = &pods.Items[0]
 	cont.externalIP, err = framework.GetHostExternalAddress(cont.Client, cont.pod)
