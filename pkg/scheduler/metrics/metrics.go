@@ -32,6 +32,8 @@ const (
 	SchedulerSubsystem = "scheduler"
 	// DeprecatedSchedulingDurationName - scheduler duration metric name which is deprecated
 	DeprecatedSchedulingDurationName = "scheduling_duration_seconds"
+	// DeprecatedSchedulingLatencyName - scheduler latency metric name which is deprecated
+	DeprecatedSchedulingLatencyName = "scheduling_latency_seconds"
 
 	// OperationLabel - operation label name
 	OperationLabel = "operation"
