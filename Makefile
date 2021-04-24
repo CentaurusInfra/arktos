@@ -45,6 +45,7 @@ all: clean
 else
 all: verify-golang
 	KUBEEDGE_OUTPUT_SUBPATH=$(OUT_DIR) hack/make-rules/build.sh $(WHAT)
+	yes | cp -r binaries/kubectl $(OUT_DIR)/bin/
 endif
 
 
