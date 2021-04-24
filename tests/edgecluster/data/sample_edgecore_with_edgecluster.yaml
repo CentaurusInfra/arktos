@@ -1,0 +1,52 @@
+#With --minconfig , you can easily used this configurations as reference.
+# It's useful to users who are new to KubeEdge, and you can modify/create your own configs accordingly.
+# This configuration is suitable for beginners.
+
+apiVersion: edgecore.config.kubeedge.io/v1alpha1
+database:
+  dataSource: /var/lib/kubeedge/edgecore.db
+kind: EdgeCore
+modules:
+  edgeHub:
+    heartbeat: 15
+    httpServer: https://172.31.22.126:10002
+    tlsCaFile: /etc/kubeedge/ca/rootCA.crt
+    tlsCertFile: /etc/kubeedge/certs/server.crt
+    tlsPrivateKeyFile: /etc/kubeedge/certs/server.key
+    token: "0a5e3c78e8049f5ad48ece71f009e6b77ee158b3e5d49cc162d199e96410039a.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2MTkyNDgzNTB9.usjwmch-sTQbM22zN6_f6itxPc9SrXaqJLg-j9y4ckw"
+    websocket:
+      enable: true
+      handshakeTimeout: 30
+      readDeadline: 15
+      server: 172.31.22.126:10000
+      writeDeadline: 15
+  edged:
+    cgroupDriver: cgroupfs
+    cgroupRoot: ""
+    cgroupsPerQOS: true
+    clusterDNS: ""
+    clusterDomain: ""
+    devicePluginEnabled: false
+    dockerAddress: unix:///var/run/docker.sock
+    gpuPluginEnabled: false
+    hostnameOverride: ip-172-31-31-131
+    nodeIP: 172.31.31.131
+    podSandboxImage: kubeedge/pause:3.1
+    remoteImageEndpoint: unix:///var/run/dockershim.sock
+    remoteRuntimeEndpoint: unix:///var/run/dockershim.sock
+    runtimeType: docker
+    edgeCluster:
+      enable: true
+      clusterKubeconfig: /home/ubuntu/go/src/github.com/kubeedge/tests/arktos/arktos.kubeconfig
+      clusterName: arktos-cluster-1
+      kubeDistribution: arktos
+      clusterLabels:
+        edgeCluster: true
+  eventBus:
+    mqttMode: 2
+    mqttQOS: 0
+    mqttRetain: false
+    mqttServerExternal: tcp://127.0.0.1:1883
+    mqttServerInternal: tcp://127.0.0.1:1884
+
+

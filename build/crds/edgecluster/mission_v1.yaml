@@ -32,7 +32,7 @@ spec:
                 clusters:
                   type: array
                   items:
-                    type: string
+                    type: object
                 matchlabels:
                   type: object
                   additionalProperties:
