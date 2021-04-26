@@ -74,8 +74,8 @@ func (l *SelectorListener) sendObj(event watch.Event, messageLayer messagelayer.
 		klog.Warningf("event type: %s unsupported", event.Type)
 	}
 	if err := messageLayer.Send(*msg); err != nil {
-		klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+		klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 	} else {
-		klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+		klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 	}
 }

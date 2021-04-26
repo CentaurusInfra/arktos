@@ -38,9 +38,9 @@ modules:
     edgeCluster:
       enable: true
       clusterKubeconfig: /home/ubuntu/go/src/github.com/kubeedge/tests/arktos/arktos.kubeconfig
-      clusterName: arktos-cluster-1
-      kubeDistribution: arktos
-      clusterLabels:
+      name: arktos-cluster-1
+      kubeDistro: arktos
+      labels:
         edgeCluster: true
   eventBus:
     mqttMode: 2

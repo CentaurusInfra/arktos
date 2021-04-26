@@ -35,11 +35,11 @@ var distributionToKubectl = map[string]string{
 }
 
 type Manager struct {
-	ClusterName     string
-	ClusterLabels   map[string]string
-	Kubedistrubtion string
-	KubeconfigFile  string
-	KubectlCli      string
+	ClusterName    string
+	ClusterLabels  map[string]string
+	KubeDistro     string
+	KubeconfigFile string
+	KubectlCli     string
 }
 
 //NewMissionManager creates new mission manager object
@@ -52,22 +52,22 @@ func NewMissionManager(edgeClusterConfig *v1alpha1.EdgeCluster) (*Manager, error
 		return nil, fmt.Errorf("Could not open kubeconfig file (%s)", edgeClusterConfig.ClusterKubeconfig)
 	}
 
-	if _, exists := distributionToKubectl[edgeClusterConfig.KubeDistribution]; !exists {
-		return nil, fmt.Errorf("Invalid kube distribution (%v)", edgeClusterConfig.KubeDistribution)
+	if _, exists := distributionToKubectl[edgeClusterConfig.KubeDistro]; !exists {
+		return nil, fmt.Errorf("Invalid kube distribution (%v)", edgeClusterConfig.KubeDistro)
 	}
 
-	if len(edgeClusterConfig.ClusterName) == 0 {
+	if len(edgeClusterConfig.Name) == 0 {
 		return nil, fmt.Errorf("cluster name cannot be empty!")
 	}
 
 	basedir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
 
 	return &Manager{
-		ClusterName:     edgeClusterConfig.ClusterName,
-		ClusterLabels:   edgeClusterConfig.ClusterLabels,
-		Kubedistrubtion: edgeClusterConfig.KubeDistribution,
-		KubeconfigFile:  edgeClusterConfig.ClusterKubeconfig,
-		KubectlCli:      filepath.Join(basedir, distributionToKubectl[edgeClusterConfig.KubeDistribution]),
+		ClusterName:    edgeClusterConfig.Name,
+		ClusterLabels:  edgeClusterConfig.Labels,
+		KubeDistro:     edgeClusterConfig.KubeDistro,
+		KubeconfigFile: edgeClusterConfig.ClusterKubeconfig,
+		KubectlCli:     filepath.Join(basedir, distributionToKubectl[edgeClusterConfig.KubeDistro]),
 	}, nil
 }
 

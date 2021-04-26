@@ -263,9 +263,9 @@ func (uc *UpstreamController) updatePodStatus() {
 						delMsg.Content = pod
 						delMsg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.DeleteOperation)
 						if err := uc.messageLayer.Send(*delMsg); err != nil {
-							klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, delMsg.GetOperation(), delMsg.GetResource())
+							klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, delMsg.GetOperation(), delMsg.GetResource())
 						} else {
-							klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", delMsg.GetOperation(), delMsg.GetResource())
+							klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", delMsg.GetOperation(), delMsg.GetResource())
 						}
 
 						continue

@@ -507,9 +507,9 @@ func (c *Center) Response(app *Application, parentID string, status applicationS
 	}
 	msg.BuildRouter(modules.DynamicControllerModuleName, message.ResourceGroupName, resource, ApplicationResp)
 	if err := c.messageLayer.Response(*msg); err != nil {
-		klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+		klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 	} else {
-		klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+		klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 	}
 }
 

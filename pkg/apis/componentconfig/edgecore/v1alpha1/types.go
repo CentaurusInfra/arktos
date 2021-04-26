@@ -479,17 +479,20 @@ type EdgeStream struct {
 type EdgeCluster struct {
 	// Enable indicates whether edge cluster is enabled, if set to false, skip checking other configs.
 	// default true
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable,omitempty"`
+
+	// Name of the edge cluster
+	Name string `json:"name,omitempty"`
 
 	// clusterKubeconfig indicates the path to the edge cluster kubeconfig file
 	ClusterKubeconfig string `json:"clusterKubeconfig,omitempty"`
 
 	// Distribution of the cluster, supported value: arkots, to support in the furture: k3s, 
-	KubeDistribution string `json:"kubeDistribution,omitempty"`
+	KubeDistro string `json:"kubeDistro,omitempty"`
 
-	// Name of the edge cluster
-	ClusterName string `json:"clusterName,omitempty"`
-	
 	// labels of the cluster
-	ClusterLabels map[string]string `json:"clusterLabels,omitempty"`
+	Labels map[string]string `json:"labels,omitempty"`
+
+	
+
 }
