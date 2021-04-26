@@ -244,6 +244,9 @@ type Edged struct {
 	// EnableMetrics indicates whether enable the metrics
 	// default true
 	EnableMetrics bool `json:"enableMetrics,omitempty"`
+
+	
+	EdgeCluster *EdgeCluster `json:"edgeCluster,omitempty"`
 }
 
 // EdgeHub indicates the EdgeHub module config
@@ -470,4 +473,26 @@ type EdgeStream struct {
 	// WriteDeadline indicates write dead line (second)
 	// default 15
 	WriteDeadline int32 `json:"writeDeadline,omitempty"`
+}
+
+// EdgeCluster indicates the edge cluster config
+type EdgeCluster struct {
+	// Enable indicates whether edge cluster is enabled, if set to false, skip checking other configs.
+	// default true
+	Enable bool `json:"enable,omitempty"`
+
+	// Name of the edge cluster
+	Name string `json:"name,omitempty"`
+
+	// clusterKubeconfig indicates the path to the edge cluster kubeconfig file
+	ClusterKubeconfig string `json:"clusterKubeconfig,omitempty"`
+
+	// Distribution of the cluster, supported value: arkots, to support in the furture: k3s, 
+	KubeDistro string `json:"kubeDistro,omitempty"`
+
+	// labels of the cluster
+	Labels map[string]string `json:"labels,omitempty"`
+
+	
+
 }

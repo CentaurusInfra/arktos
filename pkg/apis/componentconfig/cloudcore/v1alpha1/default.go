@@ -95,6 +95,7 @@ func NewDefaultCloudCoreConfig() *CloudCoreConfig {
 					EndpointsEvent:             constants.DefaultEndpointsEventBuffer,
 					RulesEvent:                 constants.DefaultRulesEventBuffer,
 					RuleEndpointsEvent:         constants.DefaultRuleEndpointsEventBuffer,
+					MissionsEvent:              constants.DefaultMissionsEventBuffer,
 					QueryPersistentVolume:      constants.DefaultQueryPersistentVolumeBuffer,
 					QueryPersistentVolumeClaim: constants.DefaultQueryPersistentVolumeClaimBuffer,
 					QueryVolumeAttachment:      constants.DefaultQueryVolumeAttachmentBuffer,

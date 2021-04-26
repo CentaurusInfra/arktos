@@ -254,6 +254,8 @@ type EdgeControllerBuffer struct {
 	// DeletePod indicates the buffer of delete pod message from edge
 	// default 1024
 	DeletePod int32 `json:"deletePod,omitempty"`
+	// default 1
+	MissionsEvent int32 `json:"missionsEvent,omitempty"`
 }
 
 // ControllerContext indicates the message layer context for all controllers

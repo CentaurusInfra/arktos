@@ -16,6 +16,7 @@ import (
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/beehive/pkg/core/model"
 	routerv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/rules/v1"
+	missionsv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
 	crdinformers "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/informers"
@@ -47,6 +48,8 @@ type DownstreamController struct {
 	rulesManager *manager.RuleManager
 
 	ruleEndpointsManager *manager.RuleEndpointManager
+
+	missionsManager *manager.MissionManager
 
 	lc *manager.LocationCache
 
@@ -91,9 +94,9 @@ func (dc *DownstreamController) syncPod() {
 				klog.Warningf("pod event type: %s unsupported", e.Type)
 			}
 			if err := dc.messageLayer.Send(*msg); err != nil {
-				klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+				klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 			} else {
-				klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+				klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 			}
 		}
 	}
@@ -142,9 +145,9 @@ func (dc *DownstreamController) syncConfigMap() {
 				msg.Content = configMap
 				err = dc.messageLayer.Send(*msg)
 				if err != nil {
-					klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+					klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 				} else {
-					klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+					klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 				}
 			}
 		}
@@ -195,9 +198,9 @@ func (dc *DownstreamController) syncSecret() {
 				msg.Content = secret
 				err = dc.messageLayer.Send(*msg)
 				if err != nil {
-					klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+					klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 				} else {
-					klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+					klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 				}
 			}
 		}
@@ -239,9 +242,9 @@ func (dc *DownstreamController) syncEdgeNodes() {
 							svcs, _ := dc.svcLister.Services(v1.NamespaceAll).List(labels.Everything())
 							msg.Content = svcs
 							if err := dc.messageLayer.Send(*msg); err != nil {
-								klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+								klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 							} else {
-								klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+								klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 							}
 
 							for _, svc := range svcs {
@@ -266,9 +269,9 @@ func (dc *DownstreamController) syncEdgeNodes() {
 								msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.UpdateOperation)
 								msg.Content = pods
 								if err := dc.messageLayer.Send(*msg); err != nil {
-									klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+									klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 								} else {
-									klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+									klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 								}
 							}
 
@@ -283,9 +286,9 @@ func (dc *DownstreamController) syncEdgeNodes() {
 							msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.UpdateOperation)
 							msg.Content = dc.lc.GetAllEndpoints()
 							if err := dc.messageLayer.Send(*msg); err != nil {
-								klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+								klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 							} else {
-								klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+								klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 							}
 						}
 						break
@@ -303,9 +306,9 @@ func (dc *DownstreamController) syncEdgeNodes() {
 				msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.DeleteOperation)
 				err = dc.messageLayer.Send(*msg)
 				if err != nil {
-					klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+					klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 				} else {
-					klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+					klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 				}
 			default:
 				// unsupported operation, no need to send to any node
@@ -358,9 +361,9 @@ func (dc *DownstreamController) syncService() {
 				msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, operation)
 				msg.Content = svc
 				if err := dc.messageLayer.Send(*msg); err != nil {
-					klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+					klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 				} else {
-					klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+					klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 				}
 				return true
 			})
@@ -433,9 +436,9 @@ func (dc *DownstreamController) syncEndpoints() {
 					msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, operation)
 					msg.Content = eps
 					if err := dc.messageLayer.Send(*msg); err != nil {
-						klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+						klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 					} else {
-						klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+						klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 					}
 					if operation != model.DeleteOperation && hasService {
 						msg := model.NewMessage("")
@@ -447,9 +450,9 @@ func (dc *DownstreamController) syncEndpoints() {
 						msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, model.UpdateOperation)
 						msg.Content = pods
 						if err := dc.messageLayer.Send(*msg); err != nil {
-							klog.Warningf("Send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+							klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 						} else {
-							klog.V(4).Infof("Send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+							klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 						}
 					}
 					return true
@@ -494,9 +497,9 @@ func (dc *DownstreamController) syncRule() {
 				continue
 			}
 			if err := dc.messageLayer.Send(*msg); err != nil {
-				klog.Warningf("send message failed with error: %s, operation: %s, resource: %s. Reason: %v", err, msg.GetOperation(), msg.GetResource(), err)
+				klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s. Reason: %v", err, msg.GetOperation(), msg.GetResource(), err)
 			} else {
-				klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+				klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 			}
 		}
 	}
@@ -537,10 +540,65 @@ func (dc *DownstreamController) syncRuleEndpoint() {
 				continue
 			}
 			if err := dc.messageLayer.Send(*msg); err != nil {
-				klog.Warningf("send message failed with error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+				klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
 			} else {
-				klog.V(4).Infof("send message successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+				klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
 			}
+		}
+	}
+}
+
+func (dc *DownstreamController) syncMission() {
+	var operation string
+	for {
+		select {
+		case <-beehiveContext.Done():
+			klog.Warning("Stop edgecontroller downstream syncMission loop")
+			return
+		case e := <-dc.missionsManager.Events():			
+			klog.V(4).Infof("Get mission events: event type: %s.", e.Type)
+			mission, ok := e.Object.(*missionsv1.Mission)
+			if !ok {
+				klog.Warningf("object type: %T unsupported", mission)
+				continue
+			}
+			klog.V(4).Infof("Get mission events: mission object: %+v.", mission)
+			switch e.Type {
+			case watch.Added:
+				operation = model.InsertOperation
+			case watch.Modified:
+				operation = model.UpdateOperation
+			case watch.Deleted:
+				operation = model.DeleteOperation
+			default:
+				// unsupported operation, no need to send to any node
+				klog.Warningf("Mission event type: %s unsupported", e.Type)
+				continue
+			}
+
+			// send to all nodes
+			dc.lc.EdgeNodes.Range(func(key interface{}, value interface{}) bool {
+				nodeName, ok := key.(string)
+				if !ok {
+					klog.Warning("Failed to assert key to sting")
+					return true
+				}
+				msg := model.NewMessage("")
+				msg.SetResourceVersion(mission.ResourceVersion)
+				resource, err := messagelayer.BuildResource(nodeName, "fake_namespace", model.ResourceTypeMission, mission.Name)
+				if err != nil {
+					klog.Warningf("Built message resource failed with error: %v", err)
+					return true
+				}
+				msg.BuildRouter(modules.EdgeControllerModuleName, constants.GroupResource, resource, operation)
+				msg.Content = mission
+				if err := dc.messageLayer.Send(*msg); err != nil {
+					klog.Warningf("Failed to send message, error: %s, operation: %s, resource: %s", err, msg.GetOperation(), msg.GetResource())
+				} else {
+					klog.V(4).Infof("Message sent successfully, operation: %s, resource: %s", msg.GetOperation(), msg.GetResource())
+				}
+				return true
+			})
 		}
 	}
 }
@@ -571,6 +629,9 @@ func (dc *DownstreamController) Start() error {
 
 	// ruleendpoint
 	go dc.syncRuleEndpoint()
+
+	// mission
+	go dc.syncMission()
 
 	return nil
 }
@@ -667,6 +728,13 @@ func NewDownstreamController(k8sInformerFactory k8sinformers.SharedInformerFacto
 		return nil, err
 	}
 
+	missionsInformer := crdInformerFactory.Edgeclusters().V1().Missions().Informer()
+	missionsManager, err := manager.NewMissionManager(missionsInformer)
+	if err != nil {
+		klog.Warningf("Create missionsManager failed with error: %s", err)
+		return nil, err
+	}
+
 	dc := &DownstreamController{
 		kubeClient:           client.GetKubeClient(),
 		podManager:           podManager,
@@ -681,6 +749,7 @@ func NewDownstreamController(k8sInformerFactory k8sinformers.SharedInformerFacto
 		podLister:            podInformer.Lister(),
 		rulesManager:         rulesManager,
 		ruleEndpointsManager: ruleEndpointsManager,
+		missionsManager:      missionsManager,
 	}
 	if err := dc.initLocating(); err != nil {
 		return nil, err

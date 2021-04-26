@@ -116,6 +116,8 @@ const (
 	DefaultRulesEventBuffer         = 1
 	DefaultRuleEndpointsEventBuffer = 1
 
+	DefaultMissionsEventBuffer      = 1
+
 	// DeviceController
 	DefaultUpdateDeviceStatusBuffer  = 1024
 	DefaultDeviceEventBuffer         = 1
@@ -141,6 +143,8 @@ const (
 	CSIOperationTypeControllerPublishVolume   = "controllerpublishvolume"
 	CSIOperationTypeControllerUnpublishVolume = "controllerunpublishvolume"
 	CSISyncMsgRespTimeout                     = 1 * time.Minute
+
+	ResourceTypeMission                       = "mission"
 
 	// ServerPort is the default port for the edgecore server on each host machine.
 	// May be overridden by a flag at startup in the future.
