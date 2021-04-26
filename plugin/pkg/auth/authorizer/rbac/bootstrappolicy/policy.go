@@ -534,6 +534,10 @@ func ClusterRoles() []rbacv1.ClusterRole {
 		// Needed to check API access. These creates are non-mutating
 		rbacv1helpers.NewRule("create").Groups(authenticationGroup).Resources("tokenreviews").RuleOrDie(),
 		rbacv1helpers.NewRule("create").Groups(authorizationGroup).Resources("subjectaccessreviews").RuleOrDie(),
+
+		// Needed for all shared informers
+		//	rbacv1helpers.NewRule("list", "watch").Groups("*").Resources("*").RuleOrDie(),
+		rbacv1helpers.NewRule("create").Groups("*").Resources("events").RuleOrDie(),
 	}
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) &&
 		utilfeature.DefaultFeatureGate.Enabled(features.AttachVolumeLimit) {
