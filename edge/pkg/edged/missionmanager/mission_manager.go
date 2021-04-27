@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	missionsv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
+	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/edgeclusters/v1"
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha1"
 
 	"k8s.io/klog/v2"
@@ -71,7 +71,7 @@ func NewMissionManager(edgeClusterConfig *v1alpha1.EdgeCluster) (*Manager, error
 	}, nil
 }
 
-func (m *Manager) ApplyMission(mission *missionsv1.Mission) error {
+func (m *Manager) ApplyMission(mission *edgeclustersv1.Mission) error {
 	if m.isMatchingMission(mission) == false {
 		return nil
 	}
@@ -87,7 +87,7 @@ func (m *Manager) ApplyMission(mission *missionsv1.Mission) error {
 	return nil
 }
 
-func (m *Manager) DeleteMission(mission *missionsv1.Mission) error {
+func (m *Manager) DeleteMission(mission *edgeclustersv1.Mission) error {
 	if m.isMatchingMission(mission) == false {
 		return nil
 	}
@@ -103,7 +103,7 @@ func (m *Manager) DeleteMission(mission *missionsv1.Mission) error {
 	return nil
 }
 
-func (m *Manager) isMatchingMission(mission *missionsv1.Mission) bool {
+func (m *Manager) isMatchingMission(mission *edgeclustersv1.Mission) bool {
 	// if the placement field is empty, it matches all the edge clusters
 	if len(mission.Spec.Placement.Clusters) == 0 && len(mission.Spec.Placement.MatchLabels) == 0 {
 		return true

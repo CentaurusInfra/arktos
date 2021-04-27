@@ -25,8 +25,8 @@ import (
 
 	versioned "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned"
 	devices "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/devices"
+	edgeclusters "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/edgeclusters"
 	internalinterfaces "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/internalinterfaces"
-	missions "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/missions"
 	reliablesyncs "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/reliablesyncs"
 	rules "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions/rules"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -176,7 +176,7 @@ type SharedInformerFactory interface {
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
 	Devices() devices.Interface
-	Edgeclusters() missions.Interface
+	Edgeclusters() edgeclusters.Interface
 	Reliablesyncs() reliablesyncs.Interface
 	Rules() rules.Interface
 }
@@ -185,8 +185,8 @@ func (f *sharedInformerFactory) Devices() devices.Interface {
 	return devices.New(f, f.namespace, f.tweakListOptions)
 }
 
-func (f *sharedInformerFactory) Edgeclusters() missions.Interface {
-	return missions.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Edgeclusters() edgeclusters.Interface {
+	return edgeclusters.New(f, f.namespace, f.tweakListOptions)
 }
 
 func (f *sharedInformerFactory) Reliablesyncs() reliablesyncs.Interface {

@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	devicesv1alpha2 "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned/typed/devices/v1alpha2"
-	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned/typed/missions/v1"
+	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned/typed/edgeclusters/v1"
 	reliablesyncsv1alpha1 "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned/typed/reliablesyncs/v1alpha1"
 	rulesv1 "github.com/kubeedge/kubeedge/cloud/pkg/client/clientset/versioned/typed/rules/v1"
 	discovery "k8s.io/client-go/discovery"

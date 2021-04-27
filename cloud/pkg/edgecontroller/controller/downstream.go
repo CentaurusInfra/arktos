@@ -16,7 +16,7 @@ import (
 	beehiveContext "github.com/kubeedge/beehive/pkg/core/context"
 	"github.com/kubeedge/beehive/pkg/core/model"
 	routerv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/rules/v1"
-	missionsv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
+	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/edgeclusters/v1"
 	crdinformers "github.com/kubeedge/kubeedge/cloud/pkg/client/informers/externalversions"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/client"
 	"github.com/kubeedge/kubeedge/cloud/pkg/common/informers"
@@ -557,7 +557,7 @@ func (dc *DownstreamController) syncMission() {
 			return
 		case e := <-dc.missionsManager.Events():			
 			klog.V(4).Infof("Get mission events: event type: %s.", e.Type)
-			mission, ok := e.Object.(*missionsv1.Mission)
+			mission, ok := e.Object.(*edgeclustersv1.Mission)
 			if !ok {
 				klog.Warningf("object type: %T unsupported", mission)
 				continue

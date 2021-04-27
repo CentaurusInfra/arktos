@@ -22,7 +22,7 @@ import (
 	"fmt"
 
 	v1alpha2 "github.com/kubeedge/kubeedge/cloud/pkg/apis/devices/v1alpha2"
-	v1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
+	v1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/edgeclusters/v1"
 	v1alpha1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/reliablesyncs/v1alpha1"
 	rulesv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/rules/v1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

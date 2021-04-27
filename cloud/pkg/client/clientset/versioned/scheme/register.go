@@ -20,7 +20,7 @@ package scheme
 
 import (
 	devicesv1alpha2 "github.com/kubeedge/kubeedge/cloud/pkg/apis/devices/v1alpha2"
-	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
+	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/edgeclusters/v1"
 	reliablesyncsv1alpha1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/reliablesyncs/v1alpha1"
 	rulesv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/rules/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"

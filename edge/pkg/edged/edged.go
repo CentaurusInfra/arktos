@@ -117,7 +117,7 @@ import (
 	"github.com/kubeedge/kubeedge/pkg/apis/componentconfig/edgecore/v1alpha1"
 	"github.com/kubeedge/kubeedge/pkg/version"
 
-	missionsv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/missions/v1"
+	edgeclustersv1 "github.com/kubeedge/kubeedge/cloud/pkg/apis/edgeclusters/v1"
 )
 
 const (
@@ -1252,7 +1252,7 @@ func (e *edged) handleMission(op string, content []byte) (err error) {
 		return fmt.Errorf("mission manager is not initialized.")
 	}
 
-	var mission missionsv1.Mission
+	var mission edgeclustersv1.Mission
 	err = json.Unmarshal(content, &mission)
 	if err != nil {
 		return err
