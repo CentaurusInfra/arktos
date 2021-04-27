@@ -18,6 +18,10 @@ limitations under the License.
 
 package v1
 
+// EdgeClusterListerExpansion allows custom methods to be added to
+// EdgeClusterLister.
+type EdgeClusterListerExpansion interface{}
+
 // MissionListerExpansion allows custom methods to be added to
 // MissionLister.
 type MissionListerExpansion interface{}

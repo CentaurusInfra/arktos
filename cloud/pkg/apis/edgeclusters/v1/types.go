@@ -25,7 +25,7 @@ import (
 // +genclient:onlyVerbs=create,get,list,watch,updateStatus
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
-// Mission specifies a network boundary
+// Mission specifies a workload to deploy in edge clusters
 type Mission struct {
 	metav1.TypeMeta `json:",inline"`
 	// +optional
@@ -34,6 +34,8 @@ type Mission struct {
 	// Spec defines desired state of network
 	// +optional
 	Spec MissionSpec `json:"spec"`
+
+	Status MissionStatus `json:"status,omitempty"`
 }
 
 // MissionSpec is a description of Mission
@@ -52,14 +54,69 @@ type GenericPlacementFields struct {
 	MatchLabels     map[string]string `yaml:"matchLabels,omitempty"`
 }
 
+// MissionStatus is a description of Mission status
+type MissionStatus struct {
+	Run bool `json:"run,omitempty"`
+	Succeeded bool `json:"succeeded,omitempty"`
+    Propogated bool `json:"propogated,omitempty"`
+}
+
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 
 // MissionList is a list of Mission objects.
 type MissionList struct {
-	metav1.TypeMeta
+	metav1.TypeMeta `json:",inline"`
 	// +optional
-	metav1.ListMeta
+	metav1.ListMeta `json:"metadata,omitempty"`
 
 	// Items is the list of Mission objects in the list
-	Items []Mission
+	Items []Mission `json:"items"`
+}
+
+// +genclient
+// +genclient:nonNamespaced
+// +genclient:onlyVerbs=create,get,list,watch,updateStatus
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// EdgeCluster specifies an edge cluster
+type EdgeCluster struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Spec defines desired state of network
+	// +optional
+	Spec EdgeClusterSpec `json:"spec"`
+
+	Status EdgeClusterStatus `json:"status,omitempty"`
+}
+
+// EdgeCluster indicates the edge cluster config
+type EdgeClusterSpec struct {
+	// clusterKubeconfig indicates the path to the edge cluster kubeconfig file
+	ClusterKubeconfig string `json:"clusterKubeconfig,omitempty"`
+
+	// Distribution of the cluster, supported value: arkots, to support in the furture: k3s, 
+	KubeDistro string `json:"kubeDistro,omitempty"`
+
+	// labels of the cluster
+	Labels map[string]string `json:"labels,omitempty"`
+}
+
+// EdgeClusterStatus is a description of Mission status
+type EdgeClusterStatus struct {
+	Reachable bool `json:"reachable,omitempty"`
+}
+
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// MissionList is a list of Mission objects.
+type EdgeClusterList struct {
+	metav1.TypeMeta `json:",inline"`
+	// +optional
+	metav1.ListMeta `json:"metadata,omitempty"`
+
+	// Items is the list of Mission objects in the list
+	Items []EdgeCluster `json:"items"`
 }

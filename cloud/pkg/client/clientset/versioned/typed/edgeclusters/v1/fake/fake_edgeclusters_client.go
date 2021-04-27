@@ -28,6 +28,10 @@ type FakeEdgeclustersV1 struct {
 	*testing.Fake
 }
 
+func (c *FakeEdgeclustersV1) EdgeClusters() v1.EdgeClusterInterface {
+	return &FakeEdgeClusters{c}
+}
+
 func (c *FakeEdgeclustersV1) Missions() v1.MissionInterface {
 	return &FakeMissions{c}
 }

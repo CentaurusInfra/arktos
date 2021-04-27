@@ -26,12 +26,17 @@ import (
 
 type EdgeclustersV1Interface interface {
 	RESTClient() rest.Interface
+	EdgeClustersGetter
 	MissionsGetter
 }
 
 // EdgeclustersV1Client is used to interact with features provided by the edgeclusters.kubeedge.io group.
 type EdgeclustersV1Client struct {
 	restClient rest.Interface
+}
+
+func (c *EdgeclustersV1Client) EdgeClusters() EdgeClusterInterface {
+	return newEdgeClusters(c)
 }
 
 func (c *EdgeclustersV1Client) Missions() MissionInterface {

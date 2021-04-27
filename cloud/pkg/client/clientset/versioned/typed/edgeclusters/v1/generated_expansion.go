@@ -18,4 +18,6 @@ limitations under the License.
 
 package v1
 
+type EdgeClusterExpansion interface{}
+
 type MissionExpansion interface{}

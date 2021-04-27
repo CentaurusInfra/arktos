@@ -24,6 +24,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// EdgeClusters returns a EdgeClusterInformer.
+	EdgeClusters() EdgeClusterInformer
 	// Missions returns a MissionInformer.
 	Missions() MissionInformer
 }
@@ -37,6 +39,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// EdgeClusters returns a EdgeClusterInformer.
+func (v *version) EdgeClusters() EdgeClusterInformer {
+	return &edgeClusterInformer{factory: v.factory, tweakListOptions: v.tweakListOptions}
 }
 
 // Missions returns a MissionInformer.
