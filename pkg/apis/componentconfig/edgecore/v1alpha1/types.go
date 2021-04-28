@@ -492,7 +492,4 @@ type EdgeCluster struct {
 
 	// labels of the cluster
 	Labels map[string]string `json:"labels,omitempty"`
-
-	
-
 }

@@ -25,6 +25,8 @@ const (
 	ResourceTypeRule         = "rule"
 	ResourceTypeRuleEndpoint = "ruleendpoint"
 	ResourceTypeMission      = "mission"
+	ResourceTypeEdgeCluster         = "edgecluster"
+	ResourceTypeEdgeClusterStatus         = "edgeclusterstatus"
 )
 
 // Message struct

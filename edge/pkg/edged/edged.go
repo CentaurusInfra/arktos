@@ -173,7 +173,8 @@ type podReady struct {
 
 // edged is the main edged implementation.
 type edged struct {
-	// dns config
+	edgeClusterMode           bool
+	// dns config	
 	dnsConfigurer             *kubedns.Configurer
 	hostname                  string
 	namespace                 string
@@ -291,6 +292,12 @@ func (e *edged) GetRequestedContainersInfo(containerName string, options cadviso
 
 func (e *edged) Start() {
 	klog.Info("Starting edged...")
+
+	if e.edgeClusterMode == true {
+		go utilwait.Until(e.syncEdgeClusterStatus, e.nodeStatusUpdateFrequency, utilwait.NeverStop)
+		return 
+	} 
+
 	e.volumePluginMgr = NewInitializedVolumePluginMgr(e, ProbeVolumePlugins(""))
 
 	if err := e.initializeModules(); err != nil {
@@ -428,14 +435,15 @@ func newEdged(enable bool) (*edged, error) {
 
 	metaClient := client.New()
 
-	missionManager, err := missionmanager.NewMissionManager(edgedconfig.Config.EdgeCluster)
-	if err != nil {
-		klog.Infof("Error in initializing edge cluster: %v, moving on", err)
-	} else {
-		klog.Infof("Successfully initialized mission manager, edge cluster config: %#v ", edgedconfig.Config.EdgeCluster)
+	edgeClusterMode := false
+	var missionManager *missionmanager.Manager
+	if edgedconfig.Config.EdgeCluster != nil && edgedconfig.Config.EdgeCluster.Enable == true {
+		edgeClusterMode = true
+		missionManager = missionmanager.NewMissionManager(edgedconfig.Config.EdgeCluster)
 	}
 
 	ed := &edged{
+		edgeClusterMode:           edgeClusterMode,
 		nodeName:                  edgedconfig.Config.HostnameOverride,
 		namespace:                 edgedconfig.Config.RegisterNodeNamespace,
 		containerRuntimeName:      edgedconfig.Config.RuntimeType,
@@ -464,7 +472,7 @@ func newEdged(enable bool) (*edged, error) {
 		enable:                    enable,
 	}
 	ed.runtimeClassManager = runtimeclass.NewManager(ed.kubeClient)
-	err = ed.makePodDir()
+	err := ed.makePodDir()
 	if err != nil {
 		klog.Errorf("create pod dir [%s] failed: %v", ed.getPodsDir(), err)
 		os.Exit(1)

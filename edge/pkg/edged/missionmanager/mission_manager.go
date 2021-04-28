@@ -29,7 +29,7 @@ const (
 	COMMAND_TIMEOUT_SEC = 10
 )
 
-var distributionToKubectl = map[string]string{
+var DistroToKubectl = map[string]string{
 	"arktos": "kubectl/arktos/kubectl",
 	"k8s":    "kubectl/vanilla/kubectl",
 }
@@ -43,23 +43,9 @@ type Manager struct {
 }
 
 //NewMissionManager creates new mission manager object
-func NewMissionManager(edgeClusterConfig *v1alpha1.EdgeCluster) (*Manager, error) {
-	if edgeClusterConfig == nil || edgeClusterConfig.Enable == false {
-		return nil, fmt.Errorf("edge cluster is not enabled")
-	}
+func NewMissionManager(edgeClusterConfig *v1alpha1.EdgeCluster) *Manager {
 
-	if !FileExists(edgeClusterConfig.ClusterKubeconfig) {
-		return nil, fmt.Errorf("Could not open kubeconfig file (%s)", edgeClusterConfig.ClusterKubeconfig)
-	}
-
-	if _, exists := distributionToKubectl[edgeClusterConfig.KubeDistro]; !exists {
-		return nil, fmt.Errorf("Invalid kube distribution (%v)", edgeClusterConfig.KubeDistro)
-	}
-
-	if len(edgeClusterConfig.Name) == 0 {
-		return nil, fmt.Errorf("cluster name cannot be empty!")
-	}
-
+	// No need to check the config, as it will be checked during the registration
 	basedir, _ := filepath.Abs(filepath.Dir(os.Args[0]))
 
 	return &Manager{
@@ -67,8 +53,8 @@ func NewMissionManager(edgeClusterConfig *v1alpha1.EdgeCluster) (*Manager, error
 		ClusterLabels:  edgeClusterConfig.Labels,
 		KubeDistro:     edgeClusterConfig.KubeDistro,
 		KubeconfigFile: edgeClusterConfig.ClusterKubeconfig,
-		KubectlCli:     filepath.Join(basedir, distributionToKubectl[edgeClusterConfig.KubeDistro]),
-	}, nil
+		KubectlCli:     filepath.Join(basedir, DistroToKubectl[edgeClusterConfig.KubeDistro]),
+	}
 }
 
 func (m *Manager) ApplyMission(mission *edgeclustersv1.Mission) error {

@@ -105,7 +105,7 @@ type EdgeClusterSpec struct {
 
 // EdgeClusterStatus is a description of Mission status
 type EdgeClusterStatus struct {
-	Reachable bool `json:"reachable,omitempty"`
+	Ready bool `json:"reachable,omitempty"`
 }
 
 
