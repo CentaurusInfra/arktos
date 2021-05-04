@@ -14,11 +14,11 @@ go_library(
     ],
     importpath = "k8s.io/kubernetes/test/integration/scheduler_perf",
     deps = [
-        "//pkg/scheduler/factory:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//test/integration/util:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/factory:go_default_library",
     ],
 )
 
@@ -33,7 +33,6 @@ go_test(
     embed = [":go_default_library"],
     tags = ["integration"],
     deps = [
-        "//pkg/scheduler/factory:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/resource:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -41,6 +40,7 @@ go_test(
         "//test/integration/framework:go_default_library",
         "//test/utils:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/factory:go_default_library",
     ],
 )
 

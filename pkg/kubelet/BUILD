@@ -97,8 +97,6 @@ go_library(
         "//pkg/kubelet/util/queue:go_default_library",
         "//pkg/kubelet/util/sliceutils:go_default_library",
         "//pkg/kubelet/volumemanager:go_default_library",
-        "//pkg/scheduler/algorithm/predicates:go_default_library",
-        "//pkg/scheduler/api:go_default_library",
         "//pkg/security/apparmor:go_default_library",
         "//pkg/security/podsecuritypolicy/sysctl:go_default_library",
         "//pkg/util/dbus:go_default_library",
@@ -152,6 +150,8 @@ go_library(
         "//vendor/github.com/golang/groupcache/lru:go_default_library",
         "//vendor/github.com/google/cadvisor/info/v1:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/algorithm/predicates:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
         "//vendor/k8s.io/utils/integer:go_default_library",
         "//vendor/k8s.io/utils/path:go_default_library",
@@ -214,7 +214,6 @@ go_test(
         "//pkg/kubelet/util/queue:go_default_library",
         "//pkg/kubelet/util/sliceutils:go_default_library",
         "//pkg/kubelet/volumemanager:go_default_library",
-        "//pkg/scheduler/api:go_default_library",
         "//pkg/scheduler/nodeinfo:go_default_library",
         "//pkg/util/mount:go_default_library",
         "//pkg/util/taints:go_default_library",
@@ -261,6 +260,7 @@ go_test(
         "//vendor/github.com/google/cadvisor/info/v2:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
         "//vendor/github.com/stretchr/testify/require:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
     ],
 )
 

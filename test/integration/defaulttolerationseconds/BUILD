@@ -18,7 +18,6 @@ go_test(
     ],
     deps = [
         "//pkg/apis/core/helper:go_default_library",
-        "//pkg/scheduler/api:go_default_library",
         "//plugin/pkg/admission/defaulttolerationseconds:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
@@ -26,6 +25,7 @@ go_test(
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//test/integration/framework:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
     ],
 )
 
