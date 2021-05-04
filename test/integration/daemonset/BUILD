@@ -21,8 +21,6 @@ go_test(
         "//pkg/features:go_default_library",
         "//pkg/scheduler:go_default_library",
         "//pkg/scheduler/algorithmprovider:go_default_library",
-        "//pkg/scheduler/api:go_default_library",
-        "//pkg/scheduler/factory:go_default_library",
         "//pkg/util/labels:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
@@ -45,6 +43,8 @@ go_test(
         "//staging/src/k8s.io/component-base/featuregate:go_default_library",
         "//staging/src/k8s.io/component-base/featuregate/testing:go_default_library",
         "//test/integration/framework:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/factory:go_default_library",
     ],
 )
 

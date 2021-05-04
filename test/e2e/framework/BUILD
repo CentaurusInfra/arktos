@@ -51,7 +51,6 @@ go_library(
         "//pkg/kubelet/sysctl:go_default_library",
         "//pkg/master/ports:go_default_library",
         "//pkg/registry/core/service/portallocator:go_default_library",
-        "//pkg/scheduler/algorithm/predicates:go_default_library",
         "//pkg/scheduler/metrics:go_default_library",
         "//pkg/scheduler/nodeinfo:go_default_library",
         "//pkg/security/podsecuritypolicy/seccomp:go_default_library",
@@ -125,6 +124,7 @@ go_library(
         "//vendor/github.com/prometheus/common/model:go_default_library",
         "//vendor/golang.org/x/net/websocket:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
+        "//vendor/k8s.io/kubernetes/pkg/scheduler/algorithm/predicates:go_default_library",
         "//vendor/k8s.io/utils/exec:go_default_library",
     ],
 )
