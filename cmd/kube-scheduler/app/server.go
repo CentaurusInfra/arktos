@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 // Package app implements a Server object for running the scheduler.
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package app
 
 import (

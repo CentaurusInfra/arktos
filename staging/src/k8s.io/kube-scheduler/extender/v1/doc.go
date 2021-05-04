@@ -17,4 +17,5 @@ limitations under the License.
 // +k8s:deepcopy-gen=package
 
 // Package v1 contains scheduler API objects.
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package v1 // import "k8s.io/kube-scheduler/extender/v1"

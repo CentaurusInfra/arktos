@@ -16,6 +16,7 @@ limitations under the License.
 
 // This file defines the scheduling framework plugin interfaces.
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package v1alpha1
 
 import (

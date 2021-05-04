@@ -17,6 +17,7 @@ limitations under the License.
 // This file was copied from client-go/tools/cache/heap.go and modified
 // for our non thread-safe heap
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package heap
 
 import (

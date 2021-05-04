@@ -21,6 +21,7 @@ limitations under the License.
 // pods that are already tried and are determined to be unschedulable. The latter
 // is called unschedulableQ.
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package queue
 
 import (
