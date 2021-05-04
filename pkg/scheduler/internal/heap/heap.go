@@ -18,6 +18,7 @@ limitations under the License.
 // as cache.heap, however, this heap does not perform synchronization. It leaves
 // synchronization to the SchedulingQueue.
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package heap
 
 import (

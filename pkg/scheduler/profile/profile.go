@@ -15,6 +15,7 @@ limitations under the License.
 */
 
 // Package profile holds the definition of a scheduling Profile.
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package profile
 
 import (
