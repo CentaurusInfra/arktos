@@ -516,6 +516,13 @@ const (
 	//
 	// Enable replicaset conroller QPS doubling
 	QPSDoubleRSController featuregate.Feature = "QPSDoubleRSController"
+
+	// owner: @mortent
+	// alpha: v1.3
+	// beta:  v1.5
+	//
+	// Enable all logic related to the PodDisruptionBudget API object in policy
+	PodDisruptionBudget featuregate.Feature = "PodDisruptionBudget"
 )
 
 func init() {
@@ -602,6 +609,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleGCController:                          {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleRSController:                          {Default: false, PreRelease: featuregate.Alpha},
+	PodDisruptionBudget:                            {Default: true, PreRelease: featuregate.Beta},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:
