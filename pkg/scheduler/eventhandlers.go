@@ -421,7 +421,9 @@ func addAllEventHandlers(
 	)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
-		informerFactory.Storage().V1().CSINodes().Informer().AddEventHandler(
+		//informerFactory.Storage().V1().CSINodes().Informer().AddEventHandler(
+		// TODO - PR 83474 - CSI Topology GA
+		informerFactory.Storage().V1beta1().CSINodes().Informer().AddEventHandler(
 			cache.ResourceEventHandlerFuncs{
 				AddFunc:    sched.onCSINodeAdd,
 				UpdateFunc: sched.onCSINodeUpdate,
