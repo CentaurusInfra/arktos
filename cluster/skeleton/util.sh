@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -63,6 +64,10 @@ function test-build-release {
 # Execute prior to running tests to initialize required structure
 function test-setup {
 	echo "Skeleton Provider: test-setup not implemented" 1>&2
+}
+
+function proxy-setup {
+	echo "Skeleton Provider: proxy-setup not implemented" 1>&2
 }
 
 # Execute after running tests to perform any required clean-up

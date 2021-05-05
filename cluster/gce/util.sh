@@ -2422,6 +2422,73 @@ function create-node-template() {
   done
 }
 
+function proxy-up() {
+  kube::util::ensure-temp-dir
+  detect-project
+  detect-subnetworks
+
+  echo "create proxy vm"
+  create-proxy-vm
+
+  echo "setup proxy service"
+  setup-proxy
+  build_haproxy_cfg_generator
+  update-proxy ${TPIP} ${RPIP}
+
+  echo "create kubeconfig with proxy IP:port"
+  export KUBE_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt"
+  export KUBE_KEY="${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key"
+  export CA_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/ca.crt"
+  export CONTEXT="${PROJECT}_${SCALEOUT_PROXY_NAME}"
+  (
+   umask 077
+
+   echo "PROXY RESERVED IP: " ${PROXY_RESERVED_IP}
+   # Update the user's kubeconfig to include credentials for this apiserver.
+   KUBE_MASTER_IP="0.0.0.0" KUBERNETES_SCALEOUT_PROXY_KUBECFG=true KUBECONFIG=${PROXY_KUBECONFIG} create-kubeconfig
+  )
+  # ensures KUBECONFIG is set
+  get-kubeconfig-basicauth
+
+  start-proxy-prometheus
+
+  echo "done"
+}
+
+function start-proxy-prometheus {
+  echo "Start prometheus on proxy"
+
+  export RELEASE="2.2.1"
+  ssh-to-node ${SCALEOUT_PROXY_NAME} "cd /tmp/ && wget https://github.com/prometheus/prometheus/releases/download/v${RELEASE}/prometheus-${RELEASE}.linux-amd64.tar.gz \
+  && tar xvf prometheus-${RELEASE}.linux-amd64.tar.gz "
+
+  ssh-to-node ${SCALEOUT_PROXY_NAME} "cat <<EOF >/tmp/prometheus-metrics.yaml
+global:
+  scrape_interval: 10s
+scrape_configs:
+  - job_name: prometheus-metrics
+    static_configs:
+    - targets: ['127.0.0.1:8404']
+EOF"
+
+  ssh-to-node ${SCALEOUT_PROXY_NAME} "cat <<EOF >/tmp/prometheus.service
+[Unit]
+Description=prometheus service
+Requires=network-online.target
+After=network-online.target
+
+[Service]
+Restart=always
+RestartSec=10
+ExecStart=/tmp/prometheus-${RELEASE}.linux-amd64/prometheus --config.file=/tmp/prometheus-metrics.yaml --web.listen-address=:9090 --web.enable-admin-api
+
+[Install]
+WantedBy=multi-user.target
+EOF"
+
+  ssh-to-node ${SCALEOUT_PROXY_NAME} "sudo mv /tmp/prometheus.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl start prometheus.service"
+}
+
 # Instantiate a kubernetes cluster
 #
 # Assumed vars
@@ -2474,9 +2541,6 @@ function kube-up() {
     write-cluster-name
     write-controller-config
     create-autoscaler-config
-    if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-      create-proxy-vm
-    fi
     create-master
     create-nodes-firewall
     create-nodes-template
@@ -2486,15 +2550,6 @@ function kube-up() {
       create-linux-nodes
     fi
     check-cluster
-
-    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-      if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-        echo "Logging open file limits configured for $KUBERNETES_SCALEOUT_PROXY_APP"
-        echo "-----------------------------"
-        ssh-to-node ${PROXY_NAME} "for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid | grep NOFILE ; done"
-        echo "-----------------------------"
-      fi
-    fi
   fi
 }
 
@@ -3140,15 +3195,6 @@ function create-master() {
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
 
-  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-    setup-proxy
-    build_haproxy_cfg_generator
-  fi
-
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    update-proxy "$(cat /tmp/saved_tenant_ips.txt)" "${MASTER_RESERVED_IP}"
-  fi
-
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
     if [[ -f /tmp/saved_tenant_ips.txt ]]; then
       TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
@@ -3160,9 +3206,6 @@ function create-master() {
     fi
 
     echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
-
-    # as TP are built before RP, so when updating the proxy.cfg before RP is ready, we use IP of TP to replace RP_IP temporarily
-    update-proxy "${TP_IP_CONCAT}" "${MASTER_RESERVED_IP}"
   fi
 
 
@@ -3900,21 +3943,6 @@ function check-cluster() {
   # ensures KUBECONFIG is set
   get-kubeconfig-basicauth
 
-  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-    export KUBE_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt"
-    export KUBE_KEY="${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key"
-    export CA_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/ca.crt"
-    export CONTEXT="${PROJECT}_${SCALEOUT_PROXY_NAME}"
-    (
-     umask 077
-
-     # Update the user's kubeconfig to include credentials for this apiserver.
-     KUBERNETES_SCALEOUT_PROXY_KUBECFG=true KUBECONFIG=${PROXY_KUBECONFIG} create-kubeconfig
-    )
-    # ensures KUBECONFIG is set
-    get-kubeconfig-basicauth
-  fi
-
   if [[ ${GCE_UPLOAD_KUBCONFIG_TO_MASTER_METADATA:-} == "true" ]]; then
     gcloud compute instances add-metadata "${MASTER_NAME}" --zone="${ZONE}"  --metadata-from-file="kubeconfig=${KUBECONFIG}" || true
   fi
@@ -4130,35 +4158,6 @@ function kube-down() {
         "${minions[@]::${batch}}"
       minions=( "${minions[@]:${batch}}" )
     done
-  fi
-
-  # Delete proxy-vm
-  if [[ "${KUBERNETES_SCALEOUT_PROXY:-false}" == "true" ]]; then
-    if gcloud compute instances describe "${PROXY_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute instances delete \
-        --project "${PROJECT}" \
-        --quiet \
-        --delete-disks all \
-        --zone "${ZONE}" \
-        "${PROXY_NAME}"
-    fi
-    # Delete firewall rule for the proxy.
-    delete-firewall-rules "${PROXY_NAME}-https"
-    echo "Deleting proxy's reserved IP"
-    if gcloud compute addresses describe "${PROXY_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute addresses delete \
-        --project "${PROJECT}" \
-        --region "${REGION}" \
-        --quiet \
-        "${PROXY_NAME}-ip"
-    fi
-    if gcloud compute addresses describe "${PROXY_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute addresses delete \
-        --project "${PROJECT}" \
-        --region "${REGION}" \
-        --quiet \
-        "${PROXY_NAME}-internalip"
-    fi
   fi
 
   # If there are no more remaining master replicas: delete routes, pd for influxdb and update kubeconfig
@@ -4418,6 +4417,13 @@ function check-resources() {
 function test-build-release() {
   # Make a release
   "${KUBE_ROOT}/build/release.sh"
+}
+
+function proxy-setup() {
+  echo "DBG: Proxy-setup function"
+  # Detect the project into $PROJECT if it isn't set
+  detect-project
+  "${KUBE_ROOT}/cluster/proxy-up.sh"
 }
 
 # Execute prior to running tests to initialize required structure. This is

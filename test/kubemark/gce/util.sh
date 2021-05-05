@@ -32,6 +32,23 @@ function authenticate-docker {
   gcloud beta auth configure-docker -q
 }
 
+function create-arktos-proxy {
+  (
+    echo "DBG: Create arktos-proxy"
+
+    kube::util::ensure-temp-dir
+    export KUBE_TEMP="${KUBE_TEMP}"
+
+    export KUBECONFIG=${PROXY_KUBECONFIG}
+    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+
+    echo "DBG: calling proxy-setup.sh"
+    detect-project
+    "${KUBE_ROOT}/cluster/proxy-up.sh"
+  )
+
+}
+
 function create-kubemark-master {
   # We intentionally override env vars in subshell to preserve original values.
   # shellcheck disable=SC2030,SC2031
@@ -44,7 +61,6 @@ function create-kubemark-master {
     export KUBECONFIG=${KUBEMARK_CLUSTER_KUBECONFIG}
 
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
-    SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
 
     # the calling function ensures that the cluster is either for RP or TP in scaleout env
     #
@@ -60,7 +76,6 @@ function create-kubemark-master {
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
     fi
 
-    export SCALEOUT_PROXY_NAME
     export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_CREATE_NODES=false
@@ -114,13 +129,11 @@ function delete-kubemark-master {
     ## reset CLUSTER_NAME to avoid multi kubemark added after e2e.
     KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
     if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
       KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp-${RESOURCE_PARTITION_SEQUENCE}"
     fi
     if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
         KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
     fi
-    export SCALEOUT_PROXY_NAME
     export KUBE_GCE_INSTANCE_PREFIX
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_DELETE_NETWORK=false
@@ -136,4 +149,10 @@ function delete-kubemark-master {
 
     "${KUBE_ROOT}/hack/e2e-internal/e2e-down.sh"
   )
+}
+
+function delete-proxy {
+    echo "DBG: calling proxy-down.sh"
+    detect-project
+    "${KUBE_ROOT}/cluster/proxy-down.sh"
 }
