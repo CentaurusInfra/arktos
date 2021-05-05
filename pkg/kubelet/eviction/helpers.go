@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/features"
 	statsapi "k8s.io/kubernetes/pkg/kubelet/apis/stats/v1alpha1"
 	evictionapi "k8s.io/kubernetes/pkg/kubelet/eviction/api"
@@ -518,8 +519,8 @@ func priority(p1, p2 *v1.Pod) int {
 		// If priority is not enabled, all pods are equal.
 		return 0
 	}
-	priority1 := schedulerutils.GetPodPriority(p1)
-	priority2 := schedulerutils.GetPodPriority(p2)
+	priority1 := pod.GetPodPriority(p1)
+	priority2 := pod.GetPodPriority(p2)
 	if priority1 == priority2 {
 		return 0
 	}
