@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,7 +27,6 @@ import (
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodename"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeports"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 )
 
@@ -210,8 +210,8 @@ func TestGeneralPredicates(t *testing.T) {
 			fits: false,
 			wErr: nil,
 			reasons: []PredicateFailureReason{
-				&InsufficientResourceError{InsufficientResource: noderesources.InsufficientResource{ResourceName: v1.ResourceCPU, Requested: 8, Used: 5, Capacity: 10}},
-				&InsufficientResourceError{InsufficientResource: noderesources.InsufficientResource{ResourceName: v1.ResourceMemory, Requested: 10, Used: 19, Capacity: 20}},
+				&InsufficientResourceError{ResourceName: v1.ResourceCPU, Requested: 8, Used: 5, Capacity: 10},
+				&InsufficientResourceError{ResourceName: v1.ResourceMemory, Requested: 10, Used: 19, Capacity: 20},
 			},
 			name: "not enough cpu and memory resource",
 		},
