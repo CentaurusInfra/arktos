@@ -56,7 +56,6 @@ go_library(
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
         "//vendor/google.golang.org/api/compute/v1:go_default_library",
         "//vendor/k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util:go_default_library",
-        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
     ],
 )
 

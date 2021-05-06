@@ -144,6 +144,7 @@ staging/src/k8s.io/api/admission/v1/types.go
 staging/src/k8s.io/api/admissionregistration/v1/doc.go
 staging/src/k8s.io/api/admissionregistration/v1/register.go
 staging/src/k8s.io/api/admissionregistration/v1/types.go
+staging/src/k8s.io/api/core/v1/well_known_taints.go
 staging/src/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/conversion.go
 staging/src/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/conversion_test.go
 staging/src/k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1/deepcopy.go
@@ -172,6 +173,7 @@ staging/src/k8s.io/client-go/metadata/metadatainformer/informer_test.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister.go
 staging/src/k8s.io/client-go/metadata/metadatalister/lister_test.go
 staging/src/k8s.io/client-go/metadata/metadatalister/shim.go
+staging/src/k8s.io/component-base/codec/codec.go
 staging/src/k8s.io/kube-scheduler/config/v1/doc.go
 staging/src/k8s.io/kube-scheduler/config/v1/register.go
 staging/src/k8s.io/kube-scheduler/config/v1/types.go
@@ -189,4 +191,3 @@ test/integration/cloudfabriccontrollers/deployment_test.go
 test/integration/cloudfabriccontrollers/deployment_util.go
 test/integration/cloudfabriccontrollers/replicaset.go
 test/integration/cloudfabriccontrollers/replicaset_test.go
-
