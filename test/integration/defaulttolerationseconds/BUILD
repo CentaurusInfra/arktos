@@ -25,7 +25,6 @@ go_test(
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/rest:go_default_library",
         "//test/integration/framework:go_default_library",
-        "//vendor/k8s.io/kubernetes/pkg/scheduler/api:go_default_library",
     ],
 )
 
