@@ -886,7 +886,9 @@ func (g *genericScheduler) selectNodesForPreemption(
 func filterPodsWithPDBViolation(pods []*v1.Pod, pdbs []*policy.PodDisruptionBudget) (violatingPods, nonViolatingPods []*v1.Pod) {
 	pdbsAllowed := make([]int32, len(pdbs))
 	for i, pdb := range pdbs {
-		pdbsAllowed[i] = pdb.Status.DisruptionsAllowed
+		//pdbsAllowed[i] = pdb.Status.DisruptionsAllowed
+		// Skip PR 85863 - renaming, no performance impact
+		pdbsAllowed[i] = pdb.Status.PodDisruptionsAllowed
 	}
 
 	for _, obj := range pods {
