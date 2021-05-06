@@ -20,6 +20,7 @@ package kubelet
 import (
 	"context"
 	"fmt"
+	cloudproviderapi "k8s.io/cloud-provider/api"
 	"net"
 	goruntime "runtime"
 	"sort"
@@ -257,7 +258,7 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 
 	if kl.externalCloudProvider {
 		taint := v1.Taint{
-			Key:    schedulerapi.TaintExternalCloudProvider,
+			Key:    cloudproviderapi.TaintExternalCloudProvider,
 			Value:  "true",
 			Effect: v1.TaintEffectNoSchedule,
 		}
