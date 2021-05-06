@@ -2535,12 +2535,6 @@ func TestDeleteNoDaemonPod(t *testing.T) {
 				t.Fatalf("unexpected UpdateStrategy %+v", strategy)
 			}
 
-			manager.enqueueDaemonSetRateLimited = func(ds *apps.DaemonSet) {
-				if ds.Name == "ds" {
-					enqueued = true
-				}
-			}
-
 			enqueued = false
 			manager.deletePod(c.deletedPod)
 			if enqueued != c.shouldEnqueue {
