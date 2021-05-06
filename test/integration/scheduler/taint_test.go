@@ -37,7 +37,6 @@ import (
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
 	pluginapi "k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction/apis/podtolerationrestriction"
 )
@@ -144,37 +143,37 @@ func TestTaintNodeByCondition(t *testing.T) {
 	}
 
 	notReadyToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodeNotReady,
+		Key:      v1.TaintNodeNotReady,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
 	unschedulableToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodeUnschedulable,
+		Key:      v1.TaintNodeUnschedulable,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
 	memoryPressureToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodeMemoryPressure,
+		Key:      v1.TaintNodeMemoryPressure,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
 	diskPressureToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodeDiskPressure,
+		Key:      v1.TaintNodeDiskPressure,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
 	networkUnavailableToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodeNetworkUnavailable,
+		Key:      v1.TaintNodeNetworkUnavailable,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
 
 	pidPressureToleration := v1.Toleration{
-		Key:      schedulerapi.TaintNodePIDPressure,
+		Key:      v1.TaintNodePIDPressure,
 		Operator: v1.TolerationOpExists,
 		Effect:   v1.TaintEffectNoSchedule,
 	}
@@ -216,7 +215,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeNotReady,
+					Key:    v1.TaintNodeNotReady,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -259,7 +258,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeUnschedulable,
+					Key:    v1.TaintNodeUnschedulable,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -305,7 +304,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeMemoryPressure,
+					Key:    v1.TaintNodeMemoryPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -358,7 +357,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeDiskPressure,
+					Key:    v1.TaintNodeDiskPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -410,7 +409,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeNetworkUnavailable,
+					Key:    v1.TaintNodeNetworkUnavailable,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -458,11 +457,11 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeNetworkUnavailable,
+					Key:    v1.TaintNodeNetworkUnavailable,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 				{
-					Key:    schedulerapi.TaintNodeNotReady,
+					Key:    v1.TaintNodeNotReady,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -518,7 +517,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodePIDPressure,
+					Key:    v1.TaintNodePIDPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
@@ -572,15 +571,15 @@ func TestTaintNodeByCondition(t *testing.T) {
 			},
 			expectedTaints: []v1.Taint{
 				{
-					Key:    schedulerapi.TaintNodeDiskPressure,
+					Key:    v1.TaintNodeDiskPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 				{
-					Key:    schedulerapi.TaintNodeMemoryPressure,
+					Key:    v1.TaintNodeMemoryPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 				{
-					Key:    schedulerapi.TaintNodePIDPressure,
+					Key:    v1.TaintNodePIDPressure,
 					Effect: v1.TaintEffectNoSchedule,
 				},
 			},
