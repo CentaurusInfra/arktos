@@ -54,7 +54,6 @@ import (
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	"k8s.io/kubernetes/pkg/features"
 	kubeletapis "k8s.io/kubernetes/pkg/kubelet/apis"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/util/metrics"
 	utilnode "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/util/system"
@@ -69,14 +68,14 @@ func init() {
 var (
 	// UnreachableTaintTemplate is the taint for when a node becomes unreachable.
 	UnreachableTaintTemplate = &v1.Taint{
-		Key:    schedulerapi.TaintNodeUnreachable,
+		Key:    v1.TaintNodeUnreachable,
 		Effect: v1.TaintEffectNoExecute,
 	}
 
 	// NotReadyTaintTemplate is the taint for when a node is not ready for
 	// executing pods
 	NotReadyTaintTemplate = &v1.Taint{
-		Key:    schedulerapi.TaintNodeNotReady,
+		Key:    v1.TaintNodeNotReady,
 		Effect: v1.TaintEffectNoExecute,
 	}
 
@@ -86,30 +85,30 @@ var (
 	// for certain NodeConditionType, there are multiple {ConditionStatus,TaintKey} pairs
 	nodeConditionToTaintKeyStatusMap = map[v1.NodeConditionType]map[v1.ConditionStatus]string{
 		v1.NodeReady: {
-			v1.ConditionFalse:   schedulerapi.TaintNodeNotReady,
-			v1.ConditionUnknown: schedulerapi.TaintNodeUnreachable,
+			v1.ConditionFalse:   v1.TaintNodeNotReady,
+			v1.ConditionUnknown: v1.TaintNodeUnreachable,
 		},
 		v1.NodeMemoryPressure: {
-			v1.ConditionTrue: schedulerapi.TaintNodeMemoryPressure,
+			v1.ConditionTrue: v1.TaintNodeMemoryPressure,
 		},
 		v1.NodeDiskPressure: {
-			v1.ConditionTrue: schedulerapi.TaintNodeDiskPressure,
+			v1.ConditionTrue: v1.TaintNodeDiskPressure,
 		},
 		v1.NodeNetworkUnavailable: {
-			v1.ConditionTrue: schedulerapi.TaintNodeNetworkUnavailable,
+			v1.ConditionTrue: v1.TaintNodeNetworkUnavailable,
 		},
 		v1.NodePIDPressure: {
-			v1.ConditionTrue: schedulerapi.TaintNodePIDPressure,
+			v1.ConditionTrue: v1.TaintNodePIDPressure,
 		},
 	}
 
 	taintKeyToNodeConditionMap = map[string]v1.NodeConditionType{
-		schedulerapi.TaintNodeNotReady:           v1.NodeReady,
-		schedulerapi.TaintNodeUnreachable:        v1.NodeReady,
-		schedulerapi.TaintNodeNetworkUnavailable: v1.NodeNetworkUnavailable,
-		schedulerapi.TaintNodeMemoryPressure:     v1.NodeMemoryPressure,
-		schedulerapi.TaintNodeDiskPressure:       v1.NodeDiskPressure,
-		schedulerapi.TaintNodePIDPressure:        v1.NodePIDPressure,
+		v1.TaintNodeNotReady:           v1.NodeReady,
+		v1.TaintNodeUnreachable:        v1.NodeReady,
+		v1.TaintNodeNetworkUnavailable: v1.NodeNetworkUnavailable,
+		v1.TaintNodeMemoryPressure:     v1.NodeMemoryPressure,
+		v1.TaintNodeDiskPressure:       v1.NodeDiskPressure,
+		v1.TaintNodePIDPressure:        v1.NodePIDPressure,
 	}
 )
 
@@ -542,7 +541,7 @@ func (nc *Controller) doNoScheduleTaintingPass(nodeName string) error {
 	if node.Spec.Unschedulable {
 		// If unschedulable, append related taint.
 		taints = append(taints, v1.Taint{
-			Key:    schedulerapi.TaintNodeUnschedulable,
+			Key:    v1.TaintNodeUnschedulable,
 			Effect: v1.TaintEffectNoSchedule,
 		})
 	}
@@ -554,7 +553,7 @@ func (nc *Controller) doNoScheduleTaintingPass(nodeName string) error {
 			return false
 		}
 		// Find unschedulable taint of node.
-		if t.Key == schedulerapi.TaintNodeUnschedulable {
+		if t.Key == v1.TaintNodeUnschedulable {
 			return true
 		}
 		// Find node condition taints of node.

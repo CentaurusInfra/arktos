@@ -34,7 +34,6 @@ import (
 	api "k8s.io/kubernetes/pkg/apis/core"
 	qoshelper "k8s.io/kubernetes/pkg/apis/core/helper/qos"
 	k8s_api_v1 "k8s.io/kubernetes/pkg/apis/core/v1"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/util/tolerations"
 	pluginapi "k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction/apis/podtolerationrestriction"
 )
@@ -118,7 +117,7 @@ func (p *Plugin) Admit(a admission.Attributes, o admission.ObjectInterfaces) err
 	if qoshelper.GetPodQOS(pod) != api.PodQOSBestEffort {
 		finalTolerations = tolerations.MergeTolerations(finalTolerations, []api.Toleration{
 			{
-				Key:      schedulerapi.TaintNodeMemoryPressure,
+				Key:      corev1.TaintNodeMemoryPressure,
 				Operator: api.TolerationOpExists,
 				Effect:   api.TaintEffectNoSchedule,
 			},

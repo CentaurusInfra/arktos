@@ -50,7 +50,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/features"
 	kubelettypes "k8s.io/kubernetes/pkg/kubelet/types"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/pkg/securitycontext"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 )
@@ -82,13 +81,13 @@ func nowPointer() *metav1.Time {
 
 var (
 	nodeNotReady = []v1.Taint{{
-		Key:       schedulerapi.TaintNodeNotReady,
+		Key:       v1.TaintNodeNotReady,
 		Effect:    v1.TaintEffectNoExecute,
 		TimeAdded: nowPointer(),
 	}}
 
 	nodeUnreachable = []v1.Taint{{
-		Key:       schedulerapi.TaintNodeUnreachable,
+		Key:       v1.TaintNodeUnreachable,
 		Effect:    v1.TaintEffectNoExecute,
 		TimeAdded: nowPointer(),
 	}}
@@ -552,7 +551,7 @@ func TestSimpleDaemonSetScheduleDaemonSetPodsLaunchesPods(t *testing.T) {
 			}
 
 			field := nodeSelector.NodeSelectorTerms[0].MatchFields[0]
-			if field.Key == schedulerapi.NodeFieldSelectorKeyNodeName {
+			if field.Key == api.ObjectNameField {
 				if field.Operator != v1.NodeSelectorOpIn {
 					t.Fatalf("the operation of hostname NodeAffinity is not %v", v1.NodeSelectorOpIn)
 				}
@@ -1812,9 +1811,9 @@ func TestTaintPressureNodeDaemonLaunchesPod(t *testing.T) {
 				{Type: v1.NodePIDPressure, Status: v1.ConditionTrue},
 			}
 			node.Spec.Taints = []v1.Taint{
-				{Key: schedulerapi.TaintNodeDiskPressure, Effect: v1.TaintEffectNoSchedule},
-				{Key: schedulerapi.TaintNodeMemoryPressure, Effect: v1.TaintEffectNoSchedule},
-				{Key: schedulerapi.TaintNodePIDPressure, Effect: v1.TaintEffectNoSchedule},
+				{Key: v1.TaintNodeDiskPressure, Effect: v1.TaintEffectNoSchedule},
+				{Key: v1.TaintNodeMemoryPressure, Effect: v1.TaintEffectNoSchedule},
+				{Key: v1.TaintNodePIDPressure, Effect: v1.TaintEffectNoSchedule},
 			}
 			manager.nodeStore.Add(node)
 
@@ -2552,7 +2551,7 @@ func TestDeleteUnscheduledPodForNotExistingNode(t *testing.T) {
 							{
 								MatchFields: []v1.NodeSelectorRequirement{
 									{
-										Key:      schedulerapi.NodeFieldSelectorKeyNodeName,
+										Key:      api.ObjectNameField,
 										Operator: v1.NodeSelectorOpIn,
 										Values:   []string{"node-2"},
 									},

@@ -61,7 +61,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/nodestatus"
 	"k8s.io/kubernetes/pkg/kubelet/util/sliceutils"
 	kubeletvolume "k8s.io/kubernetes/pkg/kubelet/volumemanager"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	taintutil "k8s.io/kubernetes/pkg/util/taints"
 	"k8s.io/kubernetes/pkg/version"
 	"k8s.io/kubernetes/pkg/volume/util"
@@ -2074,7 +2073,7 @@ func TestRegisterWithApiServerWithTaint(t *testing.T) {
 		// Check the unschedulable taint.
 		got := gotNode.(*v1.Node)
 		unschedulableTaint := &v1.Taint{
-			Key:    schedulerapi.TaintNodeUnschedulable,
+			Key:    v1.TaintNodeUnschedulable,
 			Effect: v1.TaintEffectNoSchedule,
 		}
 
