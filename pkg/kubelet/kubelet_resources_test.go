@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +31,7 @@ import (
 func TestPodResourceLimitsDefaulting(t *testing.T) {
 	tk := newTestKubelet(t, true)
 	defer tk.Cleanup()
-	tk.kubelet.nodeInfo = &testNodeInfo{
+	tk.kubelet.nodeLister = &testNodeLister{
 		nodes: []*v1.Node{
 			{
 				ObjectMeta: metav1.ObjectMeta{
