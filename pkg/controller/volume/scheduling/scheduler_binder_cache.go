@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,7 @@ limitations under the License.
 package scheduling
 
 import (
+	"k8s.io/kubernetes/pkg/controller/volume/scheduling/metrics"
 	"sync"
 
 	"k8s.io/api/core/v1"
@@ -93,7 +95,7 @@ func (c *podBindingCache) DeleteBindings(pod *v1.Pod) {
 
 	if _, ok := c.bindingDecisions[podName]; ok {
 		delete(c.bindingDecisions, podName)
-		VolumeBindingRequestSchedulerBinderCache.WithLabelValues("delete").Inc()
+		metrics.VolumeBindingRequestSchedulerBinderCache.WithLabelValues("delete").Inc()
 	}
 }
 
@@ -113,7 +115,7 @@ func (c *podBindingCache) UpdateBindings(pod *v1.Pod, node string, bindings []*b
 			bindings:      bindings,
 			provisionings: pvcs,
 		}
-		VolumeBindingRequestSchedulerBinderCache.WithLabelValues("add").Inc()
+		metrics.VolumeBindingRequestSchedulerBinderCache.WithLabelValues("add").Inc()
 	} else {
 		decision.bindings = bindings
 		decision.provisionings = pvcs
