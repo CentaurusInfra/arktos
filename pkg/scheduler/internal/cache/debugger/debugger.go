@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,17 +34,17 @@ type CacheDebugger struct {
 
 // New creates a CacheDebugger.
 func New(
-	nodeLister corelisters.NodeLister,
+	nodeListers map[string]corelisters.NodeLister,
 	podLister corelisters.PodLister,
 	cache internalcache.Cache,
 	podQueue internalqueue.SchedulingQueue,
 ) *CacheDebugger {
 	return &CacheDebugger{
 		Comparer: CacheComparer{
-			NodeLister: nodeLister,
-			PodLister:  podLister,
-			Cache:      cache,
-			PodQueue:   podQueue,
+			NodeListers: nodeListers,
+			PodLister:   podLister,
+			Cache:       cache,
+			PodQueue:    podQueue,
 		},
 		Dumper: CacheDumper{
 			cache:    cache,

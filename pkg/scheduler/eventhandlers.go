@@ -20,6 +20,7 @@ package scheduler
 
 import (
 	"fmt"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"reflect"
 
 	"k8s.io/klog"
@@ -99,11 +100,16 @@ func (sched *Scheduler) addNodeToCache(obj interface{}) {
 		return
 	}
 
-	if err := sched.SchedulerCache.AddNode(node); err != nil {
+	_, rpId, err := nodeutil.GetNodeFromNodelisters(sched.ResourceProviderNodeListers, node.Name)
+	if err != nil {
+		klog.Errorf("Unable to find resource provider id from node listers. Error %v", err)
+		return
+	}
+	if err := sched.SchedulerCache.AddNode(node, rpId); err != nil {
 		klog.Errorf("scheduler cache AddNode failed: %v", err)
 	}
 
-	klog.V(3).Infof("add event for node %q", node.Name)
+	klog.V(3).Infof("Add node to cache. node [%v], rpId [%v]. error %v", node.Name, rpId, err)
 	sched.SchedulingQueue.MoveAllToActiveOrBackoffQueue(queue.NodeAdd)
 }
 
@@ -119,7 +125,7 @@ func (sched *Scheduler) updateNodeInCache(oldObj, newObj interface{}) {
 		return
 	}
 
-	if err := sched.SchedulerCache.UpdateNode(oldNode, newNode); err != nil {
+	if err := sched.SchedulerCache.UpdateNode(oldNode, newNode, sched.ResourceProviderNodeListers); err != nil {
 		klog.Errorf("scheduler cache UpdateNode failed: %v", err)
 	}
 
@@ -359,6 +365,7 @@ func (sched *Scheduler) skipPodUpdate(pod *v1.Pod) bool {
 func addAllEventHandlers(
 	sched *Scheduler,
 	informerFactory informers.SharedInformerFactory,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 ) {
 	// scheduled pod cache
@@ -412,13 +419,16 @@ func addAllEventHandlers(
 		},
 	)
 
-	informerFactory.Core().V1().Nodes().Informer().AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc:    sched.addNodeToCache,
-			UpdateFunc: sched.updateNodeInCache,
-			DeleteFunc: sched.deleteNodeFromCache,
-		},
-	)
+	for i := range nodeInformers {
+		nodeInformers[i].Informer().AddEventHandler(
+			cache.ResourceEventHandlerFuncs{
+				AddFunc:    sched.addNodeToCache,
+				UpdateFunc: sched.updateNodeInCache,
+				DeleteFunc: sched.deleteNodeFromCache,
+			},
+		)
+		klog.V(3).Infof("Add event handler to node informer %v %p", i, nodeInformers[i].Informer())
+	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
 		//informerFactory.Storage().V1().CSINodes().Informer().AddEventHandler(

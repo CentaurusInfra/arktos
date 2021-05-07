@@ -20,6 +20,7 @@ package app
 import (
 	apiserver "k8s.io/apiserver/pkg/server"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/record"
@@ -60,6 +61,12 @@ type Config struct {
 
 	// SharedInformers gives access to informers for the controller.
 	SharedInformers informers.SharedInformerFactory
+
+	// Resource provider client builder map (resourceProviderId->resource client)
+	ResourceProviderClientBuilders map[string]clientset.Interface
+
+	// Resource provider node informers map (resourceProviderId->nodeInformer)
+	ResourceProviderNodeInformers map[string]coreinformers.NodeInformer
 }
 
 type completedConfig struct {

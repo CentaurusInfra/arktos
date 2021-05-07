@@ -54,6 +54,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller"
 	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/metrics"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/util/slice"
 )
 
@@ -105,8 +106,8 @@ type ServiceController struct {
 	serviceListerSynced cache.InformerSynced
 	eventBroadcaster    record.EventBroadcaster
 	eventRecorder       record.EventRecorder
-	nodeLister          corelisters.NodeLister
-	nodeListerSynced    cache.InformerSynced
+	nodeListers         map[string]corelisters.NodeLister
+	nodeListersSynced   map[string]cache.InformerSynced
 	podLister           corelisters.PodLister
 	podListerSynced     cache.InformerSynced
 	// services that need to be synced
@@ -119,7 +120,7 @@ func New(
 	cloud cloudprovider.Interface,
 	kubeClient clientset.Interface,
 	serviceInformer coreinformers.ServiceInformer,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	podInformer coreinformers.PodInformer,
 	clusterName string,
 ) (*ServiceController, error) {
@@ -134,19 +135,22 @@ func New(
 		}
 	}
 
+	klog.V(3).Infof("Service controller initialized with %v nodeinformers", len(nodeInformers))
+	nodeListers, nodeListersSynced := nodeutil.GetNodeListersAndSyncedFromNodeInformers(nodeInformers)
+
 	s := &ServiceController{
-		cloud:            cloud,
-		knownHosts:       []*v1.Node{},
-		kubeClient:       kubeClient,
-		clusterName:      clusterName,
-		cache:            &serviceCache{serviceMap: make(map[string]*cachedService)},
-		eventBroadcaster: broadcaster,
-		eventRecorder:    recorder,
-		nodeLister:       nodeInformer.Lister(),
-		nodeListerSynced: nodeInformer.Informer().HasSynced,
-		podLister:        podInformer.Lister(),
-		podListerSynced:  podInformer.Informer().HasSynced,
-		queue:            workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(minRetryDelay, maxRetryDelay), "service"),
+		cloud:             cloud,
+		knownHosts:        []*v1.Node{},
+		kubeClient:        kubeClient,
+		clusterName:       clusterName,
+		cache:             &serviceCache{serviceMap: make(map[string]*cachedService)},
+		eventBroadcaster:  broadcaster,
+		eventRecorder:     recorder,
+		nodeListers:       nodeListers,
+		nodeListersSynced: nodeListersSynced,
+		podLister:         podInformer.Lister(),
+		podListerSynced:   podInformer.Informer().HasSynced,
+		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.NewItemExponentialFailureRateLimiter(minRetryDelay, maxRetryDelay), "service"),
 	}
 
 	serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
@@ -211,10 +215,13 @@ func (s *ServiceController) Run(stopCh <-chan struct{}, workers int) {
 	defer runtime.HandleCrash()
 	defer s.queue.ShutDown()
 
-	klog.Info("Starting service controller")
+	klog.Infof("Starting service controller with node lister #= %d", len(s.nodeListers))
 	defer klog.Info("Shutting down service controller")
 
-	if !controller.WaitForCacheSync("service", stopCh, s.serviceListerSynced, s.nodeListerSynced) {
+	if !controller.WaitForCacheSync("service (w/o node)", stopCh, s.serviceListerSynced) {
+		return
+	}
+	if !nodeutil.WaitForNodeCacheSync("service (node)", s.nodeListersSynced) {
 		return
 	}
 
@@ -374,21 +381,27 @@ func (s *ServiceController) syncLoadBalancerIfNeeded(service *v1.Service, key st
 	return op, nil
 }
 
+// TODO - Will this work for multiple resource partition clusters?
 func (s *ServiceController) ensureLoadBalancer(service *v1.Service) (*v1.LoadBalancerStatus, error) {
-	nodes, err := s.nodeLister.ListWithPredicate(getNodeConditionPredicate())
-	if err != nil {
-		return nil, err
+	allNodes := make([]*v1.Node, 0)
+	for _, nodeLister := range s.nodeListers {
+		nodes, err := nodeLister.ListWithPredicate(getNodeConditionPredicate())
+		if err != nil {
+			// TODO - check error for RP not available, skip
+			return nil, err
+		}
+		allNodes = append(allNodes, nodes...)
 	}
 
 	// If there are no available nodes for LoadBalancer service, make a EventTypeWarning event for it.
-	if len(nodes) == 0 {
+	if len(allNodes) == 0 {
 		s.eventRecorder.Event(service, v1.EventTypeWarning, "UnAvailableLoadBalancer", "There are no available nodes for LoadBalancer")
 	}
 
 	// - Only one protocol supported per service
 	// - Not all cloud providers support all protocols and the next step is expected to return
 	//   an error for unsupported protocols
-	return s.balancer.EnsureLoadBalancer(context.TODO(), s.clusterName, service, nodes)
+	return s.balancer.EnsureLoadBalancer(context.TODO(), s.clusterName, service, allNodes)
 }
 
 // ListKeys implements the interface required by DeltaFIFO to list the keys we
@@ -660,30 +673,36 @@ func getNodeConditionPredicate() corelisters.NodeConditionPredicate {
 // nodeSyncLoop handles updating the hosts pointed to by all load
 // balancers whenever the set of nodes in the cluster changes.
 func (s *ServiceController) nodeSyncLoop() {
-	newHosts, err := s.nodeLister.ListWithPredicate(getNodeConditionPredicate())
-	if err != nil {
-		runtime.HandleError(fmt.Errorf("Failed to retrieve current set of nodes from node lister: %v", err))
-		return
+	allNewHosts := make([]*v1.Node, 0)
+	for _, nodeLister := range s.nodeListers {
+		newHosts, err := nodeLister.ListWithPredicate(getNodeConditionPredicate())
+		if err != nil {
+			// TODO - check error for RP not available, skip
+			runtime.HandleError(fmt.Errorf("Failed to retrieve current set of nodes from node lister: %v", err))
+			return
+		}
+		allNewHosts = append(allNewHosts, newHosts...)
 	}
-	if nodeSlicesEqualForLB(newHosts, s.knownHosts) {
+
+	if nodeSlicesEqualForLB(allNewHosts, s.knownHosts) {
 		// The set of nodes in the cluster hasn't changed, but we can retry
 		// updating any services that we failed to update last time around.
-		s.servicesToUpdate = s.updateLoadBalancerHosts(s.servicesToUpdate, newHosts)
+		s.servicesToUpdate = s.updateLoadBalancerHosts(s.servicesToUpdate, allNewHosts)
 		return
 	}
 
 	klog.V(2).Infof("Detected change in list of current cluster nodes. New node set: %v",
-		nodeNames(newHosts))
+		nodeNames(allNewHosts))
 
 	// Try updating all services, and save the ones that fail to try again next
 	// round.
 	s.servicesToUpdate = s.cache.allServices()
 	numServices := len(s.servicesToUpdate)
-	s.servicesToUpdate = s.updateLoadBalancerHosts(s.servicesToUpdate, newHosts)
+	s.servicesToUpdate = s.updateLoadBalancerHosts(s.servicesToUpdate, allNewHosts)
 	klog.V(2).Infof("Successfully updated %d out of %d load balancers to direct traffic to the updated set of nodes",
 		numServices-len(s.servicesToUpdate), numServices)
 
-	s.knownHosts = newHosts
+	s.knownHosts = allNewHosts
 }
 
 // updateLoadBalancerHosts updates all existing load balancers so that

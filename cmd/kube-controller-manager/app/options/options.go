@@ -34,9 +34,11 @@ import (
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/clientutil"
 	cliflag "k8s.io/component-base/cli/flag"
 	kubectrlmgrconfigv1alpha1 "k8s.io/kube-controller-manager/config/v1alpha1"
 	cmoptions "k8s.io/kubernetes/cmd/controller-manager/app/options"
+	"k8s.io/kubernetes/cmd/genutils"
 	kubecontrollerconfig "k8s.io/kubernetes/cmd/kube-controller-manager/app/config"
 	kubectrlmgrconfig "k8s.io/kubernetes/pkg/controller/apis/config"
 	kubectrlmgrconfigscheme "k8s.io/kubernetes/pkg/controller/apis/config/scheme"
@@ -90,6 +92,9 @@ type KubeControllerManagerOptions struct {
 
 	Master     string
 	Kubeconfig string
+
+	// optional resource provider kubeconfig
+	ResourceProviderKubeConfig string
 }
 
 // NewKubeControllerManagerOptions creates a new KubeControllerManagerOptions with a default config.
@@ -243,6 +248,7 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	fs := fss.FlagSet("misc")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
 	fs.StringVar(&s.Kubeconfig, "kubeconfig", s.Kubeconfig, "Path to kubeconfig files with authorization and master location information.")
+	fs.StringVar(&s.ResourceProviderKubeConfig, "resource-providers", s.ResourceProviderKubeConfig, "Path to kubeconfig files points to resource provider(s).")
 	utilfeature.DefaultMutableFeatureGate.AddFlag(fss.FlagSet("generic"))
 
 	return fss
@@ -412,11 +418,35 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 
 	eventRecorder := createRecorder(client, KubeControllerManagerUserAgent)
 
+	// get resource provider kube configs
+	var resourceProviderClients []clientset.Interface
+	if len(s.ResourceProviderKubeConfig) > 0 {
+		resourceProviderKubeConfigFiles, existed := genutils.ParseKubeConfigFiles(s.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
+		if !existed {
+			klog.Warningf("--resource-providers points to non existed file(s), default to local cluster kubeconfig file")
+			resourceProviderClients = make([]clientset.Interface, 1)
+			resourceProviderClients[0] = client
+		} else {
+			resourceProviderClients = make([]clientset.Interface, len(resourceProviderKubeConfigFiles))
+			for i, kubeConfigFile := range resourceProviderKubeConfigFiles {
+				resourceProviderClient, err := clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create resource provider rest client from kubeconfig [%s], error [%v]", kubeConfigFile, err)
+				}
+				resourceProviderClients[i] = resourceProviderClient
+				klog.V(3).Infof("Created resource provider client %d %p", i, resourceProviderClient)
+			}
+		}
+	}
+
 	c := &kubecontrollerconfig.Config{
-		Client:               client,
-		Kubeconfig:           kubeconfigs,
-		EventRecorder:        eventRecorder,
-		LeaderElectionClient: leaderElectionClient,
+		Client:                  client,
+		Kubeconfig:              kubeconfigs,
+		EventRecorder:           eventRecorder,
+		LeaderElectionClient:    leaderElectionClient,
+		ResourceProviderClients: resourceProviderClients,
 	}
 	if err := s.ApplyTo(c); err != nil {
 		return nil, err
