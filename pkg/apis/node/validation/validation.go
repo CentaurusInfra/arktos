@@ -35,7 +35,7 @@ func ValidateRuntimeClass(rc *node.RuntimeClass) field.ErrorList {
 		allErrs = append(allErrs, field.Invalid(field.NewPath("handler"), rc.Handler, msg))
 	}
 
-	if rc.Overhead != nil && utilfeature.DefaultFeatureGate.Enabled(features.PodOverhead) {
+	if rc.Overhead != nil {
 		allErrs = append(allErrs, validateOverhead(rc.Overhead, field.NewPath("overhead"))...)
 	}
 
