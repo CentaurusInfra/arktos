@@ -269,7 +269,7 @@ var _ = utils.SIGDescribe("CSI mock volume", func() {
 				handle := getVolumeHandle(m.cs, claim)
 				attachmentHash := sha256.Sum256([]byte(fmt.Sprintf("%s%s%s", handle, m.provisioner, m.config.ClientNodeName)))
 				attachmentName := fmt.Sprintf("csi-%x", attachmentHash)
-				_, err = m.cs.StorageV1beta1().VolumeAttachments().Get(attachmentName, metav1.GetOptions{})
+				_, err = m.cs.StorageV1().VolumeAttachments().Get(attachmentName, metav1.GetOptions{})
 				if err != nil {
 					if errors.IsNotFound(err) {
 						if !test.disableAttach {
@@ -765,7 +765,7 @@ func waitForCSIDriver(cs clientset.Interface, driverName string) error {
 
 	e2elog.Logf("waiting up to %v for CSIDriver %q", timeout, driverName)
 	for start := time.Now(); time.Since(start) < timeout; time.Sleep(framework.Poll) {
-		_, err := cs.StorageV1beta1().CSIDrivers().Get(driverName, metav1.GetOptions{})
+		_, err := cs.StorageV1().CSIDrivers().Get(driverName, metav1.GetOptions{})
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -779,7 +779,7 @@ func destroyCSIDriver(cs clientset.Interface, driverName string) {
 		e2elog.Logf("deleting %s.%s: %s", driverGet.TypeMeta.APIVersion, driverGet.TypeMeta.Kind, driverGet.ObjectMeta.Name)
 		// Uncomment the following line to get full dump of CSIDriver object
 		// e2elog.Logf("%s", framework.PrettyPrint(driverGet))
-		cs.StorageV1beta1().CSIDrivers().Delete(driverName, nil)
+		cs.StorageV1().CSIDrivers().Delete(driverName, nil)
 	}
 }
 
