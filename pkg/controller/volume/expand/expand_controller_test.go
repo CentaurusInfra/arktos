@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,7 @@ package expand
 import (
 	"encoding/json"
 	"fmt"
+	csitrans "k8s.io/csi-translation-lib"
 	"reflect"
 	"regexp"
 	"testing"
@@ -123,7 +125,7 @@ func TestSyncHandler(t *testing.T) {
 		if tc.storageClass != nil {
 			informerFactory.Storage().V1().StorageClasses().Informer().GetIndexer().Add(tc.storageClass)
 		}
-		expc, err := NewExpandController(fakeKubeClient, pvcInformer, pvInformer, storageClassInformer, nil, allPlugins)
+		expc, err := NewExpandController(fakeKubeClient, pvcInformer, pvInformer, storageClassInformer, nil, allPlugins, csitrans.New())
 		if err != nil {
 			t.Fatalf("error creating expand controller : %v", err)
 		}

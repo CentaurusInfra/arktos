@@ -147,6 +147,7 @@ go_library(
         "//staging/src/k8s.io/cloud-provider:go_default_library",
         "//staging/src/k8s.io/component-base/cli/flag:go_default_library",
         "//staging/src/k8s.io/component-base/cli/globalflag:go_default_library",
+        "//staging/src/k8s.io/csi-translation-lib:go_default_library",
         "//staging/src/k8s.io/metrics/pkg/client/clientset/versioned/typed/metrics/v1beta1:go_default_library",
         "//staging/src/k8s.io/metrics/pkg/client/custom_metrics:go_default_library",
         "//staging/src/k8s.io/metrics/pkg/client/external_metrics:go_default_library",
