@@ -28,11 +28,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/features"
 	schedulerlisters "k8s.io/kubernetes/pkg/scheduler/listers"
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 var (
@@ -589,13 +591,15 @@ func (cache *schedulerCache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 	return podState.pod, nil
 }
 
-func (cache *schedulerCache) AddNode(node *v1.Node) error {
+func (cache *schedulerCache) AddNode(node *v1.Node, resourceProviderId string) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[node.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		nodeInfo := schedulernodeinfo.NewNodeInfo()
+		nodeInfo.SetResourceProviderId(resourceProviderId)
+		n = newNodeInfoListItem(nodeInfo)
 		cache.nodes[node.Name] = n
 	} else {
 		cache.removeNodeImageStates(n.info.Node())
@@ -607,13 +611,19 @@ func (cache *schedulerCache) AddNode(node *v1.Node) error {
 	return n.info.SetNode(node)
 }
 
-func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node) error {
+func (cache *schedulerCache) UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error {
 	cache.mu.Lock()
 	defer cache.mu.Unlock()
 
 	n, ok := cache.nodes[newNode.Name]
 	if !ok {
-		n = newNodeInfoListItem(schedulernodeinfo.NewNodeInfo())
+		nodeInfo := schedulernodeinfo.NewNodeInfo()
+		_, resourceProviderId, err := nodeutil.GetNodeFromNodelisters(nodeListers, newNode.Name)
+		if err != nil {
+			return fmt.Errorf("Error getting resource provider id from node listers. Error %v", err)
+		}
+		nodeInfo.SetResourceProviderId(resourceProviderId)
+		n = newNodeInfoListItem(nodeInfo)
 		cache.nodes[newNode.Name] = n
 		cache.nodeTree.addNode(newNode)
 	} else {

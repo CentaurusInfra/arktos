@@ -107,6 +107,10 @@ type KubeSchedulerConfiguration struct {
 	// Extenders are the list of scheduler extenders, each holding the values of how to communicate
 	// with the extender. These extenders are shared by all scheduler profiles.
 	Extenders []Extender
+
+	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
+	// optional for single cluster in Arktos deployment model
+	ResourceProviderKubeConfig string
 }
 
 // KubeSchedulerProfile is a scheduling profile.
@@ -130,10 +134,6 @@ type KubeSchedulerProfile struct {
 	// Omitting config args for a plugin is equivalent to using the default config
 	// for that plugin.
 	PluginConfig []PluginConfig
-
-	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
-	// optional for single cluster in Arktos deployment model
-	ResourceProviderKubeConfig string
 }
 
 // SchedulerAlgorithmSource is the source of a scheduler algorithm. One source

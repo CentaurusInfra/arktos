@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -40,19 +41,19 @@ type NodeStatusUpdater interface {
 
 // NewNodeStatusUpdater returns a new instance of NodeStatusUpdater.
 func NewNodeStatusUpdater(
-	kubeClient clientset.Interface,
-	nodeLister corelisters.NodeLister,
+	kubeClients map[string]clientset.Interface,
+	nodeListers map[string]corelisters.NodeLister,
 	actualStateOfWorld cache.ActualStateOfWorld) NodeStatusUpdater {
 	return &nodeStatusUpdater{
 		actualStateOfWorld: actualStateOfWorld,
-		nodeLister:         nodeLister,
-		kubeClient:         kubeClient,
+		nodeListers:        nodeListers,
+		kubeClients:        kubeClients,
 	}
 }
 
 type nodeStatusUpdater struct {
-	kubeClient         clientset.Interface
-	nodeLister         corelisters.NodeLister
+	kubeClients        map[string]clientset.Interface
+	nodeListers        map[string]corelisters.NodeLister
 	actualStateOfWorld cache.ActualStateOfWorld
 }
 
@@ -61,7 +62,7 @@ func (nsu *nodeStatusUpdater) UpdateNodeStatuses() error {
 	// kubernetes/kubernetes/issues/37777
 	nodesToUpdate := nsu.actualStateOfWorld.GetVolumesToReportAttached()
 	for nodeName, attachedVolumes := range nodesToUpdate {
-		nodeObj, err := nsu.nodeLister.Get(string(nodeName))
+		nodeObj, rpId, err := nodeutil.GetNodeFromNodelisters(nsu.nodeListers, string(nodeName))
 		if errors.IsNotFound(err) {
 			// If node does not exist, its status cannot be updated.
 			// Do nothing so that there is no retry until node is created.
@@ -78,7 +79,7 @@ func (nsu *nodeStatusUpdater) UpdateNodeStatuses() error {
 			continue
 		}
 
-		if err := nsu.updateNodeStatus(nodeName, nodeObj, attachedVolumes); err != nil {
+		if err := nsu.updateNodeStatus(nodeName, nodeObj, rpId, attachedVolumes); err != nil {
 			// If update node status fails, reset flag statusUpdateNeeded back to true
 			// to indicate this node status needs to be updated again
 			nsu.actualStateOfWorld.SetNodeStatusUpdateNeeded(nodeName)
@@ -95,10 +96,10 @@ func (nsu *nodeStatusUpdater) UpdateNodeStatuses() error {
 	return nil
 }
 
-func (nsu *nodeStatusUpdater) updateNodeStatus(nodeName types.NodeName, nodeObj *v1.Node, attachedVolumes []v1.AttachedVolume) error {
+func (nsu *nodeStatusUpdater) updateNodeStatus(nodeName types.NodeName, nodeObj *v1.Node, rpId string, attachedVolumes []v1.AttachedVolume) error {
 	node := nodeObj.DeepCopy()
 	node.Status.VolumesAttached = attachedVolumes
-	_, patchBytes, err := nodeutil.PatchNodeStatus(nsu.kubeClient.CoreV1(), nodeName, nodeObj, node)
+	_, patchBytes, err := nodeutil.PatchNodeStatus(nsu.kubeClients[rpId].CoreV1(), nodeName, nodeObj, node)
 	if err != nil {
 		return err
 	}

@@ -20,6 +20,9 @@ package options
 
 import (
 	"fmt"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"net"
 	"os"
 	"strconv"
@@ -397,5 +400,5 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, err
 	}
 
-	return clients, leaderElectionClient, eventClient.CoreV1(), nil
+	return clients, leaderElectionClient, eventClient, nil
 }

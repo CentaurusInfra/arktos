@@ -45,6 +45,9 @@ const (
 type PodGCController struct {
 	kubeClient clientset.Interface
 
+	// all clients to list nodes it cares about, particularly including the current TP client
+	kubeClientForNodes map[string]clientset.Interface
+
 	podLister       corelisters.PodLister
 	podListerSynced cache.InformerSynced
 
@@ -52,7 +55,7 @@ type PodGCController struct {
 	terminatedPodThreshold int
 }
 
-func NewPodGC(kubeClient clientset.Interface, podInformer coreinformers.PodInformer, terminatedPodThreshold int) *PodGCController {
+func NewPodGC(kubeClient clientset.Interface, rpClients map[string]clientset.Interface, podInformer coreinformers.PodInformer, terminatedPodThreshold int) *PodGCController {
 	if kubeClient != nil && kubeClient.CoreV1().RESTClient().GetRateLimiter() != nil {
 		metrics.RegisterMetricAndTrackRateLimiterUsage("gc_controller", kubeClient.CoreV1().RESTClient().GetRateLimiter())
 	}
@@ -63,6 +66,13 @@ func NewPodGC(kubeClient clientset.Interface, podInformer coreinformers.PodInfor
 			klog.Infof("PodGC is force deleting Pod: %v/%v/%v", tenant, namespace, name)
 			return kubeClient.CoreV1().PodsWithMultiTenancy(namespace, tenant).Delete(name, metav1.NewDeleteOptions(0))
 		},
+	}
+
+	// key "0" is special case for TP client itself
+	// todo: avoid using magic literal "0"
+	gcc.kubeClientForNodes = map[string]clientset.Interface{"0": kubeClient}
+	for key, value := range rpClients {
+		gcc.kubeClientForNodes[key] = value
 	}
 
 	gcc.podLister = podInformer.Lister()
@@ -144,13 +154,22 @@ func (gcc *PodGCController) gcTerminated(pods []*v1.Pod) {
 func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 	klog.V(4).Infof("GC'ing orphaned")
 	// We want to get list of Nodes from the etcd, to make sure that it's as fresh as possible.
-	nodes, err := gcc.kubeClient.CoreV1().Nodes().List(metav1.ListOptions{})
-	if err != nil {
+
+	// get nodes from resource provider clients
+	allRpNodes, errs := getLatestNodes(gcc.kubeClientForNodes)
+
+	// check errors and aggregate nodes
+	if len(errs) == len(gcc.kubeClientForNodes) {
+		// avoid garbage collection when
+		klog.Errorf("Error listing nodes from all resource partition. err: %v", errs)
 		return
 	}
+
 	nodeNames := sets.NewString()
-	for i := range nodes.Items {
-		nodeNames.Insert(nodes.Items[i].Name)
+	for _, nodes := range allRpNodes {
+		for _, node := range nodes.Items {
+			nodeNames.Insert(node.Name)
+		}
 	}
 
 	for _, pod := range pods {
@@ -167,6 +186,32 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 			klog.V(0).Infof("Forced deletion of orphaned Pod %v/%v/%v succeeded", pod.Tenant, pod.Namespace, pod.Name)
 		}
 	}
+}
+
+func getLatestNodes(kubeClients map[string]clientset.Interface) (map[string]*v1.NodeList, map[string]error) {
+	allRpNodes := make(map[string]*v1.NodeList, len(kubeClients))
+	errs := make(map[string]error, len(kubeClients))
+	var wg sync.WaitGroup
+	wg.Add(len(kubeClients))
+	var lock sync.Mutex
+	for rpId, client := range kubeClients {
+		go func(resourceProviderId string, rpClient clientset.Interface, nodeLists map[string]*v1.NodeList, errs map[string]error, writeLock *sync.Mutex) {
+			defer wg.Done()
+			nodes, err := rpClient.CoreV1().Nodes().List(metav1.ListOptions{})
+			if err != nil {
+				writeLock.Lock()
+				errs[resourceProviderId] = err
+				klog.Errorf("Error listing nodes. err: %v", errs)
+				writeLock.Unlock()
+				return
+			}
+			writeLock.Lock()
+			nodeLists[resourceProviderId] = nodes
+			writeLock.Unlock()
+		}(rpId, client, allRpNodes, errs, &lock)
+	}
+	wg.Wait()
+	return allRpNodes, errs
 }
 
 // gcUnscheduledTerminating deletes pods that are terminating and haven't been scheduled to a particular node.

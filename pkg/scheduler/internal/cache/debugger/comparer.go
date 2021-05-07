@@ -29,14 +29,15 @@ import (
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 // CacheComparer is an implementation of the Scheduler's cache comparer.
 type CacheComparer struct {
-	NodeLister corelisters.NodeLister
-	PodLister  corelisters.PodLister
-	Cache      internalcache.Cache
-	PodQueue   internalqueue.SchedulingQueue
+	NodeListers map[string]corelisters.NodeLister
+	PodLister   corelisters.PodLister
+	Cache       internalcache.Cache
+	PodQueue    internalqueue.SchedulingQueue
 }
 
 // Compare compares the nodes and pods of NodeLister with Cache.Snapshot.
@@ -44,9 +45,10 @@ func (c *CacheComparer) Compare() error {
 	klog.V(3).Info("cache comparer started")
 	defer klog.V(3).Info("cache comparer finished")
 
-	nodes, err := c.NodeLister.List(labels.Everything())
-	if err != nil {
-		return err
+	var nodes []*v1.Node
+	var err error
+	if len(c.NodeListers) > 0 {
+		nodes, err = nodeutil.ListNodes(c.NodeListers, labels.Everything())
 	}
 
 	pods, err := c.PodLister.List(labels.Everything())

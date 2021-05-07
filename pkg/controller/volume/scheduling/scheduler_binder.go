@@ -19,6 +19,7 @@ package scheduling
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/controller/volume/scheduling/metrics"
 	"sort"
@@ -126,9 +127,9 @@ type volumeBinder struct {
 	kubeClient  clientset.Interface
 	classLister storagelisters.StorageClassLister
 
-	nodeInformer coreinformers.NodeInformer
-	pvcCache     PVCAssumeCache
-	pvCache      PVAssumeCache
+	nodeInformers map[string]coreinformers.NodeInformer
+	pvcCache      PVCAssumeCache
+	pvCache       PVAssumeCache
 
 	// Stores binding decisions that were made in FindPodVolumes for use in AssumePodVolumes.
 	// AssumePodVolumes modifies the bindings again for use in BindPodVolumes.
@@ -141,7 +142,7 @@ type volumeBinder struct {
 // NewVolumeBinder sets up all the caches needed for the scheduler to make volume binding decisions.
 func NewVolumeBinder(
 	kubeClient clientset.Interface,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	storageClassInformer storageinformers.StorageClassInformer,
@@ -150,7 +151,7 @@ func NewVolumeBinder(
 	b := &volumeBinder{
 		kubeClient:      kubeClient,
 		classLister:     storageClassInformer.Lister(),
-		nodeInformer:    nodeInformer,
+		nodeInformers:   nodeInformers,
 		pvcCache:        NewPVCAssumeCache(pvcInformer.Informer()),
 		pvCache:         NewPVAssumeCache(pvInformer.Informer()),
 		podBindingCache: NewPodBindingCache(),
@@ -514,8 +515,24 @@ func (b *volumeBinder) checkBindings(pod *v1.Pod, bindings []*bindingInfo, claim
 		return false, fmt.Errorf("failed to get cached claims to provision for pod %q", podName)
 	}
 
-	node, err := b.nodeInformer.Lister().Get(pod.Spec.NodeName)
+	var node *v1.Node
+	var err error
+	for _, nodeInformer := range b.nodeInformers {
+		node, err = nodeInformer.Lister().Get(pod.Spec.NodeName)
+		if err != nil {
+			if errors.IsNotFound(err) {
+				klog.V(5).Infof("node %q: not found from the current node informer. Continue with the next one.", pod.Spec.NodeName)
+				continue
+			}
+
+			klog.Errorf("Error getting node from current node informer. error [%v].", err)
+			return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
+		}
+		break
+	}
+
 	if err != nil {
+		klog.Errorf("Error getting node from node informers; the last error is [%v].", err)
 		return false, fmt.Errorf("failed to get node %q: %v", pod.Spec.NodeName, err)
 	}
 

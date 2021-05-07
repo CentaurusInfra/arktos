@@ -19,6 +19,7 @@ package persistentvolume
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/util/node"
 	"reflect"
 	"strings"
 	"time"
@@ -152,8 +153,8 @@ type PersistentVolumeController struct {
 	classListerSynced  cache.InformerSynced
 	podLister          corelisters.PodLister
 	podListerSynced    cache.InformerSynced
-	NodeLister         corelisters.NodeLister
-	NodeListerSynced   cache.InformerSynced
+	NodeListers        map[string]corelisters.NodeLister
+	NodeListersSynced  map[string]cache.InformerSynced
 
 	kubeClient                clientset.Interface
 	eventRecorder             record.EventRecorder
@@ -1444,7 +1445,7 @@ func (ctrl *PersistentVolumeController) provisionClaimOperation(
 
 	var selectedNode *v1.Node = nil
 	if nodeName, ok := claim.Annotations[pvutil.AnnSelectedNode]; ok {
-		selectedNode, err = ctrl.NodeLister.Get(nodeName)
+		selectedNode, _, err = node.GetNodeFromNodelisters(ctrl.NodeListers, nodeName)
 		if err != nil {
 			strerr := fmt.Sprintf("Failed to get target node: %v", err)
 			klog.V(3).Infof("unexpected error getting target node %q for claim %q: %v", nodeName, claimToClaimKey(claim), err)

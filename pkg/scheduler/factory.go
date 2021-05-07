@@ -21,6 +21,7 @@ package scheduler
 import (
 	"errors"
 	"fmt"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"sort"
 	"time"
 
@@ -79,6 +80,8 @@ type Configurator struct {
 	informerFactory informers.SharedInformerFactory
 
 	podInformer coreinformers.PodInformer
+
+	nodeInformers map[string]coreinformers.NodeInformer
 
 	// Close this to stop all reflectors
 	StopEverything <-chan struct{}
@@ -183,9 +186,11 @@ func (c *Configurator) create() (*Scheduler, error) {
 		internalqueue.WithPodMaxBackoffDuration(time.Duration(c.podMaxBackoffSeconds)*time.Second),
 	)
 
+	nodeListers, _ := nodeutil.GetNodeListersAndSyncedFromNodeInformers(c.nodeInformers)
+
 	// Setup cache debugger.
 	debugger := cachedebugger.New(
-		c.informerFactory.Core().V1().Nodes().Lister(),
+		nodeListers,
 		c.podInformer.Lister(),
 		c.schedulerCache,
 		podQueue,
@@ -205,14 +210,15 @@ func (c *Configurator) create() (*Scheduler, error) {
 	)
 
 	return &Scheduler{
-		SchedulerCache:  c.schedulerCache,
-		Algorithm:       algo,
-		Profiles:        profiles,
-		NextPod:         internalqueue.MakeNextPodFunc(podQueue),
-		Error:           MakeDefaultErrorFunc(c.client, podQueue, c.schedulerCache),
-		StopEverything:  c.StopEverything,
-		VolumeBinder:    c.volumeBinder,
-		SchedulingQueue: podQueue,
+		SchedulerCache:              c.schedulerCache,
+		ResourceProviderNodeListers: nodeListers,
+		Algorithm:                   algo,
+		Profiles:                    profiles,
+		NextPod:                     internalqueue.MakeNextPodFunc(podQueue),
+		Error:                       MakeDefaultErrorFunc(c.client, podQueue, c.schedulerCache),
+		StopEverything:              c.StopEverything,
+		VolumeBinder:                c.volumeBinder,
+		SchedulingQueue:             podQueue,
 	}, nil
 }
 
