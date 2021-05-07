@@ -145,7 +145,7 @@ func (pl *PodTopologySpread) PreScore(
 			matchSum := int64(0)
 			for _, existingPod := range nodeInfo.Pods() {
 				// Bypass terminating Pod (see #87621).
-				if existingPod.DeletionTimestamp != nil || existingPod.Namespace != pod.Namespace {
+				if existingPod.DeletionTimestamp != nil || existingPod.Namespace != pod.Namespace || existingPod.Tenant != pod.Tenant {
 					continue
 				}
 				if c.Selector.Matches(labels.Set(existingPod.Labels)) {

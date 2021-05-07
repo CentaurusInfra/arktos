@@ -124,7 +124,7 @@ func (p *criticalPaths) update(tpVal string, num int32) {
 }
 
 func (s *preFilterState) updateWithPod(updatedPod, preemptorPod *v1.Pod, node *v1.Node, delta int32) {
-	if s == nil || updatedPod.Namespace != preemptorPod.Namespace || node == nil {
+	if s == nil || updatedPod.Tenant != preemptorPod.Tenant || updatedPod.Namespace != preemptorPod.Namespace || node == nil {
 		return
 	}
 	if !nodeLabelsMatchSpreadConstraints(node.Labels, s.Constraints) {
@@ -258,7 +258,7 @@ func (pl *PodTopologySpread) calPreFilterState(pod *v1.Pod) (*preFilterState, er
 			// nodeInfo.Pods() can be empty; or all pods don't fit
 			for _, existingPod := range nodeInfo.Pods() {
 				// Bypass terminating Pod (see #87621).
-				if existingPod.DeletionTimestamp != nil || existingPod.Namespace != pod.Namespace {
+				if existingPod.DeletionTimestamp != nil || existingPod.Tenant != pod.Tenant || existingPod.Namespace != pod.Namespace {
 					continue
 				}
 				if constraint.Selector.Matches(labels.Set(existingPod.Labels)) {

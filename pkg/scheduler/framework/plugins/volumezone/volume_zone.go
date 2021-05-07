@@ -105,7 +105,7 @@ func (pl *VolumeZone) Filter(ctx context.Context, _ *framework.CycleState, pod *
 		if pvcName == "" {
 			return framework.NewStatus(framework.Error, "PersistentVolumeClaim had no name")
 		}
-		pvc, err := pl.pvcLister.PersistentVolumeClaims(pod.Namespace).Get(pvcName)
+		pvc, err := pl.pvcLister.PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(pvcName)
 		if err != nil {
 			return framework.NewStatus(framework.Error, err.Error())
 		}

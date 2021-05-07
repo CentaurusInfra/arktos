@@ -266,6 +266,7 @@ func (p *PriorityQueue) Add(pod *v1.Pod) error {
 // nsNameForPod returns a namespacedname for a pod
 func nsNameForPod(pod *v1.Pod) ktypes.NamespacedName {
 	return ktypes.NamespacedName{
+		Tenant:    pod.Tenant,
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
 	}
@@ -809,7 +810,7 @@ func MakeNextPodFunc(queue SchedulingQueue) func() *framework.PodInfo {
 	return func() *framework.PodInfo {
 		podInfo, err := queue.Pop()
 		if err == nil {
-			klog.V(4).Infof("About to try and schedule pod %v/%v", podInfo.Pod.Namespace, podInfo.Pod.Name)
+			klog.V(4).Infof("About to try and schedule pod %v/%v/%v", podInfo.Pod.Tenant, podInfo.Pod.Namespace, podInfo.Pod.Name)
 			return podInfo
 		}
 		klog.Errorf("Error while retrieving next pod from scheduling queue: %v", err)

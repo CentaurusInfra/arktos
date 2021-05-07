@@ -56,7 +56,7 @@ type SharedLister interface {
 // GetPodServices gets the services that have the selector that match the labels on the given pod.
 // TODO: this should be moved to ServiceAffinity plugin once that plugin is ready.
 func GetPodServices(serviceLister v1listers.ServiceLister, pod *v1.Pod) ([]*v1.Service, error) {
-	allServices, err := serviceLister.Services(pod.Namespace).List(labels.Everything())
+	allServices, err := serviceLister.ServicesWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

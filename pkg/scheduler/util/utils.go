@@ -19,6 +19,7 @@ limitations under the License.
 package util
 
 import (
+	"fmt"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -32,7 +33,7 @@ import (
 func GetPodFullName(pod *v1.Pod) string {
 	// Use underscore as the delimiter because it is not allowed in pod name
 	// (DNS subdomain format).
-	return pod.Name + "_" + pod.Namespace
+	return fmt.Sprintf("%s_%s_%s", pod.Name, pod.Namespace, pod.Tenant)
 }
 
 // GetPodStartTime returns start time of the given pod or current timestamp

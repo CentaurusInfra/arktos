@@ -97,7 +97,7 @@ func (pl *DefaultPodTopologySpread) Score(ctx context.Context, state *framework.
 		return 0, framework.NewStatus(framework.Error, fmt.Sprintf("getting node %q from Snapshot: %v", nodeName, err))
 	}
 
-	count := countMatchingPods(pod.Namespace, s.selector, nodeInfo)
+	count := countMatchingPods(pod.Tenant, pod.Namespace, s.selector, nodeInfo)
 	return int64(count), nil
 }
 
@@ -205,7 +205,7 @@ func New(_ *runtime.Unknown, handle framework.FrameworkHandle) (framework.Plugin
 }
 
 // countMatchingPods counts pods based on namespace and matching all selectors
-func countMatchingPods(namespace string, selector labels.Selector, nodeInfo *schedulernodeinfo.NodeInfo) int {
+func countMatchingPods(tenant string, namespace string, selector labels.Selector, nodeInfo *schedulernodeinfo.NodeInfo) int {
 	if len(nodeInfo.Pods()) == 0 || selector.Empty() {
 		return 0
 	}
@@ -213,7 +213,7 @@ func countMatchingPods(namespace string, selector labels.Selector, nodeInfo *sch
 	for _, pod := range nodeInfo.Pods() {
 		// Ignore pods being deleted for spreading purposes
 		// Similar to how it is done for SelectorSpreadPriority
-		if namespace == pod.Namespace && pod.DeletionTimestamp == nil {
+		if tenant == pod.Tenant && namespace == pod.Namespace && pod.DeletionTimestamp == nil {
 			if selector.Matches(labels.Set(pod.Labels)) {
 				count++
 			}

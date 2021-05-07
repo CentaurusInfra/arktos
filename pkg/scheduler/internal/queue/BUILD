@@ -24,7 +24,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["scheduling_queue_test.go"],
+    srcs = [
+        "multi_tenancy_scheduling_queue_test.go",
+        "scheduling_queue_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//pkg/api/v1/pod:go_default_library",
@@ -37,6 +40,7 @@ go_test(
         "//staging/src/k8s.io/apimachinery/pkg/types:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/clock:go_default_library",
         "//staging/src/k8s.io/component-base/metrics/testutil:go_default_library",
+        "//vendor/github.com/prometheus/client_model/go:go_default_library",
     ],
 )
 

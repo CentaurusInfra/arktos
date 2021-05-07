@@ -645,7 +645,7 @@ func (f *framework) RunBindPlugins(ctx context.Context, state *CycleState, pod *
 			continue
 		}
 		if !status.IsSuccess() {
-			msg := fmt.Sprintf("plugin %q failed to bind pod \"%v/%v\": %v", bp.Name(), pod.Namespace, pod.Name, status.Message())
+			msg := fmt.Sprintf("plugin %q failed to bind pod \"%v/%v/%v\": %v", bp.Name(), pod.Tenant, pod.Namespace, pod.Name, status.Message())
 			klog.Error(msg)
 			return NewStatus(Error, msg)
 		}

@@ -912,6 +912,9 @@ func TestForgetPod(t *testing.T) {
 		if err != nil {
 			t.Fatalf("GetPod failed: %v.", err)
 		}
+		if assumedPod.Tenant != pod.Tenant {
+			t.Errorf("assumedPod.Tenant != pod.Tenant (%s != %s)", assumedPod.Tenant, pod.Tenant)
+		}
 		if assumedPod.Namespace != pod.Namespace {
 			t.Errorf("assumedPod.Namespace != pod.Namespace (%s != %s)", assumedPod.Namespace, pod.Namespace)
 		}

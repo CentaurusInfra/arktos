@@ -278,7 +278,7 @@ func (g *genericScheduler) Preempt(ctx context.Context, prof *profile.Profile, s
 		return nil, nil, nil, nil
 	}
 	if !podEligibleToPreemptOthers(pod, g.nodeInfoSnapshot.NodeInfos(), g.enableNonPreempting) {
-		klog.V(5).Infof("Pod %v/%v is not eligible for more preemption.", pod.Namespace, pod.Name)
+		klog.V(5).Infof("Pod %s/%v/%v is not eligible for more preemption.", pod.Tenant, pod.Namespace, pod.Name)
 		return nil, nil, nil, nil
 	}
 	allNodes, err := g.nodeInfoSnapshot.NodeInfos().List()
@@ -290,7 +290,7 @@ func (g *genericScheduler) Preempt(ctx context.Context, prof *profile.Profile, s
 	}
 	potentialNodes := nodesWherePreemptionMightHelp(allNodes, fitError)
 	if len(potentialNodes) == 0 {
-		klog.V(3).Infof("Preemption will not help schedule pod %v/%v on any node.", pod.Namespace, pod.Name)
+		klog.V(3).Infof("Preemption will not help schedule pod %/v%v/%v on any node.", pod.Tenant, pod.Namespace, pod.Name)
 		// In this case, we should clean-up any existing nominated node name of the pod.
 		return nil, nil, []*v1.Pod{pod}, nil
 	}
@@ -898,7 +898,7 @@ func filterPodsWithPDBViolation(pods []*v1.Pod, pdbs []*policy.PodDisruptionBudg
 		// A pod with no labels will not match any PDB. So, no need to check.
 		if len(pod.Labels) != 0 {
 			for i, pdb := range pdbs {
-				if pdb.Namespace != pod.Namespace {
+				if pdb.Namespace != pod.Namespace || pdb.Tenant != pod.Tenant {
 					continue
 				}
 				selector, err := metav1.LabelSelectorAsSelector(pdb.Spec.Selector)
@@ -1058,7 +1058,7 @@ func nodesWherePreemptionMightHelp(nodes []*schedulernodeinfo.NodeInfo, fitErr *
 // terminating pods on the node, we don't consider this for preempting more pods.
 func podEligibleToPreemptOthers(pod *v1.Pod, nodeInfos listers.NodeInfoLister, enableNonPreempting bool) bool {
 	if enableNonPreempting && pod.Spec.PreemptionPolicy != nil && *pod.Spec.PreemptionPolicy == v1.PreemptNever {
-		klog.V(5).Infof("Pod %v/%v is not eligible for preemption because it has a preemptionPolicy of %v", pod.Namespace, pod.Name, v1.PreemptNever)
+		klog.V(5).Infof("Pod %v/%v/%v is not eligible for preemption because it has a preemptionPolicy of %v", pod.Tenant, pod.Namespace, pod.Name, v1.PreemptNever)
 		return false
 	}
 	nomNodeName := pod.Status.NominatedNodeName
@@ -1079,7 +1079,6 @@ func podEligibleToPreemptOthers(pod *v1.Pod, nodeInfos listers.NodeInfoLister, e
 // podPassesBasicChecks makes sanity checks on the pod if it can be scheduled.
 func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeClaimLister) error {
 	// Check PVCs used by the pod
-	namespace := pod.Namespace
 	manifest := &(pod.Spec)
 	for i := range manifest.Volumes {
 		volume := &manifest.Volumes[i]
@@ -1088,7 +1087,7 @@ func podPassesBasicChecks(pod *v1.Pod, pvcLister corelisters.PersistentVolumeCla
 			continue
 		}
 		pvcName := volume.PersistentVolumeClaim.ClaimName
-		pvc, err := pvcLister.PersistentVolumeClaims(namespace).Get(pvcName)
+		pvc, err := pvcLister.PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(pvcName)
 		if err != nil {
 			// The error has already enough context ("persistentvolumeclaim "myclaim" not found")
 			return err
