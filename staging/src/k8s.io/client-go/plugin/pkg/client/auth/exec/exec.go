@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,6 +49,7 @@ import (
 )
 
 const execInfoEnv = "KUBERNETES_EXEC_INFO"
+const onRotateListWarningLength = 1000
 
 var scheme = runtime.NewScheme()
 var codecs = serializer.NewCodecFactory(scheme)
@@ -164,7 +166,7 @@ type Authenticator struct {
 	cachedCreds *credentials
 	exp         time.Time
 
-	onRotate func()
+	onRotateList []func()
 }
 
 type credentials struct {
@@ -191,7 +193,15 @@ func (a *Authenticator) UpdateTransportConfig(c *transport.Config) error {
 		dial = (&net.Dialer{Timeout: 30 * time.Second, KeepAlive: 30 * time.Second}).DialContext
 	}
 	d := connrotation.NewDialer(dial)
-	a.onRotate = d.CloseAll
+
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.onRotateList = append(a.onRotateList, d.CloseAll)
+	onRotateListLength := len(a.onRotateList)
+	if onRotateListLength > onRotateListWarningLength {
+		klog.Warningf("constructing many client instances from the same exec auth config can cause performance problems during cert rotation and can exhaust available network connections; %d clients constructed calling %q", onRotateListLength, a.cmd)
+	}
+
 	c.Dial = d.DialContext
 
 	return nil
@@ -353,8 +363,10 @@ func (a *Authenticator) refreshCredsLocked(r *clientauthentication.Response) err
 	a.cachedCreds = newCreds
 	// Only close all connections when TLS cert rotates. Token rotation doesn't
 	// need the extra noise.
-	if a.onRotate != nil && oldCreds != nil && !reflect.DeepEqual(oldCreds.cert, a.cachedCreds.cert) {
-		a.onRotate()
+	if len(a.onRotateList) > 0 && oldCreds != nil && !reflect.DeepEqual(oldCreds.cert, a.cachedCreds.cert) {
+		for _, onRotate := range a.onRotateList {
+			onRotate()
+		}
 	}
 	return nil
 }
