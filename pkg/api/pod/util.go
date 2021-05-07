@@ -392,6 +392,11 @@ func dropDisabledFields(
 		podSpec.PreemptionPolicy = nil
 	}
 
+	if !utilfeature.DefaultFeatureGate.Enabled(features.EvenPodsSpread) && !topologySpreadConstraintsInUse(oldPodSpec) {
+		// Set TopologySpreadConstraints to nil only if feature is disabled and it is not used
+		podSpec.TopologySpreadConstraints = nil
+	}
+
 	if !utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) && !inPlacePodVerticalScalingInUse(oldPodSpec) {
 		// Drop ResourcesAllocated and ResizePolicy fields. Don't drop updates to Resources field because
 		// template spec Resources field is mutable for certain controllers. Let ValidatePodUpdate handle it.
@@ -549,6 +554,14 @@ func overheadInUse(podSpec *api.PodSpec) bool {
 	}
 	return false
 
+}
+
+// topologySpreadConstraintsInUse returns true if the pod spec is non-nil and has a TopologySpreadConstraints slice
+func topologySpreadConstraintsInUse(podSpec *api.PodSpec) bool {
+	if podSpec == nil {
+		return false
+	}
+	return len(podSpec.TopologySpreadConstraints) > 0
 }
 
 // procMountInUse returns true if the pod spec is non-nil and has a SecurityContext's ProcMount field set to a non-default value
