@@ -21,6 +21,7 @@ package prebind
 import (
 	"context"
 	"fmt"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -46,8 +47,8 @@ func (sr StatelessPreBindExample) PreBind(ctx context.Context, state *framework.
 	if pod == nil {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("pod cannot be nil"))
 	}
-	if pod.Namespace != "foo" {
-		return framework.NewStatus(framework.Unschedulable, "only pods from 'foo' namespace are allowed")
+	if pod.Namespace != "foo" || pod.Tenant != metav1.TenantSystem {
+		return framework.NewStatus(framework.Unschedulable, "only pods from 'foo' namespace and system tenant are allowed")
 	}
 	return nil
 }

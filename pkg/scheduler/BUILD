@@ -56,6 +56,7 @@ go_test(
     srcs = [
         "eventhandlers_test.go",
         "factory_test.go",
+        "multi_tenancy_factory_test.go",
         "scheduler_test.go",
     ],
     embed = [":go_default_library"],
@@ -98,6 +99,7 @@ go_test(
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/fake:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/scheme:go_default_library",
+        "//staging/src/k8s.io/client-go/kubernetes/typed/core/v1/fake:go_default_library",
         "//staging/src/k8s.io/client-go/testing:go_default_library",
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
         "//staging/src/k8s.io/client-go/tools/events:go_default_library",

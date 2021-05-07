@@ -75,7 +75,7 @@ func DefaultSelector(pod *v1.Pod, sl corelisters.ServiceLister, cl corelisters.R
 
 // GetPodServices gets the services that have the selector that match the labels on the given pod.
 func GetPodServices(sl corelisters.ServiceLister, pod *v1.Pod) ([]*v1.Service, error) {
-	allServices, err := sl.Services(pod.Namespace).List(labels.Everything())
+	allServices, err := sl.ServicesWithMultiTenancy(pod.Namespace, pod.Tenant).List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}

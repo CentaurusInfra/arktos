@@ -457,12 +457,12 @@ func MakeDefaultErrorFunc(client clientset.Interface, podQueue internalqueue.Sch
 	return func(podInfo *framework.PodInfo, err error) {
 		pod := podInfo.Pod
 		if err == core.ErrNoNodesAvailable {
-			klog.V(2).Infof("Unable to schedule %v/%v: no nodes are registered to the cluster; waiting", pod.Namespace, pod.Name)
+			klog.V(2).Infof("Unable to schedule %v/%v/%v: no nodes are registered to the cluster; waiting", pod.Tenant, pod.Namespace, pod.Name)
 		} else {
 			if _, ok := err.(*core.FitError); ok {
-				klog.V(2).Infof("Unable to schedule %v/%v: no fit: %v; waiting", pod.Namespace, pod.Name, err)
+				klog.V(2).Infof("Unable to schedule %v/%v/%v: no fit: %v; waiting", pod.Tenant, pod.Namespace, pod.Name, err)
 			} else if apierrors.IsNotFound(err) {
-				klog.V(2).Infof("Unable to schedule %v/%v: possibly due to node not found: %v; waiting", pod.Namespace, pod.Name, err)
+				klog.V(2).Infof("Unable to schedule %v/%v/%v: possibly due to node not found: %v; waiting", pod.Tenant, pod.Namespace, pod.Name, err)
 				if errStatus, ok := err.(apierrors.APIStatus); ok && errStatus.Status().Details.Kind == "node" {
 					nodeName := errStatus.Status().Details.Name
 					// when node is not found, We do not remove the node right away. Trying again to get
@@ -476,7 +476,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, podQueue internalqueue.Sch
 					}
 				}
 			} else {
-				klog.Errorf("Error scheduling %v/%v: %v; retrying", pod.Namespace, pod.Name, err)
+				klog.Errorf("Error scheduling %v/%v/%v: %v; retrying", pod.Tenant, pod.Namespace, pod.Name, err)
 			}
 		}
 
@@ -486,6 +486,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, podQueue internalqueue.Sch
 		go func() {
 			defer utilruntime.HandleCrash()
 			podID := types.NamespacedName{
+				Tenant:    pod.Tenant,
 				Namespace: pod.Namespace,
 				Name:      pod.Name,
 			}
@@ -496,7 +497,7 @@ func MakeDefaultErrorFunc(client clientset.Interface, podQueue internalqueue.Sch
 			// Get the pod again; it may have changed/been scheduled already.
 			getBackoff := initialGetBackoff
 			for {
-				pod, err := client.CoreV1().Pods(podID.Namespace).Get(podID.Name, metav1.GetOptions{})
+				pod, err := client.CoreV1().PodsWithMultiTenancy(podID.Namespace, podID.Tenant).Get(podID.Name, metav1.GetOptions{})
 				if err == nil {
 					if len(pod.Spec.NodeName) == 0 {
 						podInfo.Pod = pod

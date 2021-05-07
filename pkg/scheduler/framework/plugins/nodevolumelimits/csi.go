@@ -90,7 +90,7 @@ func (pl *CSILimits) Filter(ctx context.Context, _ *framework.CycleState, pod *v
 	}
 
 	newVolumes := make(map[string]string)
-	if err := pl.filterAttachableVolumes(csiNode, pod.Spec.Volumes, pod.Namespace, newVolumes); err != nil {
+	if err := pl.filterAttachableVolumes(csiNode, pod.Spec.Volumes, pod.Tenant, pod.Namespace, newVolumes); err != nil {
 		return framework.NewStatus(framework.Error, err.Error())
 	}
 
@@ -107,7 +107,7 @@ func (pl *CSILimits) Filter(ctx context.Context, _ *framework.CycleState, pod *v
 
 	attachedVolumes := make(map[string]string)
 	for _, existingPod := range nodeInfo.Pods() {
-		if err := pl.filterAttachableVolumes(csiNode, existingPod.Spec.Volumes, existingPod.Namespace, attachedVolumes); err != nil {
+		if err := pl.filterAttachableVolumes(csiNode, existingPod.Spec.Volumes, existingPod.Tenant, existingPod.Namespace, attachedVolumes); err != nil {
 			return framework.NewStatus(framework.Error, err.Error())
 		}
 	}
@@ -140,7 +140,7 @@ func (pl *CSILimits) Filter(ctx context.Context, _ *framework.CycleState, pod *v
 }
 
 func (pl *CSILimits) filterAttachableVolumes(
-	csiNode *storagev1.CSINode, volumes []v1.Volume, namespace string, result map[string]string) error {
+	csiNode *storagev1.CSINode, volumes []v1.Volume, tenant string, namespace string, result map[string]string) error {
 	for _, vol := range volumes {
 		// CSI volumes can only be used as persistent volumes
 		if vol.PersistentVolumeClaim == nil {
@@ -152,10 +152,10 @@ func (pl *CSILimits) filterAttachableVolumes(
 			return fmt.Errorf("PersistentVolumeClaim had no name")
 		}
 
-		pvc, err := pl.pvcLister.PersistentVolumeClaims(namespace).Get(pvcName)
+		pvc, err := pl.pvcLister.PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(pvcName)
 
 		if err != nil {
-			klog.V(5).Infof("Unable to look up PVC info for %s/%s", namespace, pvcName)
+			klog.V(5).Infof("Unable to look up PVC info for %s/%s/%s", tenant, namespace, pvcName)
 			continue
 		}
 

@@ -699,7 +699,7 @@ func (n *NodeInfo) Filter(pod *v1.Pod) bool {
 		return true
 	}
 	for _, p := range n.pods {
-		if p.Name == pod.Name && p.Namespace == pod.Namespace {
+		if p.Name == pod.Name && p.Namespace == pod.Namespace && p.Tenant == pod.Tenant {
 			return true
 		}
 	}

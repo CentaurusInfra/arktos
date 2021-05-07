@@ -123,7 +123,7 @@ func (pl *ServiceAffinity) createPreFilterState(pod *v1.Pod) (*preFilterState, e
 	}
 
 	// consider only the pods that belong to the same namespace
-	matchingPodList := filterPodsByNamespace(allMatches, pod.Namespace)
+	matchingPodList := filterPodsByNamespace(allMatches, pod.Namespace, pod.Tenant)
 
 	return &preFilterState{
 		matchingPodList:     matchingPodList,
@@ -181,7 +181,7 @@ func (pl *ServiceAffinity) RemovePod(ctx context.Context, cycleState *framework.
 	}
 
 	for i, pod := range s.matchingPodList {
-		if pod.Name == podToRemove.Name && pod.Namespace == podToRemove.Namespace {
+		if pod.Name == podToRemove.Name && pod.Namespace == podToRemove.Namespace && pod.Tenant == podToRemove.Tenant {
 			s.matchingPodList = append(s.matchingPodList[:i], s.matchingPodList[i+1:]...)
 			break
 		}
@@ -298,7 +298,7 @@ func (pl *ServiceAffinity) Score(ctx context.Context, state *framework.CycleStat
 	for _, existingPod := range nodeInfo.Pods() {
 		// Ignore pods being deleted for spreading purposes
 		// Similar to how it is done for SelectorSpreadPriority
-		if pod.Namespace == existingPod.Namespace && existingPod.DeletionTimestamp == nil {
+		if pod.Namespace == existingPod.Namespace && pod.Tenant == existingPod.Tenant && existingPod.DeletionTimestamp == nil {
 			if selector.Matches(labels.Set(existingPod.Labels)) {
 				score++
 			}
@@ -406,10 +406,10 @@ func createSelectorFromLabels(aL map[string]string) labels.Selector {
 }
 
 // filterPodsByNamespace filters pods outside a namespace from the given list.
-func filterPodsByNamespace(pods []*v1.Pod, ns string) []*v1.Pod {
+func filterPodsByNamespace(pods []*v1.Pod, ns string, te string) []*v1.Pod {
 	filtered := []*v1.Pod{}
 	for _, nsPod := range pods {
-		if nsPod.Namespace == ns {
+		if nsPod.Namespace == ns && nsPod.Tenant == te {
 			filtered = append(filtered, nsPod)
 		}
 	}

@@ -31,12 +31,13 @@ import (
 func TestGetPodFullName(t *testing.T) {
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Tenant:    metav1.TenantSystem,
 			Namespace: "test",
 			Name:      "pod",
 		},
 	}
 	got := GetPodFullName(pod)
-	expected := fmt.Sprintf("%s_%s", pod.Name, pod.Namespace)
+	expected := fmt.Sprintf("%s_%s_%s", pod.Name, pod.Namespace, pod.Tenant)
 	if got != expected {
 		t.Errorf("Got wrong full name, got: %s, expected: %s", got, expected)
 	}
