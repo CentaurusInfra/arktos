@@ -19,6 +19,7 @@ package persistentvolume
 
 import (
 	"fmt"
+	csitrans "k8s.io/csi-translation-lib"
 	"strconv"
 	"time"
 
@@ -94,6 +95,7 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 		volumeQueue:                   workqueue.NewNamed("volumes"),
 		resyncPeriod:                  p.SyncPeriod,
 		operationTimestamps:           metrics.NewOperationStartTimeCache(),
+		translator:                    csitrans.New(),
 	}
 
 	// Prober is nil because PV is not aware of Flexvolume.

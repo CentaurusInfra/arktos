@@ -19,6 +19,7 @@ package persistentvolume
 
 import (
 	"errors"
+	csitrans "k8s.io/csi-translation-lib"
 	"testing"
 
 	"time"
@@ -438,6 +439,7 @@ func TestDelayBindingMode(t *testing.T) {
 	classInformer := informerFactory.Storage().V1().StorageClasses()
 	ctrl := &PersistentVolumeController{
 		classLister: classInformer.Lister(),
+		translator:  csitrans.New(),
 	}
 
 	for _, class := range classes {
