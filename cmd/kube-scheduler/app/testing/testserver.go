@@ -137,7 +137,7 @@ func StartTestServer(t Logger, customFlags []string) (result TestServer, err err
 		default:
 		}
 
-		result := client.CoreV1().RESTClient().Get().AbsPath("/healthz").Do(context.TODO())
+		result := client.CoreV1().RESTClient().Get().AbsPath("/healthz").Do()
 		status := 0
 		result.StatusCode(&status)
 		if status == 200 {
