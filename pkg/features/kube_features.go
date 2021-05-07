@@ -481,6 +481,12 @@ const (
 	// Enable support for specifying an existing PVC as a DataSource
 	VolumePVCDataSource featuregate.Feature = "VolumePVCDataSource"
 
+	// owner: @Huang-Wei
+	// beta: v1.18
+	//
+	// Schedule pods evenly across available topology domains.
+	EvenPodsSpread featuregate.Feature = "EvenPodsSpread"
+
 	// owner: @egernst
 	// alpha: v1.16
 	// beta: v1.18
@@ -610,6 +616,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	LocalStorageCapacityIsolationFSQuotaMonitoring: {Default: false, PreRelease: featuregate.Alpha},
 	NonPreemptingPriority:                          {Default: false, PreRelease: featuregate.Alpha},
 	VolumePVCDataSource:                            {Default: false, PreRelease: featuregate.Alpha},
+	EvenPodsSpread:                                 {Default: true, PreRelease: featuregate.Beta},
 	PodOverhead:                                    {Default: true, PreRelease: featuregate.Beta},
 	InPlacePodVerticalScaling:                      {Default: false, PreRelease: featuregate.Alpha},
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},

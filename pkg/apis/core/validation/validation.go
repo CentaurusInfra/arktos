@@ -3200,6 +3200,7 @@ func ValidatePodSpec(spec *core.PodSpec, fldPath *field.Path) field.ErrorList {
 	allErrs = append(allErrs, validateAffinity(spec.Affinity, fldPath.Child("affinity"))...)
 	allErrs = append(allErrs, validatePodDNSConfig(spec.DNSConfig, &spec.DNSPolicy, fldPath.Child("dnsConfig"))...)
 	allErrs = append(allErrs, validateReadinessGates(spec.ReadinessGates, fldPath.Child("readinessGates"))...)
+	allErrs = append(allErrs, validateTopologySpreadConstraints(spec.TopologySpreadConstraints, fldPath.Child("topologySpreadConstraints"))...)
 	if len(spec.ServiceAccountName) > 0 {
 		for _, msg := range ValidateServiceAccountName(spec.ServiceAccountName, false) {
 			allErrs = append(allErrs, field.Invalid(fldPath.Child("serviceAccountName"), spec.ServiceAccountName, msg))
@@ -5761,4 +5762,68 @@ func ValidateProcMountType(fldPath *field.Path, procMountType core.ProcMountType
 	default:
 		return field.NotSupported(fldPath, procMountType, []string{string(core.DefaultProcMount), string(core.UnmaskedProcMount)})
 	}
+}
+
+var (
+	supportedScheduleActions = sets.NewString(string(core.DoNotSchedule), string(core.ScheduleAnyway))
+)
+
+// validateTopologySpreadConstraints validates given TopologySpreadConstraints.
+func validateTopologySpreadConstraints(constraints []core.TopologySpreadConstraint, fldPath *field.Path) field.ErrorList {
+	allErrs := field.ErrorList{}
+
+	for i, constraint := range constraints {
+		subFldPath := fldPath.Index(i)
+		if err := ValidateMaxSkew(subFldPath.Child("maxSkew"), constraint.MaxSkew); err != nil {
+			allErrs = append(allErrs, err)
+		}
+		if err := ValidateTopologyKey(subFldPath.Child("topologyKey"), constraint.TopologyKey); err != nil {
+			allErrs = append(allErrs, err)
+		}
+		if err := ValidateWhenUnsatisfiable(subFldPath.Child("whenUnsatisfiable"), constraint.WhenUnsatisfiable); err != nil {
+			allErrs = append(allErrs, err)
+		}
+		// tuple {topologyKey, whenUnsatisfiable} denotes one kind of spread constraint
+		if err := ValidateSpreadConstraintNotRepeat(subFldPath.Child("{topologyKey, whenUnsatisfiable}"), constraint, constraints[i+1:]); err != nil {
+			allErrs = append(allErrs, err)
+		}
+	}
+
+	return allErrs
+}
+
+// ValidateMaxSkew tests that the argument is a valid MaxSkew.
+func ValidateMaxSkew(fldPath *field.Path, maxSkew int32) *field.Error {
+	if maxSkew <= 0 {
+		return field.Invalid(fldPath, maxSkew, isNotPositiveErrorMsg)
+	}
+	return nil
+}
+
+// ValidateTopologyKey tests that the argument is a valid TopologyKey.
+func ValidateTopologyKey(fldPath *field.Path, topologyKey string) *field.Error {
+	if len(topologyKey) == 0 {
+		return field.Required(fldPath, "can not be empty")
+	}
+	return nil
+}
+
+// ValidateWhenUnsatisfiable tests that the argument is a valid UnsatisfiableConstraintAction.
+func ValidateWhenUnsatisfiable(fldPath *field.Path, action core.UnsatisfiableConstraintAction) *field.Error {
+	if !supportedScheduleActions.Has(string(action)) {
+		return field.NotSupported(fldPath, action, supportedScheduleActions.List())
+	}
+	return nil
+}
+
+// ValidateSpreadConstraintNotRepeat tests that if `constraint` duplicates with `existingConstraintPairs`
+// on TopologyKey and WhenUnsatisfiable fields.
+func ValidateSpreadConstraintNotRepeat(fldPath *field.Path, constraint core.TopologySpreadConstraint, restingConstraints []core.TopologySpreadConstraint) *field.Error {
+	for _, restingConstraint := range restingConstraints {
+		if constraint.TopologyKey == restingConstraint.TopologyKey &&
+			constraint.WhenUnsatisfiable == restingConstraint.WhenUnsatisfiable {
+			return field.Duplicate(fldPath, fmt.Sprintf("{%v, %v}", constraint.TopologyKey, constraint.WhenUnsatisfiable))
+		}
+	}
+	return nil
 }
