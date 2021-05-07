@@ -147,7 +147,7 @@ func (cnc *CloudNodeController) updateNodeAddress(node *v1.Node, instances cloud
 
 	nodeAddresses, err := getNodeAddressesByProviderIDOrName(instances, node)
 	if err != nil {
-		klog.Errorf("%v", err)
+		klog.Errorf("Error getting node addresses for node %q: %v", node.Name, err)
 		return
 	}
 
@@ -177,7 +177,7 @@ func (cnc *CloudNodeController) updateNodeAddress(node *v1.Node, instances cloud
 	// it can be found in the cloud as well (consistent with the behaviour in kubelet)
 	if nodeIP, ok := ensureNodeProvidedIPExists(node, nodeAddresses); ok {
 		if nodeIP == nil {
-			klog.Errorf("Specified Node IP not found in cloudprovider")
+			klog.Errorf("Specified Node IP not found in cloudprovider for node %q", node.Name)
 			return
 		}
 	}
@@ -373,7 +373,7 @@ func getNodeAddressesByProviderIDOrName(instances cloudprovider.Instances, node 
 		providerIDErr := err
 		nodeAddresses, err = instances.NodeAddresses(context.TODO(), types.NodeName(node.Name))
 		if err != nil {
-			return nil, fmt.Errorf("NodeAddress: Error fetching by providerID: %v Error fetching by NodeName: %v", providerIDErr, err)
+			return nil, fmt.Errorf("error fetching node by provider ID: %v, and error by node name: %v", providerIDErr, err)
 		}
 	}
 	return nodeAddresses, nil
