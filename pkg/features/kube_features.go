@@ -209,6 +209,7 @@ const (
 	// owner: @verult
 	// alpha: v1.12
 	// beta:  v1.14
+	// ga:    v1.17
 	// Enable all logic related to the CSINode API object in storage.k8s.io
 	CSINodeInfo featuregate.Feature = "CSINodeInfo"
 
@@ -574,7 +575,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	VolumeScheduling:                            {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIPersistentVolume:                         {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIDriverRegistry:                           {Default: true, PreRelease: featuregate.Beta},
-	CSINodeInfo:                                 {Default: true, PreRelease: featuregate.Beta},
+	CSINodeInfo:                                 {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.19
 	CustomPodDNS:                                {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	BlockVolume:                                 {Default: true, PreRelease: featuregate.Beta},
 	StorageObjectInUseProtection:                {Default: true, PreRelease: featuregate.GA},
