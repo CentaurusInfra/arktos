@@ -44,8 +44,8 @@ const (
 )
 
 var noScheduleToleration = v1.Toleration{
-	Operator:          "Exists",
-	Effect:            v1.TaintEffectNoSchedule,
+	Operator: "Exists",
+	Effect:   v1.TaintEffectNoSchedule,
 }
 
 func (pl *NodeRuntimeNotReady) Name() string {
