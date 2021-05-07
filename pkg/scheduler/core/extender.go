@@ -104,7 +104,7 @@ type HTTPExtender struct {
 }
 
 func makeTransport(config *schedulerapi.Extender) (http.RoundTripper, error) {
-	var cfg restclient.Config
+	var cfg restclient.KubeConfig
 	if config.TLSConfig != nil {
 		cfg.TLSClientConfig.Insecure = config.TLSConfig.Insecure
 		cfg.TLSClientConfig.ServerName = config.TLSConfig.ServerName

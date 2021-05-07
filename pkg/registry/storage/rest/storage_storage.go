@@ -105,14 +105,11 @@ func (p RESTStorageProvider) v1Storage(apiResourceConfigSource serverstorage.API
 
 	// register csinodes if CSINodeInfo feature gate is enabled
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
-		csiNodeStorage, err := csinodestore.NewStorage(restOptionsGetter)
-		if err != nil {
-			return nil, err
-		}
+		csiNodeStorage := csinodestore.NewStorage(restOptionsGetter)
 		storage["csinodes"] = csiNodeStorage.CSINode
 	}
 
-	return storage, nil
+	return storage
 }
 
 func (p RESTStorageProvider) GroupName() string {
