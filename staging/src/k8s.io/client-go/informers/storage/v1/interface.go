@@ -25,6 +25,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// CSINodes returns a CSINodeInformer.
+	CSINodes() CSINodeInformer
 	// StorageClasses returns a StorageClassInformer.
 	StorageClasses() StorageClassInformer
 	// VolumeAttachments returns a VolumeAttachmentInformer.
@@ -46,6 +48,11 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 func NewWithMultiTenancy(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc, tenant string) Interface {
 
 	return &version{factory: f, tenant: tenant, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// CSINodes returns a CSINodeInformer.
+func (v *version) CSINodes() CSINodeInformer {
+	return &cSINodeInformer{factory: v.factory, tenant: v.tenant, tweakListOptions: v.tweakListOptions}
 }
 
 // StorageClasses returns a StorageClassInformer.
