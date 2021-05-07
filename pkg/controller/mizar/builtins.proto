@@ -76,6 +76,7 @@ message BuiltinsNetworkPolicyMessage {
   string name = 1;
   string namespace = 2;
   string tenant = 3;
+  string policy = 4;
 }
 
 message PortsMessage {

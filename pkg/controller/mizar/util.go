@@ -15,6 +15,7 @@ package mizar
 
 import (
 	"encoding/json"
+	"k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/klog"
 	"strconv"
 
@@ -41,6 +42,47 @@ type KeyWithEventType struct {
 	ResourceVersion string
 }
 
+type MizarNetworkPolicyPortSelector struct {
+	Protocol string `json:"protocol"`
+	Port     string `json:"port"`
+}
+
+type MizarNetworkPolicyPodSelector struct {
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
+}
+
+type MizarNetworkPolicyNamespaceSelector struct {
+	MatchLabels map[string]string `json:"matchLabels,omitempty"`
+}
+
+type MizarNetworkPolicyIPBlock struct {
+	Cidr   string   `json:"cidr,omitempty"`
+	Except []string `json:"except,omitempty"`
+}
+
+type MizarNetworkPolicyRule struct {
+	P MizarNetworkPolicyPodSelector       `json:"podSelector,omitempty"`
+	N MizarNetworkPolicyNamespaceSelector `json:"namespaceSelector,omitempty"`
+	I MizarNetworkPolicyIPBlock           `json:"ipBlock,omitempty"`
+}
+
+type MizarNetworkPolicyIngressMsg struct {
+	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
+	Rules []MizarNetworkPolicyRule         `json:"from"`
+}
+
+type MizarNetworkPolicyEgressMsg struct {
+	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
+	Rules []MizarNetworkPolicyRule         `json:"to"`
+}
+
+type MizarNetworkPolicyPolicySpecMsg struct {
+	PodSel MizarNetworkPolicyPodSelector  `json:"podSelector,omitempty"`
+	In     []MizarNetworkPolicyIngressMsg `json:"ingress,omitempty"`
+	Out    []MizarNetworkPolicyEgressMsg  `json:"egress,omitempty"`
+	Type   []string                       `json:"policyTypes,omitempty"`
+}
+
 type StartHandler func(interface{}, string)
 
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
@@ -63,7 +105,7 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 	}
 	portsJson, _ := json.Marshal(ports)
 
-	klog.V(3).Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
+	klog.Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
 		endpoints.Name, endpoints.Namespace, endpoints.Tenant, string(backendIpsJson), string(portsJson))
 
 	return &BuiltinsServiceEndpointMessage{
@@ -85,7 +127,7 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		network = ""
 	}
 
-	klog.V(3).Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %s",
+	klog.Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %s",
 		pod.Name, pod.Status.HostIP, pod.Namespace, pod.Tenant, network)
 
 	return &BuiltinsPodMessage{
@@ -107,7 +149,7 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 		}
 	}
 
-	klog.V(3).Infof("Node Name: %s, IP: %s", node.Name, ip)
+	klog.Infof("Node Name: %s, IP: %s", node.Name, ip)
 	return &BuiltinsNodeMessage{
 		Name: node.Name,
 		Ip:   ip,
@@ -115,12 +157,205 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 }
 
 func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsNetworkPolicyMessage {
-	klog.V(3).Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
+	klog.Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
 		policy.Name, policy.Namespace, policy.Tenant)
+	policyJson, _ := json.Marshal(parseNetworkPolicySpecToMsg(policy.Spec))
+	klog.Infof("Policy: %s", string(policyJson))
 
 	return &BuiltinsNetworkPolicyMessage{
 		Name:      policy.Name,
 		Namespace: policy.Namespace,
 		Tenant:    policy.Tenant,
+		Policy:    string(policyJson),
 	}
+}
+
+func parseNetworkPolicySpecToMsg(nps networking.NetworkPolicySpec) MizarNetworkPolicyPolicySpecMsg {
+	ingressMsg := []MizarNetworkPolicyIngressMsg{}
+	egressMsg := []MizarNetworkPolicyEgressMsg{}
+	typeMsg := []string{}
+
+	podSelMsg := MizarNetworkPolicyPodSelector{
+		MatchLabels: nps.PodSelector.MatchLabels,
+	}
+	ingressMsg = parseNetworkPolicyIngressRulesToMsg(nps.Ingress)
+	egressMsg = parseNetworkPolicyEgressRulesToMsg(nps.Egress)
+	typeMsg = policyTypesToStringArray(nps.PolicyTypes)
+
+	policyMsg := MizarNetworkPolicyPolicySpecMsg{
+		PodSel: podSelMsg,
+		In:     ingressMsg,
+		Out:    egressMsg,
+		Type:   typeMsg,
+	}
+
+	return policyMsg
+}
+
+func policyTypesToStringArray(pts []networking.PolicyType) []string {
+	strPts := []string{}
+	if pts != nil {
+		for _, p := range pts {
+			strPts = append(strPts, string(p))
+		}
+	}
+	return strPts
+}
+
+func parseNetworkPolicyIngressRulesToMsg(npirs []networking.NetworkPolicyIngressRule) []MizarNetworkPolicyIngressMsg {
+	ingressPorts := []MizarNetworkPolicyPortSelector{}
+	froms := []MizarNetworkPolicyRule{}
+	ingressRules := []MizarNetworkPolicyIngressMsg{}
+
+	if len(npirs) == 0 {
+		return nil
+	}
+
+	for _, npir := range npirs {
+		for _, port := range npir.Ports {
+			var ppl v1.Protocol
+			var portNum string
+			if port.Protocol != nil {
+				ppl = *port.Protocol
+			} else {
+				ppl = v1.ProtocolTCP
+			}
+			if port.Port.Type == intstr.Int {
+				portNum = strconv.Itoa(int(port.Port.IntVal))
+			} else {
+				portNum = port.Port.StrVal
+			}
+			sel := MizarNetworkPolicyPortSelector{
+				Protocol: string(ppl),
+				Port:     portNum,
+			}
+			ingressPorts = append(ingressPorts, sel)
+		}
+
+		for _, from := range npir.From {
+			if from.PodSelector != nil && from.NamespaceSelector != nil {
+				podMsg := MizarNetworkPolicyPodSelector{
+					MatchLabels: from.PodSelector.MatchLabels,
+				}
+				namespaceMsg := MizarNetworkPolicyNamespaceSelector{
+					MatchLabels: from.NamespaceSelector.MatchLabels,
+				}
+				fromMsg := MizarNetworkPolicyRule{
+					P: podMsg,
+					N: namespaceMsg,
+				}
+				froms = append(froms, fromMsg)
+			} else if from.PodSelector != nil {
+				podMsg := MizarNetworkPolicyPodSelector{
+					MatchLabels: from.PodSelector.MatchLabels,
+				}
+				fromMsg := MizarNetworkPolicyRule{
+					P: podMsg,
+				}
+				froms = append(froms, fromMsg)
+			} else if from.NamespaceSelector != nil {
+				namespaceMsg := MizarNetworkPolicyNamespaceSelector{
+					MatchLabels: from.NamespaceSelector.MatchLabels,
+				}
+				fromMsg := MizarNetworkPolicyRule{
+					N: namespaceMsg,
+				}
+				froms = append(froms, fromMsg)
+			} else if from.IPBlock != nil {
+				ipblockMsg := MizarNetworkPolicyIPBlock{
+					Cidr:   from.IPBlock.CIDR,
+					Except: from.IPBlock.Except,
+				}
+				fromMsg := MizarNetworkPolicyRule{
+					I: ipblockMsg,
+				}
+				froms = append(froms, fromMsg)
+			}
+		}
+		ingressMsg := MizarNetworkPolicyIngressMsg{
+			Ports: ingressPorts,
+			Rules: froms,
+		}
+		ingressRules = append(ingressRules, ingressMsg)
+	}
+	return ingressRules
+}
+
+func parseNetworkPolicyEgressRulesToMsg(npers []networking.NetworkPolicyEgressRule) []MizarNetworkPolicyEgressMsg {
+	egressPorts := []MizarNetworkPolicyPortSelector{}
+	tos := []MizarNetworkPolicyRule{}
+	egressRules := []MizarNetworkPolicyEgressMsg{}
+
+	if len(npers) == 0 {
+		return nil
+	}
+
+	for _, nper := range npers {
+		for _, port := range nper.Ports {
+			var ppl v1.Protocol
+			var portNum string
+			if port.Protocol != nil {
+				ppl = *port.Protocol
+			} else {
+				ppl = v1.ProtocolTCP
+			}
+			if port.Port.Type == intstr.Int {
+				portNum = strconv.Itoa(int(port.Port.IntVal))
+			} else {
+				portNum = port.Port.StrVal
+			}
+			sel := MizarNetworkPolicyPortSelector{
+				Protocol: string(ppl),
+				Port:     portNum,
+			}
+			egressPorts = append(egressPorts, sel)
+		}
+
+		for _, to := range nper.To {
+			if to.PodSelector != nil && to.NamespaceSelector != nil {
+				podMsg := MizarNetworkPolicyPodSelector{
+					MatchLabels: to.PodSelector.MatchLabels,
+				}
+				namespaceMsg := MizarNetworkPolicyNamespaceSelector{
+					MatchLabels: to.NamespaceSelector.MatchLabels,
+				}
+				toMsg := MizarNetworkPolicyRule{
+					P: podMsg,
+					N: namespaceMsg,
+				}
+				tos = append(tos, toMsg)
+			} else if to.PodSelector != nil {
+				podMsg := MizarNetworkPolicyPodSelector{
+					MatchLabels: to.PodSelector.MatchLabels,
+				}
+				toMsg := MizarNetworkPolicyRule{
+					P: podMsg,
+				}
+				tos = append(tos, toMsg)
+			} else if to.NamespaceSelector != nil {
+				namespaceMsg := MizarNetworkPolicyNamespaceSelector{
+					MatchLabels: to.NamespaceSelector.MatchLabels,
+				}
+				toMsg := MizarNetworkPolicyRule{
+					N: namespaceMsg,
+				}
+				tos = append(tos, toMsg)
+			} else if to.IPBlock != nil {
+				ipblockMsg := MizarNetworkPolicyIPBlock{
+					Cidr:   to.IPBlock.CIDR,
+					Except: to.IPBlock.Except,
+				}
+				toMsg := MizarNetworkPolicyRule{
+					I: ipblockMsg,
+				}
+				tos = append(tos, toMsg)
+			}
+		}
+		egressMsg := MizarNetworkPolicyEgressMsg{
+			Ports: egressPorts,
+			Rules: tos,
+		}
+		egressRules = append(egressRules, egressMsg)
+	}
+	return egressRules
 }
