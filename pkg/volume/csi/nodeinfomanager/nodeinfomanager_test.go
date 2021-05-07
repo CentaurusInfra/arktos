@@ -605,7 +605,6 @@ func TestInstallCSIDriver(t *testing.T) {
 	test(t, true /* addNodeInfo */, true /* csiNodeInfoEnabled */, testcases)
 }
 
-
 func generateVolumeLimits(i int32) *storage.VolumeNodeResources {
 	return &storage.VolumeNodeResources{
 		Count: utilpointer.Int32Ptr(i),

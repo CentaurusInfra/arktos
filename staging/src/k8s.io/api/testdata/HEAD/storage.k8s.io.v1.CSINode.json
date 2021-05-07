@@ -1,0 +1,59 @@
+{
+  "kind": "CSINode",
+  "apiVersion": "storage.k8s.io/v1",
+  "metadata": {
+    "name": "2",
+    "generateName": "3",
+    "tenant": "4",
+    "namespace": "5",
+    "selfLink": "6",
+    "uid": "7",
+    "hashKey": 3414760188119455639,
+    "resourceVersion": "11042405498087606203",
+    "generation": 5828590068104375683,
+    "creationTimestamp": null,
+    "deletionGracePeriodSeconds": 6797158496028726353,
+    "labels": {
+      "8": "9"
+    },
+    "annotations": {
+      "10": "11"
+    },
+    "ownerReferences": [
+      {
+        "apiVersion": "12",
+        "kind": "13",
+        "name": "14",
+        "uid": "z廔ȇ{sŊƏ",
+        "hashKey": -3769286901598778062,
+        "controller": false,
+        "blockOwnerDeletion": true
+      }
+    ],
+    "finalizers": [
+      "15"
+    ],
+    "clusterName": "16",
+    "managedFields": [
+      {
+        "manager": "17",
+        "operation": "鐊唊飙Ş-U圴÷a/ɔ}摁(湗Ć]",
+        "apiVersion": "18"
+      }
+    ]
+  },
+  "spec": {
+    "drivers": [
+      {
+        "name": "19",
+        "nodeID": "20",
+        "topologyKeys": [
+          "21"
+        ],
+        "allocatable": {
+          "count": 1305381319
+        }
+      }
+    ]
+  }
+}

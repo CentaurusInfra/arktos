@@ -32,10 +32,10 @@ metadata:
   tenant: "4"
   uid: "7"
 spec:
-  minReadySeconds: -1404859721
-  progressDeadlineSeconds: -1399236189
+  minReadySeconds: -1073494295
+  progressDeadlineSeconds: 465976875
   replicas: 896585016
-  revisionHistoryLimit: -1819153912
+  revisionHistoryLimit: 1722340205
   selector:
     matchExpressions:
     - key: 50-u--25cu87--r7p-w1e67-8pj5t-kl-v0q6b68--nu5oii38fn-8.629b-jd-8c45-0-8--6n--w0--w---196g8d--iv1-5--5ht-a-29--0qso796/3___47._49pIB_o61ISU4--A_.XK_._M99
@@ -44,7 +44,7 @@ spec:
       74404d5---g8c2-k-91e.y5-g--58----0683-b-w7ld-6cs06xj-x5yv0wm-k18/M_-Nx.N_6-___._-.-W._AAn---v_-5-_8LXj: 6-4_WE-_JTrcd-2.-__E_Sv__26KX_R_.-.Nth._--S_4DA_-5_-4lQ42M--1
   strategy:
     rollingUpdate: {}
-    type: eCmAȥ睙蜵
+    type: ^:犾ȩ纾SȞ+
   template:
     metadata:
       annotations:
@@ -492,6 +492,8 @@ spec:
       nodeName: "299"
       nodeSelector:
         "295": "296"
+      overhead:
+        莏ŹZ槇鿖]: "643"
       preemptionPolicy: I梞ū筀
       priority: -413167112
       priorityClassName: "356"
@@ -529,6 +531,16 @@ spec:
         operator: 査Z綶ĀRġ磸
         tolerationSeconds: 563892352146095619
         value: "353"
+      topologySpreadConstraints:
+      - labelSelector:
+          matchExpressions:
+          - key: 0.9-.-._.1..s._jP6j.u--.K--g__..2bidF.-0-...E
+            operator: DoesNotExist
+          matchLabels:
+            dno-52--6-0dkn9/i_zZsY_o8t5Vl6_..7CY-_dc__GN: z1Y_HEb.9x98MM7-.e.Dx._.W-6..4_M7
+        maxSkew: -1404859721
+        topologyKey: "362"
+        whenUnsatisfiable: Ɖ虼/h毂
       virtualMachine:
         bootVolume: "285"
         cloudInitUserDataScript: "288"
@@ -785,17 +797,17 @@ spec:
           subPath: "293"
           subPathExpr: "294"
 status:
-  availableReplicas: 1704922150
-  collisionCount: 1538760390
+  availableReplicas: -235670051
+  collisionCount: 1157257034
   conditions:
-  - lastTransitionTime: "2261-10-03T03:52:01Z"
-    lastUpdateTime: "2507-02-21T23:18:00Z"
-    message: "363"
-    reason: "362"
-    status: N擻搧菸F
-    type: ""
-  observedGeneration: 185290308298818537
-  readyReplicas: 1048207445
-  replicas: -77431114
-  unavailableReplicas: -1710874288
-  updatedReplicas: -1042020845
+  - lastTransitionTime: "2628-12-10T00:54:37Z"
+    lastUpdateTime: "2168-03-16T05:09:29Z"
+    message: "370"
+    reason: "369"
+    status: ÄǒKŰ踚ĩ僙R
+    type: ķ´ʑ潞Ĵ3Q蠯0ƍ\溮Ŀ
+  observedGeneration: 5312482249658297064
+  readyReplicas: 1803707874
+  replicas: -1304707993
+  unavailableReplicas: -590976116
+  updatedReplicas: -2145913752
