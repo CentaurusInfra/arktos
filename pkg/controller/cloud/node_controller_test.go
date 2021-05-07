@@ -20,6 +20,7 @@ package cloud
 import (
 	"errors"
 	cloudproviderapi "k8s.io/cloud-provider/api"
+	"reflect"
 	"testing"
 	"time"
 
@@ -689,12 +690,15 @@ func Test_reconcileNodeLabels(t *testing.T) {
 			labels: map[string]string{
 				v1.LabelZoneFailureDomain: "foo",
 				v1.LabelZoneRegion:        "bar",
+				v1.LabelInstanceType:      "the-best-type",
 			},
 			expectedLabels: map[string]string{
 				v1.LabelZoneFailureDomain:       "foo",
 				v1.LabelZoneRegion:              "bar",
 				v1.LabelZoneFailureDomainStable: "foo",
 				v1.LabelZoneRegionStable:        "bar",
+				v1.LabelInstanceType:            "the-best-type",
+				v1.LabelInstanceTypeStable:      "the-best-type",
 			},
 			expectedErr: nil,
 		},
@@ -705,12 +709,16 @@ func Test_reconcileNodeLabels(t *testing.T) {
 				v1.LabelZoneRegion:              "bar",
 				v1.LabelZoneFailureDomainStable: "foo",
 				v1.LabelZoneRegionStable:        "bar",
+				v1.LabelInstanceType:            "the-best-type",
+				v1.LabelInstanceTypeStable:      "the-best-type",
 			},
 			expectedLabels: map[string]string{
 				v1.LabelZoneFailureDomain:       "foo",
 				v1.LabelZoneRegion:              "bar",
 				v1.LabelZoneFailureDomainStable: "foo",
 				v1.LabelZoneRegionStable:        "bar",
+				v1.LabelInstanceType:            "the-best-type",
+				v1.LabelInstanceTypeStable:      "the-best-type",
 			},
 			expectedErr: nil,
 		},
@@ -721,12 +729,16 @@ func Test_reconcileNodeLabels(t *testing.T) {
 				v1.LabelZoneRegion:              "bar",
 				v1.LabelZoneFailureDomainStable: "wrongfoo",
 				v1.LabelZoneRegionStable:        "wrongbar",
+				v1.LabelInstanceType:            "the-best-type",
+				v1.LabelInstanceTypeStable:      "the-wrong-type",
 			},
 			expectedLabels: map[string]string{
 				v1.LabelZoneFailureDomain:       "foo",
 				v1.LabelZoneRegion:              "bar",
 				v1.LabelZoneFailureDomainStable: "foo",
 				v1.LabelZoneRegionStable:        "bar",
+				v1.LabelInstanceType:            "the-best-type",
+				v1.LabelInstanceTypeStable:      "the-best-type",
 			},
 			expectedErr: nil,
 		},
