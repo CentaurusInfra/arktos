@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ReplicationController
 metadata:
-  name: hollow-node
+  name: hollow-node-{{rp_num}}
   labels:
     name: hollow-node
     {{kubemark_mig_config}}
@@ -24,10 +24,10 @@ spec:
       volumes:
       - name: kubeconfig-volume
         secret:
-          secretName: kubeconfig
+          secretName: kubeconfig-{{rp_num}}
       - name: kernelmonitorconfig-volume
         configMap:
-          name: node-configmap
+          name: node-configmap-{{rp_num}}
       - name: logs-volume
         hostPath:
           path: /var/log
@@ -44,7 +44,7 @@ spec:
         - name: CONTENT_TYPE
           valueFrom:
             configMapKeyRef:
-              name: node-configmap
+              name: node-configmap-{{rp_num}}
               key: content.type
         - name: NODE_NAME
           valueFrom:
@@ -53,12 +53,12 @@ spec:
         - name: TENANT_SERVER_KUBECONFIGS
           valueFrom:
             configMapKeyRef:
-              name: node-configmap
+              name: node-configmap-{{rp_num}}
               key: tenant.server.kubeconfigs
         - name: RESOURCE_SERVER_KUBECONFIG
           valueFrom:
             configMapKeyRef:
-              name: node-configmap
+              name: node-configmap-{{rp_num}}
               key: resource.server.kubeconfig
         command:
         - /bin/sh
