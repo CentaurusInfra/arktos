@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -78,6 +79,7 @@ func initClusterFlags() {
 	flags.StringEnvVar(&clusterLoaderConfig.ClusterConfig.KubemarkRootKubeConfigPath, "kubemark-root-kubeconfig", "KUBEMARK_ROOT_KUBECONFIG", "",
 		"Path the to kubemark root kubeconfig file, i.e. kubeconfig of the cluster where kubemark cluster is run. Ignored if provider != kubemark")
 	flags.BoolEnvVar(&clusterLoaderConfig.ClusterConfig.APIServerPprofByClientEnabled, "apiserver-pprof-by-client-enabled", "APISERVER_PPROF_BY_CLIENT_ENABLED", true, "Whether apiserver pprof endpoint can be accessed by Kubernetes client.")
+	flags.BoolEnvVar(&clusterLoaderConfig.ClusterConfig.RPAccess, "rp-access", "RP_ACCESS", false, "Whether to access RP clusters")
 }
 
 func validateClusterFlags() *errors.ErrorList {
@@ -125,6 +127,10 @@ func validateFlags() *errors.ErrorList {
 }
 
 func completeConfig(m *framework.MultiClientSet) error {
+	if clusterLoaderConfig.ClusterConfig.Nodes == 0 && !clusterLoaderConfig.ClusterConfig.RPAccess {
+		return fmt.Errorf("nodes must be specified explicitly without access to RP")
+	}
+
 	if clusterLoaderConfig.ClusterConfig.Nodes == 0 {
 		nodes, err := util.GetSchedulableUntainedNodesNumber(m.GetClient())
 		if err != nil {
@@ -239,13 +245,18 @@ func main() {
 	}
 
 	klog.Infof("Using config: %+v", clusterLoaderConfig)
+	testTenant := util.GetTenant()
+	klog.Infof("Test running on tenant [%s]", testTenant)
 
 	if err = createReportDir(); err != nil {
 		klog.Exitf("Cannot create report directory: %v", err)
 	}
 
-	if err = util.LogClusterNodes(mclient.GetClient()); err != nil {
-		klog.Errorf("Nodes info logging error: %v", err)
+	if clusterLoaderConfig.ClusterConfig.RPAccess {
+		// todo: use direct access to RPs w/o proxy
+		if err = util.LogClusterNodes(mclient.GetClient()); err != nil {
+			klog.Errorf("Nodes info logging error: %v", err)
+		}
 	}
 
 	if err = verifyCluster(mclient.GetClient()); err != nil {

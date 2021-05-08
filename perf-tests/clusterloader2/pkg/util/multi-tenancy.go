@@ -33,7 +33,7 @@ func GetTenant() string {
 
 	errs := apimachineryvalidation.ValidateTenantName(tenantName, false)
 	if len(errs) > 0 {
-		klog.Fatalf("Invalide tenant name %v: %v", tenantName, errs)
+		klog.Fatalf("Invalid tenant name %v: %v", tenantName, errs)
 	}
 
 	return strings.ToLower(tenantName)
