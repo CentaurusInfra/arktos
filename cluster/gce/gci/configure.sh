@@ -367,6 +367,8 @@ function install-flannel-yml {
   local -r flannel_dir="${KUBE_HOME}/flannel"
   mkdir -p "${flannel_dir}"
   mv "${KUBE_HOME}/kube-flannel.yml" "${flannel_dir}"
+  echo "change docker registry to gcr.io"
+  sed -i 's+quay.io/coreos+gcr.io/workload-controller-manager+g' ${flannel_dir}/kube-flannel.yml
 }
 
 function install-cni-binaries {
