@@ -20,6 +20,7 @@ go_library(
         "//pkg/controller/volume/attachdetach/util:go_default_library",
         "//pkg/features:go_default_library",
         "//pkg/util/mount:go_default_library",
+        "//pkg/util/node:go_default_library",
         "//pkg/volume:go_default_library",
         "//pkg/volume/util:go_default_library",
         "//pkg/volume/util/operationexecutor:go_default_library",
