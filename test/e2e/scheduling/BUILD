@@ -23,6 +23,7 @@ go_library(
         "//pkg/apis/core/v1/helper/qos:go_default_library",
         "//pkg/apis/extensions:go_default_library",
         "//pkg/apis/scheduling:go_default_library",
+        "//pkg/scheduler/util:go_default_library",
         "//staging/src/k8s.io/api/apps/v1:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/api/scheduling/v1:go_default_library",
@@ -55,7 +56,6 @@ go_library(
         "//vendor/github.com/onsi/gomega:go_default_library",
         "//vendor/github.com/stretchr/testify/assert:go_default_library",
         "//vendor/google.golang.org/api/compute/v1:go_default_library",
-        "//vendor/k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util:go_default_library",
     ],
 )
 
