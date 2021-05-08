@@ -213,6 +213,7 @@ func autoConvert_config_KubeSchedulerConfiguration_To_v1alpha2_KubeSchedulerConf
 		out.Profiles = nil
 	}
 	out.Extenders = *(*[]configv1.Extender)(unsafe.Pointer(&in.Extenders))
+	// WARNING: in.ResourceProviderKubeConfig requires manual conversion: does not exist in peer-type
 	return nil
 }
 

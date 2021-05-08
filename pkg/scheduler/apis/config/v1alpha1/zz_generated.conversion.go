@@ -210,6 +210,7 @@ func autoConvert_v1alpha1_KubeSchedulerConfiguration_To_config_KubeSchedulerConf
 	}
 	// WARNING: in.Plugins requires manual conversion: does not exist in peer-type
 	// WARNING: in.PluginConfig requires manual conversion: does not exist in peer-type
+	out.ResourceProviderKubeConfig = in.ResourceProviderKubeConfig
 	return nil
 }
 
@@ -249,6 +250,7 @@ func autoConvert_config_KubeSchedulerConfiguration_To_v1alpha1_KubeSchedulerConf
 	}
 	// WARNING: in.Profiles requires manual conversion: does not exist in peer-type
 	// WARNING: in.Extenders requires manual conversion: does not exist in peer-type
+	out.ResourceProviderKubeConfig = in.ResourceProviderKubeConfig
 	return nil
 }
 
