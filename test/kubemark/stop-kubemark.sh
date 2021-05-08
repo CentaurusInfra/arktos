@@ -36,6 +36,8 @@ KUBECTL="${KUBE_ROOT}/cluster/kubectl.sh"
 KUBEMARK_DIRECTORY="${KUBE_ROOT}/test/kubemark"
 RESOURCE_DIRECTORY="${KUBEMARK_DIRECTORY}/resources"
 SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
+RP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp"
+TP_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp"
 
 detect-project &> /dev/null
 
@@ -55,17 +57,23 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   do
     export TENANT_PARTITION_SEQUENCE=${tp_num}
     delete-kubemark-master
-    rm -rf "${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tp-${tp_num}"
+    rm -rf "${TP_KUBECONFIG}-${tp_num}"
   done
 
   export KUBERNETES_TENANT_PARTITION=false
   export KUBERNETES_RESOURCE_PARTITION=true
   export KUBERNETES_SCALEOUT_PROXY=true
-  delete-kubemark-master
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+  do
+    rm -rf "${RP_KUBECONFIG}-${rp_num}"
+    export RESOURCE_PARTITION_SEQUENCE=${rp_num}
+    delete-kubemark-master
+  done
+
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
-  rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.rp
   rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp
+  rm -rf /tmp/saved_tenant_ips.txt
   rm -rf "${SHARED_CA_DIRECTORY}"
 else
   delete-kubemark-master
