@@ -26,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes/fake"
-	fakeV1 "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	clienttesting "k8s.io/client-go/testing"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
@@ -60,59 +59,6 @@ func testClientGetPodRequestWithMultiTenancy(client *fake.Clientset, t *testing.
 	}
 	if !requestReceived {
 		t.Errorf("Get pod request not received")
-	}
-}
-
-func TestBindWithMultiTenancy(t *testing.T) {
-	table := []struct {
-		name    string
-		binding *v1.Binding
-	}{
-		{
-			name: "binding can bind and validate request",
-			binding: &v1.Binding{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: metav1.NamespaceDefault,
-					Tenant:    testTenant,
-					Name:      "foo",
-				},
-				Target: v1.ObjectReference{
-					Name: "foohost.kubernetes.mydomain.com",
-				},
-			},
-		},
-	}
-
-	for _, test := range table {
-		t.Run(test.name, func(t *testing.T) {
-			testBindWithMultiTenancy(test.binding, t)
-		})
-	}
-}
-
-func testBindWithMultiTenancy(binding *v1.Binding, t *testing.T) {
-	testPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: binding.GetName(), Namespace: metav1.NamespaceDefault, Tenant: testTenant},
-		Spec:       apitesting.V1DeepEqualSafePodSpec(),
-	}
-	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})
-
-	b := binder{client}
-
-	if err := b.Bind(binding); err != nil {
-		t.Errorf("Unexpected error: %v", err)
-		return
-	}
-
-	pod := client.CoreV1().PodsWithMultiTenancy(metav1.NamespaceDefault, testTenant).(*fakeV1.FakePods)
-
-	actualBinding, err := pod.GetBinding(binding.GetName())
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-		return
-	}
-	if !reflect.DeepEqual(binding, actualBinding) {
-		t.Errorf("Binding did not match expectation, expected: %v, actual: %v", binding, actualBinding)
 	}
 }
 
