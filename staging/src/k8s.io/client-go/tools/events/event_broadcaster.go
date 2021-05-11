@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -271,9 +272,9 @@ func getKey(event *v1beta1.Event) eventKey {
 	return key
 }
 
-// startEventWatcher starts sending events received from this EventBroadcaster to the given event handler function.
+// StartEventWatcher starts sending events received from this EventBroadcaster to the given event handler function.
 // The return value is used to stop recording
-func (e *eventBroadcasterImpl) startEventWatcher(eventHandler func(event runtime.Object)) func() {
+func (e *eventBroadcasterImpl) StartEventWatcher(eventHandler func(event runtime.Object)) func() {
 	watcher := e.Watch()
 	go func() {
 		defer utilruntime.HandleCrash()
@@ -304,7 +305,7 @@ func (e *eventBroadcasterImpl) StartRecordingToSink(stopCh <-chan struct{}) {
 		}
 		e.recordToSink(event, clock.RealClock{})
 	}
-	stopWatcher := e.startEventWatcher(eventHandler)
+	stopWatcher := e.StartEventWatcher(eventHandler)
 	go func() {
 		<-stopCh
 		stopWatcher()

@@ -66,6 +66,7 @@ staging/src/k8s.io/client-go/metadata/metadatainformer/interface.go
 staging/src/k8s.io/client-go/rest/client.go
 staging/src/k8s.io/client-go/rest/fake/fake.go
 staging/src/k8s.io/client-go/rest/request_test.go
+staging/src/k8s.io/client-go/tools/events/fake.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle_test.go
 staging/src/k8s.io/csi-translation-lib/plugins/in_tree_volume_test.go
