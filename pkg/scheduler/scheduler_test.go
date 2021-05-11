@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"os"
 	"path"
 	"reflect"
@@ -72,6 +73,8 @@ func (fc fakePodConditionUpdater) update(pod *v1.Pod, podCondition *v1.PodCondit
 }
 
 type fakePodPreemptor struct{}
+
+const rpId0 = "rp0"
 
 func (fp fakePodPreemptor) getUpdatedPod(pod *v1.Pod) (*v1.Pod, error) {
 	return pod, nil
@@ -202,6 +205,8 @@ func TestSchedulerCreation(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			client := clientsetfake.NewSimpleClientset()
 			informerFactory := informers.NewSharedInformerFactory(client, 0)
+			nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+			nodeInformerMap[rpId0] = informerFactory.Core().V1().Nodes()
 
 			eventBroadcaster := events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1beta1().Events("")})
 
@@ -209,6 +214,7 @@ func TestSchedulerCreation(t *testing.T) {
 			defer close(stopCh)
 			s, err := New(client,
 				informerFactory,
+				nodeInformerMap,
 				NewPodInformer(client, 0),
 				profile.NewRecorderFactory(eventBroadcaster),
 				stopCh,
@@ -444,8 +450,11 @@ func TestSchedulerMultipleProfilesScheduling(t *testing.T) {
 	defer cancel()
 
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap[rpId0] = informerFactory.Core().V1().Nodes()
 	sched, err := New(client,
 		informerFactory,
+		nodeInformerMap,
 		informerFactory.Core().V1().Pods(),
 		profile.NewRecorderFactory(broadcaster),
 		ctx.Done(),
@@ -537,7 +546,7 @@ func TestSchedulerNoPhantomPodAfterExpire(t *testing.T) {
 	scache := internalcache.New(100*time.Millisecond, stop)
 	pod := podWithPort("pod.Name", "", 8080)
 	node := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "machine1", UID: types.UID("machine1")}}
-	scache.AddNode(&node)
+	scache.AddNode(&node, rpId0)
 	client := clientsetfake.NewSimpleClientset(&node)
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 
@@ -605,7 +614,7 @@ func TestSchedulerNoPhantomPodAfterDelete(t *testing.T) {
 	scache := internalcache.New(10*time.Minute, stop)
 	firstPod := podWithPort("pod.Name", "", 8080)
 	node := v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "machine1", UID: types.UID("machine1")}}
-	scache.AddNode(&node)
+	scache.AddNode(&node, rpId0)
 	client := clientsetfake.NewSimpleClientset(&node)
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
 	fns := []st.RegisterPluginFunc{
@@ -738,7 +747,7 @@ func TestSchedulerFailedSchedulingReasons(t *testing.T) {
 					v1.ResourcePods:   *(resource.NewQuantity(10, resource.DecimalSI)),
 				}},
 		}
-		scache.AddNode(&node)
+		scache.AddNode(&node, rpId0)
 		nodes = append(nodes, &node)
 		objects = append(objects, &node)
 	}
@@ -855,7 +864,7 @@ func setupTestSchedulerWithVolumeBinding(volumeBinder scheduling.SchedulerVolume
 		VolumeSource: v1.VolumeSource{PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: "testPVC"}}})
 	queuedPodStore.Add(pod)
 	scache := internalcache.New(10*time.Minute, stop)
-	scache.AddNode(&testNode)
+	scache.AddNode(&testNode, rpId0)
 	testPVC := v1.PersistentVolumeClaim{ObjectMeta: metav1.ObjectMeta{Name: "testPVC", Namespace: pod.Namespace, Tenant: pod.Tenant, UID: types.UID("testPVC")}}
 	client := clientsetfake.NewSimpleClientset(&testNode, &testPVC)
 	informerFactory := informers.NewSharedInformerFactory(client, 0)
