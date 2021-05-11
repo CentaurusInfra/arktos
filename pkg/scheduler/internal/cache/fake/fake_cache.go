@@ -21,6 +21,7 @@ package fake
 import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
 	schedulerlisters "k8s.io/kubernetes/pkg/scheduler/listers"
 )
@@ -68,10 +69,12 @@ func (c *Cache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 }
 
 // AddNode is a fake method for testing.
-func (c *Cache) AddNode(node *v1.Node) error { return nil }
+func (c *Cache) AddNode(node *v1.Node, rpId string) error { return nil }
 
 // UpdateNode is a fake method for testing.
-func (c *Cache) UpdateNode(oldNode, newNode *v1.Node) error { return nil }
+func (c *Cache) UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error {
+	return nil
+}
 
 // RemoveNode is a fake method for testing.
 func (c *Cache) RemoveNode(node *v1.Node) error { return nil }

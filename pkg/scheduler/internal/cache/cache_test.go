@@ -31,11 +31,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	clientcache "k8s.io/client-go/tools/cache"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/kubernetes/pkg/features"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	schedutil "k8s.io/kubernetes/pkg/scheduler/util"
 )
+
+const rpId0 = "rp0"
 
 func deepEqualWithoutGeneration(actual *nodeInfoListItem, expected *schedulernodeinfo.NodeInfo) error {
 	if (actual == nil) != (expected == nil) {
@@ -868,7 +872,7 @@ func TestRemovePod(t *testing.T) {
 				t.Error(err)
 			}
 			for _, n := range tt.nodes {
-				if err := cache.AddNode(n); err != nil {
+				if err := cache.AddNode(n, rpId0); err != nil {
 					t.Error(err)
 				}
 			}
@@ -1111,7 +1115,7 @@ func TestNodeOperators(t *testing.T) {
 			node := test.node
 
 			cache := newSchedulerCache(time.Second, time.Second, nil)
-			if err := cache.AddNode(node); err != nil {
+			if err := cache.AddNode(node, rpId0); err != nil {
 				t.Fatal(err)
 			}
 			for _, pod := range test.pods {
@@ -1156,7 +1160,13 @@ func TestNodeOperators(t *testing.T) {
 			newAllocatableResource.Memory = mem50m.Value()
 			expected.SetAllocatableResource(newAllocatableResource)
 
-			if err := cache.UpdateNode(nil, node); err != nil {
+			// fake node lister
+			nodeStore := clientcache.NewIndexer(clientcache.MetaNamespaceKeyFunc, clientcache.Indexers{})
+			nodeLister := corelisters.NewNodeLister(nodeStore)
+			nodeListers := make(map[string]corelisters.NodeLister, 1)
+			nodeListers[rpId0] = nodeLister
+
+			if err := cache.UpdateNode(nil, node, nodeListers); err != nil {
 				t.Error(err)
 			}
 			got, found = cache.nodes[node.Name]
@@ -1285,7 +1295,7 @@ func TestSchedulerCache_UpdateSnapshot(t *testing.T) {
 
 	addNode := func(i int) operation {
 		return func() {
-			if err := cache.AddNode(nodes[i]); err != nil {
+			if err := cache.AddNode(nodes[i], rpId0); err != nil {
 				t.Error(err)
 			}
 		}
@@ -1299,7 +1309,14 @@ func TestSchedulerCache_UpdateSnapshot(t *testing.T) {
 	}
 	updateNode := func(i int) operation {
 		return func() {
-			if err := cache.UpdateNode(nodes[i], updatedNodes[i]); err != nil {
+			// fake node lister
+			nodeStore := clientcache.NewIndexer(clientcache.MetaNamespaceKeyFunc, clientcache.Indexers{})
+			nodeStore.Add(nodes[i])
+			nodeLister := corelisters.NewNodeLister(nodeStore)
+			nodeListers := make(map[string]corelisters.NodeLister, 1)
+			nodeListers[rpId0] = nodeLister
+
+			if err := cache.UpdateNode(nodes[i], updatedNodes[i], nodeListers); err != nil {
 				t.Error(err)
 			}
 		}

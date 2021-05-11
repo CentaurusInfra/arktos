@@ -20,6 +20,7 @@ package service
 import (
 	"errors"
 	"fmt"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"reflect"
 	"strings"
@@ -48,6 +49,7 @@ import (
 const (
 	region     = "us-central"
 	testTenant = "johndoe"
+	rpId0      = "rp0"
 )
 
 func newService(name string, uid types.UID, serviceType v1.ServiceType) *v1.Service {
@@ -83,8 +85,12 @@ func newController() (*ServiceController, *fakecloud.Cloud, *fake.Clientset) {
 	nodeInformer := informerFactory.Core().V1().Nodes()
 	podInformer := informerFactory.Core().V1().Pods()
 
-	controller, _ := New(cloud, client, serviceInformer, nodeInformer, podInformer, "test-cluster")
-	controller.nodeListerSynced = alwaysReady
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap[rpId0] = nodeInformer
+
+	controller, _ := New(cloud, client, serviceInformer, nodeInformerMap, podInformer, "test-cluster")
+	controller.nodeListersSynced = make(map[string]cache.InformerSynced, 1)
+	controller.nodeListersSynced[rpId0] = alwaysReady
 	controller.serviceListerSynced = alwaysReady
 	controller.eventRecorder = record.NewFakeRecorder(100)
 

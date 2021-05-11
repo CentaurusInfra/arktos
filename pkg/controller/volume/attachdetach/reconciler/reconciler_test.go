@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,6 +18,8 @@ limitations under the License.
 package reconciler
 
 import (
+	clientset "k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	"testing"
 	"time"
 
@@ -59,8 +62,15 @@ func Test_Run_Positive_DoNothing(t *testing.T) {
 		false, /* checkNodeCapabilitiesBeforeMount */
 		fakeHandler))
 	informerFactory := informers.NewSharedInformerFactory(fakeKubeClient, controller.NoResyncPeriodFunc())
+
+	rpId0 := "rp0"
+	fakeKubeClients := make(map[string]clientset.Interface, 1)
+	fakeKubeClients[rpId0] = fakeKubeClient
+	nodeListers := make(map[string]corelisters.NodeLister, 1)
+	nodeListers[rpId0] = informerFactory.Core().V1().Nodes().Lister()
+
 	nsu := statusupdater.NewNodeStatusUpdater(
-		fakeKubeClient, informerFactory.Core().V1().Nodes().Lister(), asw)
+		fakeKubeClients, nodeListers, asw)
 	reconciler := NewReconciler(
 		reconcilerLoopPeriod, maxWaitForUnmountDuration, syncLoopPeriod, false, dsw, asw, ad, nsu, fakeRecorder)
 

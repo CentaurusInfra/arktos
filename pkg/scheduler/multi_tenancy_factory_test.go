@@ -17,6 +17,7 @@ limitations under the License.
 package scheduler
 
 import (
+	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"reflect"
 	"testing"
 	"time"
@@ -120,17 +121,18 @@ func TestDefaultErrorFuncWithMultiTenancy(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: testTenant},
 		Spec:       apitesting.V1DeepEqualSafePodSpec(),
 	}
+	testPodInfo := &framework.PodInfo{Pod: testPod}
 	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
 	timestamp := time.Now()
-	queue := internalqueue.NewPriorityQueueWithClock(nil, clock.NewFakeClock(timestamp), nil)
+	queue := internalqueue.NewPriorityQueue(nil, internalqueue.WithClock(clock.NewFakeClock(timestamp)))
 	schedulerCache := internalcache.New(30*time.Second, stopCh)
-	errFunc := MakeDefaultErrorFunc(client, queue, schedulerCache, stopCh)
+	errFunc := MakeDefaultErrorFunc(client, queue, schedulerCache)
 
 	// Trigger error handling again to put the pod in unschedulable queue
-	errFunc(testPod, nil)
+	errFunc(testPodInfo, nil)
 
 	// Try up to a minute to retrieve the error pod from priority queue
 	foundPodFlag := false
@@ -161,10 +163,10 @@ func TestDefaultErrorFuncWithMultiTenancy(t *testing.T) {
 	queue.Delete(testPod)
 
 	// Trigger a move request
-	queue.MoveAllToActiveQueue()
+	queue.MoveAllToActiveOrBackoffQueue("test")
 
 	// Trigger error handling again to put the pod in backoff queue
-	errFunc(testPod, nil)
+	errFunc(testPodInfo, nil)
 
 	foundPodFlag = false
 	for i := 0; i < maxIterations; i++ {
