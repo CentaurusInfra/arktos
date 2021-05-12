@@ -18,6 +18,7 @@ package slos
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -209,7 +210,8 @@ func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
 	if pod.Status.Phase == corev1.PodRunning {
 		key := createMetaNamespaceKey(pod.Namespace, pod.Name)
 		if _, found := p.podStartupEntries.Get(key, createPhase); !found {
-			p.podStartupEntries.Set(key, watchPhase, time.Now())
+			ct := time.Now()
+			p.podStartupEntries.Set(key, watchPhase, ct)
 			p.podStartupEntries.Set(key, createPhase, pod.CreationTimestamp.Time)
 			var startTime metav1.Time
 			for _, cs := range pod.Status.ContainerStatuses {
@@ -221,6 +223,13 @@ func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
 			}
 			if startTime != metav1.NewTime(time.Time{}) {
 				p.podStartupEntries.Set(key, runPhase, startTime.Time)
+
+				if strings.Contains(pod.Name, "latency") {
+					klog.Infof("pod %v-%v, createTime %v, startTime %v, watchTime %v, startToWatch %v ms",
+						pod.Namespace, pod.Name, pod.CreationTimestamp.Time.Format(time.RFC3339),
+						startTime.Format(time.RFC3339), ct.Format(time.RFC3339), ct.Sub(startTime.Time).Milliseconds())
+				}
+
 			} else {
 				klog.Errorf("%s: pod %v (%v) is reported to be running, but none of its containers is", p, pod.Name, pod.Namespace)
 			}
