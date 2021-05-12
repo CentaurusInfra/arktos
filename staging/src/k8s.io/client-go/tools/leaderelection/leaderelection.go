@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -53,9 +54,9 @@ limitations under the License.
 package leaderelection
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"reflect"
 	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -88,6 +89,12 @@ func NewLeaderElector(lec LeaderElectionConfig) (*LeaderElector, error) {
 	}
 	if lec.RetryPeriod < 1 {
 		return nil, fmt.Errorf("retryPeriod must be greater than zero")
+	}
+	if lec.Callbacks.OnStartedLeading == nil {
+		return nil, fmt.Errorf("OnStartedLeading callback must not be nil")
+	}
+	if lec.Callbacks.OnStoppedLeading == nil {
+		return nil, fmt.Errorf("OnStoppedLeading callback must not be nil")
 	}
 
 	if lec.Lock == nil {
@@ -170,8 +177,9 @@ type LeaderCallbacks struct {
 type LeaderElector struct {
 	config LeaderElectionConfig
 	// internal bookkeeping
-	observedRecord rl.LeaderElectionRecord
-	observedTime   time.Time
+	observedRecord    rl.LeaderElectionRecord
+	observedRawRecord []byte
+	observedTime      time.Time
 	// used to implement OnNewLeader(), may lag slightly from the
 	// value observedRecord.HolderIdentity if the transition has
 	// not yet been reported.
@@ -256,18 +264,7 @@ func (le *LeaderElector) renew(ctx context.Context) {
 		timeoutCtx, timeoutCancel := context.WithTimeout(ctx, le.config.RenewDeadline)
 		defer timeoutCancel()
 		err := wait.PollImmediateUntil(le.config.RetryPeriod, func() (bool, error) {
-			done := make(chan bool, 1)
-			go func() {
-				defer close(done)
-				done <- le.tryAcquireOrRenew()
-			}()
-
-			select {
-			case <-timeoutCtx.Done():
-				return false, fmt.Errorf("failed to tryAcquireOrRenew %s", timeoutCtx.Err())
-			case result := <-done:
-				return result, nil
-			}
+			return le.tryAcquireOrRenew(), nil
 		}, timeoutCtx.Done())
 
 		le.maybeReportTransition()
@@ -318,7 +315,7 @@ func (le *LeaderElector) tryAcquireOrRenew() bool {
 	}
 
 	// 1. obtain or create the ElectionRecord
-	oldLeaderElectionRecord, err := le.config.Lock.Get()
+	oldLeaderElectionRecord, oldLeaderElectionRawRecord, err := le.config.Lock.Get()
 	if err != nil {
 		if !errors.IsNotFound(err) {
 			klog.Errorf("error retrieving resource lock %v: %v", le.config.Lock.Describe(), err)
@@ -334,8 +331,9 @@ func (le *LeaderElector) tryAcquireOrRenew() bool {
 	}
 
 	// 2. Record obtained, check the Identity & Time
-	if !reflect.DeepEqual(le.observedRecord, *oldLeaderElectionRecord) {
+	if !bytes.Equal(le.observedRawRecord, oldLeaderElectionRawRecord) {
 		le.observedRecord = *oldLeaderElectionRecord
+		le.observedRawRecord = oldLeaderElectionRawRecord
 		le.observedTime = le.clock.Now()
 	}
 	if len(oldLeaderElectionRecord.HolderIdentity) > 0 &&
@@ -359,6 +357,7 @@ func (le *LeaderElector) tryAcquireOrRenew() bool {
 		klog.Errorf("Failed to update lock: %v", err)
 		return false
 	}
+
 	le.observedRecord = leaderElectionRecord
 	le.observedTime = le.clock.Now()
 	return true
