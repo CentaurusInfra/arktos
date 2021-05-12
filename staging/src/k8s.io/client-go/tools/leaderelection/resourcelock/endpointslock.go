@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,22 +37,23 @@ type EndpointsLock struct {
 }
 
 // Get returns the election record from a Endpoints Annotation
-func (el *EndpointsLock) Get() (*LeaderElectionRecord, error) {
+func (el *EndpointsLock) Get() (*LeaderElectionRecord, []byte, error) {
 	var record LeaderElectionRecord
 	var err error
 	el.e, err = el.Client.Endpoints(el.EndpointsMeta.Namespace).Get(el.EndpointsMeta.Name, metav1.GetOptions{})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if el.e.Annotations == nil {
 		el.e.Annotations = make(map[string]string)
 	}
-	if recordBytes, found := el.e.Annotations[LeaderElectionRecordAnnotationKey]; found {
+	recordBytes, found := el.e.Annotations[LeaderElectionRecordAnnotationKey]
+	if found {
 		if err := json.Unmarshal([]byte(recordBytes), &record); err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 	}
-	return &record, nil
+	return &record, []byte(recordBytes), nil
 }
 
 // Create attempts to create a LeaderElectionRecord annotation
@@ -81,6 +83,9 @@ func (el *EndpointsLock) Update(ler LeaderElectionRecord) error {
 	if err != nil {
 		return err
 	}
+	if el.e.Annotations == nil {
+		el.e.Annotations = make(map[string]string)
+	}
 	el.e.Annotations[LeaderElectionRecordAnnotationKey] = string(recordBytes)
 	el.e, err = el.Client.Endpoints(el.EndpointsMeta.Namespace).Update(el.e)
 	return err
@@ -101,7 +106,7 @@ func (el *EndpointsLock) Describe() string {
 	return fmt.Sprintf("%v/%v", el.EndpointsMeta.Namespace, el.EndpointsMeta.Name)
 }
 
-// returns the Identity of the lock
+// Identity returns the Identity of the lock
 func (el *EndpointsLock) Identity() string {
 	return el.LockConfig.Identity
 }
