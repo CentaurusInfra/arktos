@@ -956,6 +956,7 @@ func buildNodeInfo(node *v1.Node, pods []*v1.Pod) *schedulernodeinfo.NodeInfo {
 
 	expected.SetAllocatableResource(schedulernodeinfo.NewResource(node.Status.Allocatable))
 	expected.SetTaints(node.Spec.Taints)
+	expected.SetResourceProviderId(rpId0)
 	expected.SetGeneration(expected.GetGeneration() + 1)
 
 	for _, pod := range pods {
