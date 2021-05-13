@@ -219,7 +219,7 @@ func TestConvertToNetworkPolicyContract(t *testing.T) {
 	}
 
 	// Act
-	actual := ConvertToServiceEndpointContract(nppolicy)
+	actual := ConvertToNetworkPolicyContract(nppolicy)
 
 	// Assert
 	testCheckEqual(t, expected, actual)
