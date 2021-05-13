@@ -21,8 +21,8 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	networking "k8s.io/api/networking/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -213,9 +213,9 @@ func TestConvertToNetworkPolicyContract(t *testing.T) {
 	}
 
 	expected := &BuiltinsServiceEndpointMessage{
-		Name:           testName,
-		Namespace:      testNamespace,
-		Tenant:         testTenant,
+		Name:      testName,
+		Namespace: testNamespace,
+		Tenant:    testTenant,
 	}
 
 	// Act

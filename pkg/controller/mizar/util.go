@@ -178,9 +178,9 @@ func parseNetworkPolicySpecToMsg(nps networking.NetworkPolicySpec) MizarNetworkP
 		PodSel: MizarNetworkPolicyPodSelector{
 			MatchLabels: nps.PodSelector.MatchLabels,
 		},
-		In:     parseNetworkPolicyIngressRulesToMsg(nps.Ingress),
-		Out:    parseNetworkPolicyEgressRulesToMsg(nps.Egress),
-		Type:   policyTypesToStringArray(nps.PolicyTypes),
+		In:   parseNetworkPolicyIngressRulesToMsg(nps.Ingress),
+		Out:  parseNetworkPolicyEgressRulesToMsg(nps.Egress),
+		Type: policyTypesToStringArray(nps.PolicyTypes),
 	}
 
 	return policyMsg
@@ -268,7 +268,7 @@ func parseNetworkPolicyIngressRulesToMsg(npirs []networking.NetworkPolicyIngress
 		}
 		ingressMsg := MizarNetworkPolicyIngressMsg{
 			Ports: ingressPorts,
-			From: froms,
+			From:  froms,
 		}
 		ingressRules = append(ingressRules, ingressMsg)
 	}
@@ -347,7 +347,7 @@ func parseNetworkPolicyEgressRulesToMsg(npers []networking.NetworkPolicyEgressRu
 		}
 		egressMsg := MizarNetworkPolicyEgressMsg{
 			Ports: egressPorts,
-			To: tos,
+			To:    tos,
 		}
 		egressRules = append(egressRules, egressMsg)
 	}
