@@ -2513,7 +2513,7 @@ func TestNumFeasibleNodesToFind(t *testing.T) {
 			name:                     "set percentageOfNodesToScore and nodes number more than 50*125",
 			percentageOfNodesToScore: 40,
 			numAllNodes:              6000,
-			wantNumNodes:             2400,
+			wantNumNodes:             500, // arktos force setting node evaluating to be 500 max
 		},
 	}
 	for _, tt := range tests {

@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog"
 	"math"
 	"reflect"
 	"testing"
@@ -66,6 +67,11 @@ type labelMap map[string]string
 // TestInstallCSIDriver tests InstallCSIDriver with various existing Node and/or CSINode objects.
 // The node IDs in all test cases below are the same between the Node annotation and CSINode.
 func TestInstallCSIDriver(t *testing.T) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		klog.Info("CSI Driver feature not enabled")
+		return
+	}
+
 	testcases := []testcase{
 		{
 			name:         "empty node",
@@ -613,6 +619,11 @@ func generateVolumeLimits(i int32) *storage.VolumeNodeResources {
 
 // TestUninstallCSIDriver tests UninstallCSIDriver with various existing Node and/or CSINode objects.
 func TestUninstallCSIDriver(t *testing.T) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		klog.Info("CSI Driver feature not enabled")
+		return
+	}
+
 	testcases := []testcase{
 		{
 			name:         "empty node and empty CSINode",

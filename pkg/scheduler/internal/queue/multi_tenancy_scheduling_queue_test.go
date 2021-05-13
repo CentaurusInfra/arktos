@@ -18,7 +18,6 @@ package queue
 
 import (
 	"fmt"
-	"k8s.io/component-base/metrics/testutil"
 	"reflect"
 	"strings"
 	"sync"
@@ -29,6 +28,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
+	"k8s.io/component-base/metrics/testutil"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"k8s.io/kubernetes/pkg/scheduler/metrics"
@@ -147,11 +147,11 @@ func TestPriorityQueue_AddWithReversePriorityLessFuncWithMultiTenancy(t *testing
 	if err := q.Add(&highPriorityPodWithMultiTenancy); err != nil {
 		t.Errorf("add failed: %v", err)
 	}
-	if p, err := q.Pop(); err != nil || p.Pod != &medPriorityPodWithMultiTenancy {
-		t.Errorf("Expected: %v after Pop, but got: %v", medPriorityPodWithMultiTenancy.Name, p.Pod.Name)
-	}
 	if p, err := q.Pop(); err != nil || p.Pod != &highPriorityPodWithMultiTenancy {
 		t.Errorf("Expected: %v after Pop, but got: %v", highPriorityPodWithMultiTenancy.Name, p.Pod.Name)
+	}
+	if p, err := q.Pop(); err != nil || p.Pod != &medPriorityPodWithMultiTenancy {
+		t.Errorf("Expected: %v after Pop, but got: %v", medPriorityPodWithMultiTenancy.Name, p.Pod.Name)
 	}
 }
 
@@ -212,7 +212,7 @@ func TestPriorityQueue_AddUnschedulableIfNotPresent_BackoffWithMultiTenancy(t *t
 	// Pop all pods except for the first one
 	for i := totalNum - 1; i > 0; i-- {
 		p, _ := q.Pop()
-		if !reflect.DeepEqual(&expectedPods[i], p) {
+		if !reflect.DeepEqual(&expectedPods[i], p.Pod) {
 			t.Errorf("Unexpected pod. Expected: %v, got: %v", &expectedPods[i], p)
 		}
 	}
@@ -222,7 +222,7 @@ func TestPriorityQueue_AddUnschedulableIfNotPresent_BackoffWithMultiTenancy(t *t
 	oldCycle := q.SchedulingCycle()
 
 	firstPod, _ := q.Pop()
-	if !reflect.DeepEqual(&expectedPods[0], firstPod) {
+	if !reflect.DeepEqual(&expectedPods[0], firstPod.Pod) {
 		t.Errorf("Unexpected pod. Expected: %v, got: %v", &expectedPods[0], firstPod)
 	}
 
@@ -252,6 +252,7 @@ func TestPriorityQueue_AddUnschedulableIfNotPresent_BackoffWithMultiTenancy(t *t
 			t.Errorf("Expected %v to be added to podBackoffQ.", expectedPods[i].Name)
 		}
 	}
+	q.lock.RUnlock()
 }
 
 func TestPriorityQueue_PopWithMultiTenancy(t *testing.T) {
@@ -1075,7 +1076,7 @@ func TestPodTimestampWithMultiTenancy(t *testing.T) {
 				moveClockForward,
 				moveAllToActiveOrBackoffQ,
 			},
-			operands: []*framework.PodInfo{pInfo2, pInfo1, nil},
+			operands: []*framework.PodInfo{pInfo2, pInfo1, nil, nil},
 			expected: []*framework.PodInfo{pInfo1, pInfo2},
 		},
 		{
@@ -1086,7 +1087,7 @@ func TestPodTimestampWithMultiTenancy(t *testing.T) {
 				flushBackoffQ,
 				moveAllToActiveOrBackoffQ,
 			},
-			operands: []*framework.PodInfo{pInfo2, pInfo1, pInfo1, nil, nil},
+			operands: []*framework.PodInfo{pInfo2, pInfo1, nil, nil},
 			expected: []*framework.PodInfo{pInfo1, pInfo2},
 		},
 	}

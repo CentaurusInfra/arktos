@@ -435,7 +435,7 @@ func testClientGetPodRequest(client *fake.Clientset, t *testing.T, podTenant str
 			ns := a.GetNamespace()
 			if name != podName || ns != podNs || podTenant != a.GetTenant() {
 				t.Errorf("Expected name %s namespace %s tenant %s, got %s %s %s",
-					podName, podNs, name, ns, podTenant)
+					podName, podNs, a.GetTenant(), name, ns, podTenant)
 			}
 			requestReceived = true
 		}

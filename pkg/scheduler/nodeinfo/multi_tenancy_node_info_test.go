@@ -168,9 +168,10 @@ func TestNewNodeInfoWithMultiTenancy(t *testing.T) {
 	if ni.generation <= gen {
 		t.Errorf("generation is not incremented. previous: %v, current: %v", gen, ni.generation)
 	}
-	for i := range expected.pods {
+	// Temporary comment out for UT - should be bring back together with Vinay's CommonInfo changes
+	/*for i := range expected.pods {
 		_ = expected.pods[i].Spec.Workloads()
-	}
+	}*/
 	expected.generation = ni.generation
 	if !reflect.DeepEqual(expected, ni) {
 		t.Errorf("\nEXPECT: %#v\nACTUAL: %#v\n", expected, ni)
@@ -533,9 +534,11 @@ func TestNodeInfoAddPodWithMultiTenancy(t *testing.T) {
 		}
 		gen = ni.generation
 	}
-	for i := range expected.pods {
-		_ = expected.pods[i].Spec.Workloads()
-	}
+	// Temporary comment out for UT - should be bring back together with Vinay's CommonInfo changes
+	/*
+		for i := range expected.pods {
+			_ = expected.pods[i].Spec.Workloads()
+		}*/
 
 	expected.generation = ni.generation
 	if !reflect.DeepEqual(expected, ni) {
@@ -776,9 +779,12 @@ func TestNodeInfoRemovePodWithMultiTenancy(t *testing.T) {
 				t.Errorf("generation is not incremented. Prev: %v, current: %v", gen, ni.generation)
 			}
 		}
-		for i := range test.expectedNodeInfo.pods {
-			_ = test.expectedNodeInfo.pods[i].Spec.Workloads()
-		}
+
+		// Temporary comment out for UT - should be bring back together with Vinay's CommonInfo changes
+		/*
+			for i := range test.expectedNodeInfo.pods {
+				_ = test.expectedNodeInfo.pods[i].Spec.Workloads()
+			}*/
 
 		test.expectedNodeInfo.generation = ni.generation
 		if !reflect.DeepEqual(test.expectedNodeInfo, ni) {
