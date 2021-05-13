@@ -68,12 +68,12 @@ type MizarNetworkPolicyRule struct {
 
 type MizarNetworkPolicyIngressMsg struct {
 	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
-	Rules []MizarNetworkPolicyRule         `json:"from"`
+	From  []MizarNetworkPolicyRule         `json:"from"`
 }
 
 type MizarNetworkPolicyEgressMsg struct {
 	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
-	Rules []MizarNetworkPolicyRule         `json:"to"`
+	To    []MizarNetworkPolicyRule         `json:"to"`
 }
 
 type MizarNetworkPolicyPolicySpecMsg struct {
@@ -105,7 +105,7 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 	}
 	portsJson, _ := json.Marshal(ports)
 
-	klog.Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
+	klog.V(3).Infof("Endpoint Name: %s, Namespace: %s, Tenant: %s, Backend Ips: %s, Ports: %s",
 		endpoints.Name, endpoints.Namespace, endpoints.Tenant, string(backendIpsJson), string(portsJson))
 
 	return &BuiltinsServiceEndpointMessage{
@@ -127,7 +127,7 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		network = ""
 	}
 
-	klog.Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %s",
+	klog.V(3).Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %v",
 		pod.Name, pod.Status.HostIP, pod.Namespace, pod.Tenant, network)
 
 	return &BuiltinsPodMessage{
@@ -149,7 +149,7 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 		}
 	}
 
-	klog.Infof("Node Name: %s, IP: %s", node.Name, ip)
+	klog.V(3).Infof("Node Name: %s, IP: %s", node.Name, ip)
 	return &BuiltinsNodeMessage{
 		Name: node.Name,
 		Ip:   ip,
@@ -157,10 +157,13 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 }
 
 func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsNetworkPolicyMessage {
-	klog.Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
+	klog.V(3).Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
 		policy.Name, policy.Namespace, policy.Tenant)
-	policyJson, _ := json.Marshal(parseNetworkPolicySpecToMsg(policy.Spec))
-	klog.Infof("Policy: %s", string(policyJson))
+	policyJson, err := json.Marshal(parseNetworkPolicySpecToMsg(policy.Spec))
+	if err != nil {
+		klog.Errorf("Error in parsing network policy spec into json: %v", err)
+	}
+	klog.V(3).Infof("Policy: %s", string(policyJson))
 
 	return &BuiltinsNetworkPolicyMessage{
 		Name:      policy.Name,
@@ -171,22 +174,13 @@ func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsN
 }
 
 func parseNetworkPolicySpecToMsg(nps networking.NetworkPolicySpec) MizarNetworkPolicyPolicySpecMsg {
-	ingressMsg := []MizarNetworkPolicyIngressMsg{}
-	egressMsg := []MizarNetworkPolicyEgressMsg{}
-	typeMsg := []string{}
-
-	podSelMsg := MizarNetworkPolicyPodSelector{
-		MatchLabels: nps.PodSelector.MatchLabels,
-	}
-	ingressMsg = parseNetworkPolicyIngressRulesToMsg(nps.Ingress)
-	egressMsg = parseNetworkPolicyEgressRulesToMsg(nps.Egress)
-	typeMsg = policyTypesToStringArray(nps.PolicyTypes)
-
 	policyMsg := MizarNetworkPolicyPolicySpecMsg{
-		PodSel: podSelMsg,
-		In:     ingressMsg,
-		Out:    egressMsg,
-		Type:   typeMsg,
+		PodSel: MizarNetworkPolicyPodSelector{
+			MatchLabels: nps.PodSelector.MatchLabels,
+		},
+		In:     parseNetworkPolicyIngressRulesToMsg(nps.Ingress),
+		Out:    parseNetworkPolicyEgressRulesToMsg(nps.Egress),
+		Type:   policyTypesToStringArray(nps.PolicyTypes),
 	}
 
 	return policyMsg
@@ -208,7 +202,7 @@ func parseNetworkPolicyIngressRulesToMsg(npirs []networking.NetworkPolicyIngress
 	ingressRules := []MizarNetworkPolicyIngressMsg{}
 
 	if len(npirs) == 0 {
-		return nil
+		return ingressRules
 	}
 
 	for _, npir := range npirs {
@@ -274,7 +268,7 @@ func parseNetworkPolicyIngressRulesToMsg(npirs []networking.NetworkPolicyIngress
 		}
 		ingressMsg := MizarNetworkPolicyIngressMsg{
 			Ports: ingressPorts,
-			Rules: froms,
+			From: froms,
 		}
 		ingressRules = append(ingressRules, ingressMsg)
 	}
@@ -353,7 +347,7 @@ func parseNetworkPolicyEgressRulesToMsg(npers []networking.NetworkPolicyEgressRu
 		}
 		egressMsg := MizarNetworkPolicyEgressMsg{
 			Ports: egressPorts,
-			Rules: tos,
+			To: tos,
 		}
 		egressRules = append(egressRules, egressMsg)
 	}

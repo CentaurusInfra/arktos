@@ -22,6 +22,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	networking "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
 
@@ -196,6 +197,29 @@ func TestConvertToNodeContract(t *testing.T) {
 
 	// Act
 	actual = ConvertToNodeContract(node)
+
+	// Assert
+	testCheckEqual(t, expected, actual)
+}
+
+func TestConvertToNetworkPolicyContract(t *testing.T) {
+	// Arrange - No Spec
+	nppolicy := &networking.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testName,
+			Namespace: testNamespace,
+			Tenant:    testTenant,
+		},
+	}
+
+	expected := &BuiltinsServiceEndpointMessage{
+		Name:           testName,
+		Namespace:      testNamespace,
+		Tenant:         testTenant,
+	}
+
+	// Act
+	actual := ConvertToServiceEndpointContract(nppolicy)
 
 	// Assert
 	testCheckEqual(t, expected, actual)
