@@ -590,10 +590,18 @@ func calculateResource(pod *v1.Pod) (res Resource, non0CPU int64, non0Mem int64)
 	resPtr := &res
 	for _, w := range pod.Spec.Workloads() {
 		resPtr.Add(w.Resources.Requests)
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			resPtr.Add(w.ResourcesAllocated)
+			non0CPUReq, non0MemReq := schedutil.GetNonzeroRequests(&w.ResourcesAllocated)
+			non0CPU += non0CPUReq
+			non0Mem += non0MemReq
+		} else {
+			resPtr.Add(w.Resources.Requests)
+			non0CPUReq, non0MemReq := schedutil.GetNonzeroRequests(&w.Resources.Requests)
+			non0CPU += non0CPUReq
+			non0Mem += non0MemReq
+		}
 
-		non0CPUReq, non0MemReq := schedutil.GetNonzeroRequests(&w.Resources.Requests)
-		non0CPU += non0CPUReq
-		non0Mem += non0MemReq
 		// No non-zero resources for GPUs or opaque resources.
 	}
 

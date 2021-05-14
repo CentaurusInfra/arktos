@@ -75,8 +75,8 @@ func GetResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 		return 1
 	}
 	totalResources := int64(0)
-	for _, container := range pod.Spec.Containers {
-		if rQuantity, ok := container.Resources.Requests[resource]; ok {
+	for _, workload := range pod.Spec.Workloads() {
+		if rQuantity, ok := workload.Resources.Requests[resource]; ok {
 			if resource == v1.ResourceCPU {
 				totalResources += rQuantity.MilliValue()
 			} else {
@@ -100,8 +100,8 @@ func GetResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 // PodResourceAllocations returns a dictionary of resources allocated to the containers of pod.
 func PodResourceAllocations(pod *v1.Pod) (allocations v1.ResourceList) {
 	allocations = v1.ResourceList{}
-	for _, container := range pod.Spec.Containers {
-		addResourceList(allocations, container.ResourcesAllocated)
+	for _, workload := range pod.Spec.Workloads() {
+		addResourceList(allocations, workload.ResourcesAllocated)
 	}
 	// init containers define the minimum of any resource
 	for _, container := range pod.Spec.InitContainers {
