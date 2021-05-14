@@ -71,6 +71,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "NodePorts"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeResourcesFit"},
 					{Name: "NodeName"},
@@ -95,6 +96,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			wantPlugins: map[string][]config.Plugin{
 				"QueueSortPlugin": {{Name: "PrioritySort"}},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "TaintToleration"},
 				},
@@ -130,6 +132,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "ServiceAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodePorts"},
 					{Name: "NodeAffinity"},
@@ -184,6 +187,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "ServiceAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -243,6 +247,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "ServiceAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -312,6 +317,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -388,6 +394,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -475,6 +482,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -573,6 +581,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -672,6 +681,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -775,6 +785,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -890,6 +901,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -1007,6 +1019,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -1124,6 +1137,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -1246,6 +1260,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "InterPodAffinity"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeName"},
 					{Name: "NodePorts"},
@@ -1317,6 +1332,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 					{Name: "NodeResourceLimits"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "TaintToleration"},
 				},
@@ -1334,7 +1350,7 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			}
 
 			policyConfigMap := v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "scheduler-custom-policy-config"},
+				ObjectMeta: metav1.ObjectMeta{Namespace: metav1.NamespaceSystem, Name: "scheduler-custom-policy-config", Tenant: metav1.TenantSystem},
 				Data:       map[string]string{config.SchedulerPolicyConfigMapKey: tc.JSON},
 			}
 			client := fake.NewSimpleClientset(&policyConfigMap)
