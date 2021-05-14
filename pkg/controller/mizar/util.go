@@ -175,15 +175,22 @@ func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsN
 
 func parseNetworkPolicySpecToMsg(nps networking.NetworkPolicySpec) MizarNetworkPolicyPolicySpecMsg {
 	policyMsg := MizarNetworkPolicyPolicySpecMsg{
-		PodSel: MizarNetworkPolicyPodSelector{
-			MatchLabels: nps.PodSelector.MatchLabels,
-		},
-		In:   parseNetworkPolicyIngressRulesToMsg(nps.Ingress),
-		Out:  parseNetworkPolicyEgressRulesToMsg(nps.Egress),
-		Type: policyTypesToStringArray(nps.PolicyTypes),
+		PodSel: parseNetworkPolicyPodSelectorToMsg(nps),
+		In:     parseNetworkPolicyIngressRulesToMsg(nps.Ingress),
+		Out:    parseNetworkPolicyEgressRulesToMsg(nps.Egress),
+		Type:   policyTypesToStringArray(nps.PolicyTypes),
 	}
 
 	return policyMsg
+}
+
+func parseNetworkPolicyPodSelectorToMsg(nps networking.NetworkPolicySpec) MizarNetworkPolicyPodSelector {
+	if len(nps.PodSelector.MatchLabels) == 0 {
+		return MizarNetworkPolicyPodSelector{}
+	}
+	return MizarNetworkPolicyPodSelector{
+		MatchLabels: nps.PodSelector.MatchLabels,
+	}
 }
 
 func policyTypesToStringArray(pts []networking.PolicyType) []string {

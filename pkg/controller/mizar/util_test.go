@@ -212,12 +212,20 @@ func TestConvertToNetworkPolicyContract(t *testing.T) {
 		},
 	}
 
-	expected := &BuiltinsServiceEndpointMessage{
+	expected := &BuiltinsNetworkPolicyMessage{
 		Name:      testName,
 		Namespace: testNamespace,
 		Tenant:    testTenant,
 	}
 
+	testPolicy := MizarNetworkPolicyPolicySpecMsg{
+		PodSel: MizarNetworkPolicyPodSelector{},
+		In:     []MizarNetworkPolicyIngressMsg{},
+		Out:    []MizarNetworkPolicyEgressMsg{},
+		Type:   []string{},
+	}
+
+	expected.Policy = jsonMarshal(testPolicy)
 	// Act
 	actual := ConvertToNetworkPolicyContract(nppolicy)
 
