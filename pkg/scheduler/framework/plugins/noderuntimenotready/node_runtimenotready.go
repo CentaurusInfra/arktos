@@ -21,6 +21,7 @@ import (
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 )
@@ -79,4 +80,9 @@ func (pl *NodeRuntimeNotReady) Filter(ctx context.Context, _ *framework.CycleSta
 	}
 
 	return framework.NewStatus(framework.Unschedulable, ErrNodeRuntimeNotReady)
+}
+
+// New initializes a new plugin and returns it.
+func New(_ *runtime.Unknown, _ framework.FrameworkHandle) (framework.Plugin, error) {
+	return &NodeRuntimeNotReady{}, nil
 }
