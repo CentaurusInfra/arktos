@@ -20,6 +20,8 @@ package scheduling
 import (
 	"encoding/json"
 	"fmt"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"math"
 	"time"
 
@@ -373,11 +375,16 @@ func computeCPUMemFraction(cs clientset.Interface, node v1.Node, resource *v1.Re
 
 func getNonZeroRequests(pod *v1.Pod) Resource {
 	result := Resource{}
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		cpu, memory := schedutil.GetNonzeroRequests(&container.Resources.Requests)
-		result.MilliCPU += cpu
-		result.Memory += memory
+	for _, workload := range pod.Spec.Workloads() {
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.InPlacePodVerticalScaling) {
+			cpu, memory := schedutil.GetNonzeroRequests(&workload.ResourcesAllocated)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		} else {
+			cpu, memory := schedutil.GetNonzeroRequests(&workload.Resources.Requests)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		}
 	}
 	return result
 }

@@ -21,6 +21,7 @@ package cache
 import (
 	"errors"
 	"fmt"
+	"github.com/docker/docker/api/types/container"
 	"reflect"
 	"strings"
 	"testing"
@@ -936,8 +937,8 @@ func TestForgetPod(t *testing.T) {
 // excluding initContainers.
 func getResourceRequest(pod *v1.Pod) v1.ResourceList {
 	result := &schedulernodeinfo.Resource{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Requests)
+	for _, workload := range pod.Spec.Workloads() {
+		result.Add(workload.Resources.Requests)
 	}
 
 	return result.ResourceList()
