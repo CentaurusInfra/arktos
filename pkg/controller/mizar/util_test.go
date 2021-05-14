@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	v1 "k8s.io/api/core/v1"
+	networking "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 )
@@ -196,6 +197,37 @@ func TestConvertToNodeContract(t *testing.T) {
 
 	// Act
 	actual = ConvertToNodeContract(node)
+
+	// Assert
+	testCheckEqual(t, expected, actual)
+}
+
+func TestConvertToNetworkPolicyContract(t *testing.T) {
+	// Arrange - No Spec
+	nppolicy := &networking.NetworkPolicy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      testName,
+			Namespace: testNamespace,
+			Tenant:    testTenant,
+		},
+	}
+
+	expected := &BuiltinsNetworkPolicyMessage{
+		Name:      testName,
+		Namespace: testNamespace,
+		Tenant:    testTenant,
+	}
+
+	testPolicy := MizarNetworkPolicyPolicySpecMsg{
+		PodSel: MizarNetworkPolicyPodSelector{},
+		In:     []MizarNetworkPolicyIngressMsg{},
+		Out:    []MizarNetworkPolicyEgressMsg{},
+		Type:   []string{},
+	}
+
+	expected.Policy = jsonMarshal(testPolicy)
+	// Act
+	actual := ConvertToNetworkPolicyContract(nppolicy)
 
 	// Assert
 	testCheckEqual(t, expected, actual)
