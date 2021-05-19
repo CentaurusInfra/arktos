@@ -16,7 +16,10 @@ go_library(
 
 go_test(
     name = "go_default_test",
-    srcs = ["default_binder_test.go"],
+    srcs = [
+        "default_binder_multi_tenancy_test.go",
+        "default_binder_test.go",
+    ],
     embed = [":go_default_library"],
     deps = [
         "//pkg/scheduler/framework/v1alpha1:go_default_library",
