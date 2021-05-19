@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
@@ -1364,10 +1365,13 @@ func TestCompatibility_v1_Scheduler(t *testing.T) {
 			}
 			informerFactory := informers.NewSharedInformerFactory(client, 0)
 			recorderFactory := profile.NewRecorderFactory(events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1beta1().Events("")}))
+			nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+			nodeInformerMap["rp0"] = informerFactory.Core().V1().Nodes()
 
 			sched, err := scheduler.New(
 				client,
 				informerFactory,
+				nodeInformerMap,
 				informerFactory.Core().V1().Pods(),
 				recorderFactory,
 				make(chan struct{}),
@@ -1528,10 +1532,13 @@ func TestAlgorithmProviderCompatibility(t *testing.T) {
 			client := fake.NewSimpleClientset()
 			informerFactory := informers.NewSharedInformerFactory(client, 0)
 			recorderFactory := profile.NewRecorderFactory(events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1beta1().Events("")}))
+			nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+			nodeInformerMap["rp0"] = informerFactory.Core().V1().Nodes()
 
 			sched, err := scheduler.New(
 				client,
 				informerFactory,
+				nodeInformerMap,
 				informerFactory.Core().V1().Pods(),
 				recorderFactory,
 				make(chan struct{}),
@@ -1787,10 +1794,13 @@ func TestPluginsConfigurationCompatibility(t *testing.T) {
 			client := fake.NewSimpleClientset()
 			informerFactory := informers.NewSharedInformerFactory(client, 0)
 			recorderFactory := profile.NewRecorderFactory(events.NewBroadcaster(&events.EventSinkImpl{Interface: client.EventsV1beta1().Events("")}))
+			nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+			nodeInformerMap["rp0"] = informerFactory.Core().V1().Nodes()
 
 			sched, err := scheduler.New(
 				client,
 				informerFactory,
+				nodeInformerMap,
 				informerFactory.Core().V1().Pods(),
 				recorderFactory,
 				make(chan struct{}),

@@ -57,6 +57,8 @@ type priorityConfig struct {
 	weight   int64
 }
 
+const rpId0 = "rp0"
+
 func errorPredicateExtender(pod *v1.Pod, node *v1.Node) (bool, error) {
 	return false, fmt.Errorf("Some error")
 }
@@ -584,7 +586,7 @@ func TestGenericSchedulerWithExtenders(t *testing.T) {
 			}
 			cache := internalcache.New(time.Duration(0), wait.NeverStop)
 			for _, name := range test.nodes {
-				cache.AddNode(createNode(name))
+				cache.AddNode(createNode(name), rpId0)
 			}
 			queue := internalqueue.NewSchedulingQueue(nil)
 

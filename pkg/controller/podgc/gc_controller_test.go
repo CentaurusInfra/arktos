@@ -51,7 +51,9 @@ func alwaysReady() bool { return true }
 func NewFromClient(kubeClient clientset.Interface, terminatedPodThreshold int) (*PodGCController, coreinformers.PodInformer) {
 	informerFactory := informers.NewSharedInformerFactory(kubeClient, controller.NoResyncPeriodFunc())
 	podInformer := informerFactory.Core().V1().Pods()
-	controller := NewPodGC(kubeClient, podInformer, terminatedPodThreshold)
+	rpClients := make(map[string]clientset.Interface, 1)
+	rpClients["rp0"] = kubeClient
+	controller := NewPodGC(kubeClient, rpClients, podInformer, terminatedPodThreshold)
 	controller.podListerSynced = alwaysReady
 	return controller, podInformer
 }

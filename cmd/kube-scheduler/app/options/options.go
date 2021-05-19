@@ -301,7 +301,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 				rpId := "rp" + strconv.Itoa(i)
 				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
 				if err != nil {
-					klog.Error("failed to create resource provider rest client, error: %v", err)
+					klog.Errorf("failed to create resource provider rest client, error: %v", err)
 					return nil, err
 				}
 
