@@ -124,12 +124,14 @@ func newTestBinder(t *testing.T, stopCh <-chan struct{}) *testEnv {
 	})
 	informerFactory := informers.NewSharedInformerFactory(client, controller.NoResyncPeriodFunc())
 
-	nodeInformer := informerFactory.Core().V1().Nodes()
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap["rp0"] = informerFactory.Core().V1().Nodes()
+
 	pvcInformer := informerFactory.Core().V1().PersistentVolumeClaims()
 	classInformer := informerFactory.Storage().V1().StorageClasses()
 	binder := NewVolumeBinder(
 		client,
-		nodeInformer,
+		nodeInformerMap,
 		pvcInformer,
 		informerFactory.Core().V1().PersistentVolumes(),
 		classInformer,
@@ -224,7 +226,7 @@ func newTestBinder(t *testing.T, stopCh <-chan struct{}) *testEnv {
 		reactor:              reactor,
 		binder:               binder,
 		internalBinder:       internalBinder,
-		internalNodeInformer: nodeInformer,
+		internalNodeInformer: informerFactory.Core().V1().Nodes(),
 		internalPVCache:      internalPVCache,
 		internalPVCCache:     internalPVCCache,
 	}

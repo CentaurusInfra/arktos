@@ -1594,7 +1594,7 @@ func TestBackOffFlow(t *testing.T) {
 	}
 }
 
-func makePodInfos(num int, timestamp time.Time) []*framework.PodInfo {
+func makePodInfos(num int, timestamp time.Time, tenant ...string) []*framework.PodInfo {
 	var pInfos = make([]*framework.PodInfo, 0, num)
 	for i := 1; i <= num; i++ {
 		p := &framework.PodInfo{
@@ -1606,6 +1606,9 @@ func makePodInfos(num int, timestamp time.Time) []*framework.PodInfo {
 				},
 			},
 			Timestamp: timestamp,
+		}
+		if len(tenant) > 0 {
+			p.Pod.Tenant = tenant[0]
 		}
 		pInfos = append(pInfos, p)
 	}

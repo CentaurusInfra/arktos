@@ -25,6 +25,8 @@ import (
 	"strings"
 	"testing"
 
+	"k8s.io/klog"
+
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -67,6 +69,11 @@ func getVolumeLimitKey(filterType string) v1.ResourceName {
 }
 
 func TestCSILimits(t *testing.T) {
+	if !utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		klog.Info("CSI Driver feature not enabled")
+		return
+	}
+
 	runningPod := &v1.Pod{
 		Spec: v1.PodSpec{
 			Volumes: []v1.Volume{

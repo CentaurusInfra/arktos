@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -386,6 +387,10 @@ func newFakeOperationGenerator(ch chan interface{}, quit chan interface{}) Opera
 		ch:   ch,
 		quit: quit,
 	}
+}
+
+func (fopg *fakeOperationGenerator) GetCSITranslator() InTreeToCSITranslator {
+	panic("implement me")
 }
 
 func (fopg *fakeOperationGenerator) GenerateMountVolumeFunc(waitForAttachTimeout time.Duration, volumeToMount VolumeToMount, actualStateOfWorldMounterUpdater ActualStateOfWorldMounterUpdater, isRemount bool) volumetypes.GeneratedOperations {

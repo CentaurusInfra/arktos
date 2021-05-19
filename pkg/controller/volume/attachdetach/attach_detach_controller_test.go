@@ -27,22 +27,35 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
+	clientset "k8s.io/client-go/kubernetes"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	kcache "k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/cache"
 	controllervolumetesting "k8s.io/kubernetes/pkg/controller/volume/attachdetach/testing"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/volume"
 )
+
+const rpId0 = "rp0"
 
 func Test_NewAttachDetachController_Positive(t *testing.T) {
 	// Arrange
 	fakeKubeClient := controllervolumetesting.CreateTestClient()
 	informerFactory := informers.NewSharedInformerFactory(fakeKubeClient, controller.NoResyncPeriodFunc())
 
+	rpClients := make(map[string]clientset.Interface, 1)
+	rpClients[rpId0] = fakeKubeClient
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap[rpId0] = informerFactory.Core().V1().Nodes()
+
 	// Act
 	_, err := NewAttachDetachController(
 		fakeKubeClient,
+		rpClients,
 		informerFactory.Core().V1().Pods(),
-		informerFactory.Core().V1().Nodes(),
+		nodeInformerMap,
 		informerFactory.Core().V1().PersistentVolumeClaims(),
 		informerFactory.Core().V1().PersistentVolumes(),
 		informerFactory.Storage().V1beta1().CSINodes(),
@@ -69,6 +82,11 @@ func Test_AttachDetachControllerStateOfWolrdPopulators_Positive(t *testing.T) {
 	pvcInformer := informerFactory.Core().V1().PersistentVolumeClaims()
 	pvInformer := informerFactory.Core().V1().PersistentVolumes()
 
+	nodeListerMap := make(map[string]corelisters.NodeLister, 1)
+	nodesSyncedMap := make(map[string]kcache.InformerSynced, 1)
+	nodeListerMap[rpId0] = nodeInformer.Lister()
+	nodesSyncedMap[rpId0] = nodeInformer.Informer().HasSynced
+
 	adc := &attachDetachController{
 		kubeClient:  fakeKubeClient,
 		pvcLister:   pvcInformer.Lister(),
@@ -77,8 +95,8 @@ func Test_AttachDetachControllerStateOfWolrdPopulators_Positive(t *testing.T) {
 		pvsSynced:   pvInformer.Informer().HasSynced,
 		podLister:   podInformer.Lister(),
 		podsSynced:  podInformer.Informer().HasSynced,
-		nodeLister:  nodeInformer.Lister(),
-		nodesSynced: nodeInformer.Informer().HasSynced,
+		nodeListers: nodeListerMap,
+		nodesSynced: nodesSyncedMap,
 		cloud:       nil,
 	}
 
@@ -104,7 +122,7 @@ func Test_AttachDetachControllerStateOfWolrdPopulators_Positive(t *testing.T) {
 	}
 
 	// Test the ActualStateOfWorld contains all the node volumes
-	nodes, err := adc.nodeLister.List(labels.Everything())
+	nodes, err := nodeutil.ListNodes(adc.nodeListers, labels.Everything())
 	if err != nil {
 		t.Fatalf("Failed to list nodes in indexer. Expected: <no error> Actual: %v", err)
 	}
@@ -154,6 +172,11 @@ func attachDetachRecoveryTestCase(t *testing.T, extraPods1 []*v1.Pod, extraPods2
 	nodeInformer := informerFactory.Core().V1().Nodes().Informer()
 	podInformer := informerFactory.Core().V1().Pods().Informer()
 	var podsNum, extraPodsNum, nodesNum, i int
+
+	rpClients := make(map[string]clientset.Interface, 1)
+	rpClients[rpId0] = fakeKubeClient
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap[rpId0] = informerFactory.Core().V1().Nodes()
 
 	stopCh := make(chan struct{})
 
@@ -216,8 +239,9 @@ func attachDetachRecoveryTestCase(t *testing.T, extraPods1 []*v1.Pod, extraPods2
 	// Create the controller
 	adcObj, err := NewAttachDetachController(
 		fakeKubeClient,
+		rpClients,
 		informerFactory.Core().V1().Pods(),
-		informerFactory.Core().V1().Nodes(),
+		nodeInformerMap,
 		informerFactory.Core().V1().PersistentVolumeClaims(),
 		informerFactory.Core().V1().PersistentVolumes(),
 		informerFactory.Storage().V1beta1().CSINodes(),

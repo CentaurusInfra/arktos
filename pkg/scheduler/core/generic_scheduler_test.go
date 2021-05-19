@@ -799,7 +799,7 @@ func TestGenericScheduler(t *testing.T) {
 			for _, name := range test.nodes {
 				node := &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{"hostname": name}}}
 				nodes = append(nodes, node)
-				cache.AddNode(node)
+				cache.AddNode(node, rpId0)
 			}
 
 			snapshot := internalcache.NewSnapshot(test.pods, nodes)
@@ -841,7 +841,7 @@ func TestGenericScheduler(t *testing.T) {
 func makeScheduler(nodes []*v1.Node) *genericScheduler {
 	cache := internalcache.New(time.Duration(0), wait.NeverStop)
 	for _, n := range nodes {
-		cache.AddNode(n)
+		cache.AddNode(n, rpId0)
 	}
 
 	s := NewGenericScheduler(
@@ -1563,7 +1563,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 				{ObjectMeta: metav1.ObjectMeta{Name: "a", UID: types.UID("a"), Labels: map[string]string{"app": "foo"}}, Spec: v1.PodSpec{Containers: mediumContainers, Priority: &midPriority, NodeName: "machine1"}},
 				{ObjectMeta: metav1.ObjectMeta{Name: "b", UID: types.UID("b"), Labels: map[string]string{"app": "foo"}}, Spec: v1.PodSpec{Containers: mediumContainers, Priority: &midPriority, NodeName: "machine1"}}},
 			pdbs: []*policy.PodDisruptionBudget{
-				{Spec: policy.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "foo"}}}, Status: policy.PodDisruptionBudgetStatus{DisruptionsAllowed: 1}}},
+				{Spec: policy.PodDisruptionBudgetSpec{Selector: &metav1.LabelSelector{MatchLabels: map[string]string{"app": "foo"}}}, Status: policy.PodDisruptionBudgetStatus{PodDisruptionsAllowed: 1}}},
 			expected:                map[string]victims{"machine1": {pods: sets.NewString("a", "b"), numPDBViolations: 1}},
 			expectedNumFilterCalled: 3,
 		},
@@ -1581,7 +1581,7 @@ func TestSelectNodesForPreemption(t *testing.T) {
 			}
 			for _, name := range test.nodes {
 				filterFailedNodeReturnCodeMap[name] = test.filterReturnCode
-				cache.AddNode(&v1.Node{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{"hostname": name}}})
+				cache.AddNode(&v1.Node{ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{"hostname": name}}}, rpId0)
 			}
 
 			var nodes []*v1.Node
@@ -2389,7 +2389,7 @@ func TestPreempt(t *testing.T) {
 					node.ObjectMeta.Labels[labelKeys[i]] = label
 				}
 				node.Name = node.ObjectMeta.Labels["hostname"]
-				cache.AddNode(node)
+				cache.AddNode(node, rpId0)
 				nodes = append(nodes, node)
 				nodeNames[i] = node.Name
 
@@ -2513,7 +2513,7 @@ func TestNumFeasibleNodesToFind(t *testing.T) {
 			name:                     "set percentageOfNodesToScore and nodes number more than 50*125",
 			percentageOfNodesToScore: 40,
 			numAllNodes:              6000,
-			wantNumNodes:             2400,
+			wantNumNodes:             500, // arktos force setting node evaluating to be 500 max
 		},
 	}
 	for _, tt := range tests {

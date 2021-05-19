@@ -490,7 +490,8 @@ func TestProvisionSync(t *testing.T) {
 					nodesIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 					node := &v1.Node{ObjectMeta: metav1.ObjectMeta{Name: "node1"}}
 					nodesIndexer.Add(node)
-					ctrl.NodeLister = corelisters.NewNodeLister(nodesIndexer)
+					ctrl.NodeListers = make(map[string]corelisters.NodeLister, 1)
+					ctrl.NodeListers["rp0"] = corelisters.NewNodeLister(nodesIndexer)
 				}),
 		},
 		{
