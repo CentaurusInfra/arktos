@@ -17,6 +17,7 @@ limitations under the License.
 package scheduler
 
 import (
+	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"reflect"
 	"testing"
 	"time"
@@ -25,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/client-go/kubernetes/fake"
-	fakeV1 "k8s.io/client-go/kubernetes/typed/core/v1/fake"
 	clienttesting "k8s.io/client-go/testing"
 	apitesting "k8s.io/kubernetes/pkg/api/testing"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
@@ -62,75 +62,23 @@ func testClientGetPodRequestWithMultiTenancy(client *fake.Clientset, t *testing.
 	}
 }
 
-func TestBindWithMultiTenancy(t *testing.T) {
-	table := []struct {
-		name    string
-		binding *v1.Binding
-	}{
-		{
-			name: "binding can bind and validate request",
-			binding: &v1.Binding{
-				ObjectMeta: metav1.ObjectMeta{
-					Namespace: metav1.NamespaceDefault,
-					Tenant:    testTenant,
-					Name:      "foo",
-				},
-				Target: v1.ObjectReference{
-					Name: "foohost.kubernetes.mydomain.com",
-				},
-			},
-		},
-	}
-
-	for _, test := range table {
-		t.Run(test.name, func(t *testing.T) {
-			testBindWithMultiTenancy(test.binding, t)
-		})
-	}
-}
-
-func testBindWithMultiTenancy(binding *v1.Binding, t *testing.T) {
-	testPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{Name: binding.GetName(), Namespace: metav1.NamespaceDefault, Tenant: testTenant},
-		Spec:       apitesting.V1DeepEqualSafePodSpec(),
-	}
-	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})
-
-	b := binder{client}
-
-	if err := b.Bind(binding); err != nil {
-		t.Errorf("Unexpected error: %v", err)
-		return
-	}
-
-	pod := client.CoreV1().PodsWithMultiTenancy(metav1.NamespaceDefault, testTenant).(*fakeV1.FakePods)
-
-	actualBinding, err := pod.GetBinding(binding.GetName())
-	if err != nil {
-		t.Fatalf("Unexpected error: %v", err)
-		return
-	}
-	if !reflect.DeepEqual(binding, actualBinding) {
-		t.Errorf("Binding did not match expectation, expected: %v, actual: %v", binding, actualBinding)
-	}
-}
-
 func TestDefaultErrorFuncWithMultiTenancy(t *testing.T) {
 	testPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "foo", Namespace: "bar", Tenant: testTenant},
 		Spec:       apitesting.V1DeepEqualSafePodSpec(),
 	}
+	testPodInfo := &framework.PodInfo{Pod: testPod}
 	client := fake.NewSimpleClientset(&v1.PodList{Items: []v1.Pod{*testPod}})
 	stopCh := make(chan struct{})
 	defer close(stopCh)
 
 	timestamp := time.Now()
-	queue := internalqueue.NewPriorityQueueWithClock(nil, clock.NewFakeClock(timestamp), nil)
+	queue := internalqueue.NewPriorityQueue(nil, internalqueue.WithClock(clock.NewFakeClock(timestamp)))
 	schedulerCache := internalcache.New(30*time.Second, stopCh)
-	errFunc := MakeDefaultErrorFunc(client, queue, schedulerCache, stopCh)
+	errFunc := MakeDefaultErrorFunc(client, queue, schedulerCache)
 
 	// Trigger error handling again to put the pod in unschedulable queue
-	errFunc(testPod, nil)
+	errFunc(testPodInfo, nil)
 
 	// Try up to a minute to retrieve the error pod from priority queue
 	foundPodFlag := false
@@ -161,10 +109,10 @@ func TestDefaultErrorFuncWithMultiTenancy(t *testing.T) {
 	queue.Delete(testPod)
 
 	// Trigger a move request
-	queue.MoveAllToActiveQueue()
+	queue.MoveAllToActiveOrBackoffQueue("test")
 
 	// Trigger error handling again to put the pod in backoff queue
-	errFunc(testPod, nil)
+	errFunc(testPodInfo, nil)
 
 	foundPodFlag = false
 	for i := 0; i < maxIterations; i++ {
