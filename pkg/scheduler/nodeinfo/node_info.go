@@ -590,7 +590,6 @@ func (n *NodeInfo) resetSlicesIfEmpty() {
 func calculateResource(pod *v1.Pod) (res Resource, non0CPU int64, non0Mem int64) {
 	resPtr := &res
 	for _, w := range pod.Spec.Workloads() {
-		resPtr.Add(w.Resources.Requests)
 		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
 			resPtr.Add(w.ResourcesAllocated)
 			non0CPUReq, non0MemReq := schedutil.GetNonzeroRequests(&w.ResourcesAllocated)
