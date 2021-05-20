@@ -21,7 +21,6 @@ package cache
 import (
 	"errors"
 	"fmt"
-	"github.com/docker/docker/api/types/container"
 	"reflect"
 	"strings"
 	"testing"
