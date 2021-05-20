@@ -16,6 +16,7 @@
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
+IS_SCALE_OUT=${IS_SCALE_OUT:-"false"}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
 # sanity check for OpenStack provider
