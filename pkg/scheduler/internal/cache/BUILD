@@ -47,7 +47,6 @@ go_test(
         "//staging/src/k8s.io/client-go/listers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
         "//staging/src/k8s.io/component-base/featuregate/testing:go_default_library",
-        "//vendor/github.com/docker/docker/api/types/container:go_default_library",
     ],
 )
 
