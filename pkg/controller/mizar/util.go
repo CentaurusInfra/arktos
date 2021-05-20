@@ -121,20 +121,28 @@ func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Servi
 
 func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 	var network string
+	var labels string
 	if value, exists := pod.Labels[Arktos_Network_Name]; exists {
 		network = value
 	} else {
 		network = ""
 	}
 
-	klog.V(3).Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Arktos network: %v",
-		pod.Name, pod.Status.HostIP, pod.Namespace, pod.Tenant, network)
+	labelJson, err := json.Marshal(pod.Labels)
+	if err != nil {
+		klog.Errorf("Error in parsing pod labels into json: %v", err)
+	}
+	labels = string(labelJson)
+
+	klog.V(3).Infof("Pod Name: %s, HostIP: %s, Namespace: %s, Tenant: %s, Labels: %s, Arktos network: %v",
+		pod.Name, pod.Status.HostIP, pod.Namespace, pod.Tenant, labels, network)
 
 	return &BuiltinsPodMessage{
 		Name:          pod.Name,
 		HostIp:        pod.Status.HostIP,
 		Namespace:     pod.Namespace,
 		Tenant:        pod.Tenant,
+		Labels:        labels,
 		ArktosNetwork: network,
 		Phase:         string(pod.Status.Phase),
 	}

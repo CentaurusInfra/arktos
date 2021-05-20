@@ -120,6 +120,7 @@ func TestConvertToPodContract(t *testing.T) {
 			Name:      testName,
 			Namespace: testNamespace,
 			Tenant:    testTenant,
+			Labels:    testLabels,
 		},
 		Status: v1.PodStatus{
 			HostIP: testHostIP,
@@ -131,6 +132,7 @@ func TestConvertToPodContract(t *testing.T) {
 		HostIp:        testHostIP,
 		Namespace:     testNamespace,
 		Tenant:        testTenant,
+		Labels:        testLabels,
 		ArktosNetwork: "",
 		Phase:         testPhase,
 	}
