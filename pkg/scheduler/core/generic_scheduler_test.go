@@ -1067,9 +1067,9 @@ func TestZeroRequest(t *testing.T) {
 				},
 				ResourcesAllocated: v1.ResourceList{
 					v1.ResourceCPU: resource.MustParse(
-						strconv.FormatInt(schedutil.DefaultMilliCPURequest, 10) + "m"),
+						strconv.FormatInt(schedutil.DefaultMilliCPURequest*3, 10) + "m"),
 					v1.ResourceMemory: resource.MustParse(
-						strconv.FormatInt(schedutil.DefaultMemoryRequest, 10)),
+						strconv.FormatInt(schedutil.DefaultMemoryRequest*3, 10)),
 				},
 			},
 		},
