@@ -74,7 +74,7 @@ func (pl *NodeRuntimeNotReady) Filter(ctx context.Context, _ *framework.CycleSta
 
 	for _, cond := range nodeInfo.Node().Status.Conditions {
 		if cond.Type == podRequestedRuntimeReady && cond.Status == v1.ConditionTrue {
-			klog.V(5).Infof("Found ready node runitme condition for pod [%s], condition [%v]", pod.Name, cond)
+			klog.V(5).Infof("Found ready node runtime condition for pod [%s], condition [%v]", pod.Name, cond)
 			return nil
 		}
 	}

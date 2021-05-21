@@ -19,6 +19,7 @@ limitations under the License.
 package algorithmprovider
 
 import (
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderuntimenotready"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -63,6 +64,7 @@ func TestClusterAutoscalerProvider(t *testing.T) {
 		},
 		Filter: &schedulerapi.PluginSet{
 			Enabled: []schedulerapi.Plugin{
+				{Name: noderuntimenotready.Name},
 				{Name: nodeunschedulable.Name},
 				{Name: noderesources.FitName},
 				{Name: nodename.Name},
@@ -139,6 +141,7 @@ func TestApplyFeatureGates(t *testing.T) {
 				},
 				Filter: &schedulerapi.PluginSet{
 					Enabled: []schedulerapi.Plugin{
+						{Name: noderuntimenotready.Name},
 						{Name: nodeunschedulable.Name},
 						{Name: noderesources.FitName},
 						{Name: nodename.Name},
@@ -200,6 +203,7 @@ func TestApplyFeatureGates(t *testing.T) {
 				},
 				Filter: &schedulerapi.PluginSet{
 					Enabled: []schedulerapi.Plugin{
+						{Name: noderuntimenotready.Name},
 						{Name: nodeunschedulable.Name},
 						{Name: noderesources.FitName},
 						{Name: nodename.Name},
