@@ -103,6 +103,10 @@ func makePod(node string, milliCPU, memory int64) *v1.Pod {
 							v1.ResourceMemory: *resource.NewQuantity(memory, resource.DecimalSI),
 						},
 					},
+					ResourcesAllocated: v1.ResourceList{
+						v1.ResourceCPU:    *resource.NewMilliQuantity(milliCPU, resource.DecimalSI),
+						v1.ResourceMemory: *resource.NewQuantity(memory, resource.DecimalSI),
+					},
 				},
 			},
 		},

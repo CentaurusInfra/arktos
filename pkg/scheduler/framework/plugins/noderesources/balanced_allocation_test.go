@@ -57,6 +57,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("2000"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("2000"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -64,6 +68,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("3000"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+						v1.ResourceCPU:    resource.MustParse("2000m"),
+						v1.ResourceMemory: resource.MustParse("3000"),
 				},
 			},
 		},
@@ -85,6 +93,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("0m"),
+					v1.ResourceMemory: resource.MustParse("0"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -92,6 +104,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("0m"),
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("0m"),
+					v1.ResourceMemory: resource.MustParse("0"),
 				},
 			},
 		},
@@ -113,6 +129,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("0m"),
+					v1.ResourceMemory: resource.MustParse("0"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -120,6 +140,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("0m"),
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("0m"),
+					v1.ResourceMemory: resource.MustParse("0"),
 				},
 			},
 		},
@@ -159,6 +183,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("0"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -166,6 +194,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("0"),
 				},
 			},
 		},
@@ -182,6 +214,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("2000"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("2000"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -189,6 +225,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("3000"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("3000"),
 				},
 			},
 		},
@@ -203,6 +243,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("2000"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("2000"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -210,6 +254,10 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("3000"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("3000"),
 				},
 			},
 		},

@@ -68,7 +68,8 @@ func newResourcePod(usage ...schedulernodeinfo.Resource) *v1.Pod {
 	containers := []v1.Container{}
 	for _, req := range usage {
 		containers = append(containers, v1.Container{
-			Resources: v1.ResourceRequirements{Requests: req.ResourceList()},
+			Resources:          v1.ResourceRequirements{Requests: req.ResourceList()},
+			ResourcesAllocated: req.ResourceList(),
 		})
 	}
 	return &v1.Pod{
