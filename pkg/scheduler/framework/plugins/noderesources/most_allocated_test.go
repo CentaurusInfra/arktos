@@ -52,6 +52,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("0"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -59,6 +63,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("0"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("0"),
 				},
 			},
 		},
@@ -75,6 +83,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("2000"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("1000m"),
+					v1.ResourceMemory: resource.MustParse("2000"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -82,6 +94,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("2000m"),
 						v1.ResourceMemory: resource.MustParse("3000"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("3000"),
 				},
 			},
 		},
@@ -96,6 +112,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceMemory: resource.MustParse("4000"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("4000"),
+				},
 			},
 			{
 				Resources: v1.ResourceRequirements{
@@ -103,6 +123,10 @@ func TestNodeResourcesMostAllocated(t *testing.T) {
 						v1.ResourceCPU:    resource.MustParse("3000m"),
 						v1.ResourceMemory: resource.MustParse("5000"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse("3000m"),
+					v1.ResourceMemory: resource.MustParse("5000"),
 				},
 			},
 		},

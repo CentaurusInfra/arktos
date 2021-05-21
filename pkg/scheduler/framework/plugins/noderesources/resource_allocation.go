@@ -124,7 +124,12 @@ func calculatePodResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 	var podRequest int64
 	for i := range pod.Spec.Workloads() {
 		workload := &pod.Spec.Workloads()[i]
-		value := schedutil.GetNonzeroRequestForResource(resource, &workload.Resources.Requests)
+		var value int64
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			value = schedutil.GetNonzeroRequestForResource(resource, &workload.ResourcesAllocated)
+		} else {
+			value = schedutil.GetNonzeroRequestForResource(resource, &workload.Resources.Requests)
+		}
 		podRequest += value
 	}
 

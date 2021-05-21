@@ -773,6 +773,7 @@ func makePodWithEphemeralStorage(nodeName, ephemeralStorage string) *v1.Pod {
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
+				ResourcesAllocated: req,
 			}},
 			NodeName: nodeName,
 		},
@@ -941,7 +942,7 @@ func TestForgetPod(t *testing.T) {
 func getResourceRequest(pod *v1.Pod) v1.ResourceList {
 	result := &schedulernodeinfo.Resource{}
 	for _, workload := range pod.Spec.Workloads() {
-		result.Add(workload.Resources.Requests)
+		result.Add(workload.ResourcesAllocated)
 	}
 
 	return result.ResourceList()
@@ -1032,6 +1033,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceMemory: mem50m,
 									},
 								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
+								},
 								Ports: []v1.ContainerPort{
 									{
 										Name:          "http",
@@ -1083,6 +1088,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceMemory: mem50m,
 									},
 								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
+								},
 							},
 						},
 					},
@@ -1101,6 +1110,10 @@ func TestNodeOperators(t *testing.T) {
 										v1.ResourceCPU:    cpuHalf,
 										v1.ResourceMemory: mem50m,
 									},
+								},
+								ResourcesAllocated: v1.ResourceList{
+									v1.ResourceCPU:    cpuHalf,
+									v1.ResourceMemory: mem50m,
 								},
 							},
 						},
@@ -1660,6 +1673,7 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 				Resources: v1.ResourceRequirements{
 					Requests: req,
 				},
+				ResourcesAllocated: req,
 				Ports: ports,
 			}},
 			NodeName: nodeName,

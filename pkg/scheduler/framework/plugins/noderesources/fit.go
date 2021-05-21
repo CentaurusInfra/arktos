@@ -100,7 +100,11 @@ func (f *Fit) Name() string {
 func computePodResourceRequest(pod *v1.Pod) *preFilterState {
 	result := &preFilterState{}
 	for _, workload := range pod.Spec.Workloads() {
-		result.Add(workload.Resources.Requests)
+		if utilfeature.DefaultFeatureGate.Enabled(features.InPlacePodVerticalScaling) {
+			result.Add(workload.ResourcesAllocated)
+		} else {
+			result.Add(workload.Resources.Requests)
+		}
 	}
 
 	// take max_resource(sum_pod, any_init_container)
