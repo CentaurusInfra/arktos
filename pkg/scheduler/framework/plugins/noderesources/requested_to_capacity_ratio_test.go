@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/runtime"
 	framework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
@@ -239,6 +239,9 @@ func TestResourceBinPackingSingleExtended(t *testing.T) {
 						v1.ResourceName(extendedResource): resource.MustParse("2"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceName(extendedResource): resource.MustParse("2"),
+				},
 			},
 		},
 	}
@@ -249,6 +252,9 @@ func TestResourceBinPackingSingleExtended(t *testing.T) {
 					Requests: v1.ResourceList{
 						v1.ResourceName(extendedResource): resource.MustParse("4"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceName(extendedResource): resource.MustParse("4"),
 				},
 			},
 		},
@@ -404,6 +410,10 @@ func TestResourceBinPackingMultipleExtended(t *testing.T) {
 						v1.ResourceName(extendedResource2): resource.MustParse("2"),
 					},
 				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceName(extendedResource1): resource.MustParse("2"),
+					v1.ResourceName(extendedResource2): resource.MustParse("2"),
+				},
 			},
 		},
 	}
@@ -415,6 +425,10 @@ func TestResourceBinPackingMultipleExtended(t *testing.T) {
 						v1.ResourceName(extendedResource1): resource.MustParse("4"),
 						v1.ResourceName(extendedResource2): resource.MustParse("2"),
 					},
+				},
+				ResourcesAllocated: v1.ResourceList{
+					v1.ResourceName(extendedResource1): resource.MustParse("4"),
+					v1.ResourceName(extendedResource2): resource.MustParse("2"),
 				},
 			},
 		},
