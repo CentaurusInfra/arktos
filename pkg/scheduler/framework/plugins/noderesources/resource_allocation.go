@@ -122,9 +122,9 @@ func calculateResourceAllocatableRequest(nodeInfo *schedulernodeinfo.NodeInfo, p
 // podResourceRequest = max(sum(podSpec.Containers), podSpec.InitContainers) + overHead
 func calculatePodResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 	var podRequest int64
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		value := schedutil.GetNonzeroRequestForResource(resource, &container.Resources.Requests)
+	for i := range pod.Spec.Workloads() {
+		workload := &pod.Spec.Workloads()[i]
+		value := schedutil.GetNonzeroRequestForResource(resource, &workload.Resources.Requests)
 		podRequest += value
 	}
 

@@ -21,7 +21,6 @@ package noderesources
 import (
 	"context"
 	"fmt"
-
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -100,8 +99,8 @@ func (f *Fit) Name() string {
 // Result: CPU: 3, Memory: 3G
 func computePodResourceRequest(pod *v1.Pod) *preFilterState {
 	result := &preFilterState{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Requests)
+	for _, workload := range pod.Spec.Workloads() {
+		result.Add(workload.Resources.Requests)
 	}
 
 	// take max_resource(sum_pod, any_init_container)
