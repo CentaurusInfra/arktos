@@ -141,8 +141,8 @@ func NewResourceLimits(_ *runtime.Unknown, h framework.FrameworkHandle) (framewo
 // with schedulernodeinfo.Resource.
 func getResourceLimits(pod *v1.Pod) *schedulernodeinfo.Resource {
 	result := &schedulernodeinfo.Resource{}
-	for _, container := range pod.Spec.Containers {
-		result.Add(container.Resources.Limits)
+	for _, workload := range pod.Spec.Workloads() {
+		result.Add(workload.Resources.Limits)
 	}
 
 	// take max_resource(sum_pod, any_init_container)
