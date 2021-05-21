@@ -25,7 +25,7 @@ import (
 	"k8s.io/client-go/tools/events"
 	"k8s.io/kubernetes/pkg/scheduler/profile"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
@@ -1419,6 +1419,7 @@ func TestAlgorithmProviderCompatibility(t *testing.T) {
 			{Name: "PodTopologySpread"},
 		},
 		"FilterPlugin": {
+			{Name: "NodeRuntimeNotReady"},
 			{Name: "NodeUnschedulable"},
 			{Name: "NodeResourcesFit"},
 			{Name: "NodeName"},
@@ -1483,6 +1484,7 @@ func TestAlgorithmProviderCompatibility(t *testing.T) {
 					{Name: "PodTopologySpread"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeResourcesFit"},
 					{Name: "NodeName"},
@@ -1577,6 +1579,7 @@ func TestPluginsConfigurationCompatibility(t *testing.T) {
 					{Name: "PodTopologySpread"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "NodeUnschedulable"},
 					{Name: "NodeResourcesFit"},
 					{Name: "NodeName"},
@@ -1626,6 +1629,7 @@ func TestPluginsConfigurationCompatibility(t *testing.T) {
 				},
 				Filter: &config.PluginSet{
 					Disabled: []config.Plugin{
+						{Name: "NodeRuntimeNotReady"},
 						{Name: "NodeUnschedulable"},
 						{Name: "NodeResourcesFit"},
 						{Name: "NodeName"},
@@ -1695,6 +1699,7 @@ func TestPluginsConfigurationCompatibility(t *testing.T) {
 				},
 				Filter: &config.PluginSet{
 					Enabled: []config.Plugin{
+						{Name: "NodeRuntimeNotReady"},
 						{Name: "InterPodAffinity"},
 						{Name: "VolumeZone"},
 						{Name: "VolumeBinding"},
@@ -1754,6 +1759,7 @@ func TestPluginsConfigurationCompatibility(t *testing.T) {
 					{Name: "NodeResourcesFit"},
 				},
 				"FilterPlugin": {
+					{Name: "NodeRuntimeNotReady"},
 					{Name: "InterPodAffinity"},
 					{Name: "VolumeZone"},
 					{Name: "VolumeBinding"},
