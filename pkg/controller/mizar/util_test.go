@@ -120,7 +120,6 @@ func TestConvertToPodContract(t *testing.T) {
 			Name:      testName,
 			Namespace: testNamespace,
 			Tenant:    testTenant,
-			Labels:    testLabels,
 		},
 		Status: v1.PodStatus{
 			HostIP: testHostIP,
@@ -132,7 +131,7 @@ func TestConvertToPodContract(t *testing.T) {
 		HostIp:        testHostIP,
 		Namespace:     testNamespace,
 		Tenant:        testTenant,
-		Labels:        testLabels,
+		Labels:        "",
 		ArktosNetwork: "",
 		Phase:         testPhase,
 	}
@@ -148,7 +147,7 @@ func TestConvertToPodContract(t *testing.T) {
 		Arktos_Network_Name: testLabelNetworkValue,
 	}
 	expected.ArktosNetwork = testLabelNetworkValue
-
+	expected.Labels = jsonMarshal(pod.Labels)
 	// Act
 	actual = ConvertToPodContract(pod)
 
