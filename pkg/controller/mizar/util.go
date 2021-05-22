@@ -124,6 +124,10 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 	var labels string
 
 	if len(pod.Labels) != 0 {
+		// Labels is a list of key-value pairs. Here is converting this
+		// list of key-value pairs into json first,
+		// then later this json will be convert into string
+		// because grpc message type is string
 		labelJson, err := json.Marshal(pod.Labels)
 		if err != nil {
 			klog.Errorf("Error in parsing pod labels into json: %v", err)
