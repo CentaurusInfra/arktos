@@ -18,6 +18,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -66,6 +67,7 @@ type PostbindPlugin struct {
 	TesterPlugin
 }
 
+
 type UnreservePlugin struct {
 	TesterPlugin
 }
@@ -84,10 +86,10 @@ const (
 	permitPluginName    = "permit-plugin"
 )
 
-var _ = framework.PrefilterPlugin(&PrefilterPlugin{})
+var _ = framework.PreFilterPlugin(&PrefilterPlugin{})
 var _ = framework.ReservePlugin(&ReservePlugin{})
-var _ = framework.PrebindPlugin(&PrebindPlugin{})
-var _ = framework.PostbindPlugin(&PostbindPlugin{})
+var _ = framework.PreBindPlugin(&PrebindPlugin{})
+var _ = framework.PostBindPlugin(&PostbindPlugin{})
 var _ = framework.UnreservePlugin(&UnreservePlugin{})
 var _ = framework.PermitPlugin(&PermitPlugin{})
 
@@ -98,9 +100,13 @@ func (rp *ReservePlugin) Name() string {
 
 var resPlugin = &ReservePlugin{}
 
+func (pp *PostbindPlugin) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
+	panic("implement me")
+}
+
 // Reserve is a test function that returns an error or nil, depending on the
 // value of "failReserve".
-func (rp *ReservePlugin) Reserve(pc *framework.PluginContext, pod *v1.Pod, nodeName string) *framework.Status {
+func (rp *ReservePlugin) Reserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	rp.numReserveCalled++
 	if rp.failReserve {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -120,8 +126,7 @@ func (pp *PrebindPlugin) Name() string {
 	return prebindPluginName
 }
 
-// Prebind is a test function that returns (true, nil) or errors for testing.
-func (pp *PrebindPlugin) Prebind(pc *framework.PluginContext, pod *v1.Pod, nodeName string) *framework.Status {
+func (pp *PrebindPlugin) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	pp.numPrebindCalled++
 	if pp.failPrebind {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -149,11 +154,6 @@ func (pp *PostbindPlugin) Name() string {
 	return postbindPluginName
 }
 
-// Postbind is a test function, which counts the number of times called.
-func (pp *PostbindPlugin) Postbind(pc *framework.PluginContext, pod *v1.Pod, nodeName string) {
-	pp.numPostbindCalled++
-}
-
 // reset used to reset numPostbindCalled.
 func (pp *PostbindPlugin) reset() {
 	pp.numPostbindCalled = 0
@@ -171,8 +171,7 @@ func (pp *PrefilterPlugin) Name() string {
 	return prefilterPluginName
 }
 
-// Prefilter is a test function that returns (true, nil) or errors for testing.
-func (pp *PrefilterPlugin) Prefilter(pc *framework.PluginContext, pod *v1.Pod) *framework.Status {
+func (pp *PrefilterPlugin) PreFilter(ctx context.Context, state *framework.CycleState, pod *v1.Pod) *framework.Status {
 	pp.numPrefilterCalled++
 	if pp.failPrefilter {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -181,6 +180,10 @@ func (pp *PrefilterPlugin) Prefilter(pc *framework.PluginContext, pod *v1.Pod) *
 		return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("reject pod %v", pod.Name))
 	}
 	return nil
+}
+
+func (pp *PrefilterPlugin) PreFilterExtensions() framework.PreFilterExtensions {
+	panic("implement me")
 }
 
 // NewPrebindPlugin is the factory for prebind plugin.
@@ -197,7 +200,7 @@ func (up *UnreservePlugin) Name() string {
 
 // Unreserve is a test function that returns an error or nil, depending on the
 // value of "failUnreserve".
-func (up *UnreservePlugin) Unreserve(pc *framework.PluginContext, pod *v1.Pod, nodeName string) {
+func (up *UnreservePlugin) Unreserve(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
 	up.numUnreserveCalled++
 }
 
@@ -219,7 +222,7 @@ func (pp *PermitPlugin) Name() string {
 }
 
 // Permit implements the permit test plugin.
-func (pp *PermitPlugin) Permit(pc *framework.PluginContext, pod *v1.Pod, nodeName string) (*framework.Status, time.Duration) {
+func (pp *PermitPlugin) Permit(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (*framework.Status, time.Duration) {
 	pp.numPermitCalled++
 	if pp.failPermit {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name)), 0
@@ -247,7 +250,7 @@ func (pp *PermitPlugin) Permit(pc *framework.PluginContext, pod *v1.Pod, nodeNam
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("reject pod %v", pod.Name)), 0
 		}
 		if pp.waitAndAllowPermit {
-			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow() })
+			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow("dummy") })
 			return nil, 0
 		}
 	}
