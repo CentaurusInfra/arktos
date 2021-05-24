@@ -37,6 +37,7 @@ const (
 	mizarPodControllerWorkerCount           = 4
 	mizarServiceControllerWorkerCount       = 4
 	mizarNetworkPolicyControllerWorkerCount = 4
+	mizarNamespaceControllerWorkerCount     = 4
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -61,6 +62,7 @@ func startHandler(controllerContext interface{}, grpcHost string) {
 	startMizarServiceController(&ctx, grpcHost, grpcAdaptor)
 	startArktosNetworkController(&ctx, grpcHost, grpcAdaptor)
 	startMizarNetworkPolicyController(&ctx, grpcHost, grpcAdaptor)
+	startMizarNamespaceController(&ctx, grpcHost, grpcAdaptor)
 }
 
 func startMizarEndpointsController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
@@ -172,5 +174,18 @@ func startMizarNetworkPolicyController(ctx *ControllerContext, grpcHost string, 
 		grpcHost,
 		grpcAdaptor,
 	).Run(mizarNetworkPolicyControllerWorkerCount, ctx.Stop)
+	return nil, true, nil
+}
+
+func startMizarNamespaceController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
+	controllerName := "mizar-namespace-controller"
+	klog.V(2).Infof("Starting %v", controllerName)
+
+	go controllers.NewMizarNamespaceController(
+		ctx.InformerFactory.Core().V1().Namespaces(),
+		ctx.ClientBuilder.ClientOrDie(controllerName),
+		grpcHost,
+		grpcAdaptor,
+	).Run(mizarNamespaceControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }

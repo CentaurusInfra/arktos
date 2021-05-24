@@ -203,6 +203,39 @@ func TestConvertToNodeContract(t *testing.T) {
 	testCheckEqual(t, expected, actual)
 }
 
+func TestConvertToNamespaceContract(t *testing.T) {
+	// Arrange - no network defined
+	namespace := &v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   testName,
+			Tenant: testTenant,
+		},
+	}
+	expected := &BuiltinsNamespaceMessage{
+		Name:   testName,
+		Tenant: testTenant,
+		Labels: "",
+	}
+
+	// Act
+	actual := ConvertToNamespaceContract(namespace)
+
+	// Assert
+	testCheckEqual(t, expected, actual)
+
+	// Arrange - with network defined
+	namespace.Labels = map[string]string{
+		"run": "foo",
+	}
+
+	expected.Labels = jsonMarshal(namespace.Labels)
+	// Act
+	actual = ConvertToNamespaceContract(namespace)
+
+	// Assert
+	testCheckEqual(t, expected, actual)
+}
+
 func TestConvertToNetworkPolicyContract(t *testing.T) {
 	// Arrange - No Spec
 	nppolicy := &networking.NetworkPolicy{

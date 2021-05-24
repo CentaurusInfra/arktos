@@ -32,6 +32,10 @@ service BuiltinsService {
     rpc UpdateNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
     rpc CreateNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
     rpc DeleteNetworkPolicy(BuiltinsNetworkPolicyMessage) returns (ReturnCode) {}
+
+    rpc UpdateNamespace(BuiltinsNamespaceMessage) returns (ReturnCode) {}
+    rpc CreateNamespace(BuiltinsNamespaceMessage) returns (ReturnCode) {}
+    rpc DeleteNamespace(BuiltinsNamespaceMessage) returns (ReturnCode) {}
 }
 
 message BuiltinsNodeMessage {
@@ -78,6 +82,12 @@ message BuiltinsNetworkPolicyMessage {
   string namespace = 2;
   string tenant = 3;
   string policy = 4;
+}
+
+message BuiltinsNamespaceMessage {
+  string name = 1;
+  string tenant = 2;
+  string labels = 3;
 }
 
 message PortsMessage {

@@ -10,6 +10,7 @@ go_library(
         "grpc_adaptor_mock.go",
         "mizar-arktos-network-controller.go",
         "mizar-endpoints-controller.go",
+        "mizar-namespace-controller.go",
         "mizar-network-policy-controller.go",
         "mizar-node-controller.go",
         "mizar-pod-controller.go",

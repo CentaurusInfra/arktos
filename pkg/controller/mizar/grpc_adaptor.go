@@ -43,6 +43,9 @@ type IGrpcAdaptor interface {
 	CreateNode(grpcHost string, node *v1.Node) *ReturnCode
 	UpdateNode(grpcHost string, node *v1.Node) *ReturnCode
 	DeleteNode(grpcHost string, node *v1.Node) *ReturnCode
+	UpdateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode
+	CreateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode
+	DeleteNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode
 }
 
 type GrpcAdaptor struct {
@@ -267,6 +270,51 @@ func (grpcAdaptor *GrpcAdaptor) DeleteNetworkPolicy(grpcHost string, policy *net
 	defer conn.Close()
 	defer cancel()
 	returnCode, err := client.DeleteNetworkPolicy(ctx, ConvertToNetworkPolicyContract(policy))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// UpdateNamespace is to invoke grpc func of UpdateNamespace
+func (grpcAdaptor *GrpcAdaptor) UpdateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.UpdateNamespace(ctx, ConvertToNamespaceContract(namespace))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// CreateNamespace is to invoke grpc func of CreateNamespace
+func (grpcAdaptor *GrpcAdaptor) CreateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.CreateNamespace(ctx, ConvertToNamespaceContract(namespace))
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	return returnCode
+}
+
+// DeleteNamespace is to invoke grpc func of DeleteNamespace
+func (grpcAdaptor *GrpcAdaptor) DeleteNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	client, ctx, conn, cancel, err := getGrpcClient(grpcHost)
+	if err != nil {
+		return getReturnCodeFromError(&err)
+	}
+	defer conn.Close()
+	defer cancel()
+	returnCode, err := client.DeleteNamespace(ctx, ConvertToNamespaceContract(namespace))
 	if err != nil {
 		return getReturnCodeFromError(&err)
 	}
