@@ -614,7 +614,7 @@ func (f *framework) RunPreBindPlugins(ctx context.Context, state *CycleState, po
 		if !status.IsSuccess() {
 			msg := fmt.Sprintf("error while running %q prebind plugin for pod %q: %v", pl.Name(), pod.Name, status.Message())
 			klog.Error(msg)
-			return NewStatus(Error, msg)
+			return NewStatus(status.code, msg)
 		}
 	}
 	return nil

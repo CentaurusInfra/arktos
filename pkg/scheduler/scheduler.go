@@ -718,7 +718,11 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 		if !preBindStatus.IsSuccess() {
 			var reason string
 			metrics.PodScheduleErrors.Inc()
-			reason = SchedulerError
+			if preBindStatus.IsUnschedulable() {
+				reason =  v1.PodReasonUnschedulable
+			} else {
+				reason = SchedulerError
+			}
 			if forgetErr := sched.Cache().ForgetPod(assumedPod); forgetErr != nil {
 				klog.Errorf("scheduler cache ForgetPod failed: %v", forgetErr)
 			}
