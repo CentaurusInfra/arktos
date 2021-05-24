@@ -44,9 +44,10 @@ message BuiltinsPodMessage {
   string host_ip = 2;
   string namespace = 3;
   string tenant = 4;
-  string arktos_network = 5;
-  string phase = 6;
-  repeated InterfacesMessage interfaces = 7;
+  string labels = 5;
+  string arktos_network = 6;
+  string phase = 7;
+  repeated InterfacesMessage interfaces = 8;
 }
 
 message BuiltinsServiceMessage {
