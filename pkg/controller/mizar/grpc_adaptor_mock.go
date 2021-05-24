@@ -27,6 +27,7 @@ type GrpcAdaptorMock struct {
 	serviceEndpointMessage *BuiltinsServiceEndpointMessage
 	pod                    *v1.Pod
 	node                   *v1.Node
+	namespace              *v1.Namespace
 	policy                 *networking.NetworkPolicy
 	returnCodeFunc         ReturnCodeFunc
 	retryCount             int
@@ -149,6 +150,27 @@ func (grpcAdaptor *GrpcAdaptorMock) CreateNetworkPolicy(grpcHost string, policy 
 // DeleteNetworkPolicy is to invoke grpc func of DeleteNetworkPolicy
 func (grpcAdaptor *GrpcAdaptorMock) DeleteNetworkPolicy(grpcHost string, policy *networking.NetworkPolicy) *ReturnCode {
 	grpcAdaptor.policy = policy
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// UpdateNamespace is to invoke grpc func of UpdateNamespace
+func (grpcAdaptor *GrpcAdaptorMock) UpdateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	grpcAdaptor.namespace = namespace
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// CreateNamespace is to invoke grpc func of CreateNamespace
+func (grpcAdaptor *GrpcAdaptorMock) CreateNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	grpcAdaptor.namespace = namespace
+	grpcAdaptor.grpcHost = grpcHost
+	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
+}
+
+// DeleteNamespace is to invoke grpc func of DeleteNamespace
+func (grpcAdaptor *GrpcAdaptorMock) DeleteNamespace(grpcHost string, namespace *v1.Namespace) *ReturnCode {
+	grpcAdaptor.namespace = namespace
 	grpcAdaptor.grpcHost = grpcHost
 	return grpcAdaptor.returnCodeFunc(grpcAdaptor)
 }

@@ -173,6 +173,33 @@ func ConvertToNodeContract(node *v1.Node) *BuiltinsNodeMessage {
 	}
 }
 
+func ConvertToNamespaceContract(namespace *v1.Namespace) *BuiltinsNamespaceMessage {
+	var labels string
+
+	if len(namespace.Labels) != 0 {
+		// Labels is a list of key-value pairs. Here is converting this
+		// list of key-value pairs into json first,
+		// then later this json will be convert into string
+		// because grpc message type is string
+		labelJson, err := json.Marshal(namespace.Labels)
+		if err != nil {
+			klog.Errorf("Error in parsing namespace labels into json: %v", err)
+		}
+		labels = string(labelJson)
+	} else {
+		labels = ""
+	}
+
+	klog.V(3).Infof("Namespace Name: %s, Tenant: %s, Labels: %s",
+		namespace.Name, namespace.Tenant, labels)
+
+	return &BuiltinsNamespaceMessage{
+		Name:   namespace.Name,
+		Tenant: namespace.Tenant,
+		Labels: labels,
+	}
+}
+
 func ConvertToNetworkPolicyContract(policy *networking.NetworkPolicy) *BuiltinsNetworkPolicyMessage {
 	klog.V(3).Infof("NetworkPolicy Name: %s, Namespace: %s, Tenant: %s",
 		policy.Name, policy.Namespace, policy.Tenant)
