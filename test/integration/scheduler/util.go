@@ -199,6 +199,12 @@ func initTestSchedulerWithOptions(
 		podInformer,
 		rf,
 		context.stopCh,
+		scheduler.WithProfiles(schedulerapi.KubeSchedulerProfile{
+			SchedulerName: "default-scheduler",
+			Plugins:       plugins,
+			PluginConfig:  pluginConfig,
+		}),
+		scheduler.WithFrameworkOutOfTreeRegistry(pluginRegistry),
 		scheduler.WithExtenders(exts...),
 	)
 	if err != nil {

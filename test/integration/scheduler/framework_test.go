@@ -100,10 +100,6 @@ func (rp *ReservePlugin) Name() string {
 
 var resPlugin = &ReservePlugin{}
 
-func (pp *PostbindPlugin) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
-	panic("implement me")
-}
-
 // Reserve is a test function that returns an error or nil, depending on the
 // value of "failReserve".
 func (rp *ReservePlugin) Reserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
@@ -159,6 +155,10 @@ func (pp *PostbindPlugin) reset() {
 	pp.numPostbindCalled = 0
 }
 
+func (pp *PostbindPlugin) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
+	pp.numPostbindCalled ++
+}
+
 // NewPostbindPlugin is the factory for postbind plugin.
 func NewPostbindPlugin(_ *runtime.Unknown, _ framework.FrameworkHandle) (framework.Plugin, error) {
 	return ptbdPlugin, nil
@@ -183,7 +183,7 @@ func (pp *PrefilterPlugin) PreFilter(ctx context.Context, state *framework.Cycle
 }
 
 func (pp *PrefilterPlugin) PreFilterExtensions() framework.PreFilterExtensions {
-	panic("implement me")
+	return nil
 }
 
 // NewPrebindPlugin is the factory for prebind plugin.
@@ -250,7 +250,7 @@ func (pp *PermitPlugin) Permit(ctx context.Context, state *framework.CycleState,
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("reject pod %v", pod.Name)), 0
 		}
 		if pp.waitAndAllowPermit {
-			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow("dummy") })
+			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow(permitPluginName) })
 			return nil, 0
 		}
 	}
