@@ -67,7 +67,6 @@ type PostbindPlugin struct {
 	TesterPlugin
 }
 
-
 type UnreservePlugin struct {
 	TesterPlugin
 }
@@ -156,7 +155,7 @@ func (pp *PostbindPlugin) reset() {
 }
 
 func (pp *PostbindPlugin) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
-	pp.numPostbindCalled ++
+	pp.numPostbindCalled++
 }
 
 // NewPostbindPlugin is the factory for postbind plugin.

@@ -71,8 +71,8 @@ type testContext struct {
 	informerFactory        informers.SharedInformerFactory
 	schedulerConfigFactory scheduler.Configurator
 	//schedulerConfig        *factory.Config
-	scheduler              *scheduler.Scheduler
-	stopCh                 chan struct{}
+	scheduler *scheduler.Scheduler
+	stopCh    chan struct{}
 }
 
 // createConfiguratorWithPodInformer creates a configurator for scheduler.
@@ -699,27 +699,27 @@ func waitForPDBsStable(context *testContext, pdbs []*policy.PodDisruptionBudget,
 // waitCachedPodsStable waits until scheduler cache has the given pods.
 func waitCachedPodsStable(context *testContext, pods []*v1.Pod) error {
 	/*
-	return wait.Poll(time.Second, 30*time.Second, func() (bool, error) {
-		cachedPods, err := context.scheduler.Config().SchedulerCache.List(labels.Everything())
-		if err != nil {
-			return false, err
-		}
-		if len(pods) != len(cachedPods) {
-			return false, nil
-		}
-		for _, p := range pods {
-			actualPod, err1 := context.clientSet.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
-			if err1 != nil {
-				return false, err1
+		return wait.Poll(time.Second, 30*time.Second, func() (bool, error) {
+			cachedPods, err := context.scheduler.Config().SchedulerCache.List(labels.Everything())
+			if err != nil {
+				return false, err
 			}
-			cachedPod, err2 := context.scheduler.Config().SchedulerCache.GetPod(actualPod)
-			if err2 != nil || cachedPod == nil {
-				return false, err2
+			if len(pods) != len(cachedPods) {
+				return false, nil
 			}
-		}
-		return true, nil
-	})
-	 */
+			for _, p := range pods {
+				actualPod, err1 := context.clientSet.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
+				if err1 != nil {
+					return false, err1
+				}
+				cachedPod, err2 := context.scheduler.Config().SchedulerCache.GetPod(actualPod)
+				if err2 != nil || cachedPod == nil {
+					return false, err2
+				}
+			}
+			return true, nil
+		})
+	*/
 	return nil
 }
 
@@ -772,9 +772,9 @@ func cleanupPodsInNamespace(cs clientset.Interface, t *testing.T, ns string) {
 
 func waitForSchedulerCacheCleanup(sched *scheduler.Scheduler, t *testing.T) {
 	schedulerCacheIsEmpty := func() (bool, error) {
-//		snapshot := sched.Cache().Snapshot()
+		//		snapshot := sched.Cache().Snapshot()
 
-//		return len(snapshot.Nodes) == 0 && len(snapshot.AssumedPods) == 0, nil
+		//		return len(snapshot.Nodes) == 0 && len(snapshot.AssumedPods) == 0, nil
 		return true, nil
 	}
 

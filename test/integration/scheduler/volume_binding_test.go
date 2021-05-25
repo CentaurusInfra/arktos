@@ -43,8 +43,8 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/persistentvolume"
 	persistentvolumeoptions "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/options"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodevolumelimits"
 	schedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodevolumelimits"
 	"k8s.io/kubernetes/pkg/volume"
 	volumetest "k8s.io/kubernetes/pkg/volume/testing"
 	imageutils "k8s.io/kubernetes/test/utils/image"
@@ -964,15 +964,15 @@ func initPVController(context *testContext, provisionDelaySeconds int) (*persist
 
 	controllerOptions := persistentvolumeoptions.NewPersistentVolumeControllerOptions()
 	params := persistentvolume.ControllerParameters{
-		KubeClient:                clientset,
-		SyncPeriod:                controllerOptions.PVClaimBinderSyncPeriod,
-		VolumePlugins:             plugins,
-		Cloud:                     nil,
-		ClusterName:               "volume-test-cluster",
-		VolumeInformer:            informerFactory.Core().V1().PersistentVolumes(),
-		ClaimInformer:             informerFactory.Core().V1().PersistentVolumeClaims(),
-		ClassInformer:             informerFactory.Storage().V1().StorageClasses(),
-		PodInformer:               informerFactory.Core().V1().Pods(),
+		KubeClient:     clientset,
+		SyncPeriod:     controllerOptions.PVClaimBinderSyncPeriod,
+		VolumePlugins:  plugins,
+		Cloud:          nil,
+		ClusterName:    "volume-test-cluster",
+		VolumeInformer: informerFactory.Core().V1().PersistentVolumes(),
+		ClaimInformer:  informerFactory.Core().V1().PersistentVolumeClaims(),
+		ClassInformer:  informerFactory.Storage().V1().StorageClasses(),
+		PodInformer:    informerFactory.Core().V1().Pods(),
 		//NodeInformer:              informerFactory.Core().V1().Nodes(),
 		EnableDynamicProvisioning: true,
 	}

@@ -70,8 +70,8 @@ func TestNodeResourcesBalancedAllocation(t *testing.T) {
 					},
 				},
 				ResourcesAllocated: v1.ResourceList{
-						v1.ResourceCPU:    resource.MustParse("2000m"),
-						v1.ResourceMemory: resource.MustParse("3000"),
+					v1.ResourceCPU:    resource.MustParse("2000m"),
+					v1.ResourceMemory: resource.MustParse("3000"),
 				},
 			},
 		},

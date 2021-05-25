@@ -62,11 +62,11 @@ type nodeStateManager struct {
 	makeUnSchedulable nodeMutationFunc
 }
 
-func PredicateOne(pod *v1.Pod, /*meta predicates.PredicateMetadata,*/ nodeInfo *schedulernodeinfo.NodeInfo) (bool, []lifecycle.PredicateFailureReason, error) {
+func PredicateOne(pod *v1.Pod /*meta predicates.PredicateMetadata,*/, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []lifecycle.PredicateFailureReason, error) {
 	return true, nil, nil
 }
 
-func PredicateTwo(pod *v1.Pod, /*meta predicates.PredicateMetadata,*/ nodeInfo *schedulernodeinfo.NodeInfo) (bool, []lifecycle.PredicateFailureReason, error) {
+func PredicateTwo(pod *v1.Pod /*meta predicates.PredicateMetadata,*/, nodeInfo *schedulernodeinfo.NodeInfo) (bool, []lifecycle.PredicateFailureReason, error) {
 	return true, nil, nil
 }
 
@@ -262,7 +262,7 @@ priorities: []
 			informerFactory,
 			map[string]coreinformers.NodeInformer{"rp0": informerFactory.Core().V1().Nodes()},
 			informerFactory.Core().V1().Pods(),
-			func (_ string)  events.EventRecorder { return nil},
+			func(_ string) events.EventRecorder { return nil },
 			nil,
 			scheduler.WithProfiles(kubeschedulerconfig.KubeSchedulerProfile{SchedulerName: v1.DefaultSchedulerName}),
 			// comment out the code as the proper equivalence in new scheduler framework has not been understood yet
@@ -275,25 +275,25 @@ priorities: []
 		}
 
 		// todo: uncomment out below block after the predicate/priority plugin registration test code is in place
-/*
-		config := sched.Config()
+		/*
+			config := sched.Config()
 
-		// Verify that the config is applied correctly.
-		schedPredicates := sets.NewString()
-		for k := range config.Algorithm.Predicates() {
-			schedPredicates.Insert(k)
-		}
-		schedPrioritizers := sets.NewString()
-		for _, p := range config.Algorithm.Prioritizers() {
-			schedPrioritizers.Insert(p.Name)
-		}
-		if !schedPredicates.Equal(test.expectedPredicates) {
-			t.Errorf("Expected predicates %v, got %v", test.expectedPredicates, schedPredicates)
-		}
-		if !schedPrioritizers.Equal(test.expectedPrioritizers) {
-			t.Errorf("Expected priority functions %v, got %v", test.expectedPrioritizers, schedPrioritizers)
-		}
-*/
+			// Verify that the config is applied correctly.
+			schedPredicates := sets.NewString()
+			for k := range config.Algorithm.Predicates() {
+				schedPredicates.Insert(k)
+			}
+			schedPrioritizers := sets.NewString()
+			for _, p := range config.Algorithm.Prioritizers() {
+				schedPrioritizers.Insert(p.Name)
+			}
+			if !schedPredicates.Equal(test.expectedPredicates) {
+				t.Errorf("Expected predicates %v, got %v", test.expectedPredicates, schedPredicates)
+			}
+			if !schedPrioritizers.Equal(test.expectedPrioritizers) {
+				t.Errorf("Expected priority functions %v, got %v", test.expectedPrioritizers, schedPrioritizers)
+			}
+		*/
 		_ = sched
 	}
 }
@@ -318,37 +318,37 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientSet.CoreV1().Events("")})
-/*
-	defaultBindTimeout := int64(30)
+	/*
+		defaultBindTimeout := int64(30)
 
-	_, err := scheduler.New(clientSet,
-		informerFactory.Core().V1().Nodes(),
-		scheduler.NewPodInformer(clientSet, 0),
-		informerFactory.Core().V1().PersistentVolumes(),
-		informerFactory.Core().V1().PersistentVolumeClaims(),
-		informerFactory.Core().V1().ReplicationControllers(),
-		informerFactory.Apps().V1().ReplicaSets(),
-		informerFactory.Apps().V1().StatefulSets(),
-		informerFactory.Core().V1().Services(),
-		informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
-		informerFactory.Storage().V1().StorageClasses(),
-		eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName}),
-		kubeschedulerconfig.SchedulerAlgorithmSource{
-			Policy: &kubeschedulerconfig.SchedulerPolicySource{
-				ConfigMap: &kubeschedulerconfig.SchedulerPolicyConfigMapSource{
-					Namespace: "non-existent-config",
-					Name:      "non-existent-config",
+		_, err := scheduler.New(clientSet,
+			informerFactory.Core().V1().Nodes(),
+			scheduler.NewPodInformer(clientSet, 0),
+			informerFactory.Core().V1().PersistentVolumes(),
+			informerFactory.Core().V1().PersistentVolumeClaims(),
+			informerFactory.Core().V1().ReplicationControllers(),
+			informerFactory.Apps().V1().ReplicaSets(),
+			informerFactory.Apps().V1().StatefulSets(),
+			informerFactory.Core().V1().Services(),
+			informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
+			informerFactory.Storage().V1().StorageClasses(),
+			eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName}),
+			kubeschedulerconfig.SchedulerAlgorithmSource{
+				Policy: &kubeschedulerconfig.SchedulerPolicySource{
+					ConfigMap: &kubeschedulerconfig.SchedulerPolicyConfigMapSource{
+						Namespace: "non-existent-config",
+						Name:      "non-existent-config",
+					},
 				},
 			},
-		},
-		nil,
-		schedulerframework.NewRegistry(),
-		nil,
-		[]kubeschedulerconfig.PluginConfig{},
-		scheduler.WithName(v1.DefaultSchedulerName),
-		scheduler.WithHardPodAffinitySymmetricWeight(v1.DefaultHardPodAffinitySymmetricWeight),
-		scheduler.WithBindTimeoutSeconds(defaultBindTimeout))
-*/
+			nil,
+			schedulerframework.NewRegistry(),
+			nil,
+			[]kubeschedulerconfig.PluginConfig{},
+			scheduler.WithName(v1.DefaultSchedulerName),
+			scheduler.WithHardPodAffinitySymmetricWeight(v1.DefaultHardPodAffinitySymmetricWeight),
+			scheduler.WithBindTimeoutSeconds(defaultBindTimeout))
+	*/
 	_, err := scheduler.New(clientSet,
 		informerFactory,
 		map[string]coreinformers.NodeInformer{"rp0": informerFactory.Core().V1().Nodes()},

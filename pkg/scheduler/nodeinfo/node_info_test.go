@@ -273,7 +273,7 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 					Requests: req,
 				},
 				ResourcesAllocated: req,
-				Ports: ports,
+				Ports:              ports,
 			}},
 			NodeName: nodeName,
 		},
@@ -621,7 +621,7 @@ func TestNodeInfoAddPod(t *testing.T) {
 							},
 						},
 						ResourcesAllocated: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceCPU: resource.MustParse("200m"),
 						},
 						Ports: []v1.ContainerPort{
 							{
@@ -654,7 +654,7 @@ func TestNodeInfoAddPod(t *testing.T) {
 							},
 						},
 						ResourcesAllocated: v1.ResourceList{
-							v1.ResourceCPU:    resource.MustParse("200m"),
+							v1.ResourceCPU: resource.MustParse("200m"),
 						},
 						Ports: []v1.ContainerPort{
 							{
@@ -763,7 +763,7 @@ func TestNodeInfoAddPod(t *testing.T) {
 								},
 							},
 							ResourcesAllocated: v1.ResourceList{
-								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceCPU: resource.MustParse("200m"),
 							},
 							Ports: []v1.ContainerPort{
 								{
@@ -796,7 +796,7 @@ func TestNodeInfoAddPod(t *testing.T) {
 								},
 							},
 							ResourcesAllocated: v1.ResourceList{
-								v1.ResourceCPU:    resource.MustParse("200m"),
+								v1.ResourceCPU: resource.MustParse("200m"),
 							},
 							Ports: []v1.ContainerPort{
 								{

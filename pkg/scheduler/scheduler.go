@@ -719,7 +719,7 @@ func (sched *Scheduler) scheduleOne(ctx context.Context) {
 			var reason string
 			metrics.PodScheduleErrors.Inc()
 			if preBindStatus.IsUnschedulable() {
-				reason =  v1.PodReasonUnschedulable
+				reason = v1.PodReasonUnschedulable
 			} else {
 				reason = SchedulerError
 			}
