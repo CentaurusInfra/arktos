@@ -95,7 +95,6 @@ func getDefaultConfig() *schedulerapi.Plugins {
 			Enabled: []schedulerapi.Plugin{
 				{Name: noderuntimenotready.Name},
 				{Name: nodeunschedulable.Name},
-				{Name: noderuntimenotready.Name},
 				{Name: noderesources.FitName},
 				{Name: nodename.Name},
 				{Name: nodeports.Name},
