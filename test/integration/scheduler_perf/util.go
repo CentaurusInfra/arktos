@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 package benchmark
-
+/*
 import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	clientset "k8s.io/client-go/kubernetes"
@@ -49,3 +49,4 @@ func mustSetupScheduler() (factory.Configurator, util.ShutdownFunc) {
 	}
 	return schedulerConfig, shutdownFunc
 }
+*/

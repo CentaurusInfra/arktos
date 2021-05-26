@@ -21,20 +21,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	v1 "k8s.io/api/core/v1"
-	"k8s.io/client-go/informers"
-	clientset "k8s.io/client-go/kubernetes"
-	clientv1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	"k8s.io/kubernetes/pkg/scheduler"
-
-	// import DefaultProvider
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider/defaults"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
-	"k8s.io/kubernetes/pkg/scheduler/factory"
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
@@ -58,7 +45,7 @@ func StartApiserver() (string, ShutdownFunc) {
 	}
 	return s.URL, shutdownFunc
 }
-
+/*
 // StartScheduler configures and starts a scheduler given a handle to the clientSet interface
 // and event broadcaster. It returns a handle to the configurator for the running scheduler
 // and the shutdown function to stop it.
@@ -127,3 +114,4 @@ func createSchedulerConfigurator(
 		StopCh:                         stopCh,
 	})
 }
+*/

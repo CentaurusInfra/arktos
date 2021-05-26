@@ -16,7 +16,7 @@ limitations under the License.
 */
 
 package benchmark
-
+/*
 import (
 	"fmt"
 	"k8s.io/api/core/v1"
@@ -278,3 +278,4 @@ func writePodAndNodeTopologyToConfig(config *testConfig) error {
 	}
 	return nil
 }
+*/

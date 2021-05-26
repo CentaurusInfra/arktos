@@ -15,6 +15,8 @@ limitations under the License.
 */
 
 package benchmark
+/*
+import testutils "k8s.io/kubernetes/test/utils"
 
 import (
 	"fmt"
@@ -270,3 +272,4 @@ func benchmarkScheduling(numNodes, numExistingPods, minPods int,
 		time.Sleep(100 * time.Millisecond)
 	}
 }
+*/
