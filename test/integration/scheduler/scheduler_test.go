@@ -25,6 +25,7 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
+	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"k8s.io/kubernetes/pkg/scheduler/profile"
 
 	//	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -301,9 +302,6 @@ priorities: []
 // TestSchedulerCreationFromNonExistentConfigMap ensures that creation of the
 // scheduler from a non-existent ConfigMap fails.
 func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
-	// low priority; need code change to make test pass
-	t.SkipNow()
-
 	_, s, closeFn := framework.RunAMaster(nil)
 	defer closeFn()
 
@@ -315,46 +313,34 @@ func TestSchedulerCreationFromNonExistentConfigMap(t *testing.T) {
 	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
+	defaultBindTimeout := int64(30)
 
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartRecordingToSink(&clientv1core.EventSinkImpl{Interface: clientSet.CoreV1().Events("")})
-	/*
-		defaultBindTimeout := int64(30)
+	var recordFactory profile.RecorderFactory
+	recordFactory = func(name string) events.EventRecorder {
+		r := eventBroadcaster.NewRecorder(
+			legacyscheme.Scheme,
+			v1.EventSource{Component: name})
+		return record.NewEventRecorderAdapter(r)
+	}
 
-		_, err := scheduler.New(clientSet,
-			informerFactory.Core().V1().Nodes(),
-			scheduler.NewPodInformer(clientSet, 0),
-			informerFactory.Core().V1().PersistentVolumes(),
-			informerFactory.Core().V1().PersistentVolumeClaims(),
-			informerFactory.Core().V1().ReplicationControllers(),
-			informerFactory.Apps().V1().ReplicaSets(),
-			informerFactory.Apps().V1().StatefulSets(),
-			informerFactory.Core().V1().Services(),
-			informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
-			informerFactory.Storage().V1().StorageClasses(),
-			eventBroadcaster.NewRecorder(legacyscheme.Scheme, v1.EventSource{Component: v1.DefaultSchedulerName}),
-			kubeschedulerconfig.SchedulerAlgorithmSource{
-				Policy: &kubeschedulerconfig.SchedulerPolicySource{
-					ConfigMap: &kubeschedulerconfig.SchedulerPolicyConfigMapSource{
-						Namespace: "non-existent-config",
-						Name:      "non-existent-config",
-					},
-				},
-			},
-			nil,
-			schedulerframework.NewRegistry(),
-			nil,
-			[]kubeschedulerconfig.PluginConfig{},
-			scheduler.WithName(v1.DefaultSchedulerName),
-			scheduler.WithHardPodAffinitySymmetricWeight(v1.DefaultHardPodAffinitySymmetricWeight),
-			scheduler.WithBindTimeoutSeconds(defaultBindTimeout))
-	*/
 	_, err := scheduler.New(clientSet,
 		informerFactory,
 		map[string]coreinformers.NodeInformer{"rp0": informerFactory.Core().V1().Nodes()},
 		informerFactory.Core().V1().Pods(),
-		nil, // recorderFactory profile.RecorderFactory,
+		recordFactory,
 		nil, // stopCh <-chan struct{},
+		scheduler.WithBindTimeoutSeconds(defaultBindTimeout),
+		scheduler.WithFrameworkOutOfTreeRegistry(schedulerframework.Registry{}),
+		scheduler.WithAlgorithmSource(kubeschedulerconfig.SchedulerAlgorithmSource{
+			Policy: &kubeschedulerconfig.SchedulerPolicySource{
+				ConfigMap: &kubeschedulerconfig.SchedulerPolicyConfigMapSource{
+					Namespace: "non-existent-config",
+					Name:      "non-existent-config",
+				},
+			},
+		}),
 	)
 	if err == nil {
 		t.Fatalf("Creation of scheduler didn't fail while the policy ConfigMap didn't exist.")
