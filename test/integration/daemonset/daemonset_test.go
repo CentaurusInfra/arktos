@@ -18,6 +18,7 @@ limitations under the License.
 package daemonset
 
 import (
+	"context"
 	"fmt"
 	"net/http/httptest"
 	"testing"
@@ -33,25 +34,24 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	appstyped "k8s.io/client-go/kubernetes/typed/apps/v1"
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/util/flowcontrol"
 	"k8s.io/client-go/util/retry"
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/daemon"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/scheduler"
-	"k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
-	"k8s.io/kubernetes/pkg/scheduler/factory"
+	"k8s.io/kubernetes/pkg/scheduler/profile"
 	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 	"k8s.io/kubernetes/test/integration/framework"
 )
@@ -59,6 +59,7 @@ import (
 var zero = int64(0)
 
 const testTenant = "johndoe"
+const rpId0 = "rp0"
 
 func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *daemon.DaemonSetsController, informers.SharedInformerFactory, clientset.Interface) {
 	masterConfig := framework.NewIntegrationTestMasterConfig()
@@ -88,67 +89,33 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *daemon.DaemonS
 }
 
 func setupScheduler(
+	ctx context.Context,
 	t *testing.T,
 	cs clientset.Interface,
 	informerFactory informers.SharedInformerFactory,
-	stopCh chan struct{},
 ) {
-	// If ScheduleDaemonSetPods is disabled, do not start scheduler.
-	if !utilfeature.DefaultFeatureGate.Enabled(features.ScheduleDaemonSetPods) {
-		return
-	}
-
-	// Enable Features.
-	algorithmprovider.ApplyFeatureGates()
-
-	schedulerConfigFactory := factory.NewConfigFactory(&factory.ConfigFactoryArgs{
-		SchedulerName:                  v1.DefaultSchedulerName,
-		Client:                         cs,
-		NodeInformer:                   informerFactory.Core().V1().Nodes(),
-		PodInformer:                    informerFactory.Core().V1().Pods(),
-		PvInformer:                     informerFactory.Core().V1().PersistentVolumes(),
-		PvcInformer:                    informerFactory.Core().V1().PersistentVolumeClaims(),
-		ReplicationControllerInformer:  informerFactory.Core().V1().ReplicationControllers(),
-		ReplicaSetInformer:             informerFactory.Apps().V1().ReplicaSets(),
-		StatefulSetInformer:            informerFactory.Apps().V1().StatefulSets(),
-		ServiceInformer:                informerFactory.Core().V1().Services(),
-		PdbInformer:                    informerFactory.Policy().V1beta1().PodDisruptionBudgets(),
-		StorageClassInformer:           informerFactory.Storage().V1().StorageClasses(),
-		HardPodAffinitySymmetricWeight: v1.DefaultHardPodAffinitySymmetricWeight,
-		DisablePreemption:              false,
-		PercentageOfNodesToScore:       100,
-		StopCh:                         stopCh,
+	eventBroadcaster := events.NewBroadcaster(&events.EventSinkImpl{
+		Interface: cs.EventsV1beta1().Events(""),
 	})
-	schedulerConfig, err := schedulerConfigFactory.Create()
-	if err != nil {
-		t.Fatalf("Couldn't create scheduler config: %v", err)
-	}
 
-	// TODO: Replace NewFromConfig and AddAllEventHandlers with scheduler.New() in
-	// all test/integration tests.
-	sched := scheduler.NewFromConfig(schedulerConfig)
-	scheduler.AddAllEventHandlers(sched,
-		v1.DefaultSchedulerName,
-		informerFactory.Core().V1().Nodes(),
+	nodeInformers := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformers[rpId0] = informerFactory.Core().V1().Nodes()
+	sched, err := scheduler.New(
+		cs,
+		informerFactory,
+		nodeInformers,
 		informerFactory.Core().V1().Pods(),
-		informerFactory.Core().V1().PersistentVolumes(),
-		informerFactory.Core().V1().PersistentVolumeClaims(),
-		informerFactory.Core().V1().Services(),
-		informerFactory.Storage().V1().StorageClasses(),
+		profile.NewRecorderFactory(eventBroadcaster),
+		ctx.Done(),
 	)
+	if err != nil {
+		t.Fatalf("Couldn't create scheduler: %v", err)
+	}
 
-	eventBroadcaster := record.NewBroadcaster()
-	schedulerConfig.Recorder = eventBroadcaster.NewRecorder(
-		legacyscheme.Scheme,
-		v1.EventSource{Component: v1.DefaultSchedulerName},
-	)
-	eventBroadcaster.StartRecordingToSink(&corev1client.EventSinkImpl{
-		Interface: cs.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll),
-	})
+	eventBroadcaster.StartRecordingToSink(ctx.Done())
 
-	algorithmprovider.ApplyFeatureGates()
-
-	go sched.Run()
+	go sched.Run(ctx)
+	return
 }
 
 func testLabels() map[string]string {
@@ -527,14 +494,14 @@ func TestOneNodeDaemonLaunchesPod(t *testing.T) {
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
-			stopCh := make(chan struct{})
-			defer close(stopCh)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
 			// Start Scheduler
-			setupScheduler(t, clientset, informers, stopCh)
+			setupScheduler(ctx, t, clientset, informers)
 
-			informers.Start(stopCh)
-			go dc.Run(5, stopCh)
+			informers.Start(ctx.Done())
+			go dc.Run(5, ctx.Done())
 
 			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
@@ -568,14 +535,14 @@ func TestSimpleDaemonSetLaunchesPods(t *testing.T) {
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
-			stopCh := make(chan struct{})
-			defer close(stopCh)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-			informers.Start(stopCh)
-			go dc.Run(5, stopCh)
+			informers.Start(ctx.Done())
+			go dc.Run(5, ctx.Done())
 
 			// Start Scheduler
-			setupScheduler(t, clientset, informers, stopCh)
+			setupScheduler(ctx, t, clientset, informers)
 
 			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
@@ -606,14 +573,14 @@ func TestDaemonSetWithNodeSelectorLaunchesPods(t *testing.T) {
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
-			stopCh := make(chan struct{})
-			defer close(stopCh)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-			informers.Start(stopCh)
-			go dc.Run(5, stopCh)
+			informers.Start(ctx.Done())
+			go dc.Run(5, ctx.Done())
 
 			// Start Scheduler
-			setupScheduler(t, clientset, informers, stopCh)
+			setupScheduler(ctx, t, clientset, informers)
 
 			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
@@ -676,14 +643,14 @@ func TestNotReadyNodeDaemonDoesLaunchPod(t *testing.T) {
 		nodeClient := clientset.CoreV1().Nodes()
 		podInformer := informers.Core().V1().Pods().Informer()
 
-		stopCh := make(chan struct{})
-		defer close(stopCh)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-		informers.Start(stopCh)
-		go dc.Run(5, stopCh)
+		informers.Start(ctx.Done())
+		go dc.Run(5, ctx.Done())
 
 		// Start Scheduler
-		setupScheduler(t, clientset, informers, stopCh)
+		setupScheduler(ctx, t, clientset, informers)
 
 		ds := newDaemonSet(testTenant, ns.Name, "foo")
 		ds.Spec.UpdateStrategy = *strategy
@@ -766,14 +733,15 @@ func TestInsufficientCapacityNodeWhenScheduleDaemonSetPodsEnabled(t *testing.T) 
 		podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 		podInformer := informers.Core().V1().Pods().Informer()
 		nodeClient := clientset.CoreV1().Nodes()
-		stopCh := make(chan struct{})
-		defer close(stopCh)
 
-		informers.Start(stopCh)
-		go dc.Run(5, stopCh)
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		informers.Start(ctx.Done())
+		go dc.Run(5, ctx.Done())
 
 		// Start Scheduler
-		setupScheduler(t, clientset, informers, stopCh)
+		setupScheduler(ctx, t, clientset, informers)
 
 		ds := newDaemonSet(testTenant, ns.Name, "foo")
 		ds.Spec.Template.Spec = resourcePodSpec("", "120M", "75m")
@@ -830,13 +798,14 @@ func TestLaunchWithHashCollision(t *testing.T) {
 	podInformer := informers.Core().V1().Pods().Informer()
 	nodeClient := clientset.CoreV1().Nodes()
 
-	stopCh := make(chan struct{})
-	defer close(stopCh)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
-	informers.Start(stopCh)
-	go dc.Run(1, stopCh)
+	informers.Start(ctx.Done())
+	go dc.Run(5, ctx.Done())
 
-	setupScheduler(t, clientset, informers, stopCh)
+	// Start Scheduler
+	setupScheduler(ctx, t, clientset, informers)
 
 	// Create single node
 	_, err := nodeClient.Create(newNode("single-node", nil))
@@ -941,14 +910,15 @@ func TestTaintedNode(t *testing.T) {
 			podClient := clientset.CoreV1().PodsWithMultiTenancy(ns.Name, ns.Tenant)
 			podInformer := informers.Core().V1().Pods().Informer()
 			nodeClient := clientset.CoreV1().Nodes()
-			stopCh := make(chan struct{})
-			defer close(stopCh)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			informers.Start(ctx.Done())
+			go dc.Run(5, ctx.Done())
 
 			// Start Scheduler
-			setupScheduler(t, clientset, informers, stopCh)
-			informers.Start(stopCh)
-
-			go dc.Run(5, stopCh)
+			setupScheduler(ctx, t, clientset, informers)
 
 			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
@@ -1010,14 +980,14 @@ func TestUnschedulableNodeDaemonDoesLaunchPod(t *testing.T) {
 			nodeClient := clientset.CoreV1().Nodes()
 			podInformer := informers.Core().V1().Pods().Informer()
 
-			stopCh := make(chan struct{})
-			defer close(stopCh)
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 
-			informers.Start(stopCh)
-			go dc.Run(5, stopCh)
+			informers.Start(ctx.Done())
+			go dc.Run(5, ctx.Done())
 
 			// Start Scheduler
-			setupScheduler(t, clientset, informers, stopCh)
+			setupScheduler(ctx, t, clientset, informers)
 
 			ds := newDaemonSet(testTenant, ns.Name, "foo")
 			ds.Spec.UpdateStrategy = *strategy
