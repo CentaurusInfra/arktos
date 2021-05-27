@@ -29,7 +29,6 @@ import (
 	"k8s.io/component-base/featuregate"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	"k8s.io/kubernetes/pkg/features"
 	utilpointer "k8s.io/utils/pointer"
 )
 
@@ -594,5 +593,5 @@ func TestGetTargetNodeName(t *testing.T) {
 		}
 	}
 
-	forEachFeatureGate(t, testFun, features.ScheduleDaemonSetPods)
+	forEachFeatureGate(t, testFun)
 }

@@ -35,7 +35,6 @@ import (
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	appsinformers "k8s.io/client-go/informers/apps/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -52,7 +51,6 @@ import (
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/daemon/util"
-	"k8s.io/kubernetes/pkg/features"
 	pluginhelper "k8s.io/kubernetes/pkg/scheduler/framework/plugins/helper"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	"k8s.io/kubernetes/pkg/util/metrics"
@@ -891,9 +889,7 @@ func (dsc *DaemonSetsController) manage(ds *apps.DaemonSet, nodeList []*v1.Node,
 
 	// Remove unscheduled pods assigned to not existing nodes when daemonset pods are scheduled by scheduler.
 	// If node doesn't exist then pods are never scheduled and can't be deleted by PodGCController.
-	if utilfeature.DefaultFeatureGate.Enabled(features.ScheduleDaemonSetPods) {
-		podsToDelete = append(podsToDelete, getUnscheduledPodsWithoutNode(nodeList, nodeToDaemonPods)...)
-	}
+	podsToDelete = append(podsToDelete, getUnscheduledPodsWithoutNode(nodeList, nodeToDaemonPods)...)
 
 	// Label new pods using the hash label value of the current history when creating them
 	if err = dsc.syncNodes(ds, podsToDelete, nodesNeedingDaemonPods, hash); err != nil {
@@ -909,7 +905,7 @@ func (dsc *DaemonSetsController) manage(ds *apps.DaemonSet, nodeList []*v1.Node,
 }
 
 // syncNodes deletes given pods and creates new daemon set pods on the given nodes
-// returns slice with erros if any
+// returns slice with errors if any
 func (dsc *DaemonSetsController) syncNodes(ds *apps.DaemonSet, podsToDelete, nodesNeedingDaemonPods []string, hash string) error {
 	// We need to set expectations before creating/deleting pods to avoid race conditions.
 	dsKey, err := controller.KeyFunc(ds)
@@ -956,25 +952,16 @@ func (dsc *DaemonSetsController) syncNodes(ds *apps.DaemonSet, podsToDelete, nod
 		for i := pos; i < pos+batchSize; i++ {
 			go func(ix int) {
 				defer createWait.Done()
-				var err error
 
 				podTemplate := template.DeepCopy()
-				if utilfeature.DefaultFeatureGate.Enabled(features.ScheduleDaemonSetPods) {
-					// The pod's NodeAffinity will be updated to make sure the Pod is bound
-					// to the target node by default scheduler. It is safe to do so because there
-					// should be no conflicting node affinity with the target node.
-					podTemplate.Spec.Affinity = util.ReplaceDaemonSetPodNodeNameNodeAffinity(
-						podTemplate.Spec.Affinity, nodesNeedingDaemonPods[ix])
+				// The pod's NodeAffinity will be updated to make sure the Pod is bound
+				// to the target node by default scheduler. It is safe to do so because there
+				// should be no conflicting node affinity with the target node.
+				podTemplate.Spec.Affinity = util.ReplaceDaemonSetPodNodeNameNodeAffinity(
+					podTemplate.Spec.Affinity, nodesNeedingDaemonPods[ix])
 
-					err = dsc.podControl.CreatePodsWithControllerRefWithMultiTenancy(ds.Tenant, ds.Namespace, podTemplate,
-						ds, metav1.NewControllerRef(ds, controllerKind))
-				} else {
-					// If pod is scheduled by DaemonSetController, set its '.spec.scheduleName'.
-					podTemplate.Spec.SchedulerName = "kubernetes.io/daemonset-controller"
-
-					err = dsc.podControl.CreatePodsOnNodeWithMultiTenancy(nodesNeedingDaemonPods[ix], ds.Tenant, ds.Namespace, podTemplate,
-						ds, metav1.NewControllerRef(ds, controllerKind))
-				}
+				err = dsc.podControl.CreatePodsWithControllerRefWithMultiTenancy(ds.Tenant, ds.Namespace, podTemplate,
+					ds, metav1.NewControllerRef(ds, controllerKind))
 
 				if err != nil && errors.IsTimeout(err) {
 					// Pod is created but its initialization has timed out.
