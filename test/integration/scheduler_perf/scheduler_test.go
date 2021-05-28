@@ -16,6 +16,7 @@ limitations under the License.
 */
 
 package benchmark
+
 /*
 import (
 	"fmt"

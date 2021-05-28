@@ -45,6 +45,7 @@ func StartApiserver() (string, ShutdownFunc) {
 	}
 	return s.URL, shutdownFunc
 }
+
 /*
 // StartScheduler configures and starts a scheduler given a handle to the clientSet interface
 // and event broadcaster. It returns a handle to the configurator for the running scheduler
