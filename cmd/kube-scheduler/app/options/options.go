@@ -285,7 +285,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	if c.ComponentConfig.ResourceProviderKubeConfig == "" {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
 		c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
-		c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
+		c.NodeInformers["tp"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
 		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
 		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
