@@ -36,7 +36,6 @@ import (
 	"k8s.io/kubernetes/pkg/controller/nodelifecycle"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 	"k8s.io/kubernetes/pkg/features"
-	"k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	"k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction"
 	pluginapi "k8s.io/kubernetes/plugin/pkg/admission/podtolerationrestriction/apis/podtolerationrestriction"
 )
@@ -84,7 +83,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 	admission.SetExternalKubeInformerFactory(externalInformers)
 
 	// Apply feature gates to enable TaintNodesByCondition
-	algorithmprovider.ApplyFeatureGates()
+	//	algorithmprovider.ApplyFeatureGates()
 
 	context = initTestScheduler(t, context, false, nil)
 	cs := context.clientSet
