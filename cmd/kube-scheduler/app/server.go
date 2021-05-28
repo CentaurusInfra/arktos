@@ -242,6 +242,10 @@ func Run(ctx context.Context, cc schedulerserverconfig.CompletedConfig, outOfTre
 	// only start the ResourceInformer with the separated resource clusters
 	klog.V(3).Infof("Scheduler started with resource provider number=%d", len(cc.NodeInformers))
 	for rpId, informer := range cc.NodeInformers {
+		// if rp is the same as local tp, rp informer would have been started by informer factory method already
+		if rpId == "tp" {
+			continue
+		}
 		go informer.Informer().Run(ctx.Done())
 		go func(informer cache.SharedIndexInformer, rpId string) {
 			klog.V(3).Infof("Waiting for node sync from resource partition %s. Node informer %p", rpId, informer)
