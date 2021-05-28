@@ -1674,7 +1674,7 @@ func makeBasePod(t testingMode, nodeName, objName, cpu, mem, extended string, po
 					Requests: req,
 				},
 				ResourcesAllocated: req,
-				Ports: ports,
+				Ports:              ports,
 			}},
 			NodeName: nodeName,
 		},
