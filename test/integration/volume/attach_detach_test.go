@@ -19,6 +19,7 @@ package volume
 
 import (
 	"fmt"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"net/http/httptest"
 	"testing"
 	"time"
@@ -430,8 +431,9 @@ func createAdClients(ns *v1.Namespace, t *testing.T, server *httptest.Server, sy
 	informers := clientgoinformers.NewSharedInformerFactory(testClient, resyncPeriod)
 	ctrl, err := attachdetach.NewAttachDetachController(
 		testClient,
+		map[string]clientset.Interface{"rp0": testClient},
 		informers.Core().V1().Pods(),
-		informers.Core().V1().Nodes(),
+		map[string]coreinformers.NodeInformer{"rp0": informers.Core().V1().Nodes()},
 		informers.Core().V1().PersistentVolumeClaims(),
 		informers.Core().V1().PersistentVolumes(),
 		informers.Storage().V1beta1().CSINodes(),
@@ -459,7 +461,6 @@ func createAdClients(ns *v1.Namespace, t *testing.T, server *httptest.Server, sy
 		ClaimInformer:             informers.Core().V1().PersistentVolumeClaims(),
 		ClassInformer:             informers.Storage().V1().StorageClasses(),
 		PodInformer:               informers.Core().V1().Pods(),
-		NodeInformer:              informers.Core().V1().Nodes(),
 		EnableDynamicProvisioning: false,
 	}
 	pvCtrl, err := persistentvolume.NewController(params)
