@@ -259,6 +259,7 @@ const (
 
 	// owner: @k82cn
 	// beta: v1.12
+	// GA v1.17
 	//
 	// Schedule DaemonSet Pods by default scheduler instead of DaemonSet controller
 	ScheduleDaemonSetPods featuregate.Feature = "ScheduleDaemonSetPods"
@@ -584,7 +585,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	SupportPodPidsLimit:                         {Default: true, PreRelease: featuregate.Beta},
 	SupportNodePidsLimit:                        {Default: true, PreRelease: featuregate.Beta},
 	HyperVContainer:                             {Default: false, PreRelease: featuregate.Alpha},
-	ScheduleDaemonSetPods:                       {Default: true, PreRelease: featuregate.Beta},
+	ScheduleDaemonSetPods:                       {Default: true, PreRelease: featuregate.GA, LockToDefault: true},
 	TokenRequest:                                {Default: true, PreRelease: featuregate.Beta},
 	TokenRequestProjection:                      {Default: true, PreRelease: featuregate.Beta},
 	BoundServiceAccountTokenVolume:              {Default: false, PreRelease: featuregate.Alpha},
