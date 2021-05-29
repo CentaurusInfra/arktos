@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -28,6 +29,7 @@ import (
 	apps "k8s.io/api/apps/v1"
 	batch "k8s.io/api/batch/v1"
 	v1 "k8s.io/api/core/v1"
+	storagev1beta1 "k8s.io/api/storage/v1beta1"
 	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	apierrs "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -36,7 +38,9 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
@@ -935,6 +939,58 @@ func NewLabelNodePrepareStrategy(labelKey string, labelValue string) *LabelNodeP
 	}
 }
 
+func (s *NodeAllocatableStrategy) PreparePatch(node *v1.Node) []byte {
+	newNode := node.DeepCopy()
+	for name, value := range s.NodeAllocatable {
+		newNode.Status.Allocatable[name] = resource.MustParse(value)
+	}
+
+	oldJSON, err := json.Marshal(node)
+	if err != nil {
+		panic(err)
+	}
+	newJSON, err := json.Marshal(newNode)
+	if err != nil {
+		panic(err)
+	}
+
+	patch, err := strategicpatch.CreateTwoWayMergePatch(oldJSON, newJSON, v1.Node{})
+	if err != nil {
+		panic(err)
+	}
+	return patch
+}
+
+func (s *NodeAllocatableStrategy) CleanupNode(node *v1.Node) *v1.Node {
+	nodeCopy := node.DeepCopy()
+	for name := range s.NodeAllocatable {
+		delete(nodeCopy.Status.Allocatable, name)
+	}
+	return nodeCopy
+}
+
+// NodeAllocatableStrategy fills node.status.allocatable and csiNode.spec.drivers[*].allocatable.
+// csiNode is created if it does not exist. On cleanup, any csiNode.spec.drivers[*].allocatable is
+// set to nil.
+type NodeAllocatableStrategy struct {
+	// Node.status.allocatable to fill to all nodes.
+	NodeAllocatable map[v1.ResourceName]string
+	// Map <driver_name> -> VolumeNodeResources to fill into csiNode.spec.drivers[<driver_name>].
+	CsiNodeAllocatable map[string]*storagev1beta1.VolumeNodeResources
+	// List of in-tree volume plugins migrated to CSI.
+	MigratedPlugins []string
+}
+
+var _ PrepareNodeStrategy = &NodeAllocatableStrategy{}
+
+func NewNodeAllocatableStrategy(nodeAllocatable map[v1.ResourceName]string, csiNodeAllocatable map[string]*storagev1beta1.VolumeNodeResources, migratedPlugins []string) *NodeAllocatableStrategy {
+	return &NodeAllocatableStrategy{
+		NodeAllocatable:    nodeAllocatable,
+		CsiNodeAllocatable: csiNodeAllocatable,
+		MigratedPlugins:    migratedPlugins,
+	}
+}
+
 func (s *LabelNodePrepareStrategy) PreparePatch(*v1.Node) []byte {
 	labelString := fmt.Sprintf("{\"%v\":\"%v\"}", s.labelKey, s.labelValue)
 	patch := fmt.Sprintf(`{"metadata":{"labels":%v}}`, labelString)
@@ -947,6 +1003,41 @@ func (s *LabelNodePrepareStrategy) CleanupNode(node *v1.Node) *v1.Node {
 		delete(nodeCopy.Labels, s.labelKey)
 	}
 	return nodeCopy
+}
+
+// UniqueNodeLabelStrategy sets a unique label for each node.
+type UniqueNodeLabelStrategy struct {
+	LabelKey string
+}
+
+var _ PrepareNodeStrategy = &UniqueNodeLabelStrategy{}
+
+func NewUniqueNodeLabelStrategy(labelKey string) *UniqueNodeLabelStrategy {
+	return &UniqueNodeLabelStrategy{
+		LabelKey: labelKey,
+	}
+}
+
+func (s *UniqueNodeLabelStrategy) PreparePatch(*v1.Node) []byte {
+	labelString := fmt.Sprintf("{\"%v\":\"%v\"}", s.LabelKey, string(uuid.NewUUID()))
+	patch := fmt.Sprintf(`{"metadata":{"labels":%v}}`, labelString)
+	return []byte(patch)
+}
+
+func (s *UniqueNodeLabelStrategy) CleanupNode(node *v1.Node) *v1.Node {
+	nodeCopy := node.DeepCopy()
+	if node.Labels != nil && len(node.Labels[s.LabelKey]) != 0 {
+		delete(nodeCopy.Labels, s.LabelKey)
+	}
+	return nodeCopy
+}
+
+func (*UniqueNodeLabelStrategy) PrepareDependentObjects(node *v1.Node, client clientset.Interface) error {
+	return nil
+}
+
+func (*UniqueNodeLabelStrategy) CleanupDependentObjects(nodeName string, client clientset.Interface) error {
+	return nil
 }
 
 func DoPrepareNode(client clientset.Interface, node *v1.Node, strategy PrepareNodeStrategy) error {
@@ -1103,6 +1194,99 @@ func NewCustomCreatePodStrategy(podTemplate *v1.Pod) TestPodCreateStrategy {
 	return func(client clientset.Interface, namespace string, podCount int) error {
 		return CreatePod(client, namespace, podCount, podTemplate)
 	}
+}
+
+// volumeFactory creates an unique PersistentVolume for given integer.
+type volumeFactory func(uniqueID int) *v1.PersistentVolume
+
+func NewCreatePodWithPersistentVolumeStrategy(claimTemplate *v1.PersistentVolumeClaim, factory volumeFactory, podTemplate *v1.Pod) TestPodCreateStrategy {
+	return func(client clientset.Interface, namespace string, podCount int) error {
+		return CreatePodWithPersistentVolume(client, namespace, claimTemplate, factory, podTemplate, podCount, true /* bindVolume */)
+	}
+}
+
+func CreatePodWithPersistentVolume(client clientset.Interface, namespace string, claimTemplate *v1.PersistentVolumeClaim, factory volumeFactory, podTemplate *v1.Pod, count int, bindVolume bool) error {
+	var createError error
+	lock := sync.Mutex{}
+	createPodFunc := func(i int) {
+		pvcName := fmt.Sprintf("pvc-%d", i)
+		// pvc
+		pvc := claimTemplate.DeepCopy()
+		pvc.Name = pvcName
+		// pv
+		pv := factory(i)
+		// PVs are cluster-wide resources.
+		// Prepend a namespace to make the name globally unique.
+		pv.Name = fmt.Sprintf("%s-%s", namespace, pv.Name)
+		if bindVolume {
+			// bind pv to "pvc-$i"
+			pv.Spec.ClaimRef = &v1.ObjectReference{
+				Kind:       "PersistentVolumeClaim",
+				Namespace:  namespace,
+				Name:       pvcName,
+				APIVersion: "v1",
+			}
+			pv.Status.Phase = v1.VolumeBound
+
+			// bind pvc to "pv-$i"
+			// pvc.Spec.VolumeName = pv.Name
+			pvc.Status.Phase = v1.ClaimBound
+		} else {
+			pv.Status.Phase = v1.VolumeAvailable
+		}
+		if err := CreatePersistentVolumeWithRetries(client, pv); err != nil {
+			lock.Lock()
+			defer lock.Unlock()
+			createError = fmt.Errorf("error creating PV: %s", err)
+			return
+		}
+		// We need to update statuses separately, as creating pv/pvc resets status to the default one.
+		if _, err := client.CoreV1().PersistentVolumes().UpdateStatus(pv); err != nil {
+			lock.Lock()
+			defer lock.Unlock()
+			createError = fmt.Errorf("error updating PV status: %s", err)
+			return
+		}
+
+		if err := CreatePersistentVolumeClaimWithRetries(client, namespace, pvc); err != nil {
+			lock.Lock()
+			defer lock.Unlock()
+			createError = fmt.Errorf("error creating PVC: %s", err)
+			return
+		}
+		if _, err := client.CoreV1().PersistentVolumeClaims(namespace).UpdateStatus(pvc); err != nil {
+			lock.Lock()
+			defer lock.Unlock()
+			createError = fmt.Errorf("error updating PVC status: %s", err)
+			return
+		}
+
+		// pod
+		pod := podTemplate.DeepCopy()
+		pod.Spec.Volumes = []v1.Volume{
+			{
+				Name: "vol",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+						ClaimName: pvcName,
+					},
+				},
+			},
+		}
+		if err := makeCreatePod(client, namespace, pod); err != nil {
+			lock.Lock()
+			defer lock.Unlock()
+			createError = err
+			return
+		}
+	}
+
+	if count < 30 {
+		workqueue.ParallelizeUntil(context.TODO(), count, count, createPodFunc)
+	} else {
+		workqueue.ParallelizeUntil(context.TODO(), 30, count, createPodFunc)
+	}
+	return createError
 }
 
 func NewSimpleCreatePodStrategy() TestPodCreateStrategy {

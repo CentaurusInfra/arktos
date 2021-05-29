@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -222,6 +223,40 @@ func CreateResourceQuotaWithRetries(c clientset.Interface, namespace string, obj
 	}
 	createFunc := func() (bool, error) {
 		_, err := c.CoreV1().ResourceQuotas(namespace).Create(obj)
+		if err == nil || apierrs.IsAlreadyExists(err) {
+			return true, nil
+		}
+		if IsRetryableAPIError(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("Failed to create object with non-retriable error: %v", err)
+	}
+	return RetryWithExponentialBackOff(createFunc)
+}
+
+func CreatePersistentVolumeWithRetries(c clientset.Interface, obj *v1.PersistentVolume) error {
+	if obj == nil {
+		return fmt.Errorf("Object provided to create is empty")
+	}
+	createFunc := func() (bool, error) {
+		_, err := c.CoreV1().PersistentVolumes().Create(obj)
+		if err == nil || apierrs.IsAlreadyExists(err) {
+			return true, nil
+		}
+		if IsRetryableAPIError(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("Failed to create object with non-retriable error: %v", err)
+	}
+	return RetryWithExponentialBackOff(createFunc)
+}
+
+func CreatePersistentVolumeClaimWithRetries(c clientset.Interface, namespace string, obj *v1.PersistentVolumeClaim) error {
+	if obj == nil {
+		return fmt.Errorf("Object provided to create is empty")
+	}
+	createFunc := func() (bool, error) {
+		_, err := c.CoreV1().PersistentVolumeClaims(namespace).Create(obj)
 		if err == nil || apierrs.IsAlreadyExists(err) {
 			return true, nil
 		}
