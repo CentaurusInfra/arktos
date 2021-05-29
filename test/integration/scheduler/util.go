@@ -20,6 +20,7 @@ package scheduler
 import (
 	gocontext "context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/kubernetes/pkg/api/legacyscheme"
@@ -698,9 +699,8 @@ func waitForPDBsStable(context *testContext, pdbs []*policy.PodDisruptionBudget,
 
 // waitCachedPodsStable waits until scheduler cache has the given pods.
 func waitCachedPodsStable(context *testContext, pods []*v1.Pod) error {
-	/*
 		return wait.Poll(time.Second, 30*time.Second, func() (bool, error) {
-			cachedPods, err := context.scheduler.Config().SchedulerCache.List(labels.Everything())
+			cachedPods, err := context.scheduler.SchedulerCache.List(labels.Everything())
 			if err != nil {
 				return false, err
 			}
@@ -708,19 +708,17 @@ func waitCachedPodsStable(context *testContext, pods []*v1.Pod) error {
 				return false, nil
 			}
 			for _, p := range pods {
-				actualPod, err1 := context.clientSet.CoreV1().Pods(p.Namespace).Get(p.Name, metav1.GetOptions{})
+				actualPod, err1 := context.clientSet.CoreV1().PodsWithMultiTenancy(p.Namespace, p.Tenant, ).Get(p.Name, metav1.GetOptions{})
 				if err1 != nil {
 					return false, err1
 				}
-				cachedPod, err2 := context.scheduler.Config().SchedulerCache.GetPod(actualPod)
+				cachedPod, err2 := context.scheduler.SchedulerCache.GetPod(actualPod)
 				if err2 != nil || cachedPod == nil {
 					return false, err2
 				}
 			}
 			return true, nil
 		})
-	*/
-	return nil
 }
 
 // deletePod deletes the given pod in the given namespace.
