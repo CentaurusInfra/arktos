@@ -49,6 +49,9 @@ func (c *CacheComparer) Compare() error {
 	var err error
 	if len(c.NodeListers) > 0 {
 		nodes, err = nodeutil.ListNodes(c.NodeListers, labels.Everything())
+		if err != nil {
+			return err
+		}
 	}
 
 	pods, err := c.PodLister.List(labels.Everything())
