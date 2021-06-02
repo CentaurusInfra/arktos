@@ -19,10 +19,10 @@ package persistentvolume
 
 import (
 	"errors"
-	csitrans "k8s.io/csi-translation-lib"
 	"testing"
-
 	"time"
+
+	csitrans "k8s.io/csi-translation-lib"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"

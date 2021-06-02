@@ -278,7 +278,7 @@ func (g *genericScheduler) Preempt(ctx context.Context, prof *profile.Profile, s
 		return nil, nil, nil, nil
 	}
 	if !podEligibleToPreemptOthers(pod, g.nodeInfoSnapshot.NodeInfos(), g.enableNonPreempting) {
-		klog.V(5).Infof("Pod %s/%v/%v is not eligible for more preemption.", pod.Tenant, pod.Namespace, pod.Name)
+		klog.V(5).Infof("Pod %v/%v/%v is not eligible for more preemption.", pod.Tenant, pod.Namespace, pod.Name)
 		return nil, nil, nil, nil
 	}
 	allNodes, err := g.nodeInfoSnapshot.NodeInfos().List()

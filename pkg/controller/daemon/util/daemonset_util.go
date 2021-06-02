@@ -19,7 +19,6 @@ package util
 
 import (
 	"fmt"
-	api "k8s.io/kubernetes/pkg/apis/core"
 	"strconv"
 
 	apps "k8s.io/api/apps/v1"
@@ -27,6 +26,7 @@ import (
 	extensions "k8s.io/api/extensions/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	api "k8s.io/kubernetes/pkg/apis/core"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 )
 

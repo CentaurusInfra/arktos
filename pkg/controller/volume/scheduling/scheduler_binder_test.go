@@ -20,11 +20,12 @@ package scheduling
 import (
 	"context"
 	"fmt"
-	"k8s.io/client-go/tools/cache"
 	"reflect"
 	"sort"
 	"testing"
 	"time"
+
+	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
@@ -39,7 +40,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
-	"k8s.io/klog"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/api/testapi"
 	"k8s.io/kubernetes/pkg/controller"
 	pvtesting "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/testing"

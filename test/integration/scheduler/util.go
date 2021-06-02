@@ -699,26 +699,26 @@ func waitForPDBsStable(context *testContext, pdbs []*policy.PodDisruptionBudget,
 
 // waitCachedPodsStable waits until scheduler cache has the given pods.
 func waitCachedPodsStable(context *testContext, pods []*v1.Pod) error {
-		return wait.Poll(time.Second, 30*time.Second, func() (bool, error) {
-			cachedPods, err := context.scheduler.SchedulerCache.List(labels.Everything())
-			if err != nil {
-				return false, err
+	return wait.Poll(time.Second, 30*time.Second, func() (bool, error) {
+		cachedPods, err := context.scheduler.SchedulerCache.List(labels.Everything())
+		if err != nil {
+			return false, err
+		}
+		if len(pods) != len(cachedPods) {
+			return false, nil
+		}
+		for _, p := range pods {
+			actualPod, err1 := context.clientSet.CoreV1().PodsWithMultiTenancy(p.Namespace, p.Tenant).Get(p.Name, metav1.GetOptions{})
+			if err1 != nil {
+				return false, err1
 			}
-			if len(pods) != len(cachedPods) {
-				return false, nil
+			cachedPod, err2 := context.scheduler.SchedulerCache.GetPod(actualPod)
+			if err2 != nil || cachedPod == nil {
+				return false, err2
 			}
-			for _, p := range pods {
-				actualPod, err1 := context.clientSet.CoreV1().PodsWithMultiTenancy(p.Namespace, p.Tenant, ).Get(p.Name, metav1.GetOptions{})
-				if err1 != nil {
-					return false, err1
-				}
-				cachedPod, err2 := context.scheduler.SchedulerCache.GetPod(actualPod)
-				if err2 != nil || cachedPod == nil {
-					return false, err2
-				}
-			}
-			return true, nil
-		})
+		}
+		return true, nil
+	})
 }
 
 // deletePod deletes the given pod in the given namespace.

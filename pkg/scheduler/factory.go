@@ -21,11 +21,11 @@ package scheduler
 import (
 	"errors"
 	"fmt"
-	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"sort"
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+
 	v1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,6 +58,7 @@ import (
 	cachedebugger "k8s.io/kubernetes/pkg/scheduler/internal/cache/debugger"
 	internalqueue "k8s.io/kubernetes/pkg/scheduler/internal/queue"
 	"k8s.io/kubernetes/pkg/scheduler/profile"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 const (

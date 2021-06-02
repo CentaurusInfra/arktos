@@ -20,12 +20,12 @@ package kubelet
 import (
 	"context"
 	"fmt"
-	cloudproviderapi "k8s.io/cloud-provider/api"
 	"net"
 	goruntime "runtime"
 	"sort"
 	"time"
 
+	cloudproviderapi "k8s.io/cloud-provider/api"
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"

@@ -70,6 +70,7 @@ func ListNodes(nodeListers map[string]corelisters.NodeLister, selector labels.Se
 }
 
 // TODO - add timeout and return false
+// TODO - consider unify implementation of WaitForNodeCacheSync with WaitForCacheSync
 func WaitForNodeCacheSync(controllerName string, nodeListersSynced map[string]cache.InformerSynced) bool {
 	klog.Infof("Waiting for caches to sync for %s controller", controllerName)
 

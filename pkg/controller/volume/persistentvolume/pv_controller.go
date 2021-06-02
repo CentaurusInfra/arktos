@@ -19,7 +19,6 @@ package persistentvolume
 
 import (
 	"fmt"
-	"k8s.io/kubernetes/pkg/util/node"
 	"reflect"
 	"strings"
 	"time"
@@ -48,6 +47,7 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
 	"k8s.io/kubernetes/pkg/util/goroutinemap/exponentialbackoff"
+	"k8s.io/kubernetes/pkg/util/node"
 	vol "k8s.io/kubernetes/pkg/volume"
 	"k8s.io/kubernetes/pkg/volume/util"
 	"k8s.io/kubernetes/pkg/volume/util/recyclerclient"

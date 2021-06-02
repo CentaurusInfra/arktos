@@ -19,7 +19,6 @@ limitations under the License.
 package algorithmprovider
 
 import (
-	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderuntimenotready"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -37,6 +36,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeports"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodepreferavoidpods"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderuntimenotready"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodeunschedulable"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/nodevolumelimits"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/podtopologyspread"

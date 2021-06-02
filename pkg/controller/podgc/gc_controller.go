@@ -160,7 +160,7 @@ func (gcc *PodGCController) gcOrphaned(pods []*v1.Pod) {
 
 	// check errors and aggregate nodes
 	if len(errs) == len(gcc.kubeClientForNodes) {
-		// avoid garbage collection when
+		// avoid garbage collection when all kubeclients are not accessible
 		klog.Errorf("Error listing nodes from all resource partition. err: %v", errs)
 		return
 	}

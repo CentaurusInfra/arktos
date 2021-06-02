@@ -19,7 +19,6 @@ package persistentvolume
 
 import (
 	"fmt"
-	csitrans "k8s.io/csi-translation-lib"
 	"strconv"
 	"time"
 
@@ -47,6 +46,7 @@ import (
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	vol "k8s.io/kubernetes/pkg/volume"
 
+	csitrans "k8s.io/csi-translation-lib"
 	"k8s.io/klog"
 )
 

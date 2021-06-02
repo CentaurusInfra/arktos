@@ -18,10 +18,10 @@ limitations under the License.
 package scheduling
 
 import (
-	"k8s.io/kubernetes/pkg/controller/volume/scheduling/metrics"
 	"sync"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/kubernetes/pkg/controller/volume/scheduling/metrics"
 )
 
 // PodBindingCache stores PV binding decisions per pod per node.

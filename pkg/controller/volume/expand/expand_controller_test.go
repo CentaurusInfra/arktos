@@ -20,10 +20,11 @@ package expand
 import (
 	"encoding/json"
 	"fmt"
-	csitrans "k8s.io/csi-translation-lib"
 	"reflect"
 	"regexp"
 	"testing"
+
+	csitrans "k8s.io/csi-translation-lib"
 
 	"k8s.io/api/core/v1"
 	storagev1 "k8s.io/api/storage/v1"
