@@ -22,7 +22,6 @@ package scheduler
 import (
 	"encoding/json"
 	"fmt"
-	extenderv1 "k8s.io/kube-scheduler/extender/v1"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -34,6 +33,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
+	extenderv1 "k8s.io/kube-scheduler/extender/v1"
 	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	imageutils "k8s.io/kubernetes/test/utils/image"

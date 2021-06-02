@@ -22,14 +22,6 @@ package scheduler
 import (
 	gocontext "context"
 	"fmt"
-	coreinformers "k8s.io/client-go/informers/core/v1"
-	"k8s.io/client-go/tools/events"
-	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
-	"k8s.io/kubernetes/pkg/scheduler/profile"
-
-	//	"k8s.io/kubernetes/pkg/api/legacyscheme"
-	//	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	"testing"
 	"time"
 
@@ -40,19 +32,23 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	clientv1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/record"
 	extenderv1 "k8s.io/kube-scheduler/extender/v1"
+	"k8s.io/kubernetes/pkg/api/legacyscheme"
 	"k8s.io/kubernetes/pkg/kubelet/lifecycle"
 	"k8s.io/kubernetes/pkg/scheduler"
 	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
-	//	schedulerapi "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
+	schedulerframework "k8s.io/kubernetes/pkg/scheduler/framework/v1alpha1"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	"k8s.io/kubernetes/pkg/scheduler/profile"
 	"k8s.io/kubernetes/test/integration/framework"
 )
 
@@ -93,13 +89,6 @@ func TestSchedulerCreationFromConfigMap(t *testing.T) {
 	clientSet := clientset.NewForConfigOrDie(restclient.NewAggregatedConfig(kubeConfig))
 	defer clientSet.CoreV1().Nodes().DeleteCollection(nil, metav1.ListOptions{})
 	informerFactory := informers.NewSharedInformerFactory(clientSet, 0)
-
-	// todo: find out proper way to register predicate/priority plugins for the scheduler
-	// Pre-register some predicate and priority functions
-	//	factory.RegisterFitPredicate("PredicateOne", PredicateOne)
-	//	factory.RegisterFitPredicate("PredicateTwo", PredicateTwo)
-	//	factory.RegisterPriorityFunction("PriorityOne", PriorityOne, 1)
-	//	factory.RegisterPriorityFunction("PriorityTwo", PriorityTwo, 1)
 
 	for i, test := range []struct {
 		policy               string

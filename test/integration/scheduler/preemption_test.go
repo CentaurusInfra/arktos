@@ -38,7 +38,6 @@ import (
 	"k8s.io/kubernetes/pkg/features"
 	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	testutils "k8s.io/kubernetes/test/utils"
-
 	"k8s.io/klog"
 )
 
