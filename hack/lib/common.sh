@@ -388,6 +388,8 @@ EOF
         || { echo "check apiserver logs: ${APISERVER_LOG}" ; exit 1 ; }
 
     #if [[ "${REUSE_CERTS}" != true ]]; then
+    # REUSE_CERTS is a feature introduced for API server data partition. It is not a must have for arktos-up and not supported in arktos scale out local setup.
+    # Keep the code here for later reinstate of api server data partition.
         # Create kubeconfigs for all components, using client certs
         # TODO: Each api server has it own configuration files. However, since clients, such as controller, scheduler and etc do not support mutilple apiservers,admin.kubeconfig is kept for compability.
         ADMIN_CONFIG_API_HOST=${PUBLIC_IP:-${API_HOST}}
