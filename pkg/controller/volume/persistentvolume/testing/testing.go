@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -223,7 +224,7 @@ func (r *VolumeReactor) React(action core.Action) (handled bool, ret runtime.Obj
 			return true, volume.DeepCopy(), nil
 		}
 		klog.V(4).Infof("GetVolume: volume %s not found", name)
-		return true, nil, fmt.Errorf("Cannot find volume %s", name)
+		return true, nil, apierrs.NewNotFound(action.GetResource().GroupResource(), name)
 
 	case action.Matches("get", "persistentvolumeclaims"):
 		name := action.(core.GetAction).GetName()

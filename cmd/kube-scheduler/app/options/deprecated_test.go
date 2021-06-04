@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package options
 
 import (
@@ -26,7 +28,6 @@ func TestValidateDeprecatedKubeSchedulerConfiguration(t *testing.T) {
 		config         *DeprecatedOptions
 	}{
 		"good": {
-			expectedToFail: false,
 			config: &DeprecatedOptions{
 				PolicyConfigFile:      "/some/file",
 				UseLegacyPolicyConfig: true,
@@ -39,6 +40,17 @@ func TestValidateDeprecatedKubeSchedulerConfiguration(t *testing.T) {
 				PolicyConfigFile:      "",
 				UseLegacyPolicyConfig: true,
 				AlgorithmProvider:     "",
+			},
+		},
+		"good affinity weight": {
+			config: &DeprecatedOptions{
+				HardPodAffinitySymmetricWeight: 50,
+			},
+		},
+		"bad affinity weight": {
+			expectedToFail: true,
+			config: &DeprecatedOptions{
+				HardPodAffinitySymmetricWeight: -1,
 			},
 		},
 	}

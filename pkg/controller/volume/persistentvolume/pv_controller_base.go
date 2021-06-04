@@ -43,8 +43,10 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/persistentvolume/metrics"
 	pvutil "k8s.io/kubernetes/pkg/controller/volume/persistentvolume/util"
 	"k8s.io/kubernetes/pkg/util/goroutinemap"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	vol "k8s.io/kubernetes/pkg/volume"
 
+	csitrans "k8s.io/csi-translation-lib"
 	"k8s.io/klog"
 )
 
@@ -64,7 +66,7 @@ type ControllerParameters struct {
 	ClaimInformer             coreinformers.PersistentVolumeClaimInformer
 	ClassInformer             storageinformers.StorageClassInformer
 	PodInformer               coreinformers.PodInformer
-	NodeInformer              coreinformers.NodeInformer
+	NodeInformers             map[string]coreinformers.NodeInformer
 	EventRecorder             record.EventRecorder
 	EnableDynamicProvisioning bool
 }
@@ -94,6 +96,7 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 		volumeQueue:                   workqueue.NewNamed("volumes"),
 		resyncPeriod:                  p.SyncPeriod,
 		operationTimestamps:           metrics.NewOperationStartTimeCache(),
+		translator:                    csitrans.New(),
 	}
 
 	// Prober is nil because PV is not aware of Flexvolume.
@@ -125,8 +128,7 @@ func NewController(p ControllerParameters) (*PersistentVolumeController, error) 
 	controller.classListerSynced = p.ClassInformer.Informer().HasSynced
 	controller.podLister = p.PodInformer.Lister()
 	controller.podListerSynced = p.PodInformer.Informer().HasSynced
-	controller.NodeLister = p.NodeInformer.Lister()
-	controller.NodeListerSynced = p.NodeInformer.Informer().HasSynced
+	controller.NodeListers, controller.NodeListersSynced = nodeutil.GetNodeListersAndSyncedFromNodeInformers(p.NodeInformers)
 	return controller, nil
 }
 
@@ -280,10 +282,14 @@ func (ctrl *PersistentVolumeController) Run(stopCh <-chan struct{}) {
 	defer ctrl.claimQueue.ShutDown()
 	defer ctrl.volumeQueue.ShutDown()
 
-	klog.Infof("Starting persistent volume controller")
+	klog.Infof("Starting persistent volume controller. #(nodelisters)=%d", len(ctrl.NodeListers))
 	defer klog.Infof("Shutting down persistent volume controller")
 
-	if !controller.WaitForCacheSync("persistent volume", stopCh, ctrl.volumeListerSynced, ctrl.claimListerSynced, ctrl.classListerSynced, ctrl.podListerSynced, ctrl.NodeListerSynced) {
+	if !controller.WaitForCacheSync("persistent volume (w/o node)", stopCh, ctrl.volumeListerSynced, ctrl.claimListerSynced, ctrl.classListerSynced, ctrl.podListerSynced) {
+		return
+	}
+
+	if !nodeutil.WaitForNodeCacheSync("persistent volume (node)", ctrl.NodeListersSynced) {
 		return
 	}
 

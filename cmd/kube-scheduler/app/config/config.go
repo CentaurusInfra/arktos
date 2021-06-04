@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package config
 
 import (
@@ -23,7 +24,9 @@ import (
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/kubernetes/typed/events/v1beta1"
 	restclient "k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/record"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
@@ -31,7 +34,7 @@ import (
 
 // Config has all the context to run a Scheduler
 type Config struct {
-	// config is the scheduler server's configuration object.
+	// ComponentConfig is the scheduler server's configuration object.
 	ComponentConfig kubeschedulerconfig.KubeSchedulerConfiguration
 
 	// LoopbackClientConfig is a config for a privileged loopback connection
@@ -44,15 +47,19 @@ type Config struct {
 	SecureServing          *apiserver.SecureServingInfo
 
 	// explictly define node informer from the resource provider client
-	ResourceProviderClient clientset.Interface
-	ResourceInformer       coreinformers.NodeInformer
+	ResourceProviderClients map[string]clientset.Interface
+	NodeInformers           map[string]coreinformers.NodeInformer
 
 	Client          clientset.Interface
 	InformerFactory informers.SharedInformerFactory
 	PodInformer     coreinformers.PodInformer
-	EventClient     v1core.EventsGetter
-	Recorder        record.EventRecorder
-	Broadcaster     record.EventBroadcaster
+
+	// TODO: Remove the following after fully migrating to the new events api.
+	CoreEventClient v1core.EventsGetter
+	CoreBroadcaster record.EventBroadcaster
+
+	EventClient v1beta1.EventsGetter
+	Broadcaster events.EventBroadcaster
 
 	// LeaderElection is optional.
 	LeaderElection *leaderelection.LeaderElectionConfig

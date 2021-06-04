@@ -6453,7 +6453,6 @@ func TestValidatePodSpec(t *testing.T) {
 	maxGroupID := int64(2147483647)
 
 	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.PodPriority, true)()
-	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.RuntimeClass, true)()
 
 	successCases := []core.PodSpec{
 		{ // Populate basic fields, leave defaults for most.
@@ -6593,6 +6592,13 @@ func TestValidatePodSpec(t *testing.T) {
 			RestartPolicy:    core.RestartPolicyAlways,
 			DNSPolicy:        core.DNSClusterFirst,
 			RuntimeClassName: utilpointer.StringPtr("valid-sandbox"),
+		},
+		{ // Populate Overhead
+			Containers:       []core.Container{{Name: "ctr", Image: "image", ImagePullPolicy: "IfNotPresent", TerminationMessagePolicy: "File"}},
+			RestartPolicy:    core.RestartPolicyAlways,
+			DNSPolicy:        core.DNSClusterFirst,
+			RuntimeClassName: utilpointer.StringPtr("valid-sandbox"),
+			Overhead:         core.ResourceList{},
 		},
 	}
 	for i := range successCases {
@@ -14421,7 +14427,141 @@ func TestAlphaVolumePVCDataSource(t *testing.T) {
 			if errs := ValidatePersistentVolumeClaimSpec(&tc.claimSpec, field.NewPath("spec")); len(errs) != 0 {
 				t.Errorf("expected success: %v", errs)
 			}
+		}
+	}
+}
 
+func TestValidateTopologySpreadConstraints(t *testing.T) {
+	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.EvenPodsSpread, true)()
+	testCases := []struct {
+		name        string
+		constraints []core.TopologySpreadConstraint
+		errtype     field.ErrorType
+		errfield    string
+	}{
+		{
+			name: "all required fields ok",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+			},
+		},
+		{
+			name: "missing MaxSkew",
+			constraints: []core.TopologySpreadConstraint{
+				{TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+			},
+			errtype:  field.ErrorTypeInvalid,
+			errfield: "maxSkew",
+		},
+		{
+			name: "invalid MaxSkew",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 0, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+			},
+			errtype:  field.ErrorTypeInvalid,
+			errfield: "maxSkew",
+		},
+		{
+			name: "missing TopologyKey",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, WhenUnsatisfiable: core.DoNotSchedule},
+			},
+			errtype:  field.ErrorTypeRequired,
+			errfield: "topologyKey",
+		},
+		{
+			name: "missing scheduling mode",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone"},
+			},
+			errtype:  field.ErrorTypeNotSupported,
+			errfield: "whenUnsatisfiable",
+		},
+		{
+			name: "unsupported scheduling mode",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.UnsatisfiableConstraintAction("N/A")},
+			},
+			errtype:  field.ErrorTypeNotSupported,
+			errfield: "whenUnsatisfiable",
+		},
+		{
+			name: "multiple constraints ok with all required fields",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+				{MaxSkew: 2, TopologyKey: "k8s.io/node", WhenUnsatisfiable: core.ScheduleAnyway},
+			},
+		},
+		{
+			name: "multiple constraints missing TopologyKey on partial ones",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+				{MaxSkew: 2, WhenUnsatisfiable: core.ScheduleAnyway},
+			},
+			errtype:  field.ErrorTypeRequired,
+			errfield: "topologyKey",
+		},
+		{
+			name: "duplicate constraints",
+			constraints: []core.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+				{MaxSkew: 2, TopologyKey: "k8s.io/zone", WhenUnsatisfiable: core.DoNotSchedule},
+			},
+			errtype:  field.ErrorTypeDuplicate,
+			errfield: "{topologyKey, whenUnsatisfiable}",
+		},
+	}
+
+	for i, tc := range testCases {
+		errs := validateTopologySpreadConstraints(tc.constraints, field.NewPath("field"))
+
+		if len(errs) > 0 && tc.errtype == "" {
+			t.Errorf("[%d: %q] unexpected error(s): %v", i, tc.name, errs)
+		} else if len(errs) == 0 && tc.errtype != "" {
+			t.Errorf("[%d: %q] expected error type %v", i, tc.name, tc.errtype)
+		} else if len(errs) >= 1 {
+			if errs[0].Type != tc.errtype {
+				t.Errorf("[%d: %q] expected error type %v, got %v", i, tc.name, tc.errtype, errs[0].Type)
+			} else if !strings.HasSuffix(errs[0].Field, "."+tc.errfield) {
+				t.Errorf("[%d: %q] expected error on field %q, got %q", i, tc.name, tc.errfield, errs[0].Field)
+			}
+		}
+	}
+}
+
+func TestValidateOverhead(t *testing.T) {
+	successCase := []struct {
+		Name     string
+		overhead core.ResourceList
+	}{
+		{
+			Name: "Valid Overhead for CPU + Memory",
+			overhead: core.ResourceList{
+				core.ResourceName(core.ResourceCPU):    resource.MustParse("10"),
+				core.ResourceName(core.ResourceMemory): resource.MustParse("10G"),
+			},
+		},
+	}
+	for _, tc := range successCase {
+		if errs := validateOverhead(tc.overhead, field.NewPath("overheads")); len(errs) != 0 {
+			t.Errorf("%q unexpected error: %v", tc.Name, errs)
+		}
+	}
+
+	errorCase := []struct {
+		Name     string
+		overhead core.ResourceList
+	}{
+		{
+			Name: "Invalid Overhead Resources",
+			overhead: core.ResourceList{
+				core.ResourceName("my.org"): resource.MustParse("10m"),
+			},
+		},
+	}
+	for _, tc := range errorCase {
+		if errs := validateOverhead(tc.overhead, field.NewPath("resources")); len(errs) == 0 {
+			t.Errorf("%q expected error", tc.Name)
 		}
 	}
 }

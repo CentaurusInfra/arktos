@@ -158,12 +158,12 @@ func setAllowedUpdateLabels(node *api.Node, value string) *api.Node {
 	node.Labels["kubernetes.io/hostname"] = value
 	node.Labels["failure-domain.beta.kubernetes.io/zone"] = value
 	node.Labels["failure-domain.beta.kubernetes.io/region"] = value
+	node.Labels["topology.kubernetes.io/zone"] = value
+	node.Labels["topology.kubernetes.io/region"] = value
 	node.Labels["beta.kubernetes.io/instance-type"] = value
+	node.Labels["node.kubernetes.io/instance-type"] = value
 	node.Labels["beta.kubernetes.io/os"] = value
 	node.Labels["beta.kubernetes.io/arch"] = value
-	node.Labels["failure-domain.kubernetes.io/zone"] = value
-	node.Labels["failure-domain.kubernetes.io/region"] = value
-	node.Labels["kubernetes.io/instance-type"] = value
 	node.Labels["kubernetes.io/os"] = value
 	node.Labels["kubernetes.io/arch"] = value
 
@@ -310,8 +310,8 @@ func Test_nodePlugin_Admit(t *testing.T) {
 			},
 		}
 
-		csiNodeResource = storage.Resource("csinodes").WithVersion("v1beta1")
-		csiNodeKind     = schema.GroupVersionKind{Group: "storage.k8s.io", Version: "v1beta1", Kind: "CSINode"}
+		csiNodeResource = storage.Resource("csinodes").WithVersion("v1")
+		csiNodeKind     = schema.GroupVersionKind{Group: "storage.k8s.io", Version: "v1", Kind: "CSINode"}
 		nodeInfo        = &storage.CSINode{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: "mynode",

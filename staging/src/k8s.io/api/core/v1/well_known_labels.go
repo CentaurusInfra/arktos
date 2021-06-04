@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -17,11 +18,15 @@ limitations under the License.
 package v1
 
 const (
-	LabelHostname          = "kubernetes.io/hostname"
-	LabelZoneFailureDomain = "failure-domain.beta.kubernetes.io/zone"
-	LabelZoneRegion        = "failure-domain.beta.kubernetes.io/region"
+	LabelHostname = "kubernetes.io/hostname"
 
-	LabelInstanceType = "beta.kubernetes.io/instance-type"
+	LabelZoneFailureDomain       = "failure-domain.beta.kubernetes.io/zone"
+	LabelZoneRegion              = "failure-domain.beta.kubernetes.io/region"
+	LabelZoneFailureDomainStable = "topology.kubernetes.io/zone"
+	LabelZoneRegionStable        = "topology.kubernetes.io/region"
+
+	LabelInstanceType       = "beta.kubernetes.io/instance-type"
+	LabelInstanceTypeStable = "node.kubernetes.io/instance-type"
 
 	LabelOSStable   = "kubernetes.io/os"
 	LabelArchStable = "kubernetes.io/arch"

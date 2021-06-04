@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@ package nodetaint
 import (
 	"fmt"
 	"io"
+
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apiserver/pkg/admission"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/component-base/featuregate"
@@ -29,8 +32,6 @@ import (
 const (
 	// PluginName is the name of the plugin.
 	PluginName = "TaintNodesByCondition"
-	// TaintNodeNotReady is the not-ready label as specified in the API.
-	TaintNodeNotReady = "node.kubernetes.io/not-ready"
 )
 
 // Register registers a plugin
@@ -92,7 +93,7 @@ func (p *Plugin) Admit(a admission.Attributes, o admission.ObjectInterfaces) err
 
 func addNotReadyTaint(node *api.Node) {
 	notReadyTaint := api.Taint{
-		Key:    TaintNodeNotReady,
+		Key:    v1.TaintNodeNotReady,
 		Effect: api.TaintEffectNoSchedule,
 	}
 	for _, taint := range node.Spec.Taints {

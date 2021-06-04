@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -20,11 +21,11 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	v1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apiserver/pkg/admission"
 	api "k8s.io/kubernetes/pkg/apis/core"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 )
 
 // PluginName indicates name of admission plugin.
@@ -40,14 +41,14 @@ var (
 			" that is added by default to every pod that does not already have such a toleration.")
 
 	notReadyToleration = api.Toleration{
-		Key:               schedulerapi.TaintNodeNotReady,
+		Key:               v1.TaintNodeNotReady,
 		Operator:          api.TolerationOpExists,
 		Effect:            api.TaintEffectNoExecute,
 		TolerationSeconds: defaultNotReadyTolerationSeconds,
 	}
 
 	unreachableToleration = api.Toleration{
-		Key:               schedulerapi.TaintNodeUnreachable,
+		Key:               v1.TaintNodeUnreachable,
 		Operator:          api.TolerationOpExists,
 		Effect:            api.TaintEffectNoExecute,
 		TolerationSeconds: defaultUnreachableTolerationSeconds,
@@ -101,12 +102,12 @@ func (p *Plugin) Admit(attributes admission.Attributes, o admission.ObjectInterf
 	toleratesNodeNotReady := false
 	toleratesNodeUnreachable := false
 	for _, toleration := range tolerations {
-		if (toleration.Key == schedulerapi.TaintNodeNotReady || len(toleration.Key) == 0) &&
+		if (toleration.Key == v1.TaintNodeNotReady || len(toleration.Key) == 0) &&
 			(toleration.Effect == api.TaintEffectNoExecute || len(toleration.Effect) == 0) {
 			toleratesNodeNotReady = true
 		}
 
-		if (toleration.Key == schedulerapi.TaintNodeUnreachable || len(toleration.Key) == 0) &&
+		if (toleration.Key == v1.TaintNodeUnreachable || len(toleration.Key) == 0) &&
 			(toleration.Effect == api.TaintEffectNoExecute || len(toleration.Effect) == 0) {
 			toleratesNodeUnreachable = true
 		}

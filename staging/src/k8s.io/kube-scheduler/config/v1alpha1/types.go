@@ -15,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package v1alpha1
 
 import (
@@ -42,13 +43,13 @@ type KubeSchedulerConfiguration struct {
 
 	// SchedulerName is name of the scheduler, used to select which pods
 	// will be processed by this scheduler, based on pod's "spec.SchedulerName".
-	SchedulerName string `json:"schedulerName"`
+	SchedulerName *string `json:"schedulerName,omitempty"`
 	// AlgorithmSource specifies the scheduler algorithm source.
 	AlgorithmSource SchedulerAlgorithmSource `json:"algorithmSource"`
 	// RequiredDuringScheduling affinity is not symmetric, but there is an implicit PreferredDuringScheduling affinity rule
 	// corresponding to every RequiredDuringScheduling affinity rule.
 	// HardPodAffinitySymmetricWeight represents the weight of implicit PreferredDuringScheduling affinity rule, in the range 0-100.
-	HardPodAffinitySymmetricWeight int32 `json:"hardPodAffinitySymmetricWeight"`
+	HardPodAffinitySymmetricWeight *int32 `json:"hardPodAffinitySymmetricWeight,omitempty"`
 
 	// LeaderElection defines the configuration of leader election client.
 	LeaderElection KubeSchedulerLeaderElectionConfiguration `json:"leaderElection"`
@@ -58,17 +59,17 @@ type KubeSchedulerConfiguration struct {
 	ClientConnection componentbaseconfigv1alpha1.ClientConnectionConfiguration `json:"clientConnection"`
 	// HealthzBindAddress is the IP address and port for the health check server to serve on,
 	// defaulting to 0.0.0.0:10251
-	HealthzBindAddress string `json:"healthzBindAddress"`
+	HealthzBindAddress *string `json:"healthzBindAddress,omitempty"`
 	// MetricsBindAddress is the IP address and port for the metrics server to
 	// serve on, defaulting to 0.0.0.0:10251.
-	MetricsBindAddress string `json:"metricsBindAddress"`
+	MetricsBindAddress *string `json:"metricsBindAddress,omitempty"`
 
 	// DebuggingConfiguration holds configuration for Debugging related features
 	// TODO: We might wanna make this a substruct like Debugging componentbaseconfigv1alpha1.DebuggingConfiguration
 	componentbaseconfigv1alpha1.DebuggingConfiguration `json:",inline"`
 
 	// DisablePreemption disables the pod preemption feature.
-	DisablePreemption bool `json:"disablePreemption"`
+	DisablePreemption *bool `json:"disablePreemption,omitempty"`
 
 	// PercentageOfNodeToScore is the percentage of all nodes that once found feasible
 	// for running a pod, the scheduler stops its search for more feasible nodes in
@@ -78,12 +79,22 @@ type KubeSchedulerConfiguration struct {
 	// then scheduler stops finding further feasible nodes once it finds 150 feasible ones.
 	// When the value is 0, default percentage (5%--50% based on the size of the cluster) of the
 	// nodes will be scored.
-	PercentageOfNodesToScore int32 `json:"percentageOfNodesToScore"`
+	PercentageOfNodesToScore *int32 `json:"percentageOfNodesToScore,omitempty"`
 
 	// Duration to wait for a binding operation to complete before timing out
 	// Value must be non-negative integer. The value zero indicates no waiting.
 	// If this value is nil, the default value will be used.
 	BindTimeoutSeconds *int64 `json:"bindTimeoutSeconds"`
+
+	// PodInitialBackoffSeconds is the initial backoff for unschedulable pods.
+	// If specified, it must be greater than 0. If this value is null, the default value (1s)
+	// will be used.
+	PodInitialBackoffSeconds *int64 `json:"podInitialBackoffSeconds"`
+
+	// PodMaxBackoffSeconds is the max backoff for unschedulable pods.
+	// If specified, it must be greater than podInitialBackoffSeconds. If this value is null,
+	// the default value (10s) will be used.
+	PodMaxBackoffSeconds *int64 `json:"podMaxBackoffSeconds"`
 
 	// Plugins specify the set of plugins that should be enabled or disabled. Enabled plugins are the
 	// ones that should be enabled in addition to the default plugins. Disabled plugins are any of the
@@ -94,12 +105,13 @@ type KubeSchedulerConfiguration struct {
 
 	// PluginConfig is an optional set of custom plugin arguments for each plugin.
 	// Omitting config args for a plugin is equivalent to using the default config for that plugin.
+	// +listType=map
+	// +listMapKey=name
 	PluginConfig []PluginConfig `json:"pluginConfig,omitempty"`
 
 	// ResourceProviderClientConnections is the kubeconfig files to the resource providers in Arktos scaleout design
 	// optional for single cluster in Arktos deployment model
-	// TODO: make it an array for future release when multiple RP is supported
-	ResourceProviderClientConnection componentbaseconfigv1alpha1.ClientConnectionConfiguration `json:"resourceProviderClientConnection"`
+	ResourceProviderKubeConfig string `json:"resourceProviderKubeConfig,omitempty"`
 }
 
 // SchedulerAlgorithmSource is the source of a scheduler algorithm. One source
@@ -141,8 +153,10 @@ type SchedulerPolicyConfigMapSource struct {
 type KubeSchedulerLeaderElectionConfiguration struct {
 	componentbaseconfigv1alpha1.LeaderElectionConfiguration `json:",inline"`
 	// LockObjectNamespace defines the namespace of the lock object
+	// DEPRECATED: will be removed in favor of resourceNamespace
 	LockObjectNamespace string `json:"lockObjectNamespace"`
 	// LockObjectName defines the lock object name
+	// DEPRECATED: will be removed in favor of resourceName
 	LockObjectName string `json:"lockObjectName"`
 }
 
@@ -166,9 +180,6 @@ type Plugins struct {
 
 	// Score is a list of plugins that should be invoked when ranking nodes that have passed the filtering phase.
 	Score *PluginSet `json:"score,omitempty"`
-
-	// NormalizeScore is a list of plugins that should be invoked after the scoring phase to normalize scores.
-	NormalizeScore *PluginSet `json:"normalizeScore,omitempty"`
 
 	// Reserve is a list of plugins invoked when reserving a node to run the pod.
 	Reserve *PluginSet `json:"reserve,omitempty"`
@@ -195,9 +206,12 @@ type Plugins struct {
 type PluginSet struct {
 	// Enabled specifies plugins that should be enabled in addition to default plugins.
 	// These are called after default plugins and in the same order specified here.
+	// +listType=atomic
 	Enabled []Plugin `json:"enabled,omitempty"`
 	// Disabled specifies default plugins that should be disabled.
 	// When all default plugins need to be disabled, an array containing only one "*" should be provided.
+	// +listType=map
+	// +listMapKey=name
 	Disabled []Plugin `json:"disabled,omitempty"`
 }
 
@@ -206,7 +220,7 @@ type Plugin struct {
 	// Name defines the name of plugin
 	Name string `json:"name"`
 	// Weight defines the weight of plugin, only used for Score plugins.
-	Weight int32 `json:"weight,omitempty"`
+	Weight *int32 `json:"weight,omitempty"`
 }
 
 // PluginConfig specifies arguments that should be passed to a plugin at the time of initialization.

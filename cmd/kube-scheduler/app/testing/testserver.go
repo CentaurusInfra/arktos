@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,9 +15,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package testing
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -31,9 +34,6 @@ import (
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
 	kubeschedulerconfig "k8s.io/kubernetes/cmd/kube-scheduler/app/config"
 	"k8s.io/kubernetes/cmd/kube-scheduler/app/options"
-
-	// import DefaultProvider
-	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider/defaults"
 )
 
 // TearDownFunc is to be called to tear down a test server.
@@ -62,9 +62,9 @@ type Logger interface {
 // 		 files that because Golang testing's call to os.Exit will not give a stop channel go routine
 // 		 enough time to remove temporary files.
 func StartTestServer(t Logger, customFlags []string) (result TestServer, err error) {
-	stopCh := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
 	tearDown := func() {
-		close(stopCh)
+		cancel()
 		if len(result.TmpDir) != 0 {
 			os.RemoveAll(result.TmpDir)
 		}
@@ -119,11 +119,11 @@ func StartTestServer(t Logger, customFlags []string) (result TestServer, err err
 	}
 
 	errCh := make(chan error)
-	go func(stopCh <-chan struct{}) {
-		if err := app.Run(config.Complete(), stopCh); err != nil {
+	go func(ctx context.Context) {
+		if err := app.Run(ctx, config.Complete()); err != nil {
 			errCh <- err
 		}
-	}(stopCh)
+	}(ctx)
 
 	t.Logf("Waiting for /healthz to be ok...")
 	client, err := kubernetes.NewForConfig(config.LoopbackClientConfig)

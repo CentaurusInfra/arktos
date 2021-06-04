@@ -209,6 +209,7 @@ const (
 	// owner: @verult
 	// alpha: v1.12
 	// beta:  v1.14
+	// ga:    v1.17
 	// Enable all logic related to the CSINode API object in storage.k8s.io
 	CSINodeInfo featuregate.Feature = "CSINodeInfo"
 
@@ -258,6 +259,7 @@ const (
 
 	// owner: @k82cn
 	// beta: v1.12
+	// GA v1.17
 	//
 	// Schedule DaemonSet Pods by default scheduler instead of DaemonSet controller
 	ScheduleDaemonSetPods featuregate.Feature = "ScheduleDaemonSetPods"
@@ -481,6 +483,19 @@ const (
 	// Enable support for specifying an existing PVC as a DataSource
 	VolumePVCDataSource featuregate.Feature = "VolumePVCDataSource"
 
+	// owner: @Huang-Wei
+	// beta: v1.18
+	//
+	// Schedule pods evenly across available topology domains.
+	EvenPodsSpread featuregate.Feature = "EvenPodsSpread"
+
+	// owner: @egernst
+	// alpha: v1.16
+	// beta: v1.18
+	//
+	// Enables PodOverhead, for accounting pod overheads which are specific to a given RuntimeClass
+	PodOverhead featuregate.Feature = "PodOverhead"
+
 	// owner: @vinaykul
 	// alpha: v1.15
 	//
@@ -516,6 +531,13 @@ const (
 	//
 	// Enable replicaset conroller QPS doubling
 	QPSDoubleRSController featuregate.Feature = "QPSDoubleRSController"
+
+	// owner: @mortent
+	// alpha: v1.3
+	// beta:  v1.5
+	//
+	// Enable all logic related to the PodDisruptionBudget API object in policy
+	PodDisruptionBudget featuregate.Feature = "PodDisruptionBudget"
 )
 
 func init() {
@@ -554,7 +576,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	VolumeScheduling:                            {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIPersistentVolume:                         {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	CSIDriverRegistry:                           {Default: true, PreRelease: featuregate.Beta},
-	CSINodeInfo:                                 {Default: true, PreRelease: featuregate.Beta},
+	CSINodeInfo:                                 {Default: false, PreRelease: featuregate.Alpha},                  // Introduced due to 1.18 scheduler code backporting
 	CustomPodDNS:                                {Default: true, PreRelease: featuregate.GA, LockToDefault: true}, // remove in 1.16
 	BlockVolume:                                 {Default: true, PreRelease: featuregate.Beta},
 	StorageObjectInUseProtection:                {Default: true, PreRelease: featuregate.GA},
@@ -563,7 +585,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	SupportPodPidsLimit:                         {Default: true, PreRelease: featuregate.Beta},
 	SupportNodePidsLimit:                        {Default: true, PreRelease: featuregate.Beta},
 	HyperVContainer:                             {Default: false, PreRelease: featuregate.Alpha},
-	ScheduleDaemonSetPods:                       {Default: true, PreRelease: featuregate.Beta},
+	ScheduleDaemonSetPods:                       {Default: true, PreRelease: featuregate.GA, LockToDefault: true},
 	TokenRequest:                                {Default: true, PreRelease: featuregate.Beta},
 	TokenRequestProjection:                      {Default: true, PreRelease: featuregate.Beta},
 	BoundServiceAccountTokenVolume:              {Default: false, PreRelease: featuregate.Alpha},
@@ -596,12 +618,15 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	LocalStorageCapacityIsolationFSQuotaMonitoring: {Default: false, PreRelease: featuregate.Alpha},
 	NonPreemptingPriority:                          {Default: false, PreRelease: featuregate.Alpha},
 	VolumePVCDataSource:                            {Default: false, PreRelease: featuregate.Alpha},
+	EvenPodsSpread:                                 {Default: true, PreRelease: featuregate.Beta},
+	PodOverhead:                                    {Default: true, PreRelease: featuregate.Beta},
 	InPlacePodVerticalScaling:                      {Default: false, PreRelease: featuregate.Alpha},
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
 	MandatoryArktosNetwork:                         {Default: false, PreRelease: featuregate.Alpha},
 	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleGCController:                          {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleRSController:                          {Default: false, PreRelease: featuregate.Alpha},
+	PodDisruptionBudget:                            {Default: true, PreRelease: featuregate.Beta},
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:

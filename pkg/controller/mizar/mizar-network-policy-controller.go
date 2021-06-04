@@ -114,8 +114,8 @@ func (c *MizarNetworkPolicyController) createObj(obj interface{}) {
 func (c *MizarNetworkPolicyController) updateObj(old, cur interface{}) {
 	curObj := cur.(*v1.NetworkPolicy)
 	oldObj := old.(*v1.NetworkPolicy)
-	klog.Infof("curObj resource version", curObj.ResourceVersion)
-	klog.Infof("oldObj resource version", oldObj.ResourceVersion)
+	klog.Infof("curObj resource version %s", curObj.ResourceVersion)
+	klog.Infof("oldObj resource version %s", oldObj.ResourceVersion)
 	if curObj.ResourceVersion == oldObj.ResourceVersion {
 		// Periodic resync will send update events for all known objects.
 		// Two different versions of the same object will always have different RVs.

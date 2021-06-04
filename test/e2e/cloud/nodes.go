@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,10 +48,16 @@ var _ = SIGDescribe("[Feature:CloudProvider][Disruptive] Nodes", func() {
 		nodeDeleteCandidates := framework.GetReadySchedulableNodesOrDie(c)
 		nodeToDelete := nodeDeleteCandidates.Items[0]
 
-		origNodes := framework.GetReadyNodesIncludingTaintedOrDie(c)
+		origNodes, err := e2enode.GetReadyNodesIncludingTainted(c)
+		if err != nil {
+			e2elog.Logf("Unexpected error occurred: %v", err)
+		}
+		// TODO: write a wrapper for ExpectNoErrorWithOffset()
+		framework.ExpectNoErrorWithOffset(0, err)
+
 		e2elog.Logf("Original number of ready nodes: %d", len(origNodes.Items))
 
-		err := framework.DeleteNodeOnCloudProvider(&nodeToDelete)
+		err = framework.DeleteNodeOnCloudProvider(&nodeToDelete)
 		if err != nil {
 			framework.Failf("failed to delete node %q, err: %q", nodeToDelete.Name, err)
 		}

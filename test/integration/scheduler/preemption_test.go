@@ -34,12 +34,11 @@ import (
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	clientset "k8s.io/client-go/kubernetes"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	"k8s.io/kubernetes/pkg/features"
 	_ "k8s.io/kubernetes/pkg/scheduler/algorithmprovider"
 	testutils "k8s.io/kubernetes/test/utils"
-
-	"k8s.io/klog"
 )
 
 var lowPriority, mediumPriority, highPriority = int32(100), int32(200), int32(300)

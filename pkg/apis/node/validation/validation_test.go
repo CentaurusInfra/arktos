@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,7 +20,9 @@ package validation
 import (
 	"testing"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/node"
 
 	"github.com/stretchr/testify/assert"
@@ -124,5 +127,57 @@ func TestValidateRuntimeUpdate(t *testing.T) {
 				assert.Empty(t, errs)
 			}
 		})
+	}
+}
+
+func TestValidateOverhead(t *testing.T) {
+	successCase := []struct {
+		Name     string
+		overhead *node.Overhead
+	}{
+		{
+			Name: "Overhead with valid cpu and memory resources",
+			overhead: &node.Overhead{
+				PodFixed: core.ResourceList{
+					core.ResourceName(core.ResourceCPU):    resource.MustParse("10"),
+					core.ResourceName(core.ResourceMemory): resource.MustParse("10G"),
+				},
+			},
+		},
+	}
+
+	for _, tc := range successCase {
+		rc := &node.RuntimeClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Handler:    "bar",
+			Overhead:   tc.overhead,
+		}
+		if errs := ValidateRuntimeClass(rc); len(errs) != 0 {
+			t.Errorf("%q unexpected error: %v", tc.Name, errs)
+		}
+	}
+
+	errorCase := []struct {
+		Name     string
+		overhead *node.Overhead
+	}{
+		{
+			Name: "Invalid Resources",
+			overhead: &node.Overhead{
+				PodFixed: core.ResourceList{
+					core.ResourceName("my.org"): resource.MustParse("10m"),
+				},
+			},
+		},
+	}
+	for _, tc := range errorCase {
+		rc := &node.RuntimeClass{
+			ObjectMeta: metav1.ObjectMeta{Name: "foo"},
+			Handler:    "bar",
+			Overhead:   tc.overhead,
+		}
+		if errs := ValidateRuntimeClass(rc); len(errs) == 0 {
+			t.Errorf("%q expected error", tc.Name)
+		}
 	}
 }

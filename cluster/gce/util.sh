@@ -1433,6 +1433,7 @@ KUBE_APISERVER_EXTRA_ARGS: $(yaml-quote ${KUBE_APISERVER_EXTRA_ARGS:-})
 KUBE_CONTROLLER_EXTRA_ARGS: $(yaml-quote ${KUBE_CONTROLLER_EXTRA_ARGS:-})
 KUBE_SCHEDULER_EXTRA_ARGS: $(yaml-quote ${KUBE_SCHEDULER_EXTRA_ARGS:-})
 SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
+SCALEOUT_RP_COUNT: $(yaml-quote ${SCALEOUT_RP_COUNT:-1})
 SHARED_APISERVER_TOKEN: $(yaml-quote ${SHARED_APISERVER_TOKEN:-})
 KUBE_ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false})
 EOF
@@ -2905,6 +2906,11 @@ function create-proxy-vm() {
       echo "${result}" >&2
       export PROXY_RESERVED_IP
       export PROXY_RESERVED_INTERNAL_IP
+
+      # pass back the proxy reserved IP
+      echo ${PROXY_RESERVED_IP} > ${KUBE_TEMP}/proxy-reserved-ip.txt
+      cat ${KUBE_TEMP}/proxy-reserved-ip.txt
+
       return 0
     else
       echo "${result}" >&2
@@ -3095,6 +3101,8 @@ function create-master() {
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+
+  echo ${MASTER_RESERVED_IP} > ${KUBE_TEMP}/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')

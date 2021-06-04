@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,7 +26,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	clientset "k8s.io/client-go/kubernetes"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2enode "k8s.io/kubernetes/test/e2e/framework/node"
 	e2epod "k8s.io/kubernetes/test/e2e/framework/pod"
@@ -35,14 +35,14 @@ import (
 
 func newUnreachableNoExecuteTaint() *v1.Taint {
 	return &v1.Taint{
-		Key:    schedulerapi.TaintNodeUnreachable,
+		Key:    v1.TaintNodeUnreachable,
 		Effect: v1.TaintEffectNoExecute,
 	}
 }
 
 func getTolerationSeconds(tolerations []v1.Toleration) (int64, error) {
 	for _, t := range tolerations {
-		if t.Key == schedulerapi.TaintNodeUnreachable && t.Effect == v1.TaintEffectNoExecute && t.Operator == v1.TolerationOpExists {
+		if t.Key == v1.TaintNodeUnreachable && t.Effect == v1.TaintEffectNoExecute && t.Operator == v1.TolerationOpExists {
 			return *t.TolerationSeconds, nil
 		}
 	}
@@ -95,7 +95,7 @@ var _ = SIGDescribe("TaintBasedEvictions [Serial]", func() {
 				NodeName: nodeName,
 				Tolerations: []v1.Toleration{
 					{
-						Key:               schedulerapi.TaintNodeUnreachable,
+						Key:               v1.TaintNodeUnreachable,
 						Operator:          v1.TolerationOpExists,
 						Effect:            v1.TaintEffectNoExecute,
 						TolerationSeconds: &tolerationSeconds[i],

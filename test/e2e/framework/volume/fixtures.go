@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -247,7 +248,7 @@ func NewRBDServer(cs clientset.Interface, namespace string) (config TestConfig, 
 
 	secret, err := cs.CoreV1().Secrets(config.Namespace).Create(secret)
 	if err != nil {
-		framework.Failf("Failed to create secrets for Ceph RBD: %v", err)
+		e2elog.Failf("Failed to create secrets for Ceph RBD: %v", err)
 	}
 
 	return config, pod, secret, ip
@@ -485,7 +486,7 @@ func TestVolumeClient(client clientset.Interface, config TestConfig, fsGroup *in
 	}
 	clientPod, err := podsNamespacer.Create(clientPod)
 	if err != nil {
-		framework.Failf("Failed to create %s pod: %v", clientPod.Name, err)
+		e2elog.Failf("Failed to create %s pod: %v", clientPod.Name, err)
 
 	}
 	framework.ExpectNoError(e2epod.WaitForPodRunningInNamespace(client, clientPod))

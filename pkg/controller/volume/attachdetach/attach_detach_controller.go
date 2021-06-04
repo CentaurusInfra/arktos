@@ -54,6 +54,7 @@ import (
 	"k8s.io/kubernetes/pkg/controller/volume/attachdetach/util"
 	"k8s.io/kubernetes/pkg/features"
 	"k8s.io/kubernetes/pkg/util/mount"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/kubernetes/pkg/volume"
 	volumeutil "k8s.io/kubernetes/pkg/volume/util"
 	"k8s.io/kubernetes/pkg/volume/util/operationexecutor"
@@ -103,8 +104,9 @@ type AttachDetachController interface {
 // NewAttachDetachController returns a new instance of AttachDetachController.
 func NewAttachDetachController(
 	kubeClient clientset.Interface,
+	resourceProviderClients map[string]clientset.Interface,
 	podInformer coreinformers.PodInformer,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	pvcInformer coreinformers.PersistentVolumeClaimInformer,
 	pvInformer coreinformers.PersistentVolumeInformer,
 	csiNodeInformer storageinformers.CSINodeInformer,
@@ -129,19 +131,22 @@ func NewAttachDetachController(
 	// and set a faster resync period even if it causes relist, or requeue
 	// dropped pods so they are continuously processed until it is accepted or
 	// deleted (probably can't do this with sharedInformer), etc.
+
+	nodeListers, nodeListersSynced := nodeutil.GetNodeListersAndSyncedFromNodeInformers(nodeInformers)
 	adc := &attachDetachController{
-		kubeClient:  kubeClient,
-		pvcLister:   pvcInformer.Lister(),
-		pvcsSynced:  pvcInformer.Informer().HasSynced,
-		pvLister:    pvInformer.Lister(),
-		pvsSynced:   pvInformer.Informer().HasSynced,
-		podLister:   podInformer.Lister(),
-		podsSynced:  podInformer.Informer().HasSynced,
-		podIndexer:  podInformer.Informer().GetIndexer(),
-		nodeLister:  nodeInformer.Lister(),
-		nodesSynced: nodeInformer.Informer().HasSynced,
-		cloud:       cloud,
-		pvcQueue:    workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
+		kubeClient:              kubeClient,
+		resourceProviderClients: resourceProviderClients,
+		pvcLister:               pvcInformer.Lister(),
+		pvcsSynced:              pvcInformer.Informer().HasSynced,
+		pvLister:                pvInformer.Lister(),
+		pvsSynced:               pvInformer.Informer().HasSynced,
+		podLister:               podInformer.Lister(),
+		podsSynced:              podInformer.Informer().HasSynced,
+		podIndexer:              podInformer.Informer().GetIndexer(),
+		nodeListers:             nodeListers,
+		nodesSynced:             nodeListersSynced,
+		cloud:                   cloud,
+		pvcQueue:                workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "pvcs"),
 	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.CSIMigration) &&
@@ -175,7 +180,7 @@ func NewAttachDetachController(
 			false, // flag for experimental binary check for volume mount
 			blkutil))
 	adc.nodeStatusUpdater = statusupdater.NewNodeStatusUpdater(
-		kubeClient, nodeInformer.Lister(), adc.actualStateOfWorld)
+		resourceProviderClients, nodeListers, adc.actualStateOfWorld)
 
 	// Default these to values in options
 	adc.reconciler = reconciler.NewReconciler(
@@ -210,11 +215,13 @@ func NewAttachDetachController(
 		pvcKeyIndex: indexByPVCKey,
 	})
 
-	nodeInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
-		AddFunc:    adc.nodeAdd,
-		UpdateFunc: adc.nodeUpdate,
-		DeleteFunc: adc.nodeDelete,
-	})
+	for _, nodeInformer := range nodeInformers {
+		nodeInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
+			AddFunc:    adc.nodeAdd,
+			UpdateFunc: adc.nodeUpdate,
+			DeleteFunc: adc.nodeDelete,
+		})
+	}
 
 	pvcInformer.Informer().AddEventHandler(kcache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
@@ -254,8 +261,13 @@ func indexByPVCKey(obj interface{}) ([]string, error) {
 
 type attachDetachController struct {
 	// kubeClient is the kube API client used by volumehost to communicate with
-	// the API server.
+	// the tenant partition API server.
 	kubeClient clientset.Interface
+
+	// resourceProviderClients is the kube API client used to communicate with
+	// resource partition API server.
+	// It is a map from resourcePartitionId to API server.
+	resourceProviderClients map[string]clientset.Interface
 
 	// pvcLister is the shared PVC lister used to fetch and store PVC
 	// objects from the API server. It is shared with other controllers and
@@ -273,8 +285,8 @@ type attachDetachController struct {
 	podsSynced kcache.InformerSynced
 	podIndexer kcache.Indexer
 
-	nodeLister  corelisters.NodeLister
-	nodesSynced kcache.InformerSynced
+	nodeListers map[string]corelisters.NodeLister
+	nodesSynced map[string]kcache.InformerSynced
 
 	csiNodeLister storagelisters.CSINodeLister
 	csiNodeSynced kcache.InformerSynced
@@ -337,7 +349,7 @@ func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 	klog.Infof("Starting attach detach controller")
 	defer klog.Infof("Shutting down attach detach controller")
 
-	synced := []kcache.InformerSynced{adc.podsSynced, adc.nodesSynced, adc.pvcsSynced, adc.pvsSynced}
+	synced := []kcache.InformerSynced{adc.podsSynced, adc.pvcsSynced, adc.pvsSynced}
 	if adc.csiNodeSynced != nil {
 		synced = append(synced, adc.csiNodeSynced)
 	}
@@ -345,7 +357,11 @@ func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 		synced = append(synced, adc.csiDriversSynced)
 	}
 
-	if !controller.WaitForCacheSync("attach detach", stopCh, synced...) {
+	if !controller.WaitForCacheSync("attach detach (w/o node)", stopCh, synced...) {
+		return
+	}
+
+	if !nodeutil.WaitForNodeCacheSync("attach detach (node)", adc.nodesSynced) {
 		return
 	}
 
@@ -372,7 +388,7 @@ func (adc *attachDetachController) Run(stopCh <-chan struct{}) {
 
 func (adc *attachDetachController) populateActualStateOfWorld() error {
 	klog.V(5).Infof("Populating ActualStateOfworld")
-	nodes, err := adc.nodeLister.List(labels.Everything())
+	nodes, err := nodeutil.ListNodes(adc.nodeListers, labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -402,7 +418,7 @@ func (adc *attachDetachController) getNodeVolumeDevicePath(
 	volumeName v1.UniqueVolumeName, nodeName types.NodeName) (string, error) {
 	var devicePath string
 	var found bool
-	node, err := adc.nodeLister.Get(string(nodeName))
+	node, _, err := nodeutil.GetNodeFromNodelisters(adc.nodeListers, string(nodeName))
 	if err != nil {
 		return devicePath, err
 	}

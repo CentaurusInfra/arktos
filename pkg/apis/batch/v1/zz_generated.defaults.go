@@ -187,6 +187,7 @@ func SetObjectDefaults_Job(in *v1.Job) {
 		corev1.SetDefaults_ResourceList(&a.Resources.Requests)
 		corev1.SetDefaults_ResourceList(&a.ResourcesAllocated)
 	}
+	corev1.SetDefaults_ResourceList(&in.Spec.Template.Spec.Overhead)
 }
 
 func SetObjectDefaults_JobList(in *v1.JobList) {

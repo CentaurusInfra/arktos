@@ -36,10 +36,10 @@ import (
 	v1lister "k8s.io/client-go/listers/core/v1"
 	"k8s.io/client-go/tools/record"
 	cloudprovider "k8s.io/cloud-provider"
+	cloudproviderapi "k8s.io/cloud-provider/api"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 )
 
 const (
@@ -47,7 +47,7 @@ const (
 )
 
 var ShutdownTaint = &v1.Taint{
-	Key:    schedulerapi.TaintNodeShutdown,
+	Key:    cloudproviderapi.TaintNodeShutdown,
 	Effect: v1.TaintEffectNoSchedule,
 }
 
@@ -106,6 +106,7 @@ func NewCloudNodeLifecycleController(
 // be called via a goroutine
 func (c *CloudNodeLifecycleController) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
+	klog.Info("Starting CloudNodeLifecycleController")
 
 	// The following loops run communicate with the APIServer with a worst case complexity
 	// of O(num_nodes) per cycle. These functions are justified here because these events fire

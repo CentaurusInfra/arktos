@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	serializertesting "k8s.io/apimachinery/pkg/runtime/serializer/testing"
 	"k8s.io/apimachinery/pkg/util/diff"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 
 	fuzz "github.com/google/gofuzz"
 	flag "github.com/spf13/pflag"
@@ -87,7 +89,9 @@ func GetTestScheme() (*runtime.Scheme, runtime.Codec) {
 
 	s.AddUnversionedTypes(externalGV, &metav1.Status{})
 
-	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}))
+	utilruntime.Must(serializertesting.RegisterConversions(s))
+
+	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: true}))
 	codec := cf.LegacyCodec(schema.GroupVersion{Version: "v1"})
 	return s, codec
 }
@@ -145,11 +149,11 @@ func TestTypes(t *testing.T) {
 
 func TestVersionedEncoding(t *testing.T) {
 	s, _ := GetTestScheme()
-	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}))
+	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: true}))
 	info, _ := runtime.SerializerInfoForMediaType(cf.SupportedMediaTypes(), runtime.ContentTypeJSON)
 	encoder := info.Serializer
 
-	codec := cf.CodecForVersions(encoder, nil, schema.GroupVersion{Version: "v2"}, nil)
+	codec := cf.EncoderForVersion(encoder, schema.GroupVersion{Version: "v2"})
 	out, err := runtime.Encode(codec, &serializertesting.TestType1{})
 	if err != nil {
 		t.Fatal(err)
@@ -158,14 +162,14 @@ func TestVersionedEncoding(t *testing.T) {
 		t.Fatal(string(out))
 	}
 
-	codec = cf.CodecForVersions(encoder, nil, schema.GroupVersion{Version: "v3"}, nil)
+	codec = cf.EncoderForVersion(encoder, schema.GroupVersion{Version: "v3"})
 	_, err = runtime.Encode(codec, &serializertesting.TestType1{})
 	if err == nil {
 		t.Fatal(err)
 	}
 
 	// unversioned encode with no versions is written directly to wire
-	codec = cf.CodecForVersions(encoder, nil, runtime.InternalGroupVersioner, nil)
+	codec = cf.EncoderForVersion(encoder, runtime.InternalGroupVersioner)
 	out, err = runtime.Encode(codec, &serializertesting.TestType1{})
 	if err != nil {
 		t.Fatal(err)
@@ -196,6 +200,23 @@ func TestMultipleNames(t *testing.T) {
 	}
 }
 
+func TestStrictOption(t *testing.T) {
+	s, _ := GetTestScheme()
+	duplicateKeys := `{"myKindKey":"TestType3","myVersionKey":"v1","myVersionKey":"v1","A":"value"}`
+
+	strictCodec := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: true})).LegacyCodec()
+	_, _, err := strictCodec.Decode([]byte(duplicateKeys), nil, nil)
+	if !runtime.IsStrictDecodingError(err) {
+		t.Fatalf("StrictDecodingError not returned on object with duplicate keys: %v, type: %v", err, reflect.TypeOf(err))
+	}
+
+	nonStrictCodec := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: false})).LegacyCodec()
+	_, _, err = nonStrictCodec.Decode([]byte(duplicateKeys), nil, nil)
+	if runtime.IsStrictDecodingError(err) {
+		t.Fatalf("Non-Strict decoder returned a StrictDecodingError: %v", err)
+	}
+}
+
 func TestConvertTypesWhenDefaultNamesMatch(t *testing.T) {
 	internalGV := schema.GroupVersion{Version: runtime.APIVersionInternal}
 	externalGV := schema.GroupVersion{Version: "v1"}
@@ -207,6 +228,9 @@ func TestConvertTypesWhenDefaultNamesMatch(t *testing.T) {
 	// create two names externally, with TestType1 being preferred
 	s.AddKnownTypeWithName(externalGV.WithKind("TestType1"), &serializertesting.ExternalTestType1{})
 	s.AddKnownTypeWithName(externalGV.WithKind("OtherType1"), &serializertesting.ExternalTestType1{})
+	if err := serializertesting.RegisterConversions(s); err != nil {
+		t.Fatalf("unexpected error; %v", err)
+	}
 
 	ext := &serializertesting.ExternalTestType1{}
 	ext.APIVersion = "v1"
@@ -218,7 +242,9 @@ func TestConvertTypesWhenDefaultNamesMatch(t *testing.T) {
 	}
 	expect := &serializertesting.TestType1{A: "test"}
 
-	codec := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{})).LegacyCodec(schema.GroupVersion{Version: "v1"})
+	codec := newCodecFactory(
+		s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: true}),
+	).LegacyCodec(schema.GroupVersion{Version: "v1"})
 
 	obj, err := runtime.Decode(codec, data)
 	if err != nil {
@@ -304,12 +330,14 @@ func GetDirectCodecTestScheme() *runtime.Scheme {
 	s.AddKnownTypes(externalGV, &serializertesting.ExternalTestType1{})
 
 	s.AddUnversionedTypes(externalGV, &metav1.Status{})
+
+	utilruntime.Must(serializertesting.RegisterConversions(s))
 	return s
 }
 
 func TestDirectCodec(t *testing.T) {
 	s := GetDirectCodecTestScheme()
-	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}))
+	cf := newCodecFactory(s, newSerializersForScheme(s, testMetaFactory{}, CodecFactoryOptions{Pretty: true, Strict: true}))
 	info, _ := runtime.SerializerInfoForMediaType(cf.SupportedMediaTypes(), runtime.ContentTypeJSON)
 	serializer := info.Serializer
 	df := cf.WithoutConversion()
@@ -327,6 +355,9 @@ func TestDirectCodec(t *testing.T) {
 		t.Fatal(string(out))
 	}
 	a, _, err := directDecoder.Decode(out, nil, nil)
+	if err != nil {
+		t.Fatalf("error on Decode: %v", err)
+	}
 	e := &serializertesting.ExternalTestType1{
 		MyWeirdCustomEmbeddedVersionKindField: serializertesting.MyWeirdCustomEmbeddedVersionKindField{
 			APIVersion: "v1",

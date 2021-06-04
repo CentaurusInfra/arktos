@@ -34,6 +34,7 @@ import (
 type StorageV1Interface interface {
 	RESTClient() rest.Interface
 	RESTClients() []rest.Interface
+	CSINodesGetter
 	StorageClassesGetter
 	VolumeAttachmentsGetter
 }
@@ -43,6 +44,14 @@ type StorageV1Client struct {
 	restClients []rest.Interface
 	configs     *rest.Config
 	mux         sync.RWMutex
+}
+
+func (c *StorageV1Client) CSINodes() CSINodeInterface {
+	return newCSINodesWithMultiTenancy(c, "system")
+}
+
+func (c *StorageV1Client) CSINodesWithMultiTenancy(tenant string) CSINodeInterface {
+	return newCSINodesWithMultiTenancy(c, tenant)
 }
 
 func (c *StorageV1Client) StorageClasses() StorageClassInterface {

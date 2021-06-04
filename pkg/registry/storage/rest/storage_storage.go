@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,6 +101,12 @@ func (p RESTStorageProvider) v1Storage(apiResourceConfigSource serverstorage.API
 		// volumeattachments
 		"volumeattachments":        volumeAttachmentStorage.VolumeAttachment,
 		"volumeattachments/status": volumeAttachmentStorage.Status,
+	}
+
+	// register csinodes if CSINodeInfo feature gate is enabled
+	if utilfeature.DefaultFeatureGate.Enabled(features.CSINodeInfo) {
+		csiNodeStorage := csinodestore.NewStorage(restOptionsGetter)
+		storage["csinodes"] = csiNodeStorage.CSINode
 	}
 
 	return storage

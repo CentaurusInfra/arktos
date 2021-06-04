@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -246,6 +247,17 @@ func TestSync(t *testing.T) {
 			[]*v1.PersistentVolumeClaim{
 				newClaim("claim1-17", "uid1-17", "1Gi", "", v1.ClaimPending, nil),
 			},
+			noevents, noerrors, testSyncClaim,
+		},
+		{
+			// syncClaim that scheduled to a selected node
+			"1-18 - successful pre-bound PV to PVC provisioning",
+			newVolumeArray("volume1-18", "1Gi", "uid1-18", "claim1-18", v1.VolumeAvailable, v1.PersistentVolumeReclaimRetain, classWait),
+			newVolumeArray("volume1-18", "1Gi", "uid1-18", "claim1-18", v1.VolumeBound, v1.PersistentVolumeReclaimRetain, classWait),
+			claimWithAnnotation(pvutil.AnnSelectedNode, "node1",
+				newClaimArray("claim1-18", "uid1-18", "1Gi", "", v1.ClaimPending, &classWait)),
+			claimWithAnnotation(pvutil.AnnSelectedNode, "node1",
+				newClaimArray("claim1-18", "uid1-18", "1Gi", "volume1-18", v1.ClaimBound, &classWait, pvutil.AnnBoundByController, pvutil.AnnBindCompleted)),
 			noevents, noerrors, testSyncClaim,
 		},
 

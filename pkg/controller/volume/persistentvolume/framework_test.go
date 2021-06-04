@@ -35,6 +35,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	corelisters "k8s.io/client-go/listers/core/v1"
@@ -214,6 +215,8 @@ func newTestController(kubeClient clientset.Interface, informerFactory informers
 	if informerFactory == nil {
 		informerFactory = informers.NewSharedInformerFactory(kubeClient, controller.NoResyncPeriodFunc())
 	}
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap["rp0"] = informerFactory.Core().V1().Nodes()
 	params := ControllerParameters{
 		KubeClient:                kubeClient,
 		SyncPeriod:                5 * time.Second,
@@ -222,7 +225,7 @@ func newTestController(kubeClient clientset.Interface, informerFactory informers
 		ClaimInformer:             informerFactory.Core().V1().PersistentVolumeClaims(),
 		ClassInformer:             informerFactory.Storage().V1().StorageClasses(),
 		PodInformer:               informerFactory.Core().V1().Pods(),
-		NodeInformer:              informerFactory.Core().V1().Nodes(),
+		NodeInformers:             nodeInformerMap,
 		EventRecorder:             record.NewFakeRecorder(1000),
 		EnableDynamicProvisioning: enableDynamicProvisioning,
 	}
@@ -475,9 +478,11 @@ const operationRecycle = "Recycle"
 var (
 	classGold                    string = "gold"
 	classSilver                  string = "silver"
+	classCopper                  string = "copper"
 	classEmpty                   string = ""
 	classNonExisting             string = "non-existing"
 	classExternal                string = "external"
+	classExternalWait            string = "external-wait"
 	classUnknownInternal         string = "unknown-internal"
 	classUnsupportedMountOptions string = "unsupported-mountoptions"
 	classLarge                   string = "large"
@@ -523,6 +528,12 @@ func wrapTestWithProvisionCalls(expectedProvisionCalls []provisionCall, toWrap t
 	return wrapTestWithPluginCalls(nil, nil, expectedProvisionCalls, toWrap)
 }
 
+type fakeCSINameTranslator struct{}
+
+func (t fakeCSINameTranslator) GetCSINameFromInTreeName(pluginName string) (string, error) {
+	return "vendor.com/MockCSIPlugin", nil
+}
+
 // wrapTestWithCSIMigrationProvisionCalls returns a testCall that:
 // - configures controller with a volume plugin that emulates CSI migration
 // - calls given testCall
@@ -532,9 +543,7 @@ func wrapTestWithCSIMigrationProvisionCalls(toWrap testCall) testCall {
 			isMigratedToCSI: true,
 		}
 		ctrl.volumePluginMgr.InitPlugins([]vol.VolumePlugin{plugin}, nil /* prober */, ctrl)
-		ctrl.csiNameFromIntreeNameHook = func(string) (string, error) {
-			return "vendor.com/MockCSIPlugin", nil
-		}
+		ctrl.translator = fakeCSINameTranslator{}
 		return toWrap(ctrl, reactor, test)
 	}
 }

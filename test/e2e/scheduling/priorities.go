@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@ package scheduling
 import (
 	"encoding/json"
 	"fmt"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	kubefeatures "k8s.io/kubernetes/pkg/features"
 	"math"
 	"time"
 
@@ -28,13 +31,13 @@ import (
 	// ensure libs have a chance to initialize
 	_ "github.com/stretchr/testify/assert"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/uuid"
 	clientset "k8s.io/client-go/kubernetes"
 	v1qos "k8s.io/kubernetes/pkg/apis/core/v1/helper/qos"
-	priorityutil "k8s.io/kubernetes/pkg/scheduler/algorithm/priorities/util"
+	schedutil "k8s.io/kubernetes/pkg/scheduler/util"
 	"k8s.io/kubernetes/test/e2e/common"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
@@ -78,11 +81,17 @@ var _ = SIGDescribe("SchedulerPriorities [Serial]", func() {
 		cs = f.ClientSet
 		ns = f.Namespace.Name
 		nodeList = &v1.NodeList{}
+		var err error
 
 		e2enode.WaitForTotalHealthy(cs, time.Minute)
-		_, nodeList = framework.GetMasterAndWorkerNodesOrDie(cs)
+		_, nodeList, err = e2enode.GetMasterAndWorkerNodes(cs)
+		if err != nil {
+			e2elog.Logf("Unexpected error occurred: %v", err)
+		}
+		// TODO: write a wrapper for ExpectNoErrorWithOffset()
+		framework.ExpectNoErrorWithOffset(0, err)
 
-		err := framework.CheckTestingNSDeletedExcept(cs, ns)
+		err = framework.CheckTestingNSDeletedExcept(cs, ns)
 		framework.ExpectNoError(err)
 		err = e2epod.WaitForPodsRunningReady(cs, metav1.NamespaceSystem, int32(systemPodsNo), 0, framework.PodReadyBeforeTimeout, map[string]string{})
 		framework.ExpectNoError(err)
@@ -366,11 +375,16 @@ func computeCPUMemFraction(cs clientset.Interface, node v1.Node, resource *v1.Re
 
 func getNonZeroRequests(pod *v1.Pod) Resource {
 	result := Resource{}
-	for i := range pod.Spec.Containers {
-		container := &pod.Spec.Containers[i]
-		cpu, memory := priorityutil.GetNonzeroRequests(&container.Resources.Requests)
-		result.MilliCPU += cpu
-		result.Memory += memory
+	for _, workload := range pod.Spec.Workloads() {
+		if utilfeature.DefaultFeatureGate.Enabled(kubefeatures.InPlacePodVerticalScaling) {
+			cpu, memory := schedutil.GetNonzeroRequests(&workload.ResourcesAllocated)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		} else {
+			cpu, memory := schedutil.GetNonzeroRequests(&workload.Resources.Requests)
+			result.MilliCPU += cpu
+			result.Memory += memory
+		}
 	}
 	return result
 }

@@ -1148,39 +1148,60 @@
         ],
         "runtimeClassName": "361",
         "enableServiceLinks": false,
-        "preemptionPolicy": "I梞ū筀"
+        "preemptionPolicy": "I梞ū筀",
+        "overhead": {
+          "莏ŹZ槇鿖]": "643"
+        },
+        "topologySpreadConstraints": [
+          {
+            "maxSkew": -1404859721,
+            "topologyKey": "362",
+            "whenUnsatisfiable": "Ɖ虼/h毂",
+            "labelSelector": {
+              "matchLabels": {
+                "dno-52--6-0dkn9/i_zZsY_o8t5Vl6_..7CY-_dc__GN": "z1Y_HEb.9x98MM7-.e.Dx._.W-6..4_M7"
+              },
+              "matchExpressions": [
+                {
+                  "key": "0.9-.-._.1..s._jP6j.u--.K--g__..2bidF.-0-...E",
+                  "operator": "DoesNotExist"
+                }
+              ]
+            }
+          }
+        ]
       }
     },
     "strategy": {
-      "type": "eCmAȥ睙蜵",
+      "type": "^:犾ȩ纾SȞ+",
       "rollingUpdate": {
         
       }
     },
-    "minReadySeconds": -1404859721,
-    "revisionHistoryLimit": -1819153912,
+    "minReadySeconds": -1073494295,
+    "revisionHistoryLimit": 1722340205,
     "rollbackTo": {
-      "revision": 7160804022655998371
+      "revision": 8500472395080285739
     },
-    "progressDeadlineSeconds": -1672835519
+    "progressDeadlineSeconds": -1420238526
   },
   "status": {
-    "observedGeneration": -332564099224057101,
-    "replicas": -1316438261,
-    "updatedReplicas": -733807,
-    "readyReplicas": 1075711928,
-    "availableReplicas": -1194745874,
-    "unavailableReplicas": -1993697685,
+    "observedGeneration": -5603678159453052886,
+    "replicas": -1974019203,
+    "updatedReplicas": 980041503,
+    "readyReplicas": -1194311233,
+    "availableReplicas": -938394851,
+    "unavailableReplicas": 490158926,
     "conditions": [
       {
-        "type": "擻搧菸Fǥ楶4驦訨ʣ囨汙Ȗ",
-        "status": "ż暬Ƒ琇ũ齑誀ŭ\"ɦ?",
-        "lastUpdateTime": "2741-08-01T23:33:42Z",
-        "lastTransitionTime": "2560-07-30T23:35:57Z",
-        "reason": "362",
-        "message": "363"
+        "type": "橈\"Ĩ媻ʪǆ澆痪oPWkÄǒKŰ踚",
+        "status": "_Z喣JȶZy",
+        "lastUpdateTime": "2550-04-28T17:34:41Z",
+        "lastTransitionTime": "2489-09-10T08:31:06Z",
+        "reason": "369",
+        "message": "370"
       }
     ],
-    "collisionCount": 775062301
+    "collisionCount": -2068243724
   }
 }

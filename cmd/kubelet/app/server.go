@@ -24,6 +24,8 @@ import (
 	"errors"
 	"fmt"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"math/rand"
 	"net"
@@ -580,25 +582,27 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 		kubeDeps.OnHeartbeatFailure = closeAllConns
 
 		// create clients for each tenant partition
-		klog.V(6).Infof("make kubeDeps.KubeTPClients based on TenantPartitionApiservers args: %v", s.TenantPartitionApiservers)
-		if s.TenantPartitionApiservers == nil || len(s.TenantPartitionApiservers) == 0 {
-			klog.Infof("TenantPartitionApiservers not set. Default to single tenant partition and clientConfig setting")
-			s.TenantPartitionApiservers = make([]string, 1)
-			s.TenantPartitionApiservers[0] = clientConfigs.GetConfig().Host
-		}
-
-		clientConfigCopy := *restclient.CopyConfigs(clientConfigs)
-		kubeDeps.KubeTPClients = make([]clientset.Interface, len(s.TenantPartitionApiservers))
-
-		for i, tenantServer := range s.TenantPartitionApiservers {
-			for _, cfg := range clientConfigCopy.GetAllConfigs() {
-				cfg.Host = tenantServer
-				klog.V(6).Infof("clientConfigCopy.Host: %v", cfg.Host)
-			}
-
-			kubeDeps.KubeTPClients[i], err = clientset.NewForConfig(&clientConfigCopy)
+		klog.V(3).Infof("make kubeDeps.KubeTPClients based on TenantPartitionKubeConfig arg: %v", s.TenantPartitionKubeConfig)
+		if len(s.TenantPartitionKubeConfig) == 0 {
+			// Fall back to single cluster case
+			klog.Infof("TenantPartitionKubeConfig not set. Default to single tenant partition and clientConfig setting")
+			kubeDeps.KubeTPClients = make([]clientset.Interface, 1)
+			kubeDeps.KubeTPClients[0], err = clientset.NewForConfig(clientConfigs)
 			if err != nil {
-				return fmt.Errorf("failed to initialize kubelet client for host %s : %v", tenantServer, err)
+				return fmt.Errorf("failed to initialize kubelet client: %v", err)
+			}
+		} else {
+			// Scale out case
+			kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(s.TenantPartitionKubeConfig)
+			if !existed {
+				klog.Fatalf("Kubeconfig file(s) [%s] for tenant server does not exist", s.TenantPartitionKubeConfig)
+			}
+			kubeDeps.KubeTPClients = make([]clientset.Interface, len(kubeConfigFiles))
+			for i, kubeConfigFile := range kubeConfigFiles {
+				kubeDeps.KubeTPClients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					return fmt.Errorf("failed to initialize kubelet client from kubeconfig [%s]: %v", kubeConfigFile, err)
+				}
 			}
 		}
 

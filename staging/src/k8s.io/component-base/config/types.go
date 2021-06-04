@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -62,6 +63,12 @@ type LeaderElectionConfiguration struct {
 	// resourceLock indicates the resource object type that will be used to lock
 	// during leader election cycles.
 	ResourceLock string
+	// resourceName indicates the name of resource object that will be used to lock
+	// during leader election cycles.
+	ResourceName string
+	// resourceName indicates the namespace of resource object that will be used to lock
+	// during leader election cycles.
+	ResourceNamespace string
 }
 
 // DebuggingConfiguration holds configuration for Debugging related features.

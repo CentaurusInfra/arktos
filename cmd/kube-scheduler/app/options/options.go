@@ -15,11 +15,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package options
 
 import (
 	"fmt"
-	"k8s.io/client-go/util/clientutil"
 	"net"
 	"os"
 	"strconv"
@@ -31,27 +31,31 @@ import (
 	apiserveroptions "k8s.io/apiserver/pkg/server/options"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	restclient "k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	clientcmdapi "k8s.io/client-go/tools/clientcmd/api"
 	"k8s.io/client-go/tools/leaderelection"
 	"k8s.io/client-go/tools/leaderelection/resourcelock"
 	"k8s.io/client-go/tools/record"
+	"k8s.io/client-go/util/clientutil"
 	cliflag "k8s.io/component-base/cli/flag"
 	componentbaseconfig "k8s.io/component-base/config"
 	configv1alpha1 "k8s.io/component-base/config/v1alpha1"
+	"k8s.io/component-base/metrics"
 	"k8s.io/klog"
-	kubeschedulerconfigv1alpha1 "k8s.io/kube-scheduler/config/v1alpha1"
+	kubeschedulerconfigv1alpha2 "k8s.io/kube-scheduler/config/v1alpha2"
+	"k8s.io/kubernetes/cmd/genutils"
 	schedulerappconfig "k8s.io/kubernetes/cmd/kube-scheduler/app/config"
 	"k8s.io/kubernetes/pkg/client/leaderelectionconfig"
 	"k8s.io/kubernetes/pkg/master/ports"
+	"k8s.io/kubernetes/pkg/scheduler"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	kubeschedulerscheme "k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config/validation"
-	"k8s.io/kubernetes/pkg/scheduler/factory"
+	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/interpodaffinity"
 )
 
 // Options has all the params needed to run a Scheduler
@@ -72,6 +76,8 @@ type Options struct {
 	WriteConfigTo string
 
 	Master string
+
+	ShowHiddenMetricsForVersion string
 }
 
 // NewOptions returns default scheduler app options.
@@ -102,8 +108,10 @@ func NewOptions() (*Options, error) {
 		Authentication: apiserveroptions.NewDelegatingAuthenticationOptions(),
 		Authorization:  apiserveroptions.NewDelegatingAuthorizationOptions(),
 		Deprecated: &DeprecatedOptions{
-			UseLegacyPolicyConfig:    false,
-			PolicyConfigMapNamespace: metav1.NamespaceSystem,
+			UseLegacyPolicyConfig:          false,
+			PolicyConfigMapNamespace:       metav1.NamespaceSystem,
+			SchedulerName:                  corev1.DefaultSchedulerName,
+			HardPodAffinitySymmetricWeight: interpodaffinity.DefaultHardPodAffinityWeight,
 		},
 	}
 
@@ -133,11 +141,12 @@ func splitHostIntPort(s string) (string, int, error) {
 }
 
 func newDefaultComponentConfig() (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
-	cfgv1alpha1 := kubeschedulerconfigv1alpha1.KubeSchedulerConfiguration{}
-	cfgv1alpha1.DebuggingConfiguration = *configv1alpha1.NewRecommendedDebuggingConfiguration()
-	kubeschedulerscheme.Scheme.Default(&cfgv1alpha1)
+	versionedCfg := kubeschedulerconfigv1alpha2.KubeSchedulerConfiguration{}
+	versionedCfg.DebuggingConfiguration = *configv1alpha1.NewRecommendedDebuggingConfiguration()
+
+	kubeschedulerscheme.Scheme.Default(&versionedCfg)
 	cfg := kubeschedulerconfig.KubeSchedulerConfiguration{}
-	if err := kubeschedulerscheme.Scheme.Convert(&cfgv1alpha1, &cfg, nil); err != nil {
+	if err := kubeschedulerscheme.Scheme.Convert(&versionedCfg, &cfg, nil); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
@@ -159,6 +168,15 @@ func (o *Options) Flags() (nfs cliflag.NamedFlagSets) {
 	leaderelectionconfig.BindFlags(&o.ComponentConfig.LeaderElection.LeaderElectionConfiguration, nfs.FlagSet("leader election"))
 	utilfeature.DefaultMutableFeatureGate.AddFlag(nfs.FlagSet("feature gate"))
 
+	// TODO(RainbowMango): move it to genericoptions before next flag comes.
+	mfs := nfs.FlagSet("metrics")
+	mfs.StringVar(&o.ShowHiddenMetricsForVersion, "show-hidden-metrics-for-version", o.ShowHiddenMetricsForVersion,
+		"The previous version for which you want to show hidden metrics. "+
+			"Only the previous minor version is meaningful, other values will not be allowed. "+
+			"Accepted format of version is <major>.<minor>, e.g.: '1.16'. "+
+			"The purpose of this format is make sure you have the opportunity to notice if the next release hides additional metrics, "+
+			"rather than being surprised when they are permanently removed in the release after that.")
+
 	return nfs
 }
 
@@ -177,6 +195,9 @@ func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 	} else {
 		cfg, err := loadConfigFromFile(o.ConfigFile)
 		if err != nil {
+			return err
+		}
+		if err := validation.ValidateKubeSchedulerConfiguration(cfg).ToAggregate(); err != nil {
 			return err
 		}
 
@@ -201,6 +222,9 @@ func (o *Options) ApplyTo(c *schedulerappconfig.Config) error {
 			return err
 		}
 	}
+	if len(o.ShowHiddenMetricsForVersion) > 0 {
+		metrics.SetShowHidden()
+	}
 
 	return nil
 }
@@ -217,6 +241,7 @@ func (o *Options) Validate() []error {
 	errs = append(errs, o.Authentication.Validate()...)
 	errs = append(errs, o.Authorization.Validate()...)
 	errs = append(errs, o.Deprecated.Validate()...)
+	errs = append(errs, metrics.ValidateShowHiddenMetricsVersion(o.ShowHiddenMetricsForVersion)...)
 
 	return errs
 }
@@ -240,14 +265,14 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 		return nil, err
 	}
 
-	// Prepare event clients.
-	eventBroadcaster := record.NewBroadcaster()
-	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: c.ComponentConfig.SchedulerName})
+	coreBroadcaster := record.NewBroadcaster()
 
 	// Set up leader election if enabled.
 	var leaderElectionConfig *leaderelection.LeaderElectionConfig
 	if c.ComponentConfig.LeaderElection.LeaderElect {
-		leaderElectionConfig, err = makeLeaderElectionConfig(c.ComponentConfig.LeaderElection, leaderElectionClient, recorder)
+		// Use the scheduler name in the first profile to record leader election.
+		coreRecorder := coreBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: c.ComponentConfig.Profiles[0].SchedulerName})
+		leaderElectionConfig, err = makeLeaderElectionConfig(c.ComponentConfig.LeaderElection, leaderElectionClient, coreRecorder)
 		if err != nil {
 			return nil, err
 		}
@@ -257,35 +282,44 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 	c.InformerFactory = informers.NewSharedInformerFactory(client, 0)
 
 	// if the resource provider kubeconfig is not set, default to the local cluster
-	//
-	if c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig == "" || !kubeconfigFileExists(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig) {
+	if c.ComponentConfig.ResourceProviderKubeConfig == "" {
 		klog.V(2).Infof("ResourceProvider kubeConfig is not set. default to local cluster client")
-		c.ResourceInformer = c.InformerFactory.Core().V1().Nodes()
+		c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+		c.NodeInformers["tp"] = c.InformerFactory.Core().V1().Nodes()
 	} else {
+		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(c.ComponentConfig.ResourceProviderKubeConfig)
+		// TODO: once the perf test env setup is improved so the order of TP, RP cluster is not required
+		//       rewrite the IF block
+		if !existed {
+			klog.Warningf("ResourceProvider kubeConfig is not valid, default to local cluster kubeconfig file")
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, 1)
+			c.NodeInformers["rp0"] = c.InformerFactory.Core().V1().Nodes()
+		} else {
+			c.ResourceProviderClients = make(map[string]clientset.Interface, len(kubeConfigFiles))
+			c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
+			for i, kubeConfigFile := range kubeConfigFiles {
+				rpId := "rp" + strconv.Itoa(i)
+				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				if err != nil {
+					klog.Errorf("failed to create resource provider rest client, error: %v", err)
+					return nil, err
+				}
 
-		c.ResourceProviderClient, err = clientutil.CreateClientFromKubeconfigFile(c.ComponentConfig.ResourceProviderClientConnection.Kubeconfig)
-		if err != nil {
-			klog.Errorf("failed to create resource provider rest client, error: %v", err)
-			return nil, err
+				resourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClients[rpId], 0)
+				c.NodeInformers[rpId] = resourceInformerFactory.Core().V1().Nodes()
+				klog.V(2).Infof("Created the node informer %p from resourceProvider kubeConfig %d %s",
+					c.NodeInformers[rpId].Informer(), i, kubeConfigFile)
+			}
 		}
-
-		klog.V(2).Infof("Create the resource informer from resourceProvider kubeConfig")
-		ResourceInformerFactory := informers.NewSharedInformerFactory(c.ResourceProviderClient, 0)
-		c.ResourceInformer = ResourceInformerFactory.Core().V1().Nodes()
 	}
 
-	c.PodInformer = factory.NewPodInformer(client, 0)
-	c.EventClient = eventClient
-	c.Recorder = recorder
-	c.Broadcaster = eventBroadcaster
+	c.PodInformer = scheduler.NewPodInformer(client, 0)
+	c.EventClient = eventClient.EventsV1beta1()
+	c.CoreEventClient = eventClient.CoreV1()
+	c.CoreBroadcaster = coreBroadcaster
 	c.LeaderElection = leaderElectionConfig
 
 	return c, nil
-}
-
-func kubeconfigFileExists(name string) bool {
-	_, err := os.Stat(name)
-	return err == nil
 }
 
 // makeLeaderElectionConfig builds a leader election configuration. It will
@@ -299,8 +333,8 @@ func makeLeaderElectionConfig(config kubeschedulerconfig.KubeSchedulerLeaderElec
 	id := hostname + "_" + string(uuid.NewUUID())
 
 	rl, err := resourcelock.New(config.ResourceLock,
-		config.LockObjectNamespace,
-		config.LockObjectName,
+		config.ResourceNamespace,
+		config.ResourceName,
 		client.CoreV1(),
 		client.CoordinationV1(),
 		resourcelock.ResourceLockConfig{
@@ -321,7 +355,9 @@ func makeLeaderElectionConfig(config kubeschedulerconfig.KubeSchedulerLeaderElec
 	}, nil
 }
 
-func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, v1core.EventsGetter, error) {
+// createClients creates a kube client and an event client from the given config and masterOverride.
+// TODO remove masterOverride when CLI flags are removed.
+func createClients(config componentbaseconfig.ClientConnectionConfiguration, masterOverride string, timeout time.Duration) (clientset.Interface, clientset.Interface, clientset.Interface, error) {
 	if len(config.Kubeconfig) == 0 && len(masterOverride) == 0 {
 		klog.Warningf("Neither --kubeconfig nor --master was specified. Using default API client. This might not work.")
 	}
@@ -336,6 +372,7 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 	}
 
 	for _, kubeConfig := range kubeConfigs.GetAllConfigs() {
+		//kubeConfig.DisableCompression = true - DisableCompression is not supported in Arktos - TODO
 		kubeConfig.AcceptContentTypes = config.AcceptContentTypes
 		kubeConfig.ContentType = config.ContentType
 		kubeConfig.QPS = config.QPS
@@ -363,5 +400,5 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, err
 	}
 
-	return clients, leaderElectionClient, eventClient.CoreV1(), nil
+	return clients, leaderElectionClient, eventClient, nil
 }

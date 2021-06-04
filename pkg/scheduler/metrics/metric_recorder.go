@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +15,11 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package metrics
 
 import (
-	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/component-base/metrics"
 )
 
 // MetricRecorder represents a metric recorder which takes action when the
@@ -32,27 +34,27 @@ var _ MetricRecorder = &PendingPodsRecorder{}
 
 // PendingPodsRecorder is an implementation of MetricRecorder
 type PendingPodsRecorder struct {
-	recorder prometheus.Gauge
+	recorder metrics.GaugeMetric
 }
 
 // NewActivePodsRecorder returns ActivePods in a Prometheus metric fashion
 func NewActivePodsRecorder() *PendingPodsRecorder {
 	return &PendingPodsRecorder{
-		recorder: ActivePods,
+		recorder: ActivePods(),
 	}
 }
 
 // NewUnschedulablePodsRecorder returns UnschedulablePods in a Prometheus metric fashion
 func NewUnschedulablePodsRecorder() *PendingPodsRecorder {
 	return &PendingPodsRecorder{
-		recorder: UnschedulablePods,
+		recorder: UnschedulablePods(),
 	}
 }
 
 // NewBackoffPodsRecorder returns BackoffPods in a Prometheus metric fashion
 func NewBackoffPodsRecorder() *PendingPodsRecorder {
 	return &PendingPodsRecorder{
-		recorder: BackoffPods,
+		recorder: BackoffPods(),
 	}
 }
 

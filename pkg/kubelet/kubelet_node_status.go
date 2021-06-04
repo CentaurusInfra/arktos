@@ -25,6 +25,7 @@ import (
 	"sort"
 	"time"
 
+	cloudproviderapi "k8s.io/cloud-provider/api"
 	"k8s.io/klog"
 
 	v1 "k8s.io/api/core/v1"
@@ -42,7 +43,6 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/events"
 	"k8s.io/kubernetes/pkg/kubelet/nodestatus"
 	"k8s.io/kubernetes/pkg/kubelet/util"
-	schedulerapi "k8s.io/kubernetes/pkg/scheduler/api"
 	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	taintutil "k8s.io/kubernetes/pkg/util/taints"
 	volutil "k8s.io/kubernetes/pkg/volume/util"
@@ -151,8 +151,11 @@ func (kl *Kubelet) reconcileExtendedResource(initialNode, node *v1.Node) bool {
 func (kl *Kubelet) updateDefaultLabels(initialNode, existingNode *v1.Node) bool {
 	defaultLabels := []string{
 		v1.LabelHostname,
+		v1.LabelZoneFailureDomainStable,
+		v1.LabelZoneRegionStable,
 		v1.LabelZoneFailureDomain,
 		v1.LabelZoneRegion,
+		v1.LabelInstanceTypeStable,
 		v1.LabelInstanceType,
 		v1.LabelOSStable,
 		v1.LabelArchStable,
@@ -243,7 +246,7 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 	}
 
 	unschedulableTaint := v1.Taint{
-		Key:    schedulerapi.TaintNodeUnschedulable,
+		Key:    v1.TaintNodeUnschedulable,
 		Effect: v1.TaintEffectNoSchedule,
 	}
 
@@ -258,7 +261,7 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 
 	if kl.externalCloudProvider {
 		taint := v1.Taint{
-			Key:    schedulerapi.TaintExternalCloudProvider,
+			Key:    cloudproviderapi.TaintExternalCloudProvider,
 			Value:  "true",
 			Effect: v1.TaintEffectNoSchedule,
 		}
@@ -334,6 +337,8 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 		if instanceType != "" {
 			klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelInstanceType, instanceType)
 			node.ObjectMeta.Labels[v1.LabelInstanceType] = instanceType
+			klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelInstanceTypeStable, instanceType)
+			node.ObjectMeta.Labels[v1.LabelInstanceTypeStable] = instanceType
 		}
 		// If the cloud has zone information, label the node with the zone information
 		zones, ok := kl.cloud.Zones()
@@ -345,10 +350,14 @@ func (kl *Kubelet) initialNode() (*v1.Node, error) {
 			if zone.FailureDomain != "" {
 				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneFailureDomain, zone.FailureDomain)
 				node.ObjectMeta.Labels[v1.LabelZoneFailureDomain] = zone.FailureDomain
+				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneFailureDomainStable, zone.FailureDomain)
+				node.ObjectMeta.Labels[v1.LabelZoneFailureDomainStable] = zone.FailureDomain
 			}
 			if zone.Region != "" {
 				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneRegion, zone.Region)
 				node.ObjectMeta.Labels[v1.LabelZoneRegion] = zone.Region
+				klog.Infof("Adding node label from cloud provider: %s=%s", v1.LabelZoneRegionStable, zone.Region)
+				node.ObjectMeta.Labels[v1.LabelZoneRegionStable] = zone.Region
 			}
 		}
 	}

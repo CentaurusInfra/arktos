@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,10 +15,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"os"
 	"time"
@@ -26,9 +27,8 @@ import (
 
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/component-base/logs"
+	_ "k8s.io/component-base/metrics/prometheus/clientgo"
 	"k8s.io/kubernetes/cmd/kube-scheduler/app"
-	_ "k8s.io/kubernetes/pkg/util/prometheusclientgo" // load all the prometheus client-go plugins
-	_ "k8s.io/kubernetes/pkg/version/prometheus"      // for version metric registration
 )
 
 func main() {
@@ -45,7 +45,6 @@ func main() {
 	defer logs.FlushLogs()
 
 	if err := command.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
 }

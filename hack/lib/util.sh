@@ -507,13 +507,16 @@ function kube::util::write_client_kubeconfig {
     local api_port=$5
     local client_id=$6
     local token=${7:-}
-    cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
+    local protocol=${8:-"https"}
+
+    if [ "${protocol}" == "https" ]; then
+      cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
 apiVersion: v1
 kind: Config
 clusters:
   - cluster:
       certificate-authority: ${ca_file}
-      server: https://${api_host}:${api_port}/
+      server: ${protocol}://${api_host}:${api_port}/
     name: local-up-cluster
 users:
   - user:
@@ -528,6 +531,26 @@ contexts:
     name: local-up-cluster
 current-context: local-up-cluster
 EOF
+
+    else
+      cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
+apiVersion: v1
+kind: Config
+clusters:
+  - cluster:
+      server: ${protocol}://${api_host}:${api_port}/
+    name: local-up-cluster
+users:
+  - user:
+    name: local-up-cluster
+contexts:
+  - context:
+      cluster: local-up-cluster
+      user: local-up-cluster
+    name: local-up-cluster
+current-context: local-up-cluster
+EOF
+    fi
 
     # flatten the kubeconfig files to make them self contained
     username=$(whoami)

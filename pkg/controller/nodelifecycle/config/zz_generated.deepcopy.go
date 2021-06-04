@@ -27,11 +27,6 @@ func (in *NodeLifecycleControllerConfiguration) DeepCopyInto(out *NodeLifecycleC
 	out.NodeStartupGracePeriod = in.NodeStartupGracePeriod
 	out.NodeMonitorGracePeriod = in.NodeMonitorGracePeriod
 	out.PodEvictionTimeout = in.PodEvictionTimeout
-	if in.TenantPartitionKubeConfigs != nil {
-		in, out := &in.TenantPartitionKubeConfigs, &out.TenantPartitionKubeConfigs
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	return
 }
 

@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,12 +15,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package cache
 
 import (
-	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm"
+	v1 "k8s.io/api/core/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	schedulerlisters "k8s.io/kubernetes/pkg/scheduler/listers"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 )
 
@@ -58,6 +60,8 @@ import (
 // - Both "Expired" and "Deleted" are valid end states. In case of some problems, e.g. network issue,
 //   a pod might have changed its state (e.g. added and deleted) without delivering notification to the cache.
 type Cache interface {
+	schedulerlisters.PodLister
+
 	// AssumePod assumes a pod scheduled and aggregates the pod's information into its node.
 	// The implementation also decides the policy to expire pod before being confirmed (receiving Add event).
 	// After expiration, its information would be subtracted.
@@ -87,42 +91,26 @@ type Cache interface {
 	IsAssumedPod(pod *v1.Pod) (bool, error)
 
 	// AddNode adds overall information about node.
-	AddNode(node *v1.Node) error
+	AddNode(node *v1.Node, resourceProviderId string) error
 
 	// UpdateNode updates overall information about node.
-	UpdateNode(oldNode, newNode *v1.Node) error
+	// Here pass nodeLister map instead of resource provider id to skip unnecessary searches
+	UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error
 
 	// RemoveNode removes overall information about node.
 	RemoveNode(node *v1.Node) error
 
-	// UpdateNodeInfoSnapshot updates the passed infoSnapshot to the current contents of Cache.
+	// UpdateSnapshot updates the passed infoSnapshot to the current contents of Cache.
 	// The node info contains aggregated information of pods scheduled (including assumed to be)
 	// on this node.
-	UpdateNodeInfoSnapshot(nodeSnapshot *NodeInfoSnapshot) error
+	UpdateSnapshot(nodeSnapshot *Snapshot) error
 
-	// List lists all cached pods (including assumed ones).
-	List(labels.Selector) ([]*v1.Pod, error)
-
-	// FilteredList returns all cached pods that pass the filter.
-	FilteredList(filter algorithm.PodFilter, selector labels.Selector) ([]*v1.Pod, error)
-
-	// Snapshot takes a snapshot on current cache
-	Snapshot() *Snapshot
-
-	// NodeTree returns a node tree structure
-	NodeTree() *NodeTree
+	// Dump produces a dump of the current cache.
+	Dump() *Dump
 }
 
-// Snapshot is a snapshot of cache state
-type Snapshot struct {
+// Dump is a dump of the cache state.
+type Dump struct {
 	AssumedPods map[string]bool
 	Nodes       map[string]*schedulernodeinfo.NodeInfo
-}
-
-// NodeInfoSnapshot is a snapshot of cache NodeInfo. The scheduler takes a
-// snapshot at the beginning of each scheduling cycle and uses it for its
-// operations in that cycle.
-type NodeInfoSnapshot struct {
-	NodeInfoMap map[string]*schedulernodeinfo.NodeInfo
-	Generation  int64
 }

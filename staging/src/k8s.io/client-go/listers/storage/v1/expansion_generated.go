@@ -19,6 +19,14 @@ limitations under the License.
 
 package v1
 
+// CSINodeListerExpansion allows custom methods to be added to
+// CSINodeLister.
+type CSINodeListerExpansion interface{}
+
+// CSINodeTenantListerExpansion allows custom methods to be added to
+// CSINodeTenantLister.
+type CSINodeTenantListerExpansion interface{}
+
 // StorageClassListerExpansion allows custom methods to be added to
 // StorageClassLister.
 type StorageClassListerExpansion interface{}

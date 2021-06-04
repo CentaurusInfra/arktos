@@ -512,14 +512,6 @@ items:
     - get
     - list
     - watch
-  - apiGroups:
-    - storage.k8s.io
-    resources:
-    - csinodes
-    verbs:
-    - get
-    - list
-    - watch
 - apiVersion: rbac.authorization.k8s.io/v1
   kind: ClusterRole
   metadata:
@@ -732,9 +724,6 @@ items:
     - endpoints
     verbs:
     - create
-    - get
-    - list
-    - watch
   - apiGroups:
     - ""
     resourceNames:
@@ -830,6 +819,12 @@ items:
     - authorization.k8s.io
     resources:
     - subjectaccessreviews
+    verbs:
+    - create
+  - apiGroups:
+    - '*'
+    resources:
+    - events
     verbs:
     - create
 - apiVersion: rbac.authorization.k8s.io/v1
@@ -1032,16 +1027,6 @@ items:
     - get
     - list
     - watch
-  - apiGroups:
-    - storage.k8s.io
-    resources:
-    - csinodes
-    verbs:
-    - create
-    - delete
-    - get
-    - patch
-    - update
   - apiGroups:
     - coordination.k8s.io
     resources:

@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -66,7 +67,7 @@ var _ = ginkgo.Describe("Recreate [Feature:Recreate]", func() {
 		}
 
 		if !e2epod.CheckPodsRunningReadyOrSucceeded(f.ClientSet, systemNamespace, originalPodNames, framework.PodReadyBeforeTimeout) {
-			framework.Failf("At least one pod wasn't running and ready or succeeded at test start.")
+			e2elog.Failf("At least one pod wasn't running and ready or succeeded at test start.")
 		}
 
 	})
@@ -97,12 +98,12 @@ var _ = ginkgo.Describe("Recreate [Feature:Recreate]", func() {
 func testRecreate(c clientset.Interface, ps *testutils.PodStore, systemNamespace string, nodes []v1.Node, podNames []string) {
 	err := RecreateNodes(c, nodes)
 	if err != nil {
-		framework.Failf("Test failed; failed to start the restart instance group command.")
+		e2elog.Failf("Test failed; failed to start the restart instance group command.")
 	}
 
 	err = WaitForNodeBootIdsToChange(c, nodes, framework.RecreateNodeReadyAgainTimeout)
 	if err != nil {
-		framework.Failf("Test failed; failed to recreate at least one node in %v.", framework.RecreateNodeReadyAgainTimeout)
+		e2elog.Failf("Test failed; failed to recreate at least one node in %v.", framework.RecreateNodeReadyAgainTimeout)
 	}
 
 	nodesAfter, err := e2enode.CheckReady(c, len(nodes), framework.RestartNodeReadyAgainTimeout)
@@ -110,7 +111,7 @@ func testRecreate(c clientset.Interface, ps *testutils.PodStore, systemNamespace
 	e2elog.Logf("Got the following nodes after recreate: %v", nodeNames(nodesAfter))
 
 	if len(nodes) != len(nodesAfter) {
-		framework.Failf("Had %d nodes before nodes were recreated, but now only have %d",
+		e2elog.Failf("Had %d nodes before nodes were recreated, but now only have %d",
 			len(nodes), len(nodesAfter))
 	}
 
@@ -120,6 +121,6 @@ func testRecreate(c clientset.Interface, ps *testutils.PodStore, systemNamespace
 	framework.ExpectNoError(err)
 	remaining := framework.RestartPodReadyAgainTimeout - time.Since(podCheckStart)
 	if !e2epod.CheckPodsRunningReadyOrSucceeded(c, systemNamespace, podNamesAfter, remaining) {
-		framework.Failf("At least one pod wasn't running and ready after the restart.")
+		e2elog.Failf("At least one pod wasn't running and ready after the restart.")
 	}
 }

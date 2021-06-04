@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,16 +19,21 @@ package node
 
 import (
 	"fmt"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"net"
+	"strings"
 	"time"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	restclient "k8s.io/client-go/rest"
 	nodectlr "k8s.io/kubernetes/pkg/controller/nodelifecycle"
+	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
+	"k8s.io/kubernetes/pkg/util/system"
 	e2elog "k8s.io/kubernetes/test/e2e/framework/log"
 	testutils "k8s.io/kubernetes/test/utils"
 )
@@ -47,6 +53,14 @@ const (
 	// timeout for proxy requests.
 	proxyTimeout = 2 * time.Minute
 )
+
+// PodNode is a pod-node pair indicating which node a given pod is running on
+type PodNode struct {
+	// Pod represents pod name
+	Pod string
+	// Node represents node name
+	Node string
+}
 
 // FirstAddress returns the first address of the given type of each node.
 // TODO: Use return type string instead of []string
@@ -314,4 +328,207 @@ func CollectAddresses(nodes *v1.NodeList, addressType v1.NodeAddressType) []stri
 		ips = append(ips, GetAddresses(&nodes.Items[i], addressType)...)
 	}
 	return ips
+}
+
+// PickIP picks one public node IP
+func PickIP(c clientset.Interface) (string, error) {
+	publicIps, err := GetPublicIps(c)
+	if err != nil {
+		return "", fmt.Errorf("get node public IPs error: %s", err)
+	}
+	if len(publicIps) == 0 {
+		return "", fmt.Errorf("got unexpected number (%d) of public IPs", len(publicIps))
+	}
+	ip := publicIps[0]
+	return ip, nil
+}
+
+// GetPublicIps returns a public IP list of nodes.
+func GetPublicIps(c clientset.Interface) ([]string, error) {
+	nodes, err := GetReadySchedulableNodesOrDie(c)
+	if err != nil {
+		return nil, fmt.Errorf("get schedulable and ready nodes error: %s", err)
+	}
+	ips := CollectAddresses(nodes, v1.NodeExternalIP)
+	if len(ips) == 0 {
+		// If ExternalIP isn't set, assume the test programs can reach the InternalIP
+		ips = CollectAddresses(nodes, v1.NodeInternalIP)
+	}
+	return ips, nil
+}
+
+// GetReadySchedulableNodesOrDie addresses the common use case of getting nodes you can do work on.
+// 1) Needs to be schedulable.
+// 2) Needs to be ready.
+// If EITHER 1 or 2 is not true, most tests will want to ignore the node entirely.
+// TODO: remove references in framework/util.go.
+// TODO: remove "OrDie" suffix.
+func GetReadySchedulableNodesOrDie(c clientset.Interface) (nodes *v1.NodeList, err error) {
+	nodes, err = checkWaitListSchedulableNodes(c)
+	if err != nil {
+		return nil, fmt.Errorf("listing schedulable nodes error: %s", err)
+	}
+	// previous tests may have cause failures of some nodes. Let's skip
+	// 'Not Ready' nodes, just in case (there is no need to fail the test).
+	Filter(nodes, func(node v1.Node) bool {
+		return IsNodeSchedulable(&node) && IsNodeUntainted(&node)
+	})
+	return nodes, nil
+}
+
+// GetReadyNodesIncludingTainted returns all ready nodes, even those which are tainted.
+// There are cases when we care about tainted nodes
+// E.g. in tests related to nodes with gpu we care about nodes despite
+// presence of nvidia.com/gpu=present:NoSchedule taint
+func GetReadyNodesIncludingTainted(c clientset.Interface) (nodes *v1.NodeList, err error) {
+	nodes, err = checkWaitListSchedulableNodes(c)
+	if err != nil {
+		return nil, fmt.Errorf("listing schedulable nodes error: %s", err)
+	}
+	Filter(nodes, func(node v1.Node) bool {
+		return IsNodeSchedulable(&node)
+	})
+	return nodes, nil
+}
+
+// GetMasterAndWorkerNodes will return a list masters and schedulable worker nodes
+func GetMasterAndWorkerNodes(c clientset.Interface) (sets.String, *v1.NodeList, error) {
+	nodes := &v1.NodeList{}
+	masters := sets.NewString()
+	all, err := c.CoreV1().Nodes().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, nil, fmt.Errorf("get nodes error: %s", err)
+	}
+	for _, n := range all.Items {
+		if system.IsMasterNode(n.Name) {
+			masters.Insert(n.Name)
+		} else if IsNodeSchedulable(&n) && IsNodeUntainted(&n) {
+			nodes.Items = append(nodes.Items, n)
+		}
+	}
+	return masters, nodes, nil
+}
+
+// IsNodeUntainted tests whether a fake pod can be scheduled on "node", given its current taints.
+// TODO: need to discuss wether to return bool and error type
+func IsNodeUntainted(node *v1.Node) bool {
+	return isNodeUntaintedWithNonblocking(node, "")
+}
+
+// isNodeUntaintedWithNonblocking tests whether a fake pod can be scheduled on "node"
+// but allows for taints in the list of non-blocking taints.
+func isNodeUntaintedWithNonblocking(node *v1.Node, nonblockingTaints string) bool {
+	fakePod := &v1.Pod{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Pod",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "fake-not-scheduled",
+			Namespace: "fake-not-scheduled",
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Name:  "fake-not-scheduled",
+					Image: "fake-not-scheduled",
+				},
+			},
+		},
+	}
+
+	nodeInfo := schedulernodeinfo.NewNodeInfo()
+
+	// Simple lookup for nonblocking taints based on comma-delimited list.
+	nonblockingTaintsMap := map[string]struct{}{}
+	for _, t := range strings.Split(nonblockingTaints, ",") {
+		if strings.TrimSpace(t) != "" {
+			nonblockingTaintsMap[strings.TrimSpace(t)] = struct{}{}
+		}
+	}
+
+	if len(nonblockingTaintsMap) > 0 {
+		nodeCopy := node.DeepCopy()
+		nodeCopy.Spec.Taints = []v1.Taint{}
+		for _, v := range node.Spec.Taints {
+			if _, isNonblockingTaint := nonblockingTaintsMap[v.Key]; !isNonblockingTaint {
+				nodeCopy.Spec.Taints = append(nodeCopy.Spec.Taints, v)
+			}
+		}
+		nodeInfo.SetNode(nodeCopy)
+	} else {
+		nodeInfo.SetNode(node)
+	}
+
+	taints, err := nodeInfo.Taints()
+	if err != nil {
+		e2elog.Failf("Can't test predicates for node %s: %v", node.Name, err)
+		return false
+	}
+	return v1helper.TolerationsTolerateTaintsWithFilter(fakePod.Spec.Tolerations, taints, func(t *v1.Taint) bool {
+		return t.Effect == v1.TaintEffectNoExecute || t.Effect == v1.TaintEffectNoSchedule
+	})
+}
+
+// IsNodeSchedulable returns true if:
+// 1) doesn't have "unschedulable" field set
+// 2) it also returns true from IsNodeReady
+func IsNodeSchedulable(node *v1.Node) bool {
+	if node == nil {
+		return false
+	}
+	return !node.Spec.Unschedulable && IsNodeReady(node)
+}
+
+// IsNodeReady returns true if:
+// 1) it's Ready condition is set to true
+// 2) doesn't have NetworkUnavailable condition set to true
+func IsNodeReady(node *v1.Node) bool {
+	nodeReady := IsConditionSetAsExpected(node, v1.NodeReady, true)
+	networkReady := IsConditionUnset(node, v1.NodeNetworkUnavailable) ||
+		IsConditionSetAsExpectedSilent(node, v1.NodeNetworkUnavailable, false)
+	return nodeReady && networkReady
+}
+
+// hasNonblockingTaint returns true if the node contains at least
+// one taint with a key matching the regexp.
+func hasNonblockingTaint(node *v1.Node, nonblockingTaints string) bool {
+	if node == nil {
+		return false
+	}
+
+	// Simple lookup for nonblocking taints based on comma-delimited list.
+	nonblockingTaintsMap := map[string]struct{}{}
+	for _, t := range strings.Split(nonblockingTaints, ",") {
+		if strings.TrimSpace(t) != "" {
+			nonblockingTaintsMap[strings.TrimSpace(t)] = struct{}{}
+		}
+	}
+
+	for _, taint := range node.Spec.Taints {
+		if _, hasNonblockingTaint := nonblockingTaintsMap[taint.Key]; hasNonblockingTaint {
+			return true
+		}
+	}
+
+	return false
+}
+
+// PodNodePairs return podNode pairs for all pods in a namespace
+func PodNodePairs(c clientset.Interface, ns string) ([]PodNode, error) {
+	var result []PodNode
+
+	podList, err := c.CoreV1().Pods(ns).List(metav1.ListOptions{})
+	if err != nil {
+		return result, err
+	}
+
+	for _, pod := range podList.Items {
+		result = append(result, PodNode{
+			Pod:  pod.Name,
+			Node: pod.Spec.NodeName,
+		})
+	}
+
+	return result, nil
 }

@@ -18,6 +18,7 @@ limitations under the License.
 package scheduler
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -84,10 +85,10 @@ const (
 	permitPluginName    = "permit-plugin"
 )
 
-var _ = framework.PrefilterPlugin(&PrefilterPlugin{})
+var _ = framework.PreFilterPlugin(&PrefilterPlugin{})
 var _ = framework.ReservePlugin(&ReservePlugin{})
-var _ = framework.PrebindPlugin(&PrebindPlugin{})
-var _ = framework.PostbindPlugin(&PostbindPlugin{})
+var _ = framework.PreBindPlugin(&PrebindPlugin{})
+var _ = framework.PostBindPlugin(&PostbindPlugin{})
 var _ = framework.UnreservePlugin(&UnreservePlugin{})
 var _ = framework.PermitPlugin(&PermitPlugin{})
 
@@ -100,7 +101,7 @@ var resPlugin = &ReservePlugin{}
 
 // Reserve is a test function that returns an error or nil, depending on the
 // value of "failReserve".
-func (rp *ReservePlugin) Reserve(pc *framework.PluginContext, pod *v1.Pod, nodeName string) *framework.Status {
+func (rp *ReservePlugin) Reserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	rp.numReserveCalled++
 	if rp.failReserve {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -120,8 +121,7 @@ func (pp *PrebindPlugin) Name() string {
 	return prebindPluginName
 }
 
-// Prebind is a test function that returns (true, nil) or errors for testing.
-func (pp *PrebindPlugin) Prebind(pc *framework.PluginContext, pod *v1.Pod, nodeName string) *framework.Status {
+func (pp *PrebindPlugin) PreBind(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	pp.numPrebindCalled++
 	if pp.failPrebind {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -149,14 +149,13 @@ func (pp *PostbindPlugin) Name() string {
 	return postbindPluginName
 }
 
-// Postbind is a test function, which counts the number of times called.
-func (pp *PostbindPlugin) Postbind(pc *framework.PluginContext, pod *v1.Pod, nodeName string) {
-	pp.numPostbindCalled++
-}
-
 // reset used to reset numPostbindCalled.
 func (pp *PostbindPlugin) reset() {
 	pp.numPostbindCalled = 0
+}
+
+func (pp *PostbindPlugin) PostBind(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
+	pp.numPostbindCalled++
 }
 
 // NewPostbindPlugin is the factory for postbind plugin.
@@ -171,8 +170,7 @@ func (pp *PrefilterPlugin) Name() string {
 	return prefilterPluginName
 }
 
-// Prefilter is a test function that returns (true, nil) or errors for testing.
-func (pp *PrefilterPlugin) Prefilter(pc *framework.PluginContext, pod *v1.Pod) *framework.Status {
+func (pp *PrefilterPlugin) PreFilter(ctx context.Context, state *framework.CycleState, pod *v1.Pod) *framework.Status {
 	pp.numPrefilterCalled++
 	if pp.failPrefilter {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name))
@@ -180,6 +178,10 @@ func (pp *PrefilterPlugin) Prefilter(pc *framework.PluginContext, pod *v1.Pod) *
 	if pp.rejectPrefilter {
 		return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("reject pod %v", pod.Name))
 	}
+	return nil
+}
+
+func (pp *PrefilterPlugin) PreFilterExtensions() framework.PreFilterExtensions {
 	return nil
 }
 
@@ -197,7 +199,7 @@ func (up *UnreservePlugin) Name() string {
 
 // Unreserve is a test function that returns an error or nil, depending on the
 // value of "failUnreserve".
-func (up *UnreservePlugin) Unreserve(pc *framework.PluginContext, pod *v1.Pod, nodeName string) {
+func (up *UnreservePlugin) Unreserve(ctx context.Context, state *framework.CycleState, p *v1.Pod, nodeName string) {
 	up.numUnreserveCalled++
 }
 
@@ -219,7 +221,7 @@ func (pp *PermitPlugin) Name() string {
 }
 
 // Permit implements the permit test plugin.
-func (pp *PermitPlugin) Permit(pc *framework.PluginContext, pod *v1.Pod, nodeName string) (*framework.Status, time.Duration) {
+func (pp *PermitPlugin) Permit(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (*framework.Status, time.Duration) {
 	pp.numPermitCalled++
 	if pp.failPermit {
 		return framework.NewStatus(framework.Error, fmt.Sprintf("injecting failure for pod %v", pod.Name)), 0
@@ -247,7 +249,7 @@ func (pp *PermitPlugin) Permit(pc *framework.PluginContext, pod *v1.Pod, nodeNam
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("reject pod %v", pod.Name)), 0
 		}
 		if pp.waitAndAllowPermit {
-			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow() })
+			pp.fh.IterateOverWaitingPods(func(wp framework.WaitingPod) { wp.Allow(permitPluginName) })
 			return nil, 0
 		}
 	}
@@ -463,19 +465,13 @@ func TestPrebindPlugin(t *testing.T) {
 			t.Errorf("Error while creating a test pod: %v", err)
 		}
 
-		if test.fail {
+		if test.fail || test.reject {
 			if err = wait.Poll(10*time.Millisecond, 30*time.Second, podSchedulingError(cs, pod.Namespace, pod.Name)); err != nil {
 				t.Errorf("test #%v: Expected a scheduling error, but didn't get it. error: %v", i, err)
 			}
 		} else {
-			if test.reject {
-				if err = waitForPodUnschedulable(cs, pod); err != nil {
-					t.Errorf("test #%v: Didn't expected the pod to be scheduled. error: %v", i, err)
-				}
-			} else {
-				if err = waitForPodToSchedule(cs, pod); err != nil {
-					t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
-				}
+			if err = waitForPodToSchedule(cs, pod); err != nil {
+				t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
 			}
 		}
 
@@ -570,7 +566,7 @@ func TestUnreservePlugin(t *testing.T) {
 			t.Errorf("Error while creating a test pod: %v", err)
 		}
 
-		if test.prebindFail {
+		if test.prebindFail || test.prebindReject {
 			if err = wait.Poll(10*time.Millisecond, 30*time.Second, podSchedulingError(cs, pod.Namespace, pod.Name)); err != nil {
 				t.Errorf("test #%v: Expected a scheduling error, but didn't get it. error: %v", i, err)
 			}
@@ -578,20 +574,11 @@ func TestUnreservePlugin(t *testing.T) {
 				t.Errorf("test #%v: Expected the unreserve plugin to be called %d times, was called %d times.", i, pbdPlugin.numPrebindCalled, unresPlugin.numUnreserveCalled)
 			}
 		} else {
-			if test.prebindReject {
-				if err = waitForPodUnschedulable(cs, pod); err != nil {
-					t.Errorf("test #%v: Didn't expected the pod to be scheduled. error: %v", i, err)
-				}
-				if unresPlugin.numUnreserveCalled == 0 {
-					t.Errorf("test #%v: Expected the unreserve plugin to be called %d times, was called %d times.", i, pbdPlugin.numPrebindCalled, unresPlugin.numUnreserveCalled)
-				}
-			} else {
-				if err = waitForPodToSchedule(cs, pod); err != nil {
-					t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
-				}
-				if unresPlugin.numUnreserveCalled > 0 {
-					t.Errorf("test #%v: Didn't expected the unreserve plugin to be called, was called %d times.", i, unresPlugin.numUnreserveCalled)
-				}
+			if err = waitForPodToSchedule(cs, pod); err != nil {
+				t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
+			}
+			if unresPlugin.numUnreserveCalled > 0 {
+				t.Errorf("test #%v: Didn't expected the unreserve plugin to be called, was called %d times.", i, unresPlugin.numUnreserveCalled)
 			}
 		}
 		unresPlugin.reset()
@@ -683,7 +670,7 @@ func TestPostbindPlugin(t *testing.T) {
 			t.Errorf("Error while creating a test pod: %v", err)
 		}
 
-		if test.prebindFail {
+		if test.prebindFail || test.prebindReject {
 			if err = wait.Poll(10*time.Millisecond, 30*time.Second, podSchedulingError(cs, pod.Namespace, pod.Name)); err != nil {
 				t.Errorf("test #%v: Expected a scheduling error, but didn't get it. error: %v", i, err)
 			}
@@ -691,20 +678,11 @@ func TestPostbindPlugin(t *testing.T) {
 				t.Errorf("test #%v: Didn't expected the postbind plugin to be called %d times.", i, ptbdPlugin.numPostbindCalled)
 			}
 		} else {
-			if test.prebindReject {
-				if err = waitForPodUnschedulable(cs, pod); err != nil {
-					t.Errorf("test #%v: Didn't expected the pod to be scheduled. error: %v", i, err)
-				}
-				if ptbdPlugin.numPostbindCalled > 0 {
-					t.Errorf("test #%v: Didn't expected the postbind plugin to be called %d times.", i, ptbdPlugin.numPostbindCalled)
-				}
-			} else {
-				if err = waitForPodToSchedule(cs, pod); err != nil {
-					t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
-				}
-				if ptbdPlugin.numPostbindCalled == 0 {
-					t.Errorf("test #%v: Expected the postbind plugin to be called, was called %d times.", i, ptbdPlugin.numPostbindCalled)
-				}
+			if err = waitForPodToSchedule(cs, pod); err != nil {
+				t.Errorf("test #%v: Expected the pod to be scheduled. error: %v", i, err)
+			}
+			if ptbdPlugin.numPostbindCalled == 0 {
+				t.Errorf("test #%v: Expected the postbind plugin to be called, was called %d times.", i, ptbdPlugin.numPostbindCalled)
 			}
 		}
 

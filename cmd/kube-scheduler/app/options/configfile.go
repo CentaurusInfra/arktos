@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package options
 
 import (
@@ -21,10 +23,14 @@ import (
 	"io/ioutil"
 	"os"
 
+	"k8s.io/klog"
+
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/component-base/codec"
 	kubeschedulerconfig "k8s.io/kubernetes/pkg/scheduler/apis/config"
 	kubeschedulerscheme "k8s.io/kubernetes/pkg/scheduler/apis/config/scheme"
 	kubeschedulerconfigv1alpha1 "k8s.io/kubernetes/pkg/scheduler/apis/config/v1alpha1"
+	kubeschedulerconfigv1alpha2 "k8s.io/kubernetes/pkg/scheduler/apis/config/v1alpha2"
 )
 
 func loadConfigFromFile(file string) (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
@@ -37,12 +43,34 @@ func loadConfigFromFile(file string) (*kubeschedulerconfig.KubeSchedulerConfigur
 }
 
 func loadConfig(data []byte) (*kubeschedulerconfig.KubeSchedulerConfiguration, error) {
-	configObj := &kubeschedulerconfig.KubeSchedulerConfiguration{}
-	if err := runtime.DecodeInto(kubeschedulerscheme.Codecs.UniversalDecoder(), data, configObj); err != nil {
-		return nil, err
-	}
+	// The UniversalDecoder runs defaulting and returns the internal type by default.
+	obj, gvk, err := kubeschedulerscheme.Codecs.UniversalDecoder().Decode(data, nil, nil)
+	if err != nil {
+		// Try strict decoding first. If that fails decode with a lenient
+		// decoder, which has only v1alpha1 registered, and log a warning.
+		// The lenient path is to be dropped when support for v1alpha1 is dropped.
+		if !runtime.IsStrictDecodingError(err) {
+			return nil, err
+		}
 
-	return configObj, nil
+		var lenientErr error
+		_, lenientCodecs, lenientErr := codec.NewLenientSchemeAndCodecs(
+			kubeschedulerconfig.AddToScheme,
+			kubeschedulerconfigv1alpha1.AddToScheme,
+		)
+		if lenientErr != nil {
+			return nil, lenientErr
+		}
+		obj, gvk, lenientErr = lenientCodecs.UniversalDecoder().Decode(data, nil, nil)
+		if lenientErr != nil {
+			return nil, err
+		}
+		klog.Warningf("using lenient decoding as strict decoding failed: %v", err)
+	}
+	if cfgObj, ok := obj.(*kubeschedulerconfig.KubeSchedulerConfiguration); ok {
+		return cfgObj, nil
+	}
+	return nil, fmt.Errorf("couldn't decode as KubeSchedulerConfiguration, got %s: ", gvk)
 }
 
 // WriteConfigFile writes the config into the given file name as YAML.
@@ -53,7 +81,7 @@ func WriteConfigFile(fileName string, cfg *kubeschedulerconfig.KubeSchedulerConf
 		return fmt.Errorf("unable to locate encoder -- %q is not a supported media type", mediaType)
 	}
 
-	encoder := kubeschedulerscheme.Codecs.EncoderForVersion(info.Serializer, kubeschedulerconfigv1alpha1.SchemeGroupVersion)
+	encoder := kubeschedulerscheme.Codecs.EncoderForVersion(info.Serializer, kubeschedulerconfigv1alpha2.SchemeGroupVersion)
 
 	configFile, err := os.Create(fileName)
 	if err != nil {

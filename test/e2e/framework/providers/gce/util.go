@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,11 +36,19 @@ func RecreateNodes(c clientset.Interface, nodes []v1.Node) error {
 	nodeNamesByZone := make(map[string][]string)
 	for i := range nodes {
 		node := &nodes[i]
-		zone := framework.TestContext.CloudConfig.Zone
-		if z, ok := node.Labels[v1.LabelZoneFailureDomain]; ok {
-			zone = z
+
+		if zone, ok := node.Labels[v1.LabelZoneFailureDomain]; ok {
+			nodeNamesByZone[zone] = append(nodeNamesByZone[zone], node.Name)
+			continue
 		}
-		nodeNamesByZone[zone] = append(nodeNamesByZone[zone], node.Name)
+
+		if zone, ok := node.Labels[v1.LabelZoneFailureDomainStable]; ok {
+			nodeNamesByZone[zone] = append(nodeNamesByZone[zone], node.Name)
+			continue
+		}
+
+		defaultZone := framework.TestContext.CloudConfig.Zone
+		nodeNamesByZone[defaultZone] = append(nodeNamesByZone[defaultZone], node.Name)
 	}
 
 	// Find the sole managed instance group name

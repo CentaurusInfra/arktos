@@ -18,6 +18,7 @@ pkg/cloudfabric-controller/replicaset/replica_set_utils.go
 pkg/cloudfabric-controller/replicaset/replica_set_utils_test.go
 pkg/cloudfabric-controller/testutil/test_utils.go
 pkg/controller/informer_factory.go
+pkg/controller/volume/scheduling/metrics/metrics.go
 pkg/kubectl/cmd/create/create_clusterrolebinding_test.go
 pkg/kubectl/cmd/create/create_namespace_test.go
 pkg/kubectl/cmd/taint/taint_test.go
@@ -25,9 +26,12 @@ pkg/kubelet/container/ref_test.go
 staging/src/k8s.io/apimachinery/pkg/runtime/negotiate.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/json/json.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/protobuf/protobuf.go
+staging/src/k8s.io/apimachinery/pkg/runtime/serializer/testing/conversion.go
 staging/src/k8s.io/apimachinery/pkg/runtime/serializer/versioning/versioning.go
 staging/src/k8s.io/apimachinery/pkg/runtime/testing/cacheable_object.go
 staging/src/k8s.io/apiserver/pkg/endpoints/discovery/util.go
+staging/src/k8s.io/apiserver/pkg/endpoints/filters/cachecontrol.go
+staging/src/k8s.io/apiserver/pkg/endpoints/filters/cachecontrol_test.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/response_test.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers.go
 staging/src/k8s.io/apiserver/pkg/endpoints/handlers/responsewriters/writers_test.go
@@ -63,7 +67,11 @@ staging/src/k8s.io/client-go/metadata/metadatainformer/interface.go
 staging/src/k8s.io/client-go/rest/client.go
 staging/src/k8s.io/client-go/rest/fake/fake.go
 staging/src/k8s.io/client-go/rest/request_test.go
+staging/src/k8s.io/client-go/tools/events/fake.go
+staging/src/k8s.io/client-go/tools/leaderelection/resourcelock/multilock.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle.go
 staging/src/k8s.io/client-go/util/flowcontrol/throttle_test.go
+staging/src/k8s.io/component-base/codec/codec.go
+staging/src/k8s.io/csi-translation-lib/plugins/in_tree_volume_test.go
 test/e2e/node/node_problem_detector.go
 test/integration/garbagecollector/garbage_collector_test.go

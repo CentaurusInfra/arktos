@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +37,7 @@ type IntegrationTestNodePreparer struct {
 	client          clientset.Interface
 	countToStrategy []testutils.CountToStrategy
 	nodeNamePrefix  string
+	nodeSpec        *v1.Node
 }
 
 // NewIntegrationTestNodePreparer creates an IntegrationTestNodePreparer configured with defaults.
@@ -44,6 +46,15 @@ func NewIntegrationTestNodePreparer(client clientset.Interface, countToStrategy 
 		client:          client,
 		countToStrategy: countToStrategy,
 		nodeNamePrefix:  nodeNamePrefix,
+	}
+}
+
+// NewIntegrationTestNodePreparerWithNodeSpec creates an IntegrationTestNodePreparer configured with nodespec.
+func NewIntegrationTestNodePreparerWithNodeSpec(client clientset.Interface, countToStrategy []testutils.CountToStrategy, nodeSpec *v1.Node) testutils.TestNodePreparer {
+	return &IntegrationTestNodePreparer{
+		client:          client,
+		countToStrategy: countToStrategy,
+		nodeSpec:        nodeSpec,
 	}
 }
 

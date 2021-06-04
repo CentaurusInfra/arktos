@@ -1,5 +1,6 @@
 /*
 Copyright 2019 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -19,13 +20,16 @@ package plugins
 import (
 	"fmt"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	storage "k8s.io/api/storage/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const (
 	// CinderDriverName is the name of the CSI driver for Cinder
 	CinderDriverName = "cinder.csi.openstack.org"
+	// CinderTopologyKey is the zonal topology key for Cinder CSI Driver
+	CinderTopologyKey = "topology.cinder.csi.openstack.org/zone"
 	// CinderInTreePluginName is the name of the intree plugin for Cinder
 	CinderInTreePluginName = "kubernetes.io/cinder"
 )
@@ -54,6 +58,11 @@ func (t *osCinderCSITranslator) TranslateInTreeInlineVolumeToCSI(volume *v1.Volu
 
 	cinderSource := volume.Cinder
 	pv := &v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			// Must be unique per disk as it is used as the unique part of the
+			// staging path
+			Name: fmt.Sprintf("%s-%s", CinderDriverName, cinderSource.VolumeID),
+		},
 		Spec: v1.PersistentVolumeSpec{
 			PersistentVolumeSource: v1.PersistentVolumeSource{
 				CSI: &v1.CSIPersistentVolumeSource{
@@ -85,6 +94,10 @@ func (t *osCinderCSITranslator) TranslateInTreePVToCSI(pv *v1.PersistentVolume) 
 		ReadOnly:         cinderSource.ReadOnly,
 		FSType:           cinderSource.FSType,
 		VolumeAttributes: map[string]string{},
+	}
+
+	if err := translateTopology(pv, CinderTopologyKey); err != nil {
+		return nil, fmt.Errorf("failed to translate topology: %v", err)
 	}
 
 	pv.Spec.Cinder = nil
@@ -134,4 +147,8 @@ func (t *osCinderCSITranslator) GetInTreePluginName() string {
 // GetCSIPluginName returns the name of the CSI plugin
 func (t *osCinderCSITranslator) GetCSIPluginName() string {
 	return CinderDriverName
+}
+
+func (t *osCinderCSITranslator) RepairVolumeHandle(volumeHandle, nodeID string) (string, error) {
+	return volumeHandle, nil
 }

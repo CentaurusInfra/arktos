@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,13 +15,15 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package fake
 
 import (
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubernetes/pkg/scheduler/algorithm"
+	corelisters "k8s.io/client-go/listers/core/v1"
 	internalcache "k8s.io/kubernetes/pkg/scheduler/internal/cache"
+	schedulerlisters "k8s.io/kubernetes/pkg/scheduler/listers"
 )
 
 // Cache is used for testing
@@ -66,16 +69,18 @@ func (c *Cache) GetPod(pod *v1.Pod) (*v1.Pod, error) {
 }
 
 // AddNode is a fake method for testing.
-func (c *Cache) AddNode(node *v1.Node) error { return nil }
+func (c *Cache) AddNode(node *v1.Node, rpId string) error { return nil }
 
 // UpdateNode is a fake method for testing.
-func (c *Cache) UpdateNode(oldNode, newNode *v1.Node) error { return nil }
+func (c *Cache) UpdateNode(oldNode, newNode *v1.Node, nodeListers map[string]corelisters.NodeLister) error {
+	return nil
+}
 
 // RemoveNode is a fake method for testing.
 func (c *Cache) RemoveNode(node *v1.Node) error { return nil }
 
-// UpdateNodeInfoSnapshot is a fake method for testing.
-func (c *Cache) UpdateNodeInfoSnapshot(nodeSnapshot *internalcache.NodeInfoSnapshot) error {
+// UpdateSnapshot is a fake method for testing.
+func (c *Cache) UpdateSnapshot(snapshot *internalcache.Snapshot) error {
 	return nil
 }
 
@@ -83,14 +88,21 @@ func (c *Cache) UpdateNodeInfoSnapshot(nodeSnapshot *internalcache.NodeInfoSnaps
 func (c *Cache) List(s labels.Selector) ([]*v1.Pod, error) { return nil, nil }
 
 // FilteredList is a fake method for testing.
-func (c *Cache) FilteredList(filter algorithm.PodFilter, selector labels.Selector) ([]*v1.Pod, error) {
+func (c *Cache) FilteredList(filter schedulerlisters.PodFilter, selector labels.Selector) ([]*v1.Pod, error) {
 	return nil, nil
 }
 
-// Snapshot is a fake method for testing
-func (c *Cache) Snapshot() *internalcache.Snapshot {
-	return &internalcache.Snapshot{}
+// Dump is a fake method for testing.
+func (c *Cache) Dump() *internalcache.Dump {
+	return &internalcache.Dump{}
 }
 
-// NodeTree is a fake method for testing.
-func (c *Cache) NodeTree() *internalcache.NodeTree { return nil }
+// GetNodeInfo is a fake method for testing.
+func (c *Cache) GetNodeInfo(nodeName string) (*v1.Node, error) {
+	return nil, nil
+}
+
+// ListNodes is a fake method for testing.
+func (c *Cache) ListNodes() []*v1.Node {
+	return nil
+}

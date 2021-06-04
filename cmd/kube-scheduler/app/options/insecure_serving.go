@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -14,6 +15,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// File modified by backporting scheduler 1.18.5 from kubernetes on 05/04/2021
 package options
 
 import (
@@ -47,7 +49,7 @@ func (o *CombinedInsecureServingOptions) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.BindAddress, "address", o.BindAddress, "DEPRECATED: the IP address on which to listen for the --port port (set to 0.0.0.0 for all IPv4 interfaces and :: for all IPv6 interfaces). See --bind-address instead.")
 	// MarkDeprecated hides the flag from the help. We don't want that:
 	// fs.MarkDeprecated("address", "see --bind-address instead.")
-	fs.IntVar(&o.BindPort, "port", o.BindPort, "DEPRECATED: the port on which to serve HTTP insecurely without authentication and authorization. If 0, don't serve HTTPS at all. See --secure-port instead.")
+	fs.IntVar(&o.BindPort, "port", o.BindPort, "DEPRECATED: the port on which to serve HTTP insecurely without authentication and authorization. If 0, don't serve plain HTTP at all. See --secure-port instead.")
 	// MarkDeprecated hides the flag from the help. We don't want that:
 	// fs.MarkDeprecated("port", "see --secure-port instead.")
 }
@@ -152,8 +154,8 @@ func (o *CombinedInsecureServingOptions) Validate() []error {
 
 	errors := []error{}
 
-	if o.BindPort < 0 || o.BindPort > 65335 {
-		errors = append(errors, fmt.Errorf("--port %v must be between 0 and 65335, inclusive. 0 for turning off insecure (HTTP) port", o.BindPort))
+	if o.BindPort < 0 || o.BindPort > 65535 {
+		errors = append(errors, fmt.Errorf("--port %v must be between 0 and 65535, inclusive. 0 for turning off insecure (HTTP) port", o.BindPort))
 	}
 
 	if len(o.BindAddress) > 0 && net.ParseIP(o.BindAddress) == nil {
