@@ -70,6 +70,9 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     delete-kubemark-master
   done
 
+  export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+  delete-proxy
+
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
   rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp

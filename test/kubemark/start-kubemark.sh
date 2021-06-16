@@ -72,16 +72,10 @@ fi
 ### files to explicitly save the kubeconfig to different cluster or proxy
 ### those are used for targeted operations such as tenant creation etc on
 ### desired cluster directly
-###
-PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
-
-export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
-export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
 export SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
 export KUBE_APISERVER_EXTRA_ARGS=${KUBE_APISERVER_EXTRA_ARGS:-}
 export KUBE_CONTROLLER_EXTRA_ARGS=${KUBE_CONTROLLER_EXTRA_ARGS:-}
 export KUBE_SCHEDULER_EXTRA_ARGS=${KUBE_SCHEDULER_EXTRA_ARGS:-}
-export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
 
 # Generate a random 6-digit alphanumeric tag for the kubemark image.
 # Used to uniquify image builds across different invocations of this script.
@@ -426,6 +420,32 @@ function start_hollow_nodes_scaleout {
   done
 }
 
+# setup_proxy setups the proxy service for the scale-out deployment
+# and creates kubeconfig with the proxy service IP and port
+function setup_proxy {
+  local -r tp1_ip=$(grep server "${TP_KUBECONFIG}-1" | awk -F "/" '{print $3}')
+  export TPIP="${tp1_ip}"
+  for (( tp_num=2; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    tp_ip=$(grep server "${TP_KUBECONFIG}-${tp_num}" | awk -F "/" '{print $3}')
+    export TPIP=${TPIP},"${tp_ip}"
+  done
+
+  # currently proxy only supports 1 RP
+  rp1_ip=$(grep server "${RP_KUBECONFIG}-1" | awk -F "/" '{print $3}')
+  export RPIP="${rp1_ip}"
+
+  export KUBERNETES_SCALEOUT_PROXY=true
+  export KUBE_BEARER_TOKEN=${SHARED_APISERVER_TOKEN}
+  export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+  export PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
+  export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+  export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
+  export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
+  create-arktos-proxy
+  export KUBERNETES_SCALEOUT_PROXY=false
+}
+
 detect-project &> /dev/null
 
 rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
@@ -442,7 +462,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
   export KUBE_ENABLE_APISERVER_INSECURE_PORT="${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}"
   export KUBERNETES_TENANT_PARTITION=true
-  export KUBERNETES_SCALEOUT_PROXY=true
+  export KUBERNETES_RESOURCE_PARTITION=false
   export PROXY_KUBECONFIG
 
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
@@ -450,9 +470,6 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     export TENANT_PARTITION_SEQUENCE=${tp_num}
     export KUBEMARK_CLUSTER_KUBECONFIG="${TP_KUBECONFIG}-${tp_num}"
     create-kubemark-master
-
-    export PROXY_RESERVED_IP=$(cat ${KUBE_TEMP}/proxy-reserved-ip.txt)
-    echo "DBG: PROXY_RESERVED_IP=$PROXY_RESERVED_IP"
     
     export TP_${tp_num}_RESERVED_IP=$(cat ${KUBE_TEMP}/master_reserved_ip.txt)
 
@@ -476,9 +493,6 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       export SHARED_APISERVER_TOKEN=${tp1_token}
       echo "shares token: ${SHARED_APISERVER_TOKEN}"
     fi
-
-    ## reset the scaleout proxy flag
-    export KUBERNETES_SCALEOUT_PROXY=false
   done
 
   echo "DBG: Starting resource partition ..."
@@ -499,6 +513,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 
   restart_tp_scheduler_and_controller
   start_hollow_nodes_scaleout
+  setup_proxy
 else
   # scale-up, just create the master servers
   export KUBEMARK_CLUSTER_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark"
@@ -516,21 +531,8 @@ else
   echo "Master IP: ${MASTER_IP}"
 fi
 
-# all kubectl OPs go via the proxy for scale-out env
-if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-  KUBEMARK_KUBECONFIG="${PROXY_KUBECONFIG}"
-else
-  KUBEMARK_KUBECONFIG="${KUBEMARK_CLUSTER_KUBECONFIG}"
-fi
-
 sleep 5
 echo -e "\nListing kubeamrk cluster details:" >&2
-echo -e "Getting total nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get node | wc -l
-echo
-echo -e "Getting total hollow-nodes number:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get node | grep "hollow-node" | wc -l
-echo
 
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
@@ -541,18 +543,41 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     "${KUBECTL}" --kubeconfig="${rp_kubeconfig}" get node | grep "hollow-node" | wc -l
     echo
   done
+
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    tp_kubeconfig="${TP_KUBECONFIG}-${tp_num}"
+    echo
+    echo -e "Getting endpoints status for TP-${tp_num}:" >&2
+    "${KUBECTL}" --kubeconfig="${tp_kubeconfig}" get endpoints -A
+    echo
+    echo -e "Getting workload controller co status for TP-${tp_num}:" >&2
+    "${KUBECTL}" --kubeconfig="${tp_kubeconfig}" get co
+    echo
+    echo -e "Getting apiserver data partition status for TP-${tp_num}:" >&2
+    "${KUBECTL}" --kubeconfig="${tp_kubeconfig}" get datapartition
+    echo
+    echo -e "Getting ETCD data partition status for TP-${tp_num}:" >&2
+    "${KUBECTL}" --kubeconfig="${tp_kubeconfig}" get etcd
+    echo
+  done
+else
+  KUBEMARK_KUBECONFIG="${KUBEMARK_CLUSTER_KUBECONFIG}"
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get node | wc -l
+  echo
+  echo -e "Getting total hollow-nodes number:" >&2
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get node | grep "hollow-node" | wc -l
+  echo
+  echo -e "Getting endpoints status:" >&2
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get endpoints -A
+  echo
+  echo -e "Getting workload controller co status:" >&2
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get co
+  echo
+  echo -e "Getting apiserver data partition status:" >&2
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get datapartition
+  echo
+  echo -e "Getting ETCD data partition status:" >&2
+  "${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get etcd
+echo
 fi
-
-echo -e "Getting endpoints status:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get endpoints -A
-echo
-echo -e "Getting workload controller co status:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get co
-echo
-echo -e "Getting apiserver data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get datapartition
-echo
-echo -e "Getting ETCD data partition status:" >&2
-"${KUBECTL}" --kubeconfig="${KUBEMARK_KUBECONFIG}" get etcd
-echo
-
