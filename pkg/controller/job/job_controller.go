@@ -22,6 +22,7 @@ import (
 	"math"
 	"reflect"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -250,6 +251,27 @@ func (jm *JobController) updatePod(old, cur interface{}) {
 
 	// the only time we want the backoff to kick-in, is when the pod failed
 	immediate := curPod.Status.Phase != v1.PodFailed
+
+	// Add watch log here as this controller is not used in density test, performance should not be affected
+	if curPod.Status.Phase == v1.PodRunning {
+		ct := time.Now()
+		var startTime metav1.Time
+		for _, cs := range curPod.Status.ContainerStatuses {
+			if cs.State.Running != nil {
+				if startTime.Before(&cs.State.Running.StartedAt) {
+					startTime = cs.State.Running.StartedAt
+				}
+			}
+		}
+		if startTime != metav1.NewTime(time.Time{}) && strings.Contains(curPod.Name, "latency") {
+			klog.Infof("pod %v/%v/%v, pod_startup %v ms, runToWatch %v ms, runTime %v, watchTime %v",
+				curPod.Tenant, curPod.Namespace, curPod.Name,
+				ct.Sub(curPod.CreationTimestamp.Time).Milliseconds(), // pod_startup
+				ct.Sub(startTime.Time).Milliseconds(),                // runToWatch
+				startTime.Format(time.RFC3339Nano),                   // runTime
+				ct.Format(time.RFC3339Nano))                          // watchTime
+		}
+	}
 
 	curControllerRef := metav1.GetControllerOf(curPod)
 	oldControllerRef := metav1.GetControllerOf(oldPod)
