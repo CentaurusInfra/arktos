@@ -225,9 +225,18 @@ func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
 				p.podStartupEntries.Set(key, runPhase, startTime.Time)
 
 				if strings.Contains(pod.Name, "latency") {
-					klog.Infof("pod %v-%v, createTime %v, startTime %v, watchTime %v, startToWatch %v ms",
-						pod.Namespace, pod.Name, pod.CreationTimestamp.Time.Format(time.RFC3339),
-						startTime.Format(time.RFC3339), ct.Format(time.RFC3339), ct.Sub(startTime.Time).Milliseconds())
+					scheduleTime, isOK := p.podStartupEntries.Get(key, schedulePhase)
+
+					klog.Infof("pod %v/%v/%v, pod_startup %v ms, createToSchedule %v (%v) ms, runToWatch %v ms, createTime %v, scheduleTime %v (%v), runTime %v, watchTime %v, hostname %s",
+						pod.Tenant, pod.Namespace, pod.Name,
+						ct.Sub(pod.CreationTimestamp.Time).Milliseconds(),                 // pod_startup
+						scheduleTime.Sub(pod.CreationTimestamp.Time).Milliseconds(), isOK, // createToSchedule
+						ct.Sub(startTime.Time).Milliseconds(),               // runToWatch
+						pod.CreationTimestamp.Time.Format(time.RFC3339Nano), // createTime
+						scheduleTime.Format(time.RFC3339Nano), isOK,         // scheduleTime
+						startTime.Format(time.RFC3339Nano), // runTime
+						ct.Format(time.RFC3339Nano),        // watchTime
+						pod.Spec.NodeName)
 				}
 
 			} else {
