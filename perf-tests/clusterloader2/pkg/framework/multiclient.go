@@ -23,6 +23,7 @@ import (
 
 	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/config"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -50,7 +51,7 @@ func NewMultiClientSet(kubeconfigPath string, number int) (*MultiClientSet, erro
 		if number < 1 {
 			return nil, fmt.Errorf("incorrect clients number")
 		}
-		m.clients[i], err = clientset.NewForConfig(conf)
+		m.clients[i], err = clientset.NewForConfig(restclient.AddUserAgent(conf, "cluster-loader"))
 		if err != nil {
 			return nil, fmt.Errorf("creating clientset failed: %v", err)
 		}
@@ -86,7 +87,7 @@ func NewMultiDynamicClient(kubeconfigPath string, number int) (*MultiDynamicClie
 		if number < 1 {
 			return nil, fmt.Errorf("incorrect clients number")
 		}
-		m.clients[i], err = dynamic.NewForConfig(conf)
+		m.clients[i], err = dynamic.NewForConfig(restclient.AddUserAgent(conf, "cluster-loader"))
 		if err != nil {
 			return nil, fmt.Errorf("creating dynamic config failed: %v", err)
 		}
@@ -109,7 +110,7 @@ func NewRestMapper(kubeconfigPath string) (*restmapper.DeferredDiscoveryRESTMapp
 		return nil, fmt.Errorf("config prepare failed: %v", err)
 	}
 
-	discoveryClient, err := clientset.NewForConfig(conf)
+	discoveryClient, err := clientset.NewForConfig(restclient.AddUserAgent(conf, "cluster-loader-discovery"))
 	if err != nil {
 		return nil, fmt.Errorf("creating discovery client failed: %v", err)
 	}

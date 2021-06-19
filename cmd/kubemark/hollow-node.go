@@ -186,7 +186,7 @@ func run(config *hollowNodeConfig) {
 			klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 		}
 
-		clientFromConfig, err := clientset.NewForConfig(cfg)
+		clientFromConfig, err := clientset.NewForConfig(restclient.AddUserAgent(cfg, "hollow-node"))
 		if err != nil {
 			klog.Fatalf("Failed to create a ClientSet: %v. Exiting.", err)
 		}
@@ -232,7 +232,7 @@ func run(config *hollowNodeConfig) {
 			cfg.ContentType = "application/json"
 			cfg.AcceptContentTypes = "application/json"
 		}
-		arktosExtClient, err := arktos.NewForConfig(&arktosExtClientConfig)
+		arktosExtClient, err := arktos.NewForConfig(restclient.AddUserAgent(&arktosExtClientConfig, "arktos-extension"))
 		if err != nil {
 			klog.Fatalf("Failed to create an arktos ClientSet: %v. Exiting.", err)
 		}
