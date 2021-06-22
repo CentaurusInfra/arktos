@@ -49,7 +49,7 @@ There are two types of partitions in Arktos:  tenant partition and resource mana
 * Tenant Partition: Handles workloads from tenant users, such as CRUD pods/deployments/jobs/statefulsets/. It stores all API resources belong to tenants, and serves all API requests from these tenants.
 * Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
 
-DaemonSet is special in the Scaled-out Arktos. Please refer to section [DaemonSet](#daemonset).
+DaemonSet is special in the Scale-out Arktos. Please refer to section [DaemonSet](#daemonset).
 
 Tenant partitions and resource managers can scale independently from each other:
 
@@ -127,7 +127,7 @@ A resource manager contains the following components:
 ### <a id="daemonset"></a>DaemonSet in Scale-out Arktos
 In the scale-out architecture, DaemonSet is only allowed for system tenant. A DaemonSet object resides on a Tenant Partition, in the TP's system tenant (by the priciple of no single "system partition", there exist multiple TP that have system tenants); DaemonSet controller and scheduler deployed on the TP create daemon Pods and assign then with proper node resource, respectively. Kubelet looks up the specific TP for API resources (e.g. configmap, secret) needed by the initialization of  system-tenanted daemon Pod.
 
-DaemonSet objects can reside on multiple TP; the cluster admin can continue manage DaemonSet resources even when some tenant partitions have failed. However, the DaemonSet, and its related Pods, of the failed TP may not be able to update in current design phase.
+DaemonSet objects can reside on multiple TP; the cluster admin can continue manage DaemonSet resources even when some tenant partitions have failed. However, the DaemonSet, and its related Pods, of the failed TP, may not be managed - this is the limitation of this design; recovering is possible, but out of the current concern.
 
 ## Required Changes
 
@@ -162,9 +162,9 @@ DaemonSet objects can reside on multiple TP; the cluster admin can continue mana
 #### API Server
 API Server mostly remains unchanged. But some scenarios (like kubectl log/attach) it needs to talk to a kubelet directly:
 
-* Find the right kubelet endpoint when it needs to talk to a kubelet instance. 
+* Find the right kubelet endpoint when it needs to talk to a kubelet instance.
 
-* Add the admission controller module to allow DaemonSet of system tenant.
+* Add the admission controller module to allow DaemonSet of system tenant only.
 
 #### API Gateway
 
