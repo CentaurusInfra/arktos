@@ -47,7 +47,9 @@ The key idea is to split the entire control plane into multiple partitions by te
 There are two types of partitions in Arktos:  tenant partition and resource manager. They manage various workloads and scale independently:
 
 * Tenant Partition: Handles workloads from tenant users, such as CRUD pods/deployments/jobs/statefulsets/. It stores all API resources belong to tenants, and serves all API requests from these tenants.
-* Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, daemonSets, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
+* Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
+
+DaemonSet is special in the Scaled-out Arktos. Please refer to section [DaemonSet](#daemonset).
 
 Tenant partitions and resource managers can scale independently from each other:
 
@@ -122,6 +124,11 @@ A resource manager contains the following components:
 * Active-standby Controller manager process
 * Active-standby scheduler
 
+### <a id="daemonset"></a>DaemonSet in Scale-out Arktos
+In the scale-out architecture, DaemonSet is only allowed for system tenant. A DaemonSet object resides on a Tenant Partition, in the TP's system tenant (by the priciple of no single "system partition", there exist multiple TP that have system tenants); DaemonSet controller and scheduler deployed on the TP create daemon Pods and assign then with proper node resource, respectively. Kubelet looks up the specific TP for API resources (e.g. configmap, secret) needed by the initialization of  system-tenanted daemon Pod.
+
+DaemonSet objects can reside on multiple TP; the cluster admin can continue manage DaemonSet resources even when some tenant partitions have failed. However, the DaemonSet, and its related Pods, of the failed TP may not be able to update in current design phase.
+
 ## Required Changes
 
 #### Kubelet
@@ -130,6 +137,7 @@ A resource manager contains the following components:
 * Track the mapping between tenant ID and kube-clients.
 * Use the right kube-client to do CRUD for all objects.
 * Dynamically discover new tenant partitions based on CRD objects in its resource manager.
+* Able to identify the TP where system-tenanted daemon Pod is originated, and fetch resources from that TP when initializing the Pod.
 
 #### Controller Managers
 
@@ -155,6 +163,8 @@ A resource manager contains the following components:
 API Server mostly remains unchanged. But some scenarios (like kubectl log/attach) it needs to talk to a kubelet directly:
 
 * Find the right kubelet endpoint when it needs to talk to a kubelet instance. 
+
+* Add the admission controller module to allow DaemonSet of system tenant.
 
 #### API Gateway
 
