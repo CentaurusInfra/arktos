@@ -129,6 +129,8 @@ In the scale-out architecture, DaemonSet is only allowed for system tenant. A Da
 
 DaemonSet objects can reside on multiple TP; the cluster admin can continue manage DaemonSet resources even when some tenant partitions have failed. However, the DaemonSet, and its related Pods, of the failed TP, may not be managed - this is the limitation of this design; recovering is possible, but out of the current concern.
 
+Side-note: in scale-up Arktos, DaemonSet of system tenant is allowed as well. Due to the fact that there is the single master, DaemonSet's support is almost trivial to provide.
+
 ## Required Changes
 
 #### Kubelet
