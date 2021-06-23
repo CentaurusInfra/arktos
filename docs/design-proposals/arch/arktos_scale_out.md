@@ -49,8 +49,6 @@ There are two types of partitions in Arktos:  tenant partition and resource mana
 * Tenant Partition: Handles workloads from tenant users, such as CRUD pods/deployments/jobs/statefulsets/. It stores all API resources belong to tenants, and serves all API requests from these tenants.
 * Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
 
-DaemonSet is special in the Scale-out Arktos. Please refer to section [DaemonSet](#daemonset).
-
 Tenant partitions and resource managers can scale independently from each other:
 
 * If we have more hosts, we deploy more resource managers.
@@ -124,13 +122,6 @@ A resource manager contains the following components:
 * Active-standby Controller manager process
 * Active-standby scheduler
 
-### <a id="daemonset"></a>DaemonSet in Scale-out Arktos
-In the scale-out architecture, DaemonSet is only allowed for system tenant. A DaemonSet object resides on a Tenant Partition, in the TP's system tenant (by the priciple of no single "system partition", there exist multiple TP that have system tenants); DaemonSet controller and scheduler deployed on the TP create daemon Pods and assign then with proper node resource, respectively. Kubelet looks up the specific TP for API resources (e.g. configmap, secret) needed by the initialization of  system-tenanted daemon Pod.
-
-DaemonSet objects can reside on multiple TP; the cluster admin can continue manage DaemonSet resources even when some tenant partitions have failed. However, the DaemonSet, and its related Pods, of the failed TP, may not be managed - this is the limitation of this design; recovering is possible, but out of the current concern.
-
-Side-note: in scale-up Arktos, DaemonSet of system tenant is allowed as well. Due to the fact that there is the single master, DaemonSet's support is almost trivial to provide.
-
 ## Required Changes
 
 #### Kubelet
@@ -139,7 +130,6 @@ Side-note: in scale-up Arktos, DaemonSet of system tenant is allowed as well. Du
 * Track the mapping between tenant ID and kube-clients.
 * Use the right kube-client to do CRUD for all objects.
 * Dynamically discover new tenant partitions based on CRD objects in its resource manager.
-* Able to identify the TP where system-tenanted daemon Pod is originated, and fetch resources from that TP when initializing the Pod.
 
 #### Controller Managers
 
@@ -164,9 +154,7 @@ Side-note: in scale-up Arktos, DaemonSet of system tenant is allowed as well. Du
 #### API Server
 API Server mostly remains unchanged. But some scenarios (like kubectl log/attach) it needs to talk to a kubelet directly:
 
-* Find the right kubelet endpoint when it needs to talk to a kubelet instance.
-
-* Add the admission controller module to allow DaemonSet of system tenant only.
+* Find the right kubelet endpoint when it needs to talk to a kubelet instance
 
 #### API Gateway
 
