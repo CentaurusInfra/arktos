@@ -6,7 +6,7 @@ Due to the nature Arktos being a multiple-tenanted system, DaemonSet is only all
 Scale-up Arktos has single master. With the admission controller blocking non-system tenant DaemonSet enabled by API Server, Arktos is able to ensure DaemonSet proper support.
 
 ### DaemonSet in Scale-out Arktos
-[Scale-out Arktos](arktos_scale_out.md) may have multiple tenant partitions and resource managers; each of them has Kubernetes master components including API Server, controller manager, etc. DaemonSet resource will be managed by tenant partition, as the controllers in tenant partition have the global view of Node resources.
+[Scale-out Arktos](arktos_scale_out.md) may have multiple tenant partitions and resource partitions; each of them has master components including API Server, controller manager, etc. DaemonSet resource will be managed by tenant partition, as the controllers in tenant partition have the global view of Node resources.
 
 In tenant partition, DaemonSet controller populates daemon Pods for the specific DaemonSet, using the global view of Nodes; its scheduler schedules each daemon Pod to the proper Node subsequently.
 
@@ -28,4 +28,3 @@ Kubelet shall be able to identify the API resources (configmap, secret etc) from
 
 Below is the diagram of kubelet environment preparing process:
 <p align="center"> <img src="images/daemonset_OPD/daemonset-support-DS-creating-podStarting-envPreparing.jpg"> </p>
-
