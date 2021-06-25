@@ -12,6 +12,25 @@ In tenant partition, DaemonSet controller populates daemon Pods for the specific
 
 On the node, kubelet gets notification of daemon Pod's creation, then prepares environment for the Pod, finally starts the pod in the prepared environment. The environment preparation includes fetching the specified API resources (like secret, configmap) as defined in Pod spec and provisioning in form of files/data in node's filesystem. In order to ensure API resources are fecthed from the proper tenant partition, kubelet shall maintain the mapping of daemon Pod to tenant partition origin; whenever the needed resource of the daemon Pod is fetched, kubelet shall lookup the mapping and use that of the proper tenant partition.
 
+In case of the tenant partition that manages a DaemonSet fails, other tenant partitions are available for cluster admin to manage DaemonSets; the DaemonSet previously managed on the failed TP may not be updated, system functionality being degraded. There is possibilities to recover the affected DaemonSet to functioning TP, but it is out of our current design interests.
+
+#### Alternatives
+We considered other options for DaemonSet in scale-out Arktos.
+
+**DaemonSet in Resource Partition**
+
+DaemonSet resource is managed combinely by all resource partitions; tenant partition is not involved. Each resource partition has its own copy of the DaemonSet resource; its DaemonSet controller and scheduler manage the DaemonSet in (local) scope of its Nodes.
+
+This architecture has some defects:
+* Lack of built-in mechanism to distribute and sync DaemonSet copies to all tenant partitions;
+* Increase of inconsistency of tenanted API resource accesses (e.g. kubelet need to get Pods from RP besides TP's).
+
+**DaemonSet in Hybrid**
+
+This is a variant of the above-mentioned DS in RP: cluster admin manages DaemonSet at tenant partition; system implements a built-in distribution mechanism (DaemonSet distribution controller) to push DeamonSet change to all resource partitions.
+
+This architecture mitigates the DS sync problem, but it brings more incompatibility of scale-out and scale-up.
+
 ### Reequired Changes
 The minimum changes required to support DaemonSet of Arktos
 
