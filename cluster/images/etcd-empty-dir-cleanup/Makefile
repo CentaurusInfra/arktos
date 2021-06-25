@@ -15,13 +15,13 @@
 
 .PHONY:	build push
 
-ETCD_VERSION = 3.4.4-arktos.1
+ETCD_VERSION = 3.4.3
 # Image should be pulled from k8s.gcr.io, which will auto-detect
 # region (us, eu, asia, ...) and pull from the closest.
 REGISTRY? = gcr.io
 # Images should be pushed to staging-k8s.gcr.io.
 PUSH_REGISTRY? = gcr.io
-TAG = 3.4.4-arktos.1-1
+TAG = 3.4.3.0
 
 clean:
 	rm -rf etcdctl etcd-v$(ETCD_VERSION)-linux-amd64 etcd-v$(ETCD_VERSION)-linux-amd64.tar.gz
