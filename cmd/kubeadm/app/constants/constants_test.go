@@ -162,12 +162,12 @@ func TestEtcdSupportedVersion(t *testing.T) {
 		},
 		{
 			kubernetesVersion: "1.14.0",
-			expectedVersion:   version.MustParseSemantic("3.4.4-arktos.1-1"),
+			expectedVersion:   version.MustParseSemantic("3.4.3.0"),
 			expectedError:     nil,
 		},
 		{
 			kubernetesVersion: "1.14.1",
-			expectedVersion:   version.MustParseSemantic("3.4.4-arktos.1-1"),
+			expectedVersion:   version.MustParseSemantic("3.4.3.0"),
 			expectedError:     nil,
 		},
 		{
