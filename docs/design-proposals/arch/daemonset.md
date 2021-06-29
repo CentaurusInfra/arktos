@@ -1,12 +1,12 @@
 ## DaemonSet in Arktos
 
-Due to the nature Arktos being a multiple-tenanted system, DaemonSet is only allowed in system tenant; only cluster admin is permitted to create/delete DaemonSet resources.
+Due to the nature Arktos being a multiple-tenanted system, DaemonSet is only allowed in system tenant; only cluster admin is permitted to create/delete/update DaemonSet resources.
 
 ### What is not covered yet
 At this stage of Arktos, PVC/PV for storage volume is not fully supported - out of scope of this DaemonSet design.
 
 ### DaemonSet in Scale-up Arktos
-Scale-up Arktos has single master. With the admission controller blocking non-system tenant DaemonSet enabled by API Server, Arktos is able to ensure DaemonSet proper support.
+Scale-up Arktos has single master. With the admission controller blocking non-system tenant DaemonSet, Arktos is able to ensure DaemonSet proper support.
 
 ### DaemonSet in Scale-out Arktos
 [Scale-out Arktos](arktos_scale_out.md) may have multiple tenant partitions and resource partitions; each of them has master components including API Server, controller manager, etc. DaemonSet resource will be managed by tenant partition, as the controllers in tenant partition have the global view of Node resources.
@@ -25,6 +25,8 @@ In case of the tenant partition that manages a DaemonSet fails, other tenant par
 
 Arranging Daemonset and its supporting resources within the unit of TP as depeicted above does not put unnecessary constraint of how system tenant being managed across TP. Whether Arktos scale-out chooses to have multiple TP's with each being able to manage its own system tenant resources, or to have a single dedicated Partition for system tenant resources likely enhanced by some sort of HA, this design stands - as long as DaemonSet and its supporting API resources are managed by the same TP.
 
+Providing a centralized DaemonSet management tool on top of all and every TP is convenience gain for cluster admin; however it is beyond the core design. The rudimentary utility using kubectl config context is able to mitigate before a better solution is available.
+
 #### Alternatives
 We considered other options for DaemonSet in scale-out Arktos.
 
@@ -34,13 +36,15 @@ DaemonSet resource is managed combinely by all resource partitions; tenant parti
 
 This architecture has some defects:
 * Lack of built-in mechanism to distribute and sync DaemonSet copies to all tenant partitions;
-* Increase of inconsistency of tenanted API resource accesses (e.g. kubelet need to get Pods from RP besides TP's).
+* Increased operation complexity: multiple RP's each runs master controllers;
+* Decreased scheudule accuracy: scheduler in RP schedules daemon Pods which cannot have the resource allocation reflected in schedule in TP, which leads to inaccuracy of the deceived resources.
+* Overlap of TP/RP: Pod/configmap/secret may be managed by TP or RP - depending on whether they are DaemonSet related or not, which tarnishes the clear cut of TP/RP.
 
 **DaemonSet in Hybrid**
 
 This is a variant of the above-mentioned DS in RP: cluster admin manages DaemonSet at tenant partition; system implements a built-in distribution mechanism (DaemonSet distribution controller) to push DeamonSet change to all resource partitions.
 
-This architecture mitigates the DS sync problem, but it brings more incompatibility of scale-out and scale-up.
+This architecture mitigates the DS sync problem, but it brings more incompatibility of scale-out and scale-up, as scale-up hs no such sync in the first place.
 
 ### Reequired Changes
 The minimum changes required to support DaemonSet of Arktos
