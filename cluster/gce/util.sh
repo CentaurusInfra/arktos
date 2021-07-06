@@ -3203,20 +3203,6 @@ function create-master() {
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
 
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
-    if [[ -f /tmp/saved_tenant_ips.txt ]]; then
-      TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
-    fi
-    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then
-      TP_IP_CONCAT="${MASTER_RESERVED_IP}"
-    else
-      TP_IP_CONCAT="${TP_IP_CONCAT},${MASTER_RESERVED_IP}"
-    fi
-
-    echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
-  fi
-
-
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
     # unnecessary work in case master start-up fails (like creation of nodes).

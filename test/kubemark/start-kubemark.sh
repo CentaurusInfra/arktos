@@ -470,8 +470,6 @@ function create_RP() {
 
 detect-project &> /dev/null
 
-rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
-
 ### master_metadata is used in the cloud-int script to create the GCE VMs
 #
 MASTER_METADATA=""
