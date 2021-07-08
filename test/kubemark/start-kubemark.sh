@@ -529,6 +529,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
+    # TODO: each background call has dedicated log
     create_TP ${tp_num} &
   done
 
@@ -545,6 +546,7 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 
   for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
   do
+    # TODO: each background call has dedicated log
     create_RP ${rp_num} &
   done
 
