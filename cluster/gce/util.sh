@@ -2489,6 +2489,15 @@ EOF"
   ssh-to-node ${SCALEOUT_PROXY_NAME} "sudo mv /tmp/prometheus.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl start prometheus.service"
 }
 
+function test_resource_upload() {
+  # Make sure we have the tar files staged on Google Storage
+  find-release-tars
+  registry-authentication
+  create-and-upload-etcd-image
+  create-and-upload-etcd-empty-dir-cleanup-image
+  upload-tars
+}
+
 # Instantiate a kubernetes cluster
 #
 # Assumed vars
@@ -2502,12 +2511,12 @@ function kube-up() {
   load-or-gen-kube-bearertoken
   load-or-gen-kube-clienttoken
 
-  # Make sure we have the tar files staged on Google Storage
-  find-release-tars
-  registry-authentication
-  create-and-upload-etcd-image
-  create-and-upload-etcd-empty-dir-cleanup-image
-  upload-tars
+  if [[ -z ${UPLOAD_TAR_DONE:-} ]]; then
+    echo "DBG: uploading image + tar files..."
+    test_resource_upload
+    echo "DBG: (at kube-up) image + tar files uploaded"
+    UPLOAD_TAR_DONE="done in kube-up"
+  fi
 
   # ensure that environmental variables specifying number of migs to create
   set_num_migs
@@ -3154,10 +3163,9 @@ function create-master() {
   # without disrupting the kubelets.
   create-static-ip "${MASTER_NAME}-ip" "${REGION}"
   create-static-internalip "${MASTER_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
+
   MASTER_RESERVED_IP=$(gcloud compute addresses describe "${MASTER_NAME}-ip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-
-  echo ${MASTER_RESERVED_IP} > ${KUBE_TEMP}/master_reserved_ip.txt
 
   MASTER_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${MASTER_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
@@ -3194,20 +3202,6 @@ function create-master() {
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
-
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" && "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
-    if [[ -f /tmp/saved_tenant_ips.txt ]]; then
-      TP_IP_CONCAT=$(cat /tmp/saved_tenant_ips.txt)
-    fi
-    if [[ "${TP_IP_CONCAT:-}" == "" ]]; then
-      TP_IP_CONCAT="${MASTER_RESERVED_IP}"
-    else
-      TP_IP_CONCAT="${TP_IP_CONCAT},${MASTER_RESERVED_IP}"
-    fi
-
-    echo "${TP_IP_CONCAT}" > /tmp/saved_tenant_ips.txt
-  fi
-
 
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
@@ -3910,6 +3904,7 @@ function check-cluster() {
   local start_time=$(date +%s)
   local curl_out=$(mktemp)
   kube::util::trap_add "rm -f ${curl_out}" EXIT
+
   until curl --cacert "${CERT_DIR}/pki/ca.crt" \
           -H "Authorization: Bearer ${KUBE_BEARER_TOKEN}" \
           ${secure} \
@@ -3927,6 +3922,7 @@ function check-cluster() {
       printf "."
       sleep 2
   done
+set +x
 
   echo "Kubernetes cluster created."
 
