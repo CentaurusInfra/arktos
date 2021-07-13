@@ -47,7 +47,7 @@ The key idea is to split the entire control plane into multiple partitions by te
 There are two types of partitions in Arktos:  tenant partition and resource manager. They manage various workloads and scale independently:
 
 * Tenant Partition: Handles workloads from tenant users, such as CRUD pods/deployments/jobs/statefulsets/. It stores all API resources belong to tenants, and serves all API requests from these tenants.
-* Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, daemonSets, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
+* Resource Manager: a resource manager manages a host group. It stores API resources related to these hosts, like nodes, node leases, etc. These resources don't belong to any tenant. A resource manager also serves the heartbeat traffic and status update traffic from all these hosts.
 
 Tenant partitions and resource managers can scale independently from each other:
 
@@ -154,7 +154,7 @@ A resource manager contains the following components:
 #### API Server
 API Server mostly remains unchanged. But some scenarios (like kubectl log/attach) it needs to talk to a kubelet directly:
 
-* Find the right kubelet endpoint when it needs to talk to a kubelet instance. 
+* Find the right kubelet endpoint when it needs to talk to a kubelet instance
 
 #### API Gateway
 
