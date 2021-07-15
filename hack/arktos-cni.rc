@@ -29,6 +29,9 @@ setup_cni_conf() {
     if [ -s ${conf_target_file} ]; then
       echo "${conf_target_file} already exists; keep it."
       return
+    else
+      echo "deleting other existing conf files"
+      sudo rm -rf ${cni_conf_dir}/*
     fi
 
     echo "copying ${conf_source_file} to ${conf_target_file}..."
@@ -66,6 +69,23 @@ install_cni_bridge() {
     echo "done with bridge cni plugin installation"
 }
 
+install_cni_mizar() {
+    echo "Ensuring firewall to allow traffic forward by default"
+    sudo iptables -S FORWARD | grep '\-P' | grep DROP && sudo iptables -P FORWARD ACCEPT
+    sudo iptables -S FORWARD | grep '\-P'
+
+    export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
+    export ARKTOS_NETWORK_TEMPLATE=mizar
+
+    ensure_cni_binaries
+
+    [ ! -f "${cni_conf_dir}/10-mizarcni.conf" ] && wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/cni/10-mizarcni.conf -P /tmp/
+
+    local cni_conf_source=/tmp/10-mizarcni.conf
+    setup_cni_conf  "${cni_conf_dir}/10-mizarcni.conf" ${cni_conf_source}
+
+    echo "done with mizar cni plugin installation"
+}
 
 build_alktron() {
     local ALKTRON_DIR=$1
@@ -158,6 +178,26 @@ install_arktos_containerd() {
     fi
 }
 
+install_mizar_arktos_containerd () {
+    [ ! -d "$HOME/arktos-containerd" ] && mkdir $HOME/arktos-containerd
+    local CONTAINERD_DIR=$HOME/arktos-containerd
+    [ ! -f "$CONTAINERD_DIR/containerd" ] && wget -qO- https://github.com/CentaurusInfra/containerd/releases/download/tenant-cni-args/containerd.zip | zcat > $CONTAINERD_DIR/containerd && sudo chmod +x $CONTAINERD_DIR/containerd
+    echo "Checking arktos containerd..."
+    if [ ! "$(${CONTAINERD_DIR}/containerd --version)" == "$(containerd --version)" ] ; then
+      echo "arktos containerd not found..."
+      [ ! -f "$HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz" ] && wget https://github.com/containerd/containerd/releases/download/v1.4.2/containerd-1.4.2-linux-amd64.tar.gz -P $HOME/arktos-containerd/
+      tar -zxf $HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz --directory /usr/
+      echo "installing arktos containerd..."
+      sudo systemctl stop containerd
+      sudo mv /usr/bin/containerd /usr/bin/containerd.bak
+      sudo cp $HOME/arktos-containerd/containerd /usr/bin/
+      sudo systemctl restart containerd
+      sudo systemctl restart docker
+    else
+      echo "arktos containerd found..."
+    fi
+}
+
 
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
@@ -170,6 +210,10 @@ if [[ -n "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
 elif [ "${CNIPLUGIN}" == "bridge" ]; then
     echo "cni plugin is bridge; arktos will use bridge to provision pod network"
     install_cni_bridge
+elif [ "${CNIPLUGIN}" == "mizar" ]; then
+    echo "cni plugin is mizar; arktos will use mizar to provision pod network"
+    install_mizar_arktos_containerd
+    install_cni_mizar
 elif [ "${CNIPLUGIN}" == "alktron" ]; then
     ensure_devstack
     install_arktos_containerd

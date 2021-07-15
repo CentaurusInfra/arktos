@@ -41,7 +41,7 @@ export VIRTLET_SOCK_PATH="/run/virtlet.sock"
 # This is required by virtlet deamonset installation
 export ALLOW_PRIVILEGED=true
 
-# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration)
+# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration), mizar
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 
 # This command builds and runs a local kubernetes cluster.
