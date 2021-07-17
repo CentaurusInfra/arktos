@@ -23,6 +23,10 @@ set -o pipefail
 
 export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
 
+### UPLOAD_TAR_DONE serves as global flag whether image upload has already been done
+#   empty string is not done yet; non-empty is for done.
+export UPLOAD_TAR_DONE="${UPLOAD_TAR_DONE-}"
+
 TMP_ROOT="$(dirname "${BASH_SOURCE[@]}")/../.."
 KUBE_ROOT=$(readlink -e "${TMP_ROOT}" 2> /dev/null || perl -MCwd -e 'print Cwd::abs_path shift' "${TMP_ROOT}")
 
@@ -446,17 +450,70 @@ function setup_proxy {
   export KUBERNETES_SCALEOUT_PROXY=false
 }
 
-detect-project &> /dev/null
+function create_TP() {
+  local id=${1:-0}
+  echo "DBG: creating TP ${id}"
+  export TENANT_PARTITION_SEQUENCE=${id}
+  export KUBEMARK_CLUSTER_KUBECONFIG="${TP_KUBECONFIG}-${id}"
+  create-kubemark-master
+  echo "DBG: TP ${id} created"
+}
 
-rm /tmp/saved_tenant_ips.txt >/dev/null 2>&1 || true
+function create_RP() {
+  local id=${1:-0}
+  echo "DBG: creating RP ${id}"
+  export RESOURCE_PARTITION_SEQUENCE=${id}
+  export KUBEMARK_CLUSTER_KUBECONFIG="${RP_KUBECONFIG}-${id}"
+  create-kubemark-master
+  echo "DBG: RP ${id} created"
+}
+
+detect-project &> /dev/null
 
 ### master_metadata is used in the cloud-int script to create the GCE VMs
 #
 MASTER_METADATA=""
 
+### to upload etcd image / binary tar once
+#   this used to be part of create-kubemark-master; separate it out as preliminary
+#   step to ensure it only be done once when starting kubemark cluster.
+if [[ -z ${UPLOAD_TAR_DONE:-} ]]; then
+  echo "DBG: uploading image + tar files..."
+  export SERVER_BINARY_TAR_URL
+  export SERVER_BINARY_TAR_HASH
+  export KUBE_MANIFESTS_TAR_URL
+  export KUBE_MANIFESTS_TAR_HASH
+  export NODE_BINARY_TAR_URL
+  export NODE_BINARY_TAR_HASH
+  test_resource_upload
+  echo "DBG: image + tar files uploaded"
+  UPLOAD_TAR_DONE="done by kubemark"
+fi
+
 if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   echo "DBG: Generating shared CA certificates"
   generate-shared-ca-cert
+
+  ### calculate the expected TENANT_SERVER_KUBECONFIGS and MASTER_METADATA,
+  #   which will be used by components that need to talk to all TPs.
+  export TENANT_SERVER_KUBECONFIGS
+  export MASTER_METADATA
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+      # TODO: fix the hardcoded path
+      # the path is what the controller used in master init script on the master machines
+      if [[ ${tp_num} == 1 ]]; then
+          export TENANT_SERVER_KUBECONFIGS="/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
+      else
+          export TENANT_SERVER_KUBECONFIGS="${TENANT_SERVER_KUBECONFIGS},/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
+      fi
+
+      if [[ ${tp_num} == 1 ]]; then
+          MASTER_METADATA="tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
+      else
+          MASTER_METADATA=${MASTER_METADATA},"tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
+      fi
+  done
 
   echo "DBG: Starting ${SCALEOUT_TP_COUNT} tenant partitions ..."
   export USE_INSECURE_SCALEOUT_CLUSTER_MODE="${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}"
@@ -465,35 +522,20 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   export KUBERNETES_RESOURCE_PARTITION=false
   export PROXY_KUBECONFIG
 
+  # the (shared) bearer token is needed for all TP/RP provisioning
+  export SHARED_APISERVER_TOKEN="$(secure_random 32)"
+  export KUBE_BEARER_TOKEN=${SHARED_APISERVER_TOKEN}
+  echo "DBG: shared bearer token: ${KUBE_BEARER_TOKEN}"
+
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
-    export TENANT_PARTITION_SEQUENCE=${tp_num}
-    export KUBEMARK_CLUSTER_KUBECONFIG="${TP_KUBECONFIG}-${tp_num}"
-    create-kubemark-master
-    
-    export TP_${tp_num}_RESERVED_IP=$(cat ${KUBE_TEMP}/master_reserved_ip.txt)
-
-    # TODO: fix the hardcoded path
-    # the path is what the controller used in master init script on the master machines
-    if [[ ${tp_num} == 1 ]]; then
-      export TENANT_SERVER_KUBECONFIGS="/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
-    else
-      export TENANT_SERVER_KUBECONFIGS="${TENANT_SERVER_KUBECONFIGS},/etc/srv/kubernetes/tp-kubeconfigs/tp-${tp_num}-kubeconfig"
-    fi
-
-    if [[ ${tp_num} == 1 ]]; then
-      MASTER_METADATA="tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
-    else
-      MASTER_METADATA=${MASTER_METADATA},"tp-${tp_num}=${TP_KUBECONFIG}-${tp_num}"
-    fi
-
-    # export tp-1 token and share with other clusters
-    if [[ ${tp_num} == 1 ]]; then
-      tp1_token=$(grep token "${KUBEMARK_CLUSTER_KUBECONFIG}" | awk -F ": " '{print $2}')
-      export SHARED_APISERVER_TOKEN=${tp1_token}
-      echo "shares token: ${SHARED_APISERVER_TOKEN}"
-    fi
+    # TODO: each background call has dedicated log
+    create_TP ${tp_num} &
   done
+
+  echo "DBG: waiting for all TP to be created, at $(date)..."
+  wait
+  echo "DBG: all TP created, at $(date)"
 
   echo "DBG: Starting resource partition ..."
   export KUBE_MASTER_EXTRA_METADATA="${MASTER_METADATA}"
@@ -504,12 +546,19 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
 
   for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
   do
-    export KUBEMARK_CLUSTER_KUBECONFIG="${RP_KUBECONFIG}-${rp_num}"
-    export RESOURCE_PARTITION_SEQUENCE=${rp_num}
-    create-kubemark-master
+    # TODO: each background call has dedicated log
+    create_RP ${rp_num} &
   done
 
+  echo "DBG: waiting for all RP to be created, at $(date)..."
+  wait
+  echo "DBG: all RP created, at $(date)"
+
   export KUBERNETES_RESOURCE_PARTITION=false
+
+  # proxy setup expects a valid RP kubeconfig file to get master IP from;
+  # rp-1 should be safe to assume here
+  KUBEMARK_CLUSTER_KUBECONFIG="${RP_KUBECONFIG}-1"
 
   restart_tp_scheduler_and_controller
   start_hollow_nodes_scaleout

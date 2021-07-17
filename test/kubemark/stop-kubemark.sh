@@ -76,7 +76,6 @@ if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy
   rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   rm -rf ${RESOURCE_DIRECTORY}/kubeconfig.kubemark.tmp
-  rm -rf /tmp/saved_tenant_ips.txt
   rm -rf "${SHARED_CA_DIRECTORY}"
 else
   delete-kubemark-master
