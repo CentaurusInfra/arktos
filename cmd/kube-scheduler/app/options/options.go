@@ -385,12 +385,12 @@ func createClients(config componentbaseconfig.ClientConnectionConfiguration, mas
 		return nil, nil, nil, err
 	}
 
-	// shallow copy, do not modify the kubeConfig.Timeout.
-	restConfigs := *kubeConfigs
+	// deep copy kubeConfigs to prevent kubeConfig values to be updated
+	restConfigs := restclient.CopyConfigs(kubeConfigs)
 	for _, restConfig := range restConfigs.GetAllConfigs() {
 		restConfig.Timeout = timeout
 	}
-	leaderElectionClient, err := clientset.NewForConfig(restclient.AddUserAgent(&restConfigs, "leader-election"))
+	leaderElectionClient, err := clientset.NewForConfig(restclient.AddUserAgent(restConfigs, "leader-election"))
 	if err != nil {
 		return nil, nil, nil, err
 	}
