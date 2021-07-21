@@ -801,6 +801,7 @@ func getContainer(pid int) (string, error) {
 	}
 
 	// since we use this container for accounting, we need to ensure its a unified hierarchy.
+	// Note: please comment out the following 3 lines if you want create arktos single cluster on Ubuntu 20.04 x86
 	if cpu != memory {
 		return "", fmt.Errorf("cpu and memory cgroup hierarchy not unified.  cpu: %s, memory: %s", cpu, memory)
 	}
