@@ -396,11 +396,11 @@ Alternatively, you can write to the default kubeconfig:
 
   export KUBERNETES_PROVIDER=local
 
-  sudo cluster/kubectl.sh config set-cluster local --server=https://${API_HOST}:${API_SECURE_PORT} --certificate-authority=${ROOT_CA_FILE}
-  sudo cluster/kubectl.sh config set-credentials myself ${AUTH_ARGS}
-  sudo cluster/kubectl.sh config set-context local --cluster=local --user=myself
-  sudo cluster/kubectl.sh config use-context local
-  sudo cluster/kubectl.sh config get-contexts
+  cluster/kubectl.sh config set-cluster local --server=https://${API_HOST}:${API_SECURE_PORT} --certificate-authority=${ROOT_CA_FILE}
+  cluster/kubectl.sh config set-credentials myself ${AUTH_ARGS}
+  cluster/kubectl.sh config set-context local --cluster=local --user=myself
+  cluster/kubectl.sh config use-context local
+  cluster/kubectl.sh config get-contexts
   cluster/kubectl.sh
   cluster/kubectl.sh get nodes
   cluster/kubectl.sh get all --all-namespaces
