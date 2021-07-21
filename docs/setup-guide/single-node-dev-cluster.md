@@ -39,11 +39,11 @@ Alternatively, you can write to the default kubeconfig:
 
   $ export KUBERNETES_PROVIDER=local
 
-  $ sudo cluster/kubectl.sh config set-cluster local --server=https://ip-172-31-3-192:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
-  $ sudo cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
-  $ sudo cluster/kubectl.sh config set-context local --cluster=local --user=myself
-  $ sudo cluster/kubectl.sh config use-context local
-  $ sudo cluster/kubectl.sh config get-contexts
+  $ cluster/kubectl.sh config set-cluster local --server=https://ip-172-31-3-192:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
+  $ cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
+  $ cluster/kubectl.sh config set-context local --cluster=local --user=myself
+  $ cluster/kubectl.sh config use-context local
+  $ cluster/kubectl.sh config get-contexts
   $ cluster/kubectl.sh
   $ cluster/kubectl.sh get nodes
   $ cluster/kubectl.sh get all --all-namespaces
