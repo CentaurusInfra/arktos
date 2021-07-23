@@ -14,11 +14,6 @@ $ git clone https://github.com/centaurusinfra/arktos
 $ ./hack/setup-dev-node.sh
 ```
 
-### Install needed packages (docker, make, gcc, jq and golang)
-```
-$ ./hack/setup-dev-node.sh
-```
-
 ### Update your account's profile
 Add the following lines into the profile
 ```
