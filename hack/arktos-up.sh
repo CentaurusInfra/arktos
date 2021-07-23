@@ -400,10 +400,7 @@ Alternatively, you can write to the default kubeconfig:
   cluster/kubectl.sh config set-credentials myself ${AUTH_ARGS}
   cluster/kubectl.sh config set-context local --cluster=local --user=myself
   cluster/kubectl.sh config use-context local
-  cluster/kubectl.sh config get-contexts
   cluster/kubectl.sh
-  cluster/kubectl.sh get nodes
-  cluster/kubectl.sh get all --all-namespaces
 EOF
 else
   cat <<EOF

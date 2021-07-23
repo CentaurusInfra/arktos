@@ -1,4 +1,4 @@
-# How to Setup a Dev Cluster of single node on AWS EC2 instance running Ubuntu 18.04, 16.04 and 20.04
+# How to Setup a Dev Cluster of single node on AWS EC2 instance running Ubuntu 18.04, 16.04 x86 
 
 0. Pre-requisite - setup local development environment
 ```
@@ -7,11 +7,7 @@
 
 1. Run script to create a single arktos cluster
 
-   Note: If your Dev Cluster of single node is on AWS EC2 instance running Ubuntu 20.04, please FIRST comment out the following three lines at https://github.com/CentaurusInfra/arktos/blob/master/pkg/kubelet/cm/container_manager_linux.go#L804,#L806 before running the command './hack/arktos-up.sh'.
-
-        if cpu != memory {
-		return "", fmt.Errorf("cpu and memory cgroup hierarchy not unified.  cpu: %s, memory: %s", cpu, memory)
-	}
+   Note: It is not support to start Arktos Cluster of single node on AWS EC2 instance running Ubuntu 20.04 x86.
 
 ```bash
    $ ./hack/arktos-up.sh
@@ -30,8 +26,6 @@
 2. Open another terminal to use arktos cluster
 ```bash
   $ export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
-Or
-  $ export KUBECONFIG=/var/run/kubernetes/adminN(N=0,1,...).kubeconfig
 
   $ cluster/kubectl.sh
 
@@ -39,7 +33,7 @@ Alternatively, you can write to the default kubeconfig:
 
   $ export KUBERNETES_PROVIDER=local
 
-  $ cluster/kubectl.sh config set-cluster local --server=https://ip-172-31-3-192:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
+  $ cluster/kubectl.sh config set-cluster local --server=https://<hostname>:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
   $ cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
   $ cluster/kubectl.sh config set-context local --cluster=local --user=myself
   $ cluster/kubectl.sh config use-context local
