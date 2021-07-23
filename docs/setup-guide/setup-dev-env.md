@@ -1,4 +1,4 @@
-## Set up developer environment (updated on 2021-07-19)
+## Set up developer environment (updated on 2021-07-22)
 
 Note: Tested on AWS EC2 Ubuntu 16.04/18.04/20.04 x86 image.
 
