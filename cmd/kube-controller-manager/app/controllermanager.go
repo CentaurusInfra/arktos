@@ -240,11 +240,20 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
 		// start client to resource providers
-		if len(c.ResourceProviderClients) > 0 {
+		userAgent := getUserAgent(controllerContext)
+		klog.Infof("=== user agent [%v]", userAgent) // TODO: remove before merge into master
+		if len(c.ResourceProviderKubeconfigs) > 0 {
 			controllerContext.ResourceProviderClients = make(map[string]clientset.Interface)
 			controllerContext.ResourceProviderNodeInformers = make(map[string]coreinformers.NodeInformer)
-			for i, rpClient := range c.ResourceProviderClients {
+			for i, rpKubeConfig := range c.ResourceProviderKubeconfigs {
 				rpId := "rp" + strconv.Itoa(i)
+
+				clientConfigs := restclient.AnonymousClientConfig(rpKubeConfig)
+				for _, config := range clientConfigs.GetAllConfigs() {
+					config.UserAgent = userAgent
+				}
+				rpClient := clientset.NewForConfigOrDie(clientConfigs)
+
 				resourceInformerFactory := informers.NewSharedInformerFactory(rpClient, 0)
 				resourceInformerFactory.Start(controllerContext.Stop)
 				controllerContext.ResourceProviderClients[rpId] = rpClient
@@ -666,4 +675,12 @@ func shouldTurnOnDynamicClient(client clientset.Interface) bool {
 	}
 
 	return false
+}
+
+func getUserAgent(controllerContext ControllerContext) string {
+	isNodeControllerEnabled := controllerContext.IsControllerEnabled("nodelifecycle")
+	if isNodeControllerEnabled {
+		return "kcm-resource-provider"
+	}
+	return "kcm-tenant-provider"
 }

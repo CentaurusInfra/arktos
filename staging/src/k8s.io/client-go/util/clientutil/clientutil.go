@@ -27,9 +27,9 @@ import (
 // Create clientset from the kubeconfig file
 // input: the file path to the kubeconfig file
 // output: a clientset or error
-func CreateClientFromKubeconfigFile(kubeconfigPath string) (clientset.Interface, error) {
+func CreateClientFromKubeconfigFile(kubeconfigPath string, userAgent string) (clientset.Interface, error) {
 
-	clientConfig, err := CreateClientConfigFromKubeconfigFile(kubeconfigPath)
+	clientConfig, err := CreateClientConfigFromKubeconfigFile(kubeconfigPath, userAgent)
 	if err != nil {
 		return nil, err
 	}
@@ -44,13 +44,24 @@ func CreateClientFromKubeconfigFile(kubeconfigPath string) (clientset.Interface,
 
 // Create a client configuration with a given kubeconfig file, with default QPS, and contentType
 //
-func CreateClientConfigFromKubeconfigFile(kubeconfigPath string) (*restclient.Config, error) {
-	return CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath, 0, 0, "")
+func CreateClientConfigFromKubeconfigFile(kubeconfigPath string, userAgent string) (*restclient.Config, error) {
+	return CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath, 0, 0, "", userAgent)
 }
 
 // Create a client configuration with a given kubeconfig file, with QPS, and contentType set
 //
-func CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath string, qps float32, burst int, contentType string) (*restclient.Config, error) {
+func CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigPath string, qps float32, burst int, contentType string, userAgent string) (*restclient.Config, error) {
+	configs, err := CreateClientConfigFromKubeconfigFileAndSetQpsNoUserAgent(kubeconfigPath, qps, burst, contentType)
+	if err != nil {
+		return configs, err
+	}
+	for _, config := range configs.GetAllConfigs() {
+		config.UserAgent = userAgent
+	}
+	return configs, nil
+}
+
+func CreateClientConfigFromKubeconfigFileAndSetQpsNoUserAgent(kubeconfigPath string, qps float32, burst int, contentType string) (*restclient.Config, error) {
 	clientConfigs, err := clientcmd.LoadFromFile(kubeconfigPath)
 	if err != nil {
 		return nil, fmt.Errorf("error while loading kubeconfig from file %v: %v", kubeconfigPath, err)
