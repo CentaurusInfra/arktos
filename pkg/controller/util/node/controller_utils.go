@@ -323,11 +323,12 @@ func GetNodeCondition(status *v1.NodeStatus, conditionType v1.NodeConditionType)
 // The following are util functions for the node lifecycle ontroller, which is in the resource partition, to connect to the Resource Partition.
 // For the time being, the connection is insecure, as the scalablility work is still on the way.
 type TenantPartitionManager struct {
-	Client            clientset.Interface
-	PodInformer       coreinformers.PodInformer
-	PodGetter         corelisters.PodLister
-	DaemonSetInformer appsv1informers.DaemonSetInformer
-	DaemonSetStore    appsv1listers.DaemonSetLister
+	Client              clientset.Interface
+	PodInformer         coreinformers.PodInformer
+	PodLister           corelisters.PodLister
+	DaemonSetInformer   appsv1informers.DaemonSetInformer
+	DaemonSetStore      appsv1listers.DaemonSetLister
+	PodByNodeNameLister func(nodeName string) ([]v1.Pod, error)
 }
 
 func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan struct{}) *TenantPartitionManager {
@@ -337,7 +338,7 @@ func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan
 	tpAccessor := &TenantPartitionManager{
 		Client:            client,
 		PodInformer:       tpInformer.Core().V1().Pods(),
-		PodGetter:         tpInformer.Core().V1().Pods().Lister(),
+		PodLister:         tpInformer.Core().V1().Pods().Lister(),
 		DaemonSetInformer: tpInformer.Apps().V1().DaemonSets(),
 		DaemonSetStore:    tpInformer.Apps().V1().DaemonSets().Lister(),
 	}
