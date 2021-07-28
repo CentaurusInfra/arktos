@@ -110,17 +110,17 @@ func getFakeTPManagers(clientSet *fake.Clientset) []*nodeutil.TenantPartitionMan
 	tpManagers[0] = &nodeutil.TenantPartitionManager{
 		Client: clientSet,
 		PodByNodeNameLister: func(nodeName string) ([]v1.Pod, error) {
-				selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
-				pods, err := clientSet.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
-					FieldSelector: selector.String(),
-					LabelSelector: labels.Everything().String(),
-				})
-				if err != nil {
-					return []v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v", nodeName)
-				}
-				return pods.Items, nil
-			},
-		}
+			selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
+			pods, err := clientSet.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
+				FieldSelector: selector.String(),
+				LabelSelector: labels.Everything().String(),
+			})
+			if err != nil {
+				return []v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v", nodeName)
+			}
+			return pods.Items, nil
+		},
+	}
 	return tpManagers
 }
 
