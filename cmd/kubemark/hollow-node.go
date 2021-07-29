@@ -99,7 +99,7 @@ func (c *hollowNodeConfig) addFlags(fs *pflag.FlagSet) {
 }
 
 func (c *hollowNodeConfig) createClientConfig() (*restclient.Config, error) {
-	return clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(c.KubeconfigPath, 10, 20, "hollow-node", c.ContentType)
+	return clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(c.KubeconfigPath, 10, 20, c.ContentType, "hollow-node")
 }
 
 func (c *hollowNodeConfig) createHollowKubeletOptions() *kubemark.HollowKubletOptions {
@@ -181,7 +181,7 @@ func run(config *hollowNodeConfig) {
 	for i := 0; i < numberTenantPartitions; i++ {
 		kubeconfigFile := config.TenantServerKubeconfigs[i]
 		klog.V(2).Infof("create client config from file: %s", kubeconfigFile)
-		cfg, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigFile, 10, 20, "hollow-node", config.ContentType)
+		cfg, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(kubeconfigFile, 10, 20, config.ContentType, "hollow-node")
 		if err != nil {
 			klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 		}
@@ -199,7 +199,7 @@ func run(config *hollowNodeConfig) {
 		var heartbeatClient *clientset.Clientset
 
 		klog.V(2).Infof("create client config from file: %s", config.ResourceServerKubeconfig)
-		heartbeatClientConfig, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(config.ResourceServerKubeconfig, -1, -1, "hollow-node", config.ContentType)
+		heartbeatClientConfig, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQps(config.ResourceServerKubeconfig, -1, -1, config.ContentType, "hollow-node")
 		if err != nil {
 			klog.Fatalf("Failed to create a client config: %v. Exiting.", err)
 		}
