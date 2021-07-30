@@ -248,11 +248,11 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 			for i, rpKubeConfig := range c.ResourceProviderKubeconfigs {
 				rpId := "rp" + strconv.Itoa(i)
 
-				clientConfigs := restclient.AnonymousClientConfig(rpKubeConfig)
+				clientConfigs := *rpKubeConfig
 				for _, config := range clientConfigs.GetAllConfigs() {
 					config.UserAgent = userAgent
 				}
-				rpClient := clientset.NewForConfigOrDie(clientConfigs)
+				rpClient := clientset.NewForConfigOrDie(&clientConfigs)
 
 				resourceInformerFactory := informers.NewSharedInformerFactory(rpClient, 0)
 				resourceInformerFactory.Start(controllerContext.Stop)
