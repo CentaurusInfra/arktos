@@ -390,8 +390,6 @@ func NewNodeLifecycleController(
 			})
 
 			podIndexer := podInformer.Informer().GetIndexer()
-			//podLister := podInformer.Lister()
-			//podGetter := func(name, namespace string) (*v1.Pod, error) { return podLister.Pods(namespace).Get(name) }
 			tenantPartitionManager.PodByNodeNameLister = func(nodeName string) ([]v1.Pod, error) {
 				objs, err := podIndexer.ByIndex(nodeNameKeyIndex, nodeName)
 				if err != nil {
