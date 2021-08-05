@@ -90,8 +90,7 @@ func TestTaintNodeByCondition(t *testing.T) {
 	informers := context.informerFactory
 	nsName := context.ns.Name
 
-	stopCh := make(chan struct{})
-	tpAccessors, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]kubernetes.Interface{cs}, stopCh)
+	tpAccessors, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]kubernetes.Interface{cs})
 	if err != nil {
 		t.Errorf("Failed to create Tenant Partition Accessor: %v", err)
 		return
