@@ -484,6 +484,10 @@ func (nc *Controller) Run(stopCh <-chan struct{}) {
 
 	klog.Infof("Starting node controller")
 	defer klog.Infof("Shutting down node controller")
+	for _, tpManager := range nc.tenantPartitionManagers {
+		go tpManager.PodInformerStartFunc(stopCh)
+		go tpManager.DaemonSetInformerStartFunc(stopCh)
+	}
 
 	if !controller.WaitForCacheSync("taint", stopCh, nc.leaseInformerSynced, nc.nodeInformerSynced, nc.podInformersSynced, nc.daemonSetInformersSynced) {
 		return
