@@ -4,18 +4,20 @@ It may be desired to setup a dev cluster having one or more worker nodes in orde
 
 This doc, as at the moment written, does not mandate which cni plugin to be used; it is up to the user. We have verified that Flannel works well with multi-tenancy Arktos cluster; the instructions laid out here are based on our experience with Flannel at GCP env or AWS env with Ubuntu 18.04 x86 image.
 
-Assuming you have got the Arktos repo downloaded to your local disk and the current folder is at the root of the repo, and 
+Assuming you have got the Arktos repo downloaded to your local disk and the current folder (i.e ~/go/src/arktos/) is at the root of the repo, and 
 
 - Setup master node and workwer nodes based on [set up developer environment](setup-dev-env.md) to install needed packages (docker, make, gcc, jq and golang).
-- SSH/SCP should work from worker nodes to master node in order to copy the worker secret files from the master node(in AWS, use private key file of keypair to access to master/worker nodes).
-- Needed Ports are opened between master node and worker nodes
-  * Allow access to kube-api port 6443 on master node from work nodes (in AWS, add this rule into inlund rules of security group for master node)
-  * Allow access to kubelet port 10251 and kube-proxy port 10255 on worker nodes from master node(in AWS, add this rule into inlund rules of security group for worker nodes)
+- SSH/SCP should work from worker nodes to master node in order to copy the worker secret files from the master node (in AWS, use private key file of keypair to access to master/worker nodes).
+- Needed ports are opened between master node and worker nodes
+  * Allow access to kube-api port 6443 on master node from work nodes (in AWS, add this rule into inbound rules of security group for master node)
+  * Allow access to kubelet port 10251 and kube-proxy port 10255 on worker nodes from master node(in AWS, add this rule into inbound rules of security group for worker nodes)
 - On master node, the permisson of others for file /var/run/docker.sock should be readable and writable.
 
+```bash
 srw-rw-rw- 1 root docker 0 Aug  3 22:15 /var/run/docker.sock
+```
 
-0. Make sure the following directories are empty. If not, clean them up using sudo permisson.
+0. Make sure the following directories are empty. If not, clean them up using sudo permisson
 ```
 sudo rm -rf /opt/cni/bin/*
 sudo rm -rf /etc/cni/net.d/*
@@ -66,7 +68,7 @@ scp -i "<private key of keypair of master node>" ubuntu@<master-node-instance>:/
 
 4. start the worker node and register into cluster
 
-First Make sure the following directories in the worker node are empty. If not, clean them up using sudo.
+First make sure the following directories in the worker node are empty. If not, clean them up using sudopermission.
 ```
 sudo rm -rf /opt/cni/bin/*
 sudo rm -rf /etc/cni/net.d/*
@@ -89,7 +91,7 @@ make clean
 
 After the script returns, go to master node terminal and run command "./cluster/kubectl.sh get nodes", you should see the work node is displayed and its status should be "Ready".
 
-But when you run command "./cluster/kubectl.sh get all --all-namespaces", you will see new pod of flannel 'pod/kube-flannel-ds-xxxxx' for worker node is not in RUNNING state. If you check the log of this pod 'pod/kube-flannel-ds-xxxxx', you will see the following error.
+But when you run command "./cluster/kubectl.sh get all --all-namespaces", you will see new pod of flannel 'pod/kube-flannel-ds-xxxxx' for worker node is not in Running state. If you check the log of this pod 'pod/kube-flannel-ds-xxxxx', you will see the following error.
 
 ```bash
 I0803 22:50:37.646013       1 main.go:520] Determining IP address of default interface
@@ -99,7 +101,7 @@ W0803 22:50:37.646432       1 client_config.go:608] Neither --kubeconfig nor --m
 E0803 22:51:07.648172       1 main.go:251] Failed to create SubnetManager: error retrieving pod spec for 'kube-system/kube-flannel-ds-vgftf': Get "https://10.0.0.1:443/api/v1/namespaces/kube-system/pods/kube-flannel-ds-xxxxx": dial tcp 10.0.0.1:443: i/o timeout
 ```
 
-5. On worker node, add one more rule of linux iptables to fix the above issue
+5. On worker node, add one more rule of Linux iptables to fix the above issue
 
 At the moment this doc is written, kube-proxy does not support multi-tenancy yet, and it won't be deployed in the cluster. After kube-proxy issue has been fixed (we will allocate resource to cope with it soon), probably we will also need to copy over kube-proxy related secret and artifacts.
 
@@ -112,23 +114,27 @@ sudo iptables -t nat -L (for verification)
 
 NOTE: you need to re-run the above command once you restart the machine.
 
-Please be advised that this is a temporary quirk only; after we have the full service support by proper kube-proxy or other means, we don't need it any more.
+Please be advised that this is a temporary quick only; after we have the full service support by proper kube-proxy or other means, we don't need it any more.
 
-Then you should see pod 'pod/kube-flannel-ds-xxxxx' is in RUNNING state after you run command "./cluster/kubectl.sh get all --all-namespaces". 
+Then you should see pod 'pod/kube-flannel-ds-xxxxx' is in Running state after you run command "./cluster/kubectl.sh get all --all-namespaces". 
 
-6. Test whether the ngnix application can be deployed successfully.
+6. Test whether the ngnix application can be deployed successfully
 
 NOTE: You need first run the following command to create clusterrolebinding 'system-node-role-bound' to bind the group 'system:nodes' to clusterrole 'system:node' so that the master node has corresponding permission to get secret for every namespace and transfer the secret to worker node during pod creation.
 
 ```bash
 ./cluster/kubectl.sh create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
 ./cluster/kubectl.sh get clusterrolebinding/system-node-role-bound -o yaml
+```
+
+Then you can run container pods for nginx now and see all pods should be in Running state.
+```bash
 ./cluster/kubectl.sh run nginx --image=nginx --replicas=2
 ./cluster/kubectl.sh get all -n default
 ```
 
 
-7. label worker node as vm runtime capable (optional)
+7. Label worker node as vm runtime capable (optional)
 
 If you would like to allow this work node to run VM-based pods, please run below command at the master console:
 ```bash
