@@ -27,8 +27,6 @@ import (
 	"k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientset "k8s.io/client-go/kubernetes"
@@ -38,6 +36,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/kubernetes/pkg/apis/core/helper"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
+	nodeutil "k8s.io/kubernetes/pkg/controller/util/node"
 
 	"k8s.io/klog"
 )
@@ -83,7 +82,7 @@ type GetNodeFunc func(name string) (*v1.Node, error)
 // from Nodes tainted with NoExecute Taints.
 type NoExecuteTaintManager struct {
 	resourcePartitionClient clientset.Interface
-	tenantPartitionClients  []clientset.Interface
+	tenantPartitionManagers []*nodeutil.TenantPartitionManager
 	recorder                record.EventRecorder
 	getNode                 GetNodeFunc
 
@@ -131,27 +130,6 @@ func getNoExecuteTaints(taints []v1.Taint) []v1.Taint {
 	return result
 }
 
-func getPodsAssignedToNode(tenantPartitionClient clientset.Interface, nodeName string) ([]v1.Pod, error) {
-	selector := fields.SelectorFromSet(fields.Set{"spec.nodeName": nodeName})
-
-	pods, err := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
-		FieldSelector: selector.String(),
-		LabelSelector: labels.Everything().String(),
-	})
-	for i := 0; i < retries && err != nil; i++ {
-		pods, err = tenantPartitionClient.CoreV1().PodsWithMultiTenancy(v1.NamespaceAll, v1.TenantAll).List(metav1.ListOptions{
-			FieldSelector: selector.String(),
-			LabelSelector: labels.Everything().String(),
-		})
-		time.Sleep(100 * time.Millisecond)
-	}
-	if err != nil {
-		return []v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v from tenant partition client %v", nodeName, tenantPartitionClient)
-	}
-
-	return pods.Items, nil
-}
-
 // getMinTolerationTime returns minimal toleration time from the given slice, or -1 if it's infinite.
 func getMinTolerationTime(tolerations []v1.Toleration) time.Duration {
 	minTolerationTime := int64(-1)
@@ -175,7 +153,9 @@ func getMinTolerationTime(tolerations []v1.Toleration) time.Duration {
 
 // NewNoExecuteTaintManager creates a new NoExecuteTaintManager that will use passed clientset to
 // communicate with the API server.
-func NewNoExecuteTaintManager(resourcePartitionClient clientset.Interface, tenantPartitionClients []clientset.Interface, getNode GetNodeFunc) *NoExecuteTaintManager {
+func NewNoExecuteTaintManager(resourcePartitionClient clientset.Interface, tenantPartitionManagers []*nodeutil.TenantPartitionManager,
+	getNode GetNodeFunc) *NoExecuteTaintManager {
+
 	eventBroadcaster := record.NewBroadcaster()
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "taint-controller"})
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -188,7 +168,7 @@ func NewNoExecuteTaintManager(resourcePartitionClient clientset.Interface, tenan
 
 	tm := &NoExecuteTaintManager{
 		resourcePartitionClient: resourcePartitionClient,
-		tenantPartitionClients:  tenantPartitionClients,
+		tenantPartitionManagers: tenantPartitionManagers,
 		recorder:                recorder,
 		getNode:                 getNode,
 		taintedNodes:            make(map[string][]v1.Taint),
@@ -236,6 +216,10 @@ func (tc *NoExecuteTaintManager) Run(stopCh <-chan struct{}) {
 			if shutdown {
 				break
 			}
+			// The fact that pods are processed by the same worker as nodes is used to avoid races
+			// between node worker setting tc.taintedNodes and pod worker reading this to decide
+			// whether to delete pod.
+			// It's possible that even without this assumption this code is still correct.
 			podUpdate := item.(podUpdateItem)
 			hash := hash(podUpdate.nodeName, UpdateWorkerSize)
 			select {
@@ -468,13 +452,13 @@ func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
 		}
 	}()
 
-	for _, tenantPartitionClient := range tc.tenantPartitionClients {
-		tc.handleNodeUpdateInATenantPartition(tenantPartitionClient, node.Name, taints)
+	for _, tpManager := range tc.tenantPartitionManagers {
+		tc.handleNodeUpdateInATenantPartition(tpManager, node.Name, taints)
 	}
 }
 
-func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tenantPartitionClient clientset.Interface, nodeName string, taints []v1.Taint) {
-	pods, err := getPodsAssignedToNode(tenantPartitionClient, nodeName)
+func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tpManager *nodeutil.TenantPartitionManager, nodeName string, taints []v1.Taint) {
+	pods, err := tpManager.PodByNodeNameLister(nodeName)
 	if err != nil {
 		klog.Errorf(err.Error())
 		return
@@ -495,7 +479,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tenantPartit
 	for i := range pods {
 		pod := &pods[i]
 		podNamespacedName := types.NamespacedName{Tenant: pod.Tenant, Namespace: pod.Namespace, Name: pod.Name}
-		tc.processPodOnNode(tenantPartitionClient, podNamespacedName, nodeName, pod.Spec.Tolerations, taints, now)
+		tc.processPodOnNode(tpManager.Client, podNamespacedName, nodeName, pod.Spec.Tolerations, taints, now)
 	}
 }
 

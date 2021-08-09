@@ -323,45 +323,48 @@ func GetNodeCondition(status *v1.NodeStatus, conditionType v1.NodeConditionType)
 // The following are util functions for the node lifecycle ontroller, which is in the resource partition, to connect to the Resource Partition.
 // For the time being, the connection is insecure, as the scalablility work is still on the way.
 type TenantPartitionManager struct {
-	Client            clientset.Interface
-	PodInformer       coreinformers.PodInformer
-	PodGetter         corelisters.PodLister
-	DaemonSetInformer appsv1informers.DaemonSetInformer
-	DaemonSetStore    appsv1listers.DaemonSetLister
+	Client                     clientset.Interface
+	PodInformer                coreinformers.PodInformer
+	PodLister                  corelisters.PodLister
+	DaemonSetInformer          appsv1informers.DaemonSetInformer
+	DaemonSetStore             appsv1listers.DaemonSetLister
+	PodByNodeNameLister        func(nodeName string) ([]v1.Pod, error)
+	PodInformerStartFunc       func(stopCh <-chan struct{})
+	DaemonSetInformerStartFunc func(stopCh <-chan struct{})
 }
 
-func getTenantPartitionManagerFromClient(client clientset.Interface, stop <-chan struct{}) *TenantPartitionManager {
+func getTenantPartitionManagerFromClient(client clientset.Interface) *TenantPartitionManager {
 	tpInformer := informers.NewSharedInformerFactory(client, 0)
-	go tpInformer.Core().V1().Pods().Informer().Run(stop)
-	go tpInformer.Apps().V1().DaemonSets().Informer().Run(stop)
 	tpAccessor := &TenantPartitionManager{
-		Client:            client,
-		PodInformer:       tpInformer.Core().V1().Pods(),
-		PodGetter:         tpInformer.Core().V1().Pods().Lister(),
-		DaemonSetInformer: tpInformer.Apps().V1().DaemonSets(),
-		DaemonSetStore:    tpInformer.Apps().V1().DaemonSets().Lister(),
+		Client:                     client,
+		PodInformer:                tpInformer.Core().V1().Pods(),
+		PodLister:                  tpInformer.Core().V1().Pods().Lister(),
+		DaemonSetInformer:          tpInformer.Apps().V1().DaemonSets(),
+		DaemonSetStore:             tpInformer.Apps().V1().DaemonSets().Lister(),
+		PodInformerStartFunc:       tpInformer.Core().V1().Pods().Informer().Run,
+		DaemonSetInformerStartFunc: tpInformer.Apps().V1().DaemonSets().Informer().Run,
 	}
 
 	return tpAccessor
 }
 
-func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+func GetTenantPartitionManagersFromKubeClients(clients []clientset.Interface) ([]*TenantPartitionManager, error) {
 	tpAccessors := []*TenantPartitionManager{}
 
 	for _, client := range clients {
-		tpAccessors = append(tpAccessors, getTenantPartitionManagerFromClient(client, stop))
+		tpAccessors = append(tpAccessors, getTenantPartitionManagerFromClient(client))
 	}
 
 	return tpAccessors, nil
 }
 
-func GetTenantPartitionManagersFromKubeConfig(tenantServerKubeconfig string, stop <-chan struct{}) ([]*TenantPartitionManager, error) {
+func GetTenantPartitionManagersFromKubeConfig(tenantServerKubeconfig string) ([]*TenantPartitionManager, error) {
 	clients, err := CreateTenantPartitionClients(tenantServerKubeconfig)
 	if err != nil {
 		return nil, err
 	}
 
-	return GetTenantPartitionManagersFromKubeClients(clients, stop)
+	return GetTenantPartitionManagersFromKubeClients(clients)
 }
 
 func CreateTenantPartitionClients(kubeconfigFile string) ([]clientset.Interface, error) {

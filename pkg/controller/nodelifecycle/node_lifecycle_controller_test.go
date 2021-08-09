@@ -141,7 +141,7 @@ func newNodeLifecycleControllerFromClient(
 	nodeInformer := factory.Core().V1().Nodes()
 	daemonSetInformer := factory.Apps().V1().DaemonSets()
 
-	tpManager, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeClient}, nil)
+	tpManager, err := nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeClient})
 	if err != nil {
 		return nil, err
 	}
