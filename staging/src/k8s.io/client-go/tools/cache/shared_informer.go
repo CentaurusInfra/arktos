@@ -140,7 +140,7 @@ func NewSharedIndexInformer(lw ListerWatcher, objType runtime.Object, defaultEve
 		indexer:                         NewIndexer(DeletionHandlingMetaNamespaceKeyFunc, indexers),
 		listerWatcher:                   lw,
 		objectType:                      objType,
-		resyncCheckPeriod:               defaultEventHandlerResyncPeriod,
+		resyncCheckPeriod:               0,
 		defaultEventHandlerResyncPeriod: defaultEventHandlerResyncPeriod,
 		cacheMutationDetector:           NewCacheMutationDetector(fmt.Sprintf("%T", objType)),
 		clock:                           realClock,
