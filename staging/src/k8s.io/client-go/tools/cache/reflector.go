@@ -684,6 +684,7 @@ func (r *Reflector) relistResourceVersion() string {
 		// Since this reflector makes paginated list requests, and all paginated list requests skip the watch cache
 		// if the lastSyncResourceVersion is expired, we set ResourceVersion="" and list again to re-establish reflector
 		// to the latest available ResourceVersion, using a consistent read from etcd.
+		klog.Infof("Set relist resource version to empty!!! Reflector %s (%s) from %s", r.expectedTypeName, r.resyncPeriod, r.name)
 		return ""
 	}
 	if r.lastSyncResourceVersion == "" {
