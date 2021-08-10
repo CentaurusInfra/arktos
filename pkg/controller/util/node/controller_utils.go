@@ -50,9 +50,7 @@ import (
 // deletion.
 func DeletePods(kubeClient clientset.Interface, pods []*v1.Pod, recorder record.EventRecorder, nodeName, nodeUID string, daemonStore appsv1listers.DaemonSetLister) (bool, error) {
 	remaining := false
-	selector := fields.OneTermEqualSelector(api.PodHostField, nodeName).String()
-	options := metav1.ListOptions{FieldSelector: selector}
-	pods, err := kubeClient.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(options)
+
 	var updateErrList []error
 
 	if len(pods) > 0 {
@@ -124,32 +122,10 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 	return updatedPod, nil
 }
 
-// MarkAllPodsNotReady updates ready status of all pods running on
-func MarkAllPodsNotReadyInPartitions(kubeClients []clientset.Interface, node *v1.Node) error {
-	errString := ""
-	for i, kubeClient := range kubeClients {
-		err := MarkPodsNotReady(kubeClient, node)
-		if err != nil {
-			errString += fmt.Sprintf("Error in client #%d: %v", i, err)
-		}
-	}
-
-	if len(errString) != 0 {
-		return fmt.Errorf(errString)
-	}
-
-	return nil
-}
-
 // MarkPodsNotReady updates ready status of given pods running on
 // given node from master return true if success
 func MarkPodsNotReady(kubeClient clientset.Interface, pods []*v1.Pod, nodeName string) error {
 	klog.V(2).Infof("Update ready status of pods on node [%v]", nodeName)
-	opts := metav1.ListOptions{FieldSelector: fields.OneTermEqualSelector(api.PodHostField, nodeName).String()}
-	pods, err := kubeClient.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll).List(opts)
-	if err != nil {
-		return err
-	}
 
 	errMsg := []string{}
 	for i := range pods {
@@ -336,7 +312,7 @@ type TenantPartitionManager struct {
 	PodLister                  corelisters.PodLister
 	DaemonSetInformer          appsv1informers.DaemonSetInformer
 	DaemonSetStore             appsv1listers.DaemonSetLister
-	PodByNodeNameLister        func(nodeName string) ([]v1.Pod, error)
+	PodByNodeNameLister        func(nodeName string) ([]*v1.Pod, error)
 	PodInformerStartFunc       func(stopCh <-chan struct{})
 	DaemonSetInformerStartFunc func(stopCh <-chan struct{})
 }

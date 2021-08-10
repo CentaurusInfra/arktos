@@ -19,8 +19,8 @@ package scheduler
 
 import (
 	"fmt"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/fields"
-	"k8s.io/kubernetes/staging/src/k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"sort"
 	"sync"
 	"testing"
@@ -39,7 +39,7 @@ var timeForControllerToProgress = 500 * time.Millisecond
 
 //TODO: get the tenant for this function
 func getPodFromClientset(clientset *fake.Clientset) GetPodFunc {
-	return func(name, namespace string) (*v1.Pod, error) {
+	return func(name, namespace, tenant string) (*v1.Pod, error) {
 		return clientset.CoreV1().PodsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 }
