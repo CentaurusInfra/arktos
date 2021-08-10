@@ -458,9 +458,6 @@ func (tc *NoExecuteTaintManager) handleNodeUpdate(nodeUpdate nodeUpdateItem) {
 }
 
 func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tpManager *nodeutil.TenantPartitionManager, nodeName string, taints []v1.Taint) {
-	// This is critical that we update tc.taintedNodes before we call getPodsAssignedToNode:
-	// getPodsAssignedToNode can be delayed as long as all future updates to pods will call
-	// tc.PodUpdated which will use tc.taintedNodes to potentially delete delayed pods.
 	pods, err := tpManager.PodByNodeNameLister(nodeName)
 	if err != nil {
 		klog.Errorf(err.Error())
