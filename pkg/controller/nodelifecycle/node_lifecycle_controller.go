@@ -515,25 +515,6 @@ func NewNodeLifecycleController(
 				}
 				return pods, nil
 			}
-
-			//// in 1.15 k8s, this replaced the previous func
-			//nc.getPodsAssignedToNode = func(nodeName string) ([]*v1.Pod, error) {
-			//	objs, err := podIndexer.ByIndex(nodeNameKeyIndex, nodeName)
-			//	if err != nil {
-			//		return nil, err
-			//	}
-			//	pods := make([]*v1.Pod, 0, len(objs))
-			//	for _, obj := range objs {
-			//		pod, ok := obj.(*v1.Pod)
-			//		if !ok {
-			//			continue
-			//		}
-			//		pods = append(pods, pod)
-			//	}
-			//	return pods, nil
-			//}
-			//nc.podLister = podInformer.Lister()
-
 		}
 	}
 
@@ -1346,6 +1327,7 @@ func (nc *Controller) doPodProcessingWorker() {
 // 3. if node doesn't exist in cache, it will be skipped and handled later by doEvictionPass
 func (nc *Controller) processPod(podItem podUpdateItem) {
 	defer nc.podUpdateQueue.Done(podItem)
+	//TODO: support multiple tenant in Arktos
 	pod, err := podItem.tpManager.PodLister.Pods(podItem.namespace).Get(podItem.name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {
