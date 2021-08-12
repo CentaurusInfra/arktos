@@ -92,7 +92,7 @@ Then at worker node, run following commands:
 ```bash
 export ARKTOS_NO_CNI_PREINSTALLED=y
 
-hostname -i  (to get <worker-ip>)
+hostname -i
 export KUBELET_IP=<worker-ip>
 
 OR
