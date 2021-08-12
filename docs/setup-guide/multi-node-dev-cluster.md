@@ -59,7 +59,7 @@ export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
 ./cluster/kubectl.sh get all --all-namespaces
 ifconfig -a
 ip route
-sudo ls -alg /etc/cni/net.d/10-flannel.conflist (for checking)
+sudo ls -alg /etc/cni/net.d/10-flannel.conflist
 ```
 
 Note: Please reference the blog [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) if you want to know how flannel network works in kubernetes.
@@ -69,7 +69,7 @@ Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices
 3. In the lab machine to be added as a worker node, ensure following worker secret files copied from the master node:
 If the worker node is a GCP instance  
 ```bash
-gcloud beta compute ssh --zone "us-west2-a" "doctests-worknode"  --project "workload-controller-manager"
+gcloud beta compute ssh --zone "us-west2-a" "<worker node machine name>"  --project "<gce project name>"
 ```
 
 If the worker node is an AWS EC2, you can download files /var/run/kubernetes/kubelet.kubeconfig and /var/run/kubernetes/client-ca.crt from the master node, and then upload to /tmp/arktos/ in the worker node.
