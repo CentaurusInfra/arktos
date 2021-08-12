@@ -138,9 +138,9 @@ func getFakeTPManagers(clientSet *fake.Clientset) []*nodeutil.TenantPartitionMan
 				return []*v1.Pod{}, fmt.Errorf("failed to get Pods assigned to node %v", nodeName)
 			}
 
-			ret := make([]*v1.Pod, 0, len(pods.Items))
-			for _, p := range pods.Items {
-				ret = append(ret, &p )
+			ret := make([]*v1.Pod, len(pods.Items))
+			for i, p := range pods.Items {
+				ret[i] = &p
 			}
 			return ret, nil
 		},

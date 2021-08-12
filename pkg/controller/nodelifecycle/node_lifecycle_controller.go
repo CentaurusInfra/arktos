@@ -305,6 +305,7 @@ type Controller struct {
 	nodeLister          corelisters.NodeLister
 	nodeInformerSynced  cache.InformerSynced
 
+	//TODO: remove this after UT fixes
 	getPodsAssignedToNode func(nodeName string) ([]*v1.Pod, error)
 
 	recorder record.EventRecorder
@@ -791,7 +792,7 @@ func (nc *Controller) doEvictionPass() {
 
 			// TODO: pods on nodes are for all TPs, need an efficient way to get subset of pods for the TP to the DeletePods function
 			for _, tpManager := range nc.tenantPartitionManagers {
-				pods, err := nc.getPodsAssignedToNode(value.Value)
+				pods, err := tpManager.PodByNodeNameLister(value.Value)
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("unable to list pods from node %q: %v", value.Value, err))
@@ -889,43 +890,34 @@ func (nc *Controller) monitorNodeHealth() error {
 		}
 
 		if currentReadyCondition != nil {
-			if nc.useTaintBasedEvictions {
-				nc.processTaintBaseEviction(node, &observedReadyCondition)
-			} else {
-				noPodsToEvict := true
-				for _, tpManager := range nc.tenantPartitionManagers {
-					pods, err := tpManager.PodByNodeNameLister(node.Name)
-					if err != nil {
-						utilruntime.HandleError(fmt.Errorf("unable to list pods of node %v: %v", node.Name, err))
-						if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
-							// If error happened during node status transition (Ready -> NotReady)
-							// we need to mark node for retry to force MarkPodsNotReady execution
-							// in the next iteration.
-							nc.nodesToRetry.Store(node.Name, struct{}{})
-						}
-						continue
+			for _, tpManager := range nc.tenantPartitionManagers {
+				pods, err := tpManager.PodByNodeNameLister(node.Name)
+				if err != nil {
+					utilruntime.HandleError(fmt.Errorf("unable to list pods of node %v: %v", node.Name, err))
+					if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
+						// If error happened during node status transition (Ready -> NotReady)
+						// we need to mark node for retry to force MarkPodsNotReady execution
+						// in the next iteration.
+						nc.nodesToRetry.Store(node.Name, struct{}{})
 					}
-					noPodsToEvict = false
+					continue
+				}
+
+				if nc.useTaintBasedEvictions {
+					nc.processTaintBaseEviction(node, &observedReadyCondition)
+				} else {
 					if err := nc.processNoTaintBaseEviction(node, &observedReadyCondition, gracePeriod, pods, tpManager); err != nil {
 						utilruntime.HandleError(fmt.Errorf("unable to evict all pods from node %v: %v; queuing for retry", node.Name, err))
 					}
 				}
 
-				if noPodsToEvict {
-					continue
-				}
-			}
-
-			_, needsRetry := nc.nodesToRetry.Load(node.Name)
-			switch {
-			case currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue:
-				// Report node event only once when status changed.
-				nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-				fallthrough
-			case needsRetry && observedReadyCondition.Status != v1.ConditionTrue:
-				// TODO: avoid calling this twice by getting a tp/pod map in the call in line 913
-				for _, tpManager := range nc.tenantPartitionManagers {
-					pods, err := tpManager.PodByNodeNameLister(node.Name)
+				_, needsRetry := nc.nodesToRetry.Load(node.Name)
+				switch {
+				case currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue:
+					// Report node event only once when status changed.
+					nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
+					fallthrough
+				case needsRetry && observedReadyCondition.Status != v1.ConditionTrue:
 					if err = nodeutil.MarkPodsNotReady(tpManager.Client, pods, node.Name); err != nil {
 						utilruntime.HandleError(fmt.Errorf("unable to mark all pods NotReady on node %v: %v; queuing for retry", node.Name, err))
 						nc.nodesToRetry.Store(node.Name, struct{}{})
@@ -933,9 +925,11 @@ func (nc *Controller) monitorNodeHealth() error {
 					}
 				}
 			}
+
 		}
 		nc.nodesToRetry.Delete(node.Name)
 	}
+
 	nc.handleDisruption(zoneToNodeConditions, nodes)
 
 	return nil
@@ -1327,7 +1321,7 @@ func (nc *Controller) doPodProcessingWorker() {
 // 3. if node doesn't exist in cache, it will be skipped and handled later by doEvictionPass
 func (nc *Controller) processPod(podItem podUpdateItem) {
 	defer nc.podUpdateQueue.Done(podItem)
-	//TODO: support multiple tenant in Arktos
+
 	pod, err := podItem.tpManager.PodLister.Pods(podItem.namespace).Get(podItem.name)
 	if err != nil {
 		if apierrors.IsNotFound(err) {

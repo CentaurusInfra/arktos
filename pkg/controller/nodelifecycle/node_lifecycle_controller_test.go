@@ -97,6 +97,7 @@ func (nc *nodeLifecycleController) doEviction(fakeNodeHandler *testutil.FakeNode
 	for _, zone := range zones {
 		nc.zonePodEvictor[zone].Try(func(value scheduler.TimedValue) (bool, time.Duration) {
 			uid, _ := value.UID.(string)
+			//TODO: nc.getPodsAssignedToNode is removed in Arktos, instead, use the tpManager's podLister function
 			pods, _ := nc.getPodsAssignedToNode(value.Value)
 			nodeutil.DeletePods(fakeNodeHandler, pods, nc.recorder, value.Value, uid, nc.tenantPartitionManagers[0].DaemonSetStore)
 			_ = nc.nodeEvictionMap.setStatus(value.Value, evicted)
@@ -701,6 +702,11 @@ func TestMonitorNodeHealthEvictPods(t *testing.T) {
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+		for _, tpManager := range nodeController.tenantPartitionManagers {
+			tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+		}
+
 		for _, ds := range item.daemonSets {
 			nodeController.daemonSetInformer.Informer().GetStore().Add(&ds)
 		}
@@ -869,6 +875,11 @@ func TestPodStatusChange(t *testing.T) {
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+		for _, tpManager := range nodeController.tenantPartitionManagers {
+			tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+		}
+
 		if err := nodeController.syncNodeStore(item.fakeNodeHandler); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -1428,6 +1439,11 @@ func TestMonitorNodeHealthEvictPodsWithDisruption(t *testing.T) {
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+		for _, tpManager := range nodeController.tenantPartitionManagers {
+			tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+		}
+
 		nodeController.enterPartialDisruptionFunc = func(nodeNum int) float32 {
 			return testRateLimiterQPS
 		}
@@ -1714,6 +1730,11 @@ func TestMonitorNodeHealthUpdateStatus(t *testing.T) {
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+		for _, tpManager := range nodeController.tenantPartitionManagers {
+			tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+		}
+
 		if err := nodeController.syncNodeStore(item.fakeNodeHandler); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -2259,6 +2280,11 @@ func TestMonitorNodeHealthUpdateNodeAndPodStatusWithLease(t *testing.T) {
 			nodeController.now = func() metav1.Time { return fakeNow }
 			nodeController.recorder = testutil.NewFakeRecorder()
 			nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+			for _, tpManager := range nodeController.tenantPartitionManagers {
+				tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+			}
+
 			if err := nodeController.syncNodeStore(item.fakeNodeHandler); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -2423,6 +2449,11 @@ func TestMonitorNodeHealthMarkPodsNotReady(t *testing.T) {
 		nodeController.now = func() metav1.Time { return fakeNow }
 		nodeController.recorder = testutil.NewFakeRecorder()
 		nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+		for _, tpManager := range nodeController.tenantPartitionManagers {
+			tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+		}
+
 		if err := nodeController.syncNodeStore(item.fakeNodeHandler); err != nil {
 			t.Errorf("unexpected error: %v", err)
 		}
@@ -2609,6 +2640,11 @@ func TestMonitorNodeHealthMarkPodsNotReadyRetry(t *testing.T) {
 			nodeController.now = func() metav1.Time { return timeNow }
 			nodeController.recorder = testutil.NewFakeRecorder()
 			nodeController.getPodsAssignedToNode = item.fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+
+			for _, tpManager := range nodeController.tenantPartitionManagers {
+				tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(item.fakeNodeHandler.Clientset)
+			}
+
 			for _, itertion := range item.nodeIterations {
 				nodeController.now = func() metav1.Time { return metav1.Time{Time: timeNow.Add(itertion.timeToPass)} }
 				item.fakeNodeHandler.Existing = itertion.newNodes
@@ -2740,6 +2776,11 @@ func TestApplyNoExecuteTaints(t *testing.T) {
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
+
 	if err := nodeController.syncNodeStore(fakeNodeHandler); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2885,6 +2926,11 @@ func TestSwapUnreachableNotReadyTaints(t *testing.T) {
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
+
 	if err := nodeController.syncNodeStore(fakeNodeHandler); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -2989,6 +3035,10 @@ func TestTaintsNodeByCondition(t *testing.T) {
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
 
 	networkUnavailableTaint := &v1.Taint{
 		Key:    v1.TaintNodeNetworkUnavailable,
@@ -3193,6 +3243,10 @@ func TestNodeEventGeneration(t *testing.T) {
 	nodeController.recorder = fakeRecorder
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
 
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
+
 	if err := nodeController.syncNodeStore(fakeNodeHandler); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -3264,6 +3318,10 @@ func TestReconcileNodeLabels(t *testing.T) {
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
 
 	tests := []struct {
 		Name           string
@@ -3408,6 +3466,10 @@ func TestTryUpdateNodeHealth(t *testing.T) {
 	nodeController.now = func() metav1.Time { return fakeNow }
 	nodeController.recorder = testutil.NewFakeRecorder()
 	nodeController.getPodsAssignedToNode = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+
+	for _, tpManager := range nodeController.tenantPartitionManagers {
+		tpManager.PodByNodeNameLister = fakeGetPodsAssignedToNode(fakeNodeHandler.Clientset)
+	}
 
 	getStatus := func(cond *v1.NodeCondition) *v1.ConditionStatus {
 		if cond == nil {
