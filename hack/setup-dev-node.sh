@@ -43,14 +43,13 @@ sudo tar -C /usr/local -xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
 echo "Done."
 echo ""
-echo "Please add the following lines into your shell profile ~/.profile."
+echo "Please add the following line into your shell profile ~/.profile."
 echo "    GOROOT=/usr/local/go"
-echo "    GOPATH=$HOME/go"
-echo "    PATH=$GOPATH/bin:$GOROOT/bin:$PATH"
-echo "    export PATH
+echo "    GOPATH=\$HOME/go"
+echo "    export PATH=\$PATH:\$GOROOT/bin:\$GOPATH/bin"
 echo ""
 echo "Update the current shell session."
 echo "    $ source ~/.profile"
-echo "    $ echo $PATH"
+echo "    $ echo \$PATH"
 echo ""
 echo "You can proceed to run arktos-up.sh if you want to launch a single-node cluster."

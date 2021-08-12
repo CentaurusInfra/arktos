@@ -12,10 +12,25 @@ Assuming you have got the Arktos repo downloaded to your local disk and the curr
   * Allow access to kube-api port 6443 on master node from work nodes (in AWS, add this rule into inbound rules of security group for master node)
   * Allow access to kubelet port 10251 and kube-proxy port 10255 on worker nodes from master node(in AWS, add this rule into inbound rules of security group for worker nodes)
 - On master node, the permisson of others for file /var/run/docker.sock should be readable and writable.
+  Here is output of running command 'ls -al'
 
 ```bash
 srw-rw-rw- 1 root docker 0 Aug  3 22:15 /var/run/docker.sock
 ```
+  
+  Normally if the machine is rebooted, the permission of this file is changed to default permission below.
+
+```bash
+srw-rw---- 1 root docker 0 Aug  9 23:18 /var/run/docker.sock
+```
+  
+  Please run the command to add the permission for 'others' using sudo
+```bash
+sudo chmod o+rw /var/run/docker.sock
+ls -al
+```
+
+
 
 0. Make sure the following directories are empty. If not, clean them up using sudo permisson
 ```
@@ -40,10 +55,11 @@ Note: arktos-up.sh should be stuck in "Waiting for node ready at api server" mes
 After that, "arktos-up.sh" should get rid of "Waiting for node ready at api server" messages and be successfully started. You can check the status of all resources including pod/kube-dns and flannel network
 
 ```bash
+export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
 ./cluster/kubectl.sh get all --all-namespaces
-ifcconfig -a
+ifconfig -a
 ip route
-ls -alg /etc/cni/net.d/10-flannel.conflist
+sudo ls -alg /etc/cni/net.d/10-flannel.conflist (for checking)
 ```
 
 Note: Please reference the blog [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) if you want to know how flannel network works in kubernetes.
@@ -53,9 +69,7 @@ Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices
 3. In the lab machine to be added as a worker node, ensure following worker secret files copied from the master node:
 If the worker node is a GCP instance  
 ```bash
-mkdir -p /tmp/arktos
-gcloud compute scp <master-node-instance>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/
-gcloud compute scp <master-node-instance>:/var/run/kubernetes/client-ca.crt /tmp/arktos/
+gcloud beta compute ssh --zone "us-west2-a" "doctests-worknode"  --project "workload-controller-manager"
 ```
 
 If the worker node is an AWS EC2, you can download files /var/run/kubernetes/kubelet.kubeconfig and /var/run/kubernetes/client-ca.crt from the master node, and then upload to /tmp/arktos/ in the worker node.
@@ -132,38 +146,3 @@ Then you can run container pods for nginx now and see all pods should be in Runn
 ./cluster/kubectl.sh run nginx --image=nginx --replicas=2
 ./cluster/kubectl.sh get all -n default
 ```
-
-
-7. Label worker node as vm runtime capable (optional)
-
-If you would like to allow this work node to run VM-based pods, please run below command at the master console:
-```bash
-./cluster/kubectl.sh label node <worker-node-name> extraRuntime=virtlet
-```
-The work-node-name is the new worker just added; its name can be found by ```./cluster/kubectl.sh get node```.
-
-You should be able to notice that node in READY state after a while; you can run container pods now:
-```bash
-./cluster/kubectl.sh run nginx --image=nginx --replicas=2
-./cluster/kubectl.sh get pod -o wide
-```
-
-To run a small cirros VM pod, you can use below yaml content:
-```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: cirros-vm
-spec:
-  virtualMachine:
-    name: vm
-    keyPairName: "foo"
-    image: download.cirros-cloud.net/0.3.5/cirros-0.3.5-x86_64-disk.img
-    imagePullPolicy: IfNotPresent
-```
-
-# How to set up multiple partitioned apiservers
-
-It may be desired to setup a cluster having 2 or 3 apiservers in order to play with the scalability features of Arktos. It is simple and easy to implement it using arktos-up.sh, arktos-apiserver-partition.sh, and install-etcd.sh. The  doc describes the minimum effort to run a cluster having 2 apiservers (1 apiserver first, plus a apiserver who joins later).
-
-Instructions are in [API Server Partition](arktos-apiserver-partition.md)

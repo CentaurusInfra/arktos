@@ -11,11 +11,12 @@ $ git clone https://github.com/centaurusinfra/arktos
 
 ### Install needed packages (docker, make, gcc, jq and golang)
 ```
+$ cd arktos
 $ ./hack/setup-dev-node.sh
 ```
 
 ### Update your account's profile
-Add the following lines into the profile
+Add the following lines into the profile ~/.profile
 ```
 GOROOT=/usr/local/go
 GOPATH=$HOME/go
