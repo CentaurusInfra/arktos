@@ -43,7 +43,7 @@ sudo tar -C /usr/local -xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
 echo "Done."
 echo ""
-echo "Please add the following line into your shell profile ~/.profile."
+echo "Please add the following lines into your shell profile ~/.profile."
 echo "    GOROOT=/usr/local/go"
 echo "    GOPATH=\$HOME/go"
 echo "    export PATH=\$PATH:\$GOROOT/bin:\$GOPATH/bin"
