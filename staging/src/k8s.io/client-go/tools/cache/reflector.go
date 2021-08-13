@@ -127,7 +127,7 @@ type Reflector struct {
 var (
 	// We try to spread the load on apiserver by setting timeouts for
 	// watch requests - it is random in [minWatchTimeout, 2*minWatchTimeout].
-	minWatchTimeout = 5 * time.Minute
+	minWatchTimeout = 30 * time.Minute
 )
 
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
@@ -684,6 +684,7 @@ func (r *Reflector) relistResourceVersion() string {
 		// Since this reflector makes paginated list requests, and all paginated list requests skip the watch cache
 		// if the lastSyncResourceVersion is expired, we set ResourceVersion="" and list again to re-establish reflector
 		// to the latest available ResourceVersion, using a consistent read from etcd.
+		klog.Infof("Set relist resource version to empty!!! Reflector %s (%s) from %s", r.expectedTypeName, r.resyncPeriod, r.name)
 		return ""
 	}
 	if r.lastSyncResourceVersion == "" {

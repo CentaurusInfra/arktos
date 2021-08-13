@@ -672,3 +672,111 @@ func TestGetMinTolerationTime(t *testing.T) {
 		}
 	}
 }
+
+// TestEventualConsistency verifies if getPodsAssignedToNode returns incomplete data
+// (e.g. due to watch latency), it will reconcile the remaining pods eventually.
+// This scenario is partially covered by TestUpdatePods, but given this is an important
+// property of TaitManager, it's better to have explicit test for this.
+func TestEventualConsistency(t *testing.T) {
+	testCases := []struct {
+		description  string
+		pods         []v1.Pod
+		prevPod      *v1.Pod
+		newPod       *v1.Pod
+		oldNode      *v1.Node
+		newNode      *v1.Node
+		expectDelete bool
+	}{
+		{
+			description: "existing pod2 scheduled onto tainted Node",
+			pods: []v1.Pod{
+				*testutil.NewPod("pod1", "node1"),
+			},
+			prevPod:      testutil.NewPod("pod2", ""),
+			newPod:       testutil.NewPod("pod2", "node1"),
+			oldNode:      testutil.NewNode("node1"),
+			newNode:      addTaintsToNode(testutil.NewNode("node1"), "testTaint1", "taint1", []int{1}),
+			expectDelete: true,
+		},
+		{
+			description: "existing pod2 with taint toleration scheduled onto tainted Node",
+			pods: []v1.Pod{
+				*testutil.NewPod("pod1", "node1"),
+			},
+			prevPod:      addToleration(testutil.NewPod("pod2", ""), 1, 100),
+			newPod:       addToleration(testutil.NewPod("pod2", "node1"), 1, 100),
+			oldNode:      testutil.NewNode("node1"),
+			newNode:      addTaintsToNode(testutil.NewNode("node1"), "testTaint1", "taint1", []int{1}),
+			expectDelete: false,
+		},
+		{
+			description: "new pod2 created on tainted Node",
+			pods: []v1.Pod{
+				*testutil.NewPod("pod1", "node1"),
+			},
+			prevPod:      nil,
+			newPod:       testutil.NewPod("pod2", "node1"),
+			oldNode:      testutil.NewNode("node1"),
+			newNode:      addTaintsToNode(testutil.NewNode("node1"), "testTaint1", "taint1", []int{1}),
+			expectDelete: true,
+		},
+		{
+			description: "new pod2 with tait toleration created on tainted Node",
+			pods: []v1.Pod{
+				*testutil.NewPod("pod1", "node1"),
+			},
+			prevPod:      nil,
+			newPod:       addToleration(testutil.NewPod("pod2", "node1"), 1, 100),
+			oldNode:      testutil.NewNode("node1"),
+			newNode:      addTaintsToNode(testutil.NewNode("node1"), "testTaint1", "taint1", []int{1}),
+			expectDelete: false,
+		},
+	}
+
+	for _, item := range testCases {
+		stopCh := make(chan struct{})
+		fakeClientset := fake.NewSimpleClientset(&v1.PodList{Items: item.pods})
+		holder := &podHolder{}
+		controller := NewNoExecuteTaintManager(fakeClientset, getFakeTPManagers(fakeClientset), (&nodeHolder{item.newNode}).getNode)
+		controller.recorder = testutil.NewFakeRecorder()
+		go controller.Run(stopCh)
+
+		if item.prevPod != nil {
+			holder.setPod(item.prevPod)
+			controller.PodUpdated(nil, item.prevPod, fakeClientset, holder.getPod)
+		}
+
+		// First we simulate NodeUpdate that should delete 'pod1'. It doesn't know about 'pod2' yet.
+		controller.NodeUpdated(item.oldNode, item.newNode)
+		// TODO(mborsz): Remove this sleep and other sleeps in this file.
+		time.Sleep(timeForControllerToProgress)
+
+		podDeleted := false
+		for _, action := range fakeClientset.Actions() {
+			if action.GetVerb() == "delete" && action.GetResource().Resource == "pods" {
+				podDeleted = true
+			}
+		}
+		if !podDeleted {
+			t.Errorf("%v: Unexpected test result. Expected delete, got: %v", item.description, podDeleted)
+		}
+		fakeClientset.ClearActions()
+
+		// And now the delayed update of 'pod2' comes to the TaintManager. We should delete it as well.
+		holder.setPod(item.newPod)
+		controller.PodUpdated(item.prevPod, item.newPod, fakeClientset, holder.getPod)
+		// wait a bit
+		time.Sleep(timeForControllerToProgress)
+
+		podDeleted = false
+		for _, action := range fakeClientset.Actions() {
+			if action.GetVerb() == "delete" && action.GetResource().Resource == "pods" {
+				podDeleted = true
+			}
+		}
+		if podDeleted != item.expectDelete {
+			t.Errorf("%v: Unexpected test result. Expected delete %v, got %v", item.description, item.expectDelete, podDeleted)
+		}
+		close(stopCh)
+	}
+}
