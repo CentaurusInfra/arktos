@@ -78,10 +78,6 @@ type GetPodFunc func(name, namespace, tenant string) (*v1.Pod, error)
 // GetNodeFunc returns the node for the specified name, or a NotFound error if missing.
 type GetNodeFunc func(name string) (*v1.Node, error)
 
-//TODO: remove this after porting k8s 7777333 changes
-// GetPodsByNodeNameFunc returns the list of pods assigned to the specified node.
-type GetPodsByNodeNameFunc func(nodeName string) ([]*v1.Pod, error)
-
 // NoExecuteTaintManager listens to Taint/Toleration changes and is responsible for removing Pods
 // from Nodes tainted with NoExecute Taints.
 type NoExecuteTaintManager struct {

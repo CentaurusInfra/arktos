@@ -207,7 +207,7 @@ func (n *nodeHealthMap) set(name string, data *nodeHealthData) {
 }
 
 type podUpdateItem struct {
-	tenant string
+	tenant    string
 	namespace string
 	name      string
 	tpManager *nodeutil.TenantPartitionManager
@@ -271,7 +271,6 @@ type Controller struct {
 	tenantPartitionManagers []*nodeutil.TenantPartitionManager
 	tenantPartitionClients  []clientset.Interface
 	resourcePartitionClient clientset.Interface
-	podLister         corelisters.PodLister
 
 	// This timestamp is to be used instead of LastProbeTime stored in Condition. We do this
 	// to avoid the problem with time skew across the cluster.
@@ -304,9 +303,6 @@ type Controller struct {
 	leaseInformerSynced cache.InformerSynced
 	nodeLister          corelisters.NodeLister
 	nodeInformerSynced  cache.InformerSynced
-
-	//TODO: remove this after UT fixes
-	getPodsAssignedToNode func(nodeName string) ([]*v1.Pod, error)
 
 	recorder record.EventRecorder
 
@@ -459,7 +455,7 @@ func NewNodeLifecycleController(
 			UpdateFunc: func(prev, obj interface{}) {
 				prevPod := prev.(*v1.Pod)
 				newPod := obj.(*v1.Pod)
-				nc.podUpdated(prevPod, newPod,tenantPartitionManager)
+				nc.podUpdated(prevPod, newPod, tenantPartitionManager)
 				if nc.taintManager != nil {
 					nc.taintManager.PodUpdated(prevPod, newPod, tenantPartitionClient, podGetter)
 				}
@@ -479,7 +475,7 @@ func NewNodeLifecycleController(
 						return
 					}
 				}
-				nc.podUpdated(pod, nil,tenantPartitionManager)
+				nc.podUpdated(pod, nil, tenantPartitionManager)
 				if nc.taintManager != nil {
 					nc.taintManager.PodUpdated(pod, nil, tenantPartitionClient, podGetter)
 				}
@@ -790,7 +786,7 @@ func (nc *Controller) doEvictionPass() {
 			}
 			nodeUID, _ := value.UID.(string)
 
-			// TODO: pods on nodes are for all TPs, need an efficient way to get subset of pods for the TP to the DeletePods function
+		    // TODO: this can be executed in parallel with multiple TPs
 			for _, tpManager := range nc.tenantPartitionManagers {
 				pods, err := tpManager.PodByNodeNameLister(value.Value)
 
@@ -862,6 +858,8 @@ func (nc *Controller) monitorNodeHealth() error {
 
 	zoneToNodeConditions := map[string][]*v1.NodeCondition{}
 	for i := range nodes {
+		donePodEvictionOnNode := true
+
 		var gracePeriod time.Duration
 		var observedReadyCondition v1.NodeCondition
 		var currentReadyCondition *v1.NodeCondition
@@ -899,8 +897,10 @@ func (nc *Controller) monitorNodeHealth() error {
 						// we need to mark node for retry to force MarkPodsNotReady execution
 						// in the next iteration.
 						nc.nodesToRetry.Store(node.Name, struct{}{})
+						// mark the node for retry and continue for other TPs
+						donePodEvictionOnNode = false
+						continue
 					}
-					continue
 				}
 
 				if nc.useTaintBasedEvictions {
@@ -921,13 +921,16 @@ func (nc *Controller) monitorNodeHealth() error {
 					if err = nodeutil.MarkPodsNotReady(tpManager.Client, pods, node.Name); err != nil {
 						utilruntime.HandleError(fmt.Errorf("unable to mark all pods NotReady on node %v: %v; queuing for retry", node.Name, err))
 						nc.nodesToRetry.Store(node.Name, struct{}{})
+						// mark the node for retry and continue for other TPs
+						donePodEvictionOnNode = false
 						continue
 					}
 				}
 			}
-
 		}
-		nc.nodesToRetry.Delete(node.Name)
+		if donePodEvictionOnNode {
+			nc.nodesToRetry.Delete(node.Name)
+		}
 	}
 
 	nc.handleDisruption(zoneToNodeConditions, nodes)
@@ -1296,7 +1299,7 @@ func (nc *Controller) podUpdated(oldPod, newPod *v1.Pod, tpManager *nodeutil.Ten
 		return
 	}
 	if len(newPod.Spec.NodeName) != 0 && (oldPod == nil || newPod.Spec.NodeName != oldPod.Spec.NodeName) {
-		podItem := podUpdateItem{ newPod.Tenant, newPod.Namespace, newPod.Name, tpManager}
+		podItem := podUpdateItem{newPod.Tenant, newPod.Namespace, newPod.Name, tpManager}
 		nc.podUpdateQueue.Add(podItem)
 	}
 }

@@ -120,8 +120,8 @@ func getFakeTPManagers(clientSet *fake.Clientset) []*nodeutil.TenantPartitionMan
 			}
 
 			ret := make([]*v1.Pod, len(pods.Items))
-			for i, p := range pods.Items {
-				ret[i] = &p
+			for i := 0; i < len(pods.Items); i++ {
+				ret[i] = &pods.Items[i]
 			}
 			return ret, nil
 		},
