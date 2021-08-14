@@ -79,8 +79,8 @@ function direct-haproxy-logging {
   fi
 
   sudo /bin/su -c "echo '
-$ModLoad imudp
-$UDPServerRun 514
+\$ModLoad imudp
+\$UDPServerRun 514
 local0.* -/var/log/haproxy.log
 ' >> $haproxy_conf"
 
