@@ -789,6 +789,9 @@ func (nc *Controller) doEvictionPass() {
 		    // TODO: this can be executed in parallel with multiple TPs
 			for _, tpManager := range nc.tenantPartitionManagers {
 				pods, err := tpManager.PodByNodeNameLister(value.Value)
+				if len(pods) == 0 && err == nil {
+					continue
+				}
 
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("unable to list pods from node %q: %v", value.Value, err))
@@ -890,6 +893,10 @@ func (nc *Controller) monitorNodeHealth() error {
 		if currentReadyCondition != nil {
 			for _, tpManager := range nc.tenantPartitionManagers {
 				pods, err := tpManager.PodByNodeNameLister(node.Name)
+				if len(pods) == 0 && err == nil {
+					continue
+				}
+
 				if err != nil {
 					utilruntime.HandleError(fmt.Errorf("unable to list pods of node %v: %v", node.Name, err))
 					if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
