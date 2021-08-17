@@ -18,6 +18,7 @@ limitations under the License.
 package nodelease
 
 import (
+	"math/rand"
 	"time"
 
 	coordv1beta1 "k8s.io/api/coordination/v1beta1"
@@ -79,6 +80,12 @@ func (c *controller) Run(stopCh <-chan struct{}) {
 		klog.Infof("node lease controller has nil lease client, will not claim or renew leases")
 		return
 	}
+	// Add a random sleep between 0-10s to even out update lease requests in a single cluster
+	seed := rand.NewSource(time.Now().UnixNano())
+	ran  := rand.New(seed)
+	timeToWait := time.Duration(ran.Intn(10000)) * time.Millisecond
+	klog.Infof("Sleep %v for evenly update leases", timeToWait)
+	time.Sleep(timeToWait)
 	wait.Until(c.sync, c.renewInterval, stopCh)
 }
 
