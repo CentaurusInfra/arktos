@@ -89,8 +89,6 @@ require (
 	github.com/heketi/tests v0.0.0-20151005000721-f3775cbcefd6 // indirect
 	github.com/jonboulle/clockwork v0.1.0
 	github.com/json-iterator/go v1.1.8
-	github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
-	github.com/jteeuwen/go-bindata v3.0.7+incompatible
 	github.com/karrick/godirwalk v1.7.5 // indirect
 	github.com/libopenstorage/openstorage v1.0.0
 	github.com/liggitt/tabwriter v0.0.0-20181228230101-89fcab3d43de
@@ -389,7 +387,7 @@ replace (
 	github.com/gopherjs/gopherjs => github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1
 	github.com/gorilla/context => github.com/gorilla/context v1.1.1
 	github.com/gorilla/mux => github.com/gorilla/mux v1.7.0
-	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.0
+	github.com/gorilla/websocket => github.com/gorilla/websocket v1.4.2
 	github.com/gostaticanalysis/analysisutil => github.com/gostaticanalysis/analysisutil v0.0.3
 	github.com/grafov/bcast => github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d
 	github.com/gregjones/httpcache => github.com/gregjones/httpcache v0.0.0-20180305231024-9cad4c3443a7
