@@ -68,7 +68,8 @@ install_cni_bridge() {
 
 install_cni_mizar() {
     [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
-    find /etc/cni/net.d/ -type f -not -name '10-mizarcni.conf' -delete
+    [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
+    sudo find /etc/cni/net.d/ -type f -not -name '10-mizarcni.conf' -delete
 
     export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
     export ARKTOS_NETWORK_TEMPLATE=mizar
@@ -193,11 +194,6 @@ if [[ -n "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
     echo "CNI plugin will be installed after cluster is started"
     echo "Right now the minimum common cni binary package is being installed only"
     ensure_cni_binaries
-    if [ "${CNIPLUGIN}" == "mizar" ]; then
-      echo "cni plugin is mizar; arktos will use mizar to provision pod network"
-      install_mizar_arktos_containerd
-      install_cni_mizar
-    fi
 elif [ "${CNIPLUGIN}" == "bridge" ]; then
     echo "cni plugin is bridge; arktos will use bridge to provision pod network"
     install_cni_bridge
@@ -208,6 +204,10 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
     echo "cni plug is alktron; arktos will use alktron \(neutron plugin\) to provision pod network"
     install_cni_alktron
     install_loopback_cni
+elif [ "${CNIPLUGIN}" == "mizar" ]; then
+      echo "cni plugin is mizar; arktos will use mizar to provision pod network"
+      install_mizar_arktos_containerd
+      install_cni_mizar
 else
     echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
     echo "suggest to use bridge cni plugin."

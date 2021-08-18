@@ -22,22 +22,17 @@ If this machine will be used as the master of a multi-node cluster, please set a
 2. Install the mizar dependencies
 ```bash
 wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/bootstrap.sh
-# If kernel version is less than 5.6 then run the following line else skip
+# If kernel version is less than 5.6 then download the kernelupdate.sh else skip
 wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/kernelupdate.sh  
-# If using docker-ce in the environment then edit the bootstrap file and remove the docker.io package. 
+# If using docker-ce in the environment then edit the bootstrap.sh and remove the docker.io package before running. 
 bash bootstrap.sh
 ```   
-3. Change cni installation setting by
-```bash
-export ARKTOS_NO_CNI_PREINSTALLED=y
-```
-
-4. Start Arktos cluster
+3. Start Arktos cluster
 ```bash
 CNIPLUGIN=mizar ./hack/arktos-up.sh
 ```
 
-5. Leave the "arktos-up.sh" terminal and opened a another terminal to the master node. Run the following command to confirm that the first network, "default", in system tenant, has already been created. Its state is empty at this moment.
+4. Leave the "arktos-up.sh" terminal and opened a another terminal to the master node. Run the following command to confirm that the first network, "default", in system tenant, has already been created. Its state is empty at this moment.
 ```bash
 ./cluster/kubectl.sh get net
 NAME      TYPE    VPC                      PHASE   DNS
