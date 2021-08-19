@@ -15,6 +15,7 @@
 # This results in decreased probability of choosing the same node again.
 {{$LATENCY_POD_CPU := DefaultParam .LATENCY_POD_CPU 100}}
 {{$LATENCY_POD_MEMORY := DefaultParam .LATENCY_POD_MEMORY 350}}
+{{$POD_STARTUP_LATENCY_THRESHOLD := DefaultParam .POD_STARTUP_LATENCY_THRESHOLD "5s"}}
 {{$MIN_LATENCY_PODS := 500}}
 {{$MIN_SATURATION_PODS_TIMEOUT := 180}}
 {{$ENABLE_CHAOSMONKEY := DefaultParam .ENABLE_CHAOSMONKEY false}}
@@ -143,6 +144,7 @@ steps:
     Params:
       action: start
       labelSelector: group = latency
+      threshold: {{$POD_STARTUP_LATENCY_THRESHOLD}}
   - Identifier: WaitForRunningLatencyDeployments
     Method: WaitForControlledPodsRunning
     Params:
