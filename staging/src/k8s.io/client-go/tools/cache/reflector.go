@@ -127,7 +127,7 @@ type Reflector struct {
 var (
 	// We try to spread the load on apiserver by setting timeouts for
 	// watch requests - it is random in [minWatchTimeout, 2*minWatchTimeout].
-	minWatchTimeout = 30 * time.Minute
+	minWatchTimeout = 5 * time.Minute
 )
 
 // NewNamespaceKeyedIndexerAndReflector creates an Indexer and a Reflector
