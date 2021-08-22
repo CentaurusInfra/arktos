@@ -437,7 +437,10 @@ func (r *Reflector) ListAndWatch(stopCh <-chan struct{}) error {
 			}
 			if r.ShouldResync == nil || r.ShouldResync() {
 				klog.V(4).Infof("%s: forcing resync. type %v. resync period %v", r.name, r.expectedTypeName, r.resyncPeriod)
-				if err := r.store.Resync(); err != nil {
+				initTrace := trace.New(fmt.Sprintf("%s: forcing resync. type %v. resync period %v", r.name, r.expectedTypeName, r.resyncPeriod))
+				err := r.store.Resync()
+				initTrace.LogIfLong(100 * time.Millisecond)
+				if err != nil {
 					resyncerrc <- err
 					return
 				}
