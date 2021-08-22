@@ -524,6 +524,7 @@ func (f *DeltaFIFO) Replace(list []interface{}, resourceVersion string) error {
 
 // Resync will send a sync event for each item
 func (f *DeltaFIFO) Resync() error {
+	//klog.Infof("==== DeltaFIFO Resync keys[%v]", f.knownObjects.ListKeys())
 	f.lock.Lock()
 	defer f.lock.Unlock()
 

@@ -466,6 +466,7 @@ func buildGenericConfig(
 		lastErr = fmt.Errorf("failed to create real external clientset: %v", err)
 		return
 	}
+	//versionedInformers = clientgoinformers.NewSharedInformerFactory(clientgoExternalClient, 0)
 	versionedInformers = clientgoinformers.NewSharedInformerFactory(clientgoExternalClient, 10*time.Minute)
 
 	genericConfig.Authentication.Authenticator, genericConfig.OpenAPIConfig.SecurityDefinitions, err = BuildAuthenticator(s, clientgoExternalClient, versionedInformers)
