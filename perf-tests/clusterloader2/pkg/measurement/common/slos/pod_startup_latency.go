@@ -147,6 +147,10 @@ func (p *podStartupLatencyMeasurement) gather(c clientset.Interface, identifier 
 			From: schedulePhase,
 			To:   runPhase,
 		},
+		"create_to_run": {
+			From: createPhase,
+			To:   runPhase,
+		},
 		"run_to_watch": {
 			From: runPhase,
 			To:   watchPhase,
