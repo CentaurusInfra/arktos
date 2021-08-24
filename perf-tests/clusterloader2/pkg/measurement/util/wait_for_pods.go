@@ -56,7 +56,7 @@ func WaitForPods(clientSet clientset.Interface, stopCh <-chan struct{}, options 
 	}
 	defer ps.Stop()
 
-	oldPods := ps.List()
+	oldPods := FilterPods(ps.List(), options.Selector)
 	scaling := uninitialized
 	var podsStatus PodsStartupStatus
 
@@ -76,7 +76,8 @@ func WaitForPods(clientSet clientset.Interface, stopCh <-chan struct{}, options 
 			return fmt.Errorf("timeout while waiting for %d pods to be running in namespace '%v' with labels '%v' and fields '%v' - only %d found running",
 				options.DesiredPodCount, options.Selector.Namespace, options.Selector.LabelSelector, options.Selector.FieldSelector, podsStatus.Running)
 		case <-time.After(options.WaitForPodsInterval):
-			pods := ps.List()
+			allPods := ps.List()
+			pods := FilterPods(allPods, options.Selector)
 			podsStatus = ComputePodsStartupStatus(pods, options.DesiredPodCount, options.IsPodUpdated)
 
 			diff := DiffPods(oldPods, pods)

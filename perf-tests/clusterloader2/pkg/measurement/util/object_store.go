@@ -23,7 +23,10 @@ package util
 
 import (
 	"fmt"
+	"k8s.io/klog"
 	"reflect"
+	"strings"
+	"sync"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -47,7 +50,10 @@ type ObjectStore struct {
 func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSelector) (*ObjectStore, error) {
 	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
 	stopCh := make(chan struct{})
-	name := fmt.Sprintf("%sStore: %s", reflect.TypeOf(obj).String(), selector.String())
+	name := fmt.Sprintf("%sStore", reflect.TypeOf(obj).String())
+	if selector != nil {
+		name = name + ": " + selector.String()
+	}
 	reflector := cache.NewNamedReflector(name, lw, obj, store, 0, false)
 	go reflector.Run(stopCh)
 	if err := wait.PollImmediate(50*time.Millisecond, 2*time.Minute, func() (bool, error) {
@@ -74,27 +80,44 @@ func (s *ObjectStore) Stop() {
 // PodStore is a convenient wrapper around cache.Store.
 type PodStore struct {
 	*ObjectStore
+	listener int
 }
+
+var podStore *PodStore = nil
+var initPodStoreLock sync.Mutex
 
 // NewPodStore creates PodStore based on given object selector.
 func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, error) {
+	initPodStoreLock.Lock()
+	defer initPodStoreLock.Unlock()
+
+	if podStore != nil {
+		podStore.listener++
+		klog.Infof("0==== ADD PodStore listener, total %v", podStore.listener)
+		return podStore, nil
+	}
+
+	var err error
+	podStore, err = initPodStore(c)
+	return podStore, err
+}
+
+func initPodStore(c clientset.Interface) (*PodStore, error) {
+	klog.Infof("0==== initPodStore")
+	//debug.PrintStack()
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
-			options.LabelSelector = selector.LabelSelector
-			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, util.GetTenant()).List(options)
+			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).List(options)
 		},
 		WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
-			options.LabelSelector = selector.LabelSelector
-			options.FieldSelector = selector.FieldSelector
-			return c.CoreV1().PodsWithMultiTenancy(selector.Namespace, util.GetTenant()).Watch(options)
+			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.Pod{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil)
 	if err != nil {
 		return nil, err
 	}
-	return &PodStore{ObjectStore: objectStore}, nil
+	return &PodStore{ObjectStore: objectStore, listener: 1}, nil
 }
 
 // List returns list of pods (that satisfy conditions provided to NewPodStore).
@@ -105,6 +128,78 @@ func (s *PodStore) List() []*v1.Pod {
 		pods = append(pods, o.(*v1.Pod))
 	}
 	return pods
+}
+
+func (s *PodStore) Stop() {
+	initPodStoreLock.Lock()
+	defer initPodStoreLock.Unlock()
+	if podStore == nil {
+		return
+	}
+	if podStore.listener == 1 {
+		klog.Infof("0==== stop PodStore")
+		close(s.stopCh)
+		podStore = nil
+	} else {
+		podStore.listener--
+		klog.Infof("0==== REMOVE PodStore listener, total %v", podStore.listener)
+	}
+}
+
+func FilterPods(pods []*v1.Pod, selector *ObjectSelector) []*v1.Pod {
+	filteredPods := make([]*v1.Pod, 0)
+	var selectorMap map[string]string
+	if selector.LabelSelector != "" {
+		selectorMap = getLabelSelectorMapFromString(selector.LabelSelector)
+	}
+
+	for _, pod := range pods {
+		if selector.Namespace != "" && pod.Namespace != selector.Namespace {
+			continue
+		}
+		if selector.LabelSelector != "" {
+			//klog.Infof("selector LS [%s], pods Labels [%#v]", selector.LabelSelector, pod.Labels)
+			if !isLabelMatch(selectorMap, pod.Labels) {
+				continue
+			}
+		}
+		// TODO - FieldSelector
+		if selector.FieldSelector != "" {
+			klog.Infof("selector FS [%s]", selector.FieldSelector)
+		}
+		filteredPods = append(filteredPods, pod)
+	}
+
+	return filteredPods
+}
+
+func isLabelMatch(targetLS map[string]string, objSelector map[string]string) bool {
+	if len(targetLS) == 0 {
+		return true
+	}
+
+	for k, v := range targetLS {
+		if value, isOK := objSelector[k]; !isOK || value != v {
+			return false
+		}
+	}
+
+	return true
+}
+
+func getLabelSelectorMapFromString(ls string) map[string]string {
+	separator := ";"	// assume label selectors are separated by ;
+	labels := strings.Split(ls, separator)
+	lsMap := make(map[string]string, len(labels))
+	for _, label := range labels {
+		values := strings.Split(label, "=")
+		if len(values) != 2 {
+			// currently only handle k = v case
+			continue
+		}
+		lsMap[strings.TrimSpace(values[0])] = strings.TrimSpace(values[1])
+	}
+	return lsMap
 }
 
 // PVCStore is a convenient wrapper around cache.Store.
