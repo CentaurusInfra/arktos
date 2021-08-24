@@ -66,6 +66,14 @@ install_cni_bridge() {
     echo "done with bridge cni plugin installation"
 }
 
+install_cni_flannel() {
+    [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
+    [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
+    sudo find /etc/cni/net.d/ -type f -not -name '10-flannel.conflist' -delete
+
+    export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
+    export ARKTOS_NETWORK_TEMPLATE=flat
+}
 
 build_alktron() {
     local ALKTRON_DIR=$1
@@ -177,6 +185,10 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
     echo "cni plug is alktron; arktos will use alktron \(neutron plugin\) to provision pod network"
     install_cni_alktron
     install_loopback_cni
+elif [ "${CNIPLUGIN}" == "flannel" ]; then
+      echo "cni plugin is flannel; arktos will use flannel to provision pod network"
+      ensure_cni_binaries
+      install_cni_flannel
 else
     echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
     echo "suggest to use bridge cni plugin."
