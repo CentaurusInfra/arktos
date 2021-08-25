@@ -17,7 +17,7 @@
 
 # A set of helpers for starting/running etcd for tests
 # etcd version pattern  is d.d.d-arktos.d
-ETCD_VERSION=${ETCD_VERSION:-3.4.3.0.1}
+ETCD_VERSION=${ETCD_VERSION:-3.4.3}
 INT_NAME=$(ip route | awk '/default/ { print $5 }')
 ETCD_LOCAL_HOST=${ETCD_LOCAL_HOST:-127.0.0.1}
 ETCD_HOST=$(ip addr show $INT_NAME | grep "inet\b" | awk '{print $2}' | cut -d/ -f1)
@@ -151,7 +151,7 @@ kube::etcd::install() {
       ln -fns "etcd-v${ETCD_VERSION}-darwin-amd64" etcd
       rm "${download_file}"
     elif [[ ${os} == "linux" && ${arch} == "amd64" ]]; then
-      url="https://github.com/centaurus-cloud/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
+      url="https://github.com/coreos/etcd/releases/download/v${ETCD_VERSION}/etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
       download_file="etcd-v${ETCD_VERSION}-${os}-${arch}.tar.gz"
       kube::util::download_file "${url}" "${download_file}"
       tar xzf "${download_file}"
