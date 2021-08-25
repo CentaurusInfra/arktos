@@ -6,9 +6,8 @@ The steps might change with the progress of development.
 
 If you would like to try with Flannel cni plugin, please ensure to read [multi-node setup guide](multi-node-dev-cluster.md).
 
-1. Prepare lab machines. Particularly, build arktos-network-controller (as it is not part of arktos-up.sh yet); disable local DNS cache (applicable to 127.0.0.53 name server; as it would cause coreDNS to crash with DNS loopback lookup):
+1. Prepare lab machines. Particularly, check for local DNS cache (applicable to 127.0.0.53 name server; as it would cause coreDNS to crash with DNS loopback lookup):
 ```bash
-make all WHAT=cmd/arktos-network-controller
 sudo rm -f /etc/resolv.conf
 sudo ln -s /run/systemd/resolve/resolv.conf /etc/resolv.conf
 ```
