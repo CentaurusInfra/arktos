@@ -116,6 +116,11 @@ else
     echo "skipped the build."
 fi
 
+# To build arktos-network-controller
+if  [[ "${CNIPLUGIN}" == "flannel" ]] && [[ ! -f "${KUBE_ROOT}/_output/local/bin/linux/amd64/arktos-network-controller" ]]; then
+  make -j4 -C "${KUBE_ROOT}" WHAT="cmd/arktos-network-controller"
+fi
+
 # Shut down anyway if there's an error.
 set +e
 
