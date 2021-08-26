@@ -17,11 +17,14 @@ limitations under the License.
 package imagepreload
 
 import (
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	"strings"
 	"sync"
 	"time"
 
-	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/klog"
@@ -29,7 +32,6 @@ import (
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/flags"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/framework/client"
-	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/informer"
 	"k8s.io/kubernetes/perf-tests/clusterloader2/pkg/measurement/util/runtimeobjects"
 	perfutil "k8s.io/kubernetes/perf-tests/clusterloader2/pkg/util"
@@ -98,9 +100,14 @@ func (c *controller) PreloadImages() error {
 	defer close(stopCh)
 
 	nodeInformer := informer.NewInformer(
-		kclient,
-		"nodes",
-		util.NewObjectSelector(),
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				return kclient.CoreV1().Nodes().List(options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				return kclient.CoreV1().Nodes().Watch(options)
+			},
+		},
 		func(old, new interface{}) { c.checkNode(new, doneNodes) })
 	if err := informer.StartAndSync(nodeInformer, stopCh, informerTimeout); err != nil {
 		return err
