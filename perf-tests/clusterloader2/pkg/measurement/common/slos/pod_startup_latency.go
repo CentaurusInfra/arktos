@@ -18,6 +18,9 @@ package slos
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	"strings"
 	"time"
 
@@ -111,9 +114,16 @@ func (p *podStartupLatencyMeasurement) start(c clientset.Interface) error {
 	p.isRunning = true
 	p.stopCh = make(chan struct{})
 	i := informer.NewInformer(
-		c,
-		"pods",
-		p.selector,
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				p.selector.ApplySelectors(&options)
+				return c.CoreV1().PodsWithMultiTenancy(p.selector.Namespace, util.GetTenant()).List(options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				p.selector.ApplySelectors(&options)
+				return c.CoreV1().PodsWithMultiTenancy(p.selector.Namespace, util.GetTenant()).Watch(options)
+			},
+		},
 		p.checkPod,
 	)
 	return informer.StartAndSync(i, p.stopCh, informerSyncTimeout)
