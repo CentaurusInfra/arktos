@@ -47,8 +47,8 @@ type Config struct {
 	// the rest config for the master
 	Kubeconfig *restclient.Config
 
-	// the rest clients for resource providers
-	ResourceProviderClients []clientset.Interface
+	// the rest configs for resource providers
+	ResourceProviderKubeconfigs []*restclient.Config
 
 	// the event sink
 	EventRecorder record.EventRecorder
