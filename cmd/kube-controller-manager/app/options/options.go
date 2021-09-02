@@ -421,33 +421,33 @@ func (s KubeControllerManagerOptions) Config(allControllers []string, disabledBy
 	eventRecorder := createRecorder(client, KubeControllerManagerUserAgent)
 
 	// get resource provider kube configs
-	var resourceProviderClients []clientset.Interface
+	var resourceProviderKubeconfigs []*restclient.Config
 	if len(s.ResourceProviderKubeConfig) > 0 {
 		resourceProviderKubeConfigFiles, existed := genutils.ParseKubeConfigFiles(s.ResourceProviderKubeConfig)
 		// TODO: rewrite the IF block when perf test env no longer requires sequential setup of TP/RP clusters
 		if !existed {
 			klog.Warningf("--resource-providers points to non existed file(s), default to local cluster kubeconfig file")
-			resourceProviderClients = make([]clientset.Interface, 1)
-			resourceProviderClients[0] = client
+			resourceProviderKubeconfigs = make([]*restclient.Config, 1)
+			resourceProviderKubeconfigs[0] = restclient.CopyConfigs(kubeconfigs)
 		} else {
-			resourceProviderClients = make([]clientset.Interface, len(resourceProviderKubeConfigFiles))
+			resourceProviderKubeconfigs = make([]*restclient.Config, len(resourceProviderKubeConfigFiles))
 			for i, kubeConfigFile := range resourceProviderKubeConfigFiles {
-				resourceProviderClient, err := clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				resourceProviderKubeconfig, err := clientutil.CreateClientConfigFromKubeconfigFileAndSetQpsNoUserAgent(kubeConfigFile, 0, 0, "")
 				if err != nil {
 					return nil, fmt.Errorf("failed to create resource provider rest client from kubeconfig [%s], error [%v]", kubeConfigFile, err)
 				}
-				resourceProviderClients[i] = resourceProviderClient
-				klog.V(3).Infof("Created resource provider client %d %p", i, resourceProviderClient)
+				resourceProviderKubeconfigs[i] = resourceProviderKubeconfig
+				klog.V(3).Infof("Created resource provider kubeconfig %d %p", i, resourceProviderKubeconfig)
 			}
 		}
 	}
 
 	c := &kubecontrollerconfig.Config{
-		Client:                  client,
-		Kubeconfig:              kubeconfigs,
-		EventRecorder:           eventRecorder,
-		LeaderElectionClient:    leaderElectionClient,
-		ResourceProviderClients: resourceProviderClients,
+		Client:                      client,
+		Kubeconfig:                  kubeconfigs,
+		EventRecorder:               eventRecorder,
+		LeaderElectionClient:        leaderElectionClient,
+		ResourceProviderKubeconfigs: resourceProviderKubeconfigs,
 	}
 	if err := s.ApplyTo(c); err != nil {
 		return nil, err

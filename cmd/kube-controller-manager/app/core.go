@@ -116,7 +116,7 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 	nodeIpamController, err := nodeipamcontroller.NewNodeIpamController(
 		ctx.InformerFactory.Core().V1().Nodes(),
 		ctx.Cloud,
-		ctx.ClientBuilder.ClientOrDie("node-controller"),
+		ctx.ClientBuilder.ClientOrDie("node-ipam-controller"),
 		clusterCIDR,
 		serviceCIDR,
 		int(ctx.ComponentConfig.NodeIPAMController.NodeCIDRMaskSize),
@@ -130,14 +130,13 @@ func startNodeIpamController(ctx ControllerContext) (http.Handler, bool, error) 
 }
 
 func startNodeLifecycleController(ctx ControllerContext) (http.Handler, bool, error) {
-
 	kubeclient := ctx.ClientBuilder.ClientOrDie("node-controller")
 
 	var tpAccessors []*nodeutil.TenantPartitionManager
 	var err error
 	// for backward compatibility, when "--tenant-server-kubeconfigs" option is not specified, we fall back to the traditional kubernetes scenario.
 	if len(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig) > 0 {
-		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeConfig(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig)
+		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeConfig(ctx.ComponentConfig.NodeLifecycleController.TenantPartitionKubeConfig, "node-controller")
 	} else {
 		tpAccessors, err = nodeutil.GetTenantPartitionManagersFromKubeClients([]clientset.Interface{kubeclient})
 	}

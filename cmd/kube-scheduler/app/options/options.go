@@ -299,7 +299,7 @@ func (o *Options) Config() (*schedulerappconfig.Config, error) {
 			c.NodeInformers = make(map[string]coreinformers.NodeInformer, len(kubeConfigFiles))
 			for i, kubeConfigFile := range kubeConfigFiles {
 				rpId := "rp" + strconv.Itoa(i)
-				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				c.ResourceProviderClients[rpId], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile, "kube-scheduler")
 				if err != nil {
 					klog.Errorf("failed to create resource provider rest client, error: %v", err)
 					return nil, err
