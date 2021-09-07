@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -90,12 +91,13 @@ type PodStore struct {
 }
 
 const (
-	labelNameKeyIndex = "label.name"
+	labelNameKeyIndex  = "label.name"
 	labelGroupKeyIndex = "label.group"
 
-	labelNameKey = "name"
+	labelNameKey  = "name"
 	labelGroupKey = "group"
 )
+
 var podStore *PodStore = nil
 var initPodStoreLock sync.Mutex
 
@@ -137,7 +139,7 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 			}
 			return []string{}, nil
 		},
-		labelGroupKeyIndex : func(obj interface{}) ([]string, error) {
+		labelGroupKeyIndex: func(obj interface{}) ([]string, error) {
 			pod, ok := obj.(*v1.Pod)
 			if !ok {
 				return []string{}, nil
@@ -229,7 +231,7 @@ func FilterPods(ps *PodStore, selector *ObjectSelector) []*v1.Pod {
 		}
 		if labelKeyName != "" && labelKeyValue != "" {
 			pods, err := ps.podListerFunc(labelKeyName, labelKeyValue, selector.Namespace)
-			klog.Infof("==== FilterPods key [%v], value [%v], err [%v], namespace [%s], len(pods)=[%v]", labelKeyName, labelKeyValue, err, selector.Namespace, len(pods))
+			//klog.Infof("==== FilterPods key [%v], value [%v], err [%v], namespace [%s], len(pods)=[%v]", labelKeyName, labelKeyValue, err, selector.Namespace, len(pods))
 			if err != nil {
 				return filteredPods
 			}
@@ -274,7 +276,7 @@ func isLabelMatch(targetLS map[string]string, objSelector map[string]string) boo
 }
 
 func getLabelSelectorMapFromString(ls string) map[string]string {
-	separator := ";"	// assume label selectors are separated by ;
+	separator := ";" // assume label selectors are separated by ;
 	labels := strings.Split(ls, separator)
 	lsMap := make(map[string]string, len(labels))
 	for _, label := range labels {
