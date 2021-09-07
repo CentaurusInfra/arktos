@@ -86,7 +86,7 @@ func (s *ObjectStore) Stop() {
 type PodStore struct {
 	*ObjectStore
 	listener      int
-	podListerFunc func(labelKey string, labelValue string) ([]*v1.Pod, error)
+	podListerFunc func(labelKey string, labelValue string, ns string) ([]*v1.Pod, error)
 }
 
 const (
@@ -133,7 +133,7 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 				return []string{}, nil
 			}
 			if nameLabel, isOK := pod.Labels[labelNameKey]; isOK {
-				return []string{nameLabel}, nil
+				return []string{fmt.Sprintf("%s/%s", pod.Namespace, nameLabel)}, nil
 			}
 			return []string{}, nil
 		},
@@ -142,8 +142,8 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 			if !ok {
 				return []string{}, nil
 			}
-			if nameLabel, isOK := pod.Labels[labelGroupKey]; isOK {
-				return []string{nameLabel}, nil
+			if groupLabel, isOK := pod.Labels[labelGroupKey]; isOK {
+				return []string{groupLabel}, nil
 			}
 			return []string{}, nil
 		},
@@ -155,12 +155,12 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 	}
 
 	index, _ := objectStore.Store.(cache.Indexer)
-	podListerFunc := func(labelKey string, labelValue string) ([]*v1.Pod, error) {
+	podListerFunc := func(labelKey string, labelValue string, ns string) ([]*v1.Pod, error) {
 		var err error
 		var objs []interface{}
 		switch labelKey {
 		case labelNameKey:
-			objs, err = index.ByIndex(labelNameKeyIndex, labelValue)
+			objs, err = index.ByIndex(labelNameKeyIndex, fmt.Sprintf("%s/%s", ns, labelValue))
 		case labelGroupKey:
 			objs, err = index.ByIndex(labelGroupKeyIndex, labelValue)
 		default:
@@ -228,8 +228,8 @@ func FilterPods(ps *PodStore, selector *ObjectSelector) []*v1.Pod {
 			labelKeyValue = group
 		}
 		if labelKeyName != "" && labelKeyValue != "" {
-			pods, err := ps.podListerFunc(labelKeyName, labelKeyValue)
-			klog.Infof("==== FilterPods key [%v], value [%v], err [%v], len(pods)=[%v]", labelKeyName, labelKeyValue, err, len(pods))
+			pods, err := ps.podListerFunc(labelKeyName, labelKeyValue, selector.Namespace)
+			klog.Infof("==== FilterPods key [%v], value [%v], err [%v], namespace [%s], len(pods)=[%v]", labelKeyName, labelKeyValue, err, selector.Namespace, len(pods))
 			if err != nil {
 				return filteredPods
 			}
