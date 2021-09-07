@@ -85,11 +85,17 @@ func (s *ObjectStore) Stop() {
 // PodStore is a convenient wrapper around cache.Store.
 type PodStore struct {
 	*ObjectStore
-	listener int
-	podListerFunc func(labelName string) ([]*v1.Pod, error)
+	listener      int
+	podListerFunc func(labelKey string, labelValue string) ([]*v1.Pod, error)
 }
 
-const labelNameKeyIndex = "label.name"
+const (
+	labelNameKeyIndex = "label.name"
+	labelGroupKeyIndex = "label.group"
+
+	labelNameKey = "name"
+	labelGroupKey = "group"
+)
 var podStore *PodStore = nil
 var initPodStoreLock sync.Mutex
 
@@ -120,27 +126,46 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).Watch(options)
 		},
 	}
-	labelNameIndexers := cache.Indexers{
+	labelIndexers := cache.Indexers{
 		labelNameKeyIndex: func(obj interface{}) ([]string, error) {
 			pod, ok := obj.(*v1.Pod)
 			if !ok {
 				return []string{}, nil
 			}
-			if nameLabel, isOK := pod.Labels["name"]; isOK {
+			if nameLabel, isOK := pod.Labels[labelNameKey]; isOK {
+				return []string{nameLabel}, nil
+			}
+			return []string{}, nil
+		},
+		labelGroupKeyIndex : func(obj interface{}) ([]string, error) {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				return []string{}, nil
+			}
+			if nameLabel, isOK := pod.Labels[labelGroupKey]; isOK {
 				return []string{nameLabel}, nil
 			}
 			return []string{}, nil
 		},
 	}
 
-	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil, labelNameIndexers)
+	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil, labelIndexers)
 	if err != nil {
 		return nil, err
 	}
 
 	index, _ := objectStore.Store.(cache.Indexer)
-	podListerFunc := func(labelName string) ([]*v1.Pod, error) {
-		objs, err := index.ByIndex(labelNameKeyIndex, labelName)
+	podListerFunc := func(labelKey string, labelValue string) ([]*v1.Pod, error) {
+		var err error
+		var objs []interface{}
+		switch labelKey {
+		case labelNameKey:
+			objs, err = index.ByIndex(labelNameKeyIndex, labelValue)
+		case labelGroupKey:
+			objs, err = index.ByIndex(labelGroupKeyIndex, labelValue)
+		default:
+			err = fmt.Errorf("Not supported index [%v]", labelKey)
+		}
 		if err != nil {
 			return nil, err
 		}
@@ -193,14 +218,25 @@ func FilterPods(ps *PodStore, selector *ObjectSelector) []*v1.Pod {
 		selectorMap = getLabelSelectorMapFromString(selector.LabelSelector)
 	}
 	if ps.podListerFunc != nil {
-		if name, isOK := selectorMap["name"]; isOK {
-			pods, err := ps.podListerFunc(name)
+		labelKeyName := ""
+		labelKeyValue := ""
+		if name, isOK := selectorMap[labelNameKey]; isOK {
+			labelKeyName = labelNameKey
+			labelKeyValue = name
+		} else if group, isOK := selectorMap[labelGroupKey]; isOK {
+			labelKeyName = labelGroupKey
+			labelKeyValue = group
+		}
+		if labelKeyName != "" && labelKeyValue != "" {
+			pods, err := ps.podListerFunc(labelKeyName, labelKeyValue)
+			klog.Infof("==== FilterPods key [%v], value [%v], err [%v], len(pods)=[%v]", labelKeyName, labelKeyValue, err, len(pods))
 			if err != nil {
 				return filteredPods
 			}
 			return pods
 		}
 	}
+	klog.Infof("==== !!! Label did not match, search all pods by label")
 
 	pods := ps.List()
 	for _, pod := range pods {
