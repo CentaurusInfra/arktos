@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -268,7 +269,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := flattenValidEndpoints(portsToEndpoints[portname])
 		state, exists := lb.services[svcPort]
 
@@ -297,7 +298,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := flattenValidEndpoints(portsToEndpoints[portname])
 		state, exists := lb.services[svcPort]
 
@@ -324,7 +325,7 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 
 	// Now remove all endpoints missing from the update.
 	for portname := range oldPortsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: oldEndpoints.Tenant, Namespace: oldEndpoints.Namespace, Name: oldEndpoints.Name}, Port: portname}
 		if _, exists := registeredEndpoints[svcPort]; !exists {
 			lb.resetService(svcPort)
 		}
@@ -350,7 +351,7 @@ func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		lb.resetService(svcPort)
 	}
 }
