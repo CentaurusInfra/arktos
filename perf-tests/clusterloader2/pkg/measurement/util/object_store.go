@@ -47,8 +47,13 @@ type ObjectStore struct {
 }
 
 // newObjectStore creates ObjectStore based on given object selector.
-func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSelector) (*ObjectStore, error) {
-	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
+func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSelector, indexers cache.Indexers) (*ObjectStore, error) {
+	var store cache.Store
+	if indexers == nil {
+		store = cache.NewStore(cache.MetaNamespaceKeyFunc)
+	} else {
+		store = cache.NewIndexer(cache.MetaNamespaceKeyFunc, indexers)
+	}
 	stopCh := make(chan struct{})
 	name := fmt.Sprintf("%sStore", reflect.TypeOf(obj).String())
 	if selector != nil {
@@ -81,8 +86,10 @@ func (s *ObjectStore) Stop() {
 type PodStore struct {
 	*ObjectStore
 	listener int
+	podListerFunc func(labelName string) ([]*v1.Pod, error)
 }
 
+const labelNameKeyIndex = "label.name"
 var podStore *PodStore = nil
 var initPodStoreLock sync.Mutex
 
@@ -113,11 +120,42 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil)
+	labelNameIndexers := cache.Indexers{
+		labelNameKeyIndex: func(obj interface{}) ([]string, error) {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				return []string{}, nil
+			}
+			if nameLabel, isOK := pod.Labels["name"]; isOK {
+				return []string{nameLabel}, nil
+			}
+			return []string{}, nil
+		},
+	}
+
+	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil, labelNameIndexers)
 	if err != nil {
 		return nil, err
 	}
-	return &PodStore{ObjectStore: objectStore, listener: 1}, nil
+
+	index, _ := objectStore.Store.(cache.Indexer)
+	podListerFunc := func(labelName string) ([]*v1.Pod, error) {
+		objs, err := index.ByIndex(labelNameKeyIndex, labelName)
+		if err != nil {
+			return nil, err
+		}
+		pods := make([]*v1.Pod, 0, len(objs))
+		for _, obj := range objs {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				continue
+			}
+			pods = append(pods, pod)
+		}
+		return pods, nil
+	}
+
+	return &PodStore{ObjectStore: objectStore, listener: 1, podListerFunc: podListerFunc}, nil
 }
 
 // List returns list of pods (that satisfy conditions provided to NewPodStore).
@@ -146,13 +184,25 @@ func (s *PodStore) Stop() {
 	}
 }
 
-func FilterPods(pods []*v1.Pod, selector *ObjectSelector) []*v1.Pod {
+func FilterPods(ps *PodStore, selector *ObjectSelector) []*v1.Pod {
 	filteredPods := make([]*v1.Pod, 0)
+
+	// if has name label, use podLister func, otherwise, check every label
 	var selectorMap map[string]string
 	if selector.LabelSelector != "" {
 		selectorMap = getLabelSelectorMapFromString(selector.LabelSelector)
 	}
+	if ps.podListerFunc != nil {
+		if name, isOK := selectorMap["name"]; isOK {
+			pods, err := ps.podListerFunc(name)
+			if err != nil {
+				return filteredPods
+			}
+			return pods
+		}
+	}
 
+	pods := ps.List()
 	for _, pod := range pods {
 		if selector.Namespace != "" && pod.Namespace != selector.Namespace {
 			continue
@@ -221,7 +271,7 @@ func NewPVCStore(c clientset.Interface, selector *ObjectSelector) (*PVCStore, er
 			return c.CoreV1().PersistentVolumeClaimsWithMultiTenancy(selector.Namespace, util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.PersistentVolumeClaim{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.PersistentVolumeClaim{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +307,7 @@ func NewPVStore(c clientset.Interface, selector *ObjectSelector) (*PVStore, erro
 			return c.CoreV1().PersistentVolumesWithMultiTenancy(util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.PersistentVolume{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.PersistentVolume{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +343,7 @@ func NewNodeStore(c clientset.Interface, selector *ObjectSelector) (*NodeStore, 
 			return c.CoreV1().Nodes().Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.Node{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.Node{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
