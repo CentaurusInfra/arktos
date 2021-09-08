@@ -86,7 +86,8 @@ func (kl *Kubelet) registerWithAPIServer() {
 // value of the annotation for controller-managed attach-detach of attachable
 // persistent volumes for the node.
 func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
-	_, err := kl.heartbeatClient.CoreV1().Nodes().Create(node)
+	var err error
+	kl.latestNode, err = kl.heartbeatClient.CoreV1().Nodes().Create(node)
 	if err == nil {
 		return true
 	}
@@ -121,7 +122,8 @@ func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
 	requiresUpdate = kl.updateDefaultLabels(node, existingNode) || requiresUpdate
 	requiresUpdate = kl.reconcileExtendedResource(node, existingNode) || requiresUpdate
 	if requiresUpdate {
-		if _, _, err := nodeutil.PatchNodeStatus(kl.heartbeatClient.CoreV1(), types.NodeName(kl.nodeName), originalNode, existingNode); err != nil {
+		if kl.latestNode, _, err = nodeutil.PatchNodeStatus(kl.heartbeatClient.CoreV1(), types.NodeName(kl.nodeName), originalNode, existingNode); err != nil {
+			kl.latestNode = nil
 			klog.Errorf("Unable to reconcile node %q with API server: error updating node: %v", kl.nodeName, err)
 			return false
 		}
@@ -410,17 +412,21 @@ func (kl *Kubelet) updateNodeStatus() error {
 func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	// In large clusters, GET and PUT operations on Node objects coming
 	// from here are the majority of load on apiserver and etcd.
-	// To reduce the load on etcd, we are serving GET operations from
-	// apiserver cache (the data might be slightly delayed but it doesn't
-	// seem to cause more conflict - the delays are pretty small).
-	// If it result in a conflict, all retries are served directly from etcd.
+	// To reduce the load on etcd, we are serving node object from latest
+	// create or updated node.
+	// If it result in a conflict, all retries are served directly from etcd via GET
 	opts := metav1.GetOptions{}
 	if tryNumber == 0 {
 		util.FromApiserverCache(&opts)
 	}
-	node, err := kl.heartbeatClient.CoreV1().Nodes().Get(string(kl.nodeName), opts)
-	if err != nil {
-		return fmt.Errorf("error getting node %q: %v", kl.nodeName, err)
+
+	node := kl.latestNode
+	var err error
+	if node == nil {
+		node, err = kl.heartbeatClient.CoreV1().Nodes().Get(string(kl.nodeName), opts)
+		if err != nil {
+			return fmt.Errorf("error getting node %q: %v", kl.nodeName, err)
+		}
 	}
 
 	originalNode := node.DeepCopy()
@@ -467,8 +473,10 @@ func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	// Patch the current status on the API server
 	updatedNode, _, err := nodeutil.PatchNodeStatus(kl.heartbeatClient.CoreV1(), types.NodeName(kl.nodeName), originalNode, node)
 	if err != nil {
+		kl.latestNode = nil // when update failed, force reread from api server
 		return err
 	}
+	kl.latestNode = updatedNode
 	kl.lastStatusReportTime = now
 	kl.setLastObservedNodeAddresses(updatedNode.Status.Addresses)
 	// If update finishes successfully, mark the volumeInUse as reportedInUse to indicate
