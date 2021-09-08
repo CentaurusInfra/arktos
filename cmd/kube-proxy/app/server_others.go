@@ -127,9 +127,9 @@ func newProxyServer(
 		}
 		clients = make([]clientset.Interface, len(kubeConfigFiles))
 		for i, kubeConfigFile := range kubeConfigFiles {
-			clients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile, "kubelet")
+			clients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile, "kube-proxy")
 			if err != nil {
-				klog.Fatalf("failed to initialize kubelet client from kubeconfig [%s]: %v", kubeConfigFile, err)
+				klog.Fatalf("failed to initialize kube-proxy client from kubeconfig [%s]: %v", kubeConfigFile, err)
 			}
 		}
 	}
