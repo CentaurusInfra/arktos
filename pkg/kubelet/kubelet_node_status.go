@@ -86,7 +86,6 @@ func (kl *Kubelet) registerWithAPIServer() {
 // value of the annotation for controller-managed attach-detach of attachable
 // persistent volumes for the node.
 func (kl *Kubelet) tryRegisterWithAPIServer(node *v1.Node) bool {
-	//_, err := kl.heartbeatClient.CoreV1().Nodes().Create(node)
 	var err error
 	kl.latestNode, err = kl.heartbeatClient.CoreV1().Nodes().Create(node)
 	if err == nil {
@@ -413,10 +412,9 @@ func (kl *Kubelet) updateNodeStatus() error {
 func (kl *Kubelet) tryUpdateNodeStatus(tryNumber int) error {
 	// In large clusters, GET and PUT operations on Node objects coming
 	// from here are the majority of load on apiserver and etcd.
-	// To reduce the load on etcd, we are serving GET operations from
-	// apiserver cache (the data might be slightly delayed but it doesn't
-	// seem to cause more conflict - the delays are pretty small).
-	// If it result in a conflict, all retries are served directly from etcd.
+	// To reduce the load on etcd, we are serving node object from latest
+	// create or updated node.
+	// If it result in a conflict, all retries are served directly from etcd via GET
 	opts := metav1.GetOptions{}
 	if tryNumber == 0 {
 		util.FromApiserverCache(&opts)
