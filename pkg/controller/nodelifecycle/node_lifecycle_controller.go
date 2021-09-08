@@ -786,7 +786,7 @@ func (nc *Controller) doEvictionPass() {
 			}
 			nodeUID, _ := value.UID.(string)
 
-		    // TODO: this can be executed in parallel with multiple TPs
+			// TODO: this can be executed in parallel with multiple TPs
 			for _, tpManager := range nc.tenantPartitionManagers {
 				pods, err := tpManager.PodByNodeNameLister(value.Value)
 				if len(pods) == 0 && err == nil {
