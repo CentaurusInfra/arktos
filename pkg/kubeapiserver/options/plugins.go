@@ -28,6 +28,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/defaultpodnetworkreadiness"
 	"k8s.io/kubernetes/plugin/pkg/admission/defaulttolerationseconds"
 	"k8s.io/kubernetes/plugin/pkg/admission/deny"
+	deploymentNetwork "k8s.io/kubernetes/plugin/pkg/admission/deployment/network"
 	"k8s.io/kubernetes/plugin/pkg/admission/eventratelimit"
 	"k8s.io/kubernetes/plugin/pkg/admission/exec"
 	"k8s.io/kubernetes/plugin/pkg/admission/extendedresourcetoleration"
@@ -97,6 +98,7 @@ var AllOrderedPlugins = []string{
 	validatingwebhook.PluginName,            // ValidatingAdmissionWebhook
 	podresourceallocation.PluginName,        // PodResourceAllocation
 	resourcequota.PluginName,                // ResourceQuota
+	deploymentNetwork.PluginName,	         // DeploymentNetwork
 	deny.PluginName,                         // AlwaysDeny
 }
 
@@ -133,6 +135,7 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	resize.Register(plugins)
 	storageobjectinuseprotection.Register(plugins)
 	defaultpodnetworkreadiness.Register(plugins)
+	deploymentNetwork.Register(plugins)
 }
 
 // DefaultOffAdmissionPlugins get admission plugins off by default for kube-apiserver.
@@ -149,6 +152,7 @@ func DefaultOffAdmissionPlugins() sets.String {
 		podresourceallocation.PluginName,        //PodResourceAllocation
 		resourcequota.PluginName,                //ResourceQuota
 		storageobjectinuseprotection.PluginName, //StorageObjectInUseProtection
+		deploymentNetwork.PluginName,            //DeploymentNetwork
 	)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
