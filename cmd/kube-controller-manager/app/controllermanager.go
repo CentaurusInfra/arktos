@@ -240,11 +240,19 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 		saTokenControllerInitFunc := serviceAccountTokenControllerStarter{rootClientBuilder: rootClientBuilder}.startServiceAccountTokenController
 
 		// start client to resource providers
-		if len(c.ResourceProviderClients) > 0 {
+		userAgent := getUserAgentFor2ndPartition(controllerContext)
+		if len(c.ResourceProviderKubeconfigs) > 0 {
 			controllerContext.ResourceProviderClients = make(map[string]clientset.Interface)
 			controllerContext.ResourceProviderNodeInformers = make(map[string]coreinformers.NodeInformer)
-			for i, rpClient := range c.ResourceProviderClients {
+			for i, rpKubeConfig := range c.ResourceProviderKubeconfigs {
 				rpId := "rp" + strconv.Itoa(i)
+
+				clientConfigs := restclient.CopyConfigs(rpKubeConfig)
+				for _, config := range clientConfigs.GetAllConfigs() {
+					config.UserAgent = userAgent
+				}
+				rpClient := clientset.NewForConfigOrDie(clientConfigs)
+
 				resourceInformerFactory := informers.NewSharedInformerFactory(rpClient, 0)
 				resourceInformerFactory.Start(controllerContext.Stop)
 				controllerContext.ResourceProviderClients[rpId] = rpClient
@@ -666,4 +674,16 @@ func shouldTurnOnDynamicClient(client clientset.Interface) bool {
 	}
 
 	return false
+}
+
+// UserAgent is used for get user agent for second partition (RP or TP)
+//	If current partition is RP, 2nd partition will be TP, vice versa.
+func getUserAgentFor2ndPartition(controllerContext ControllerContext) string {
+	isNodeControllerEnabled := controllerContext.IsControllerEnabled("nodelifecycle")
+	if isNodeControllerEnabled {
+		// Current parition has node controller enabled, it is resource parition
+		// 2nd partition will be tenant partition
+		return "kcm-tenant-provider"
+	}
+	return "kcm-resource-provider"
 }
