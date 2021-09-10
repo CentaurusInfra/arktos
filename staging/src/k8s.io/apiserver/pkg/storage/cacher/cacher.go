@@ -489,6 +489,12 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 	// Also note that emptyFunc is a placeholder, until we will be able
 	// to compute watcher.forget function (which has to happen under lock).
 	watcher := newCacheWatcher(chanSize, filterWithAttrsFunction(key, pred), emptyFunc, c.versioner, deadline, pred.AllowWatchBookmarks, c.objectType)
+	if chanSize == 10 {
+		// When channel size is 10, check how it gets the size - in local test, kubelet watch pod with node name as field selector would have channel size 10
+		// log watcher pointer, compare with initEvents trace and understanding which watchers have those initEvents
+		klog.Infof("Channel size %v, objectType %v, key [%v], RV [%v], indexedTrigger [%p], triggerSupported [%v], pred field [%v], watcher [%p]",
+			chanSize, c.objectType, key, resourceVersion, c.indexedTrigger, triggerSupported, pred.Field.String(), watcher)
+	}
 
 	// We explicitly use thread unsafe version and do locking ourself to ensure that
 	// no new events will be processed in the meantime. The watchCache will be unlocked
@@ -1358,7 +1364,7 @@ func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEven
 	}
 	processingTime := time.Since(startTime)
 	if processingTime > initProcessThreshold {
-		klog.V(2).Infof("processing %d initEvents of %s took %v", len(initEvents), objType, processingTime)
+		klog.V(2).Infof("processing %d initEvents of %s took %v, watcher [%p]", len(initEvents), objType, processingTime, c)
 	}
 
 	defer close(c.result)
