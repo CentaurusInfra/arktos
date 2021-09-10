@@ -421,7 +421,7 @@ func (c *Configurer) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 			dnsConfig.Servers = []string{}
 			for _, ip := range clusterDNS {
 				dnsConfig.Servers = append(dnsConfig.Servers, ip.String())
-				nodeInfoMsg := fmt.Sprintf("For 1 TP X 1 RP verification - ClusterDNS IP : %q ", ip.String())
+				nodeInfoMsg := fmt.Sprintf("For verification - ClusterDNS IP : %q ", ip.String())
 				c.recorder.Eventf(c.nodeRef, v1.EventTypeWarning, "GetingClusterDNS", nodeInfoMsg)
 				c.recorder.Eventf(pod, v1.EventTypeWarning, "GettingClusterDNS", "pod: %q. %s", format.Pod(pod), nodeInfoMsg)
 			}
