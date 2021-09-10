@@ -457,7 +457,7 @@ github.com/gophercloud/gophercloud/openstack/networking/v2/ports
 github.com/gophercloud/gophercloud/openstack/networking/v2/subnets
 github.com/gophercloud/gophercloud/openstack/utils
 github.com/gophercloud/gophercloud/pagination
-# github.com/gorilla/websocket v1.4.0 => github.com/gorilla/websocket v1.4.0
+# github.com/gorilla/websocket v1.4.2 => github.com/gorilla/websocket v1.4.2
 github.com/gorilla/websocket
 # github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d => github.com/grafov/bcast v0.0.0-20190217190352-1447f067e08d
 github.com/grafov/bcast
@@ -506,13 +506,6 @@ github.com/jmespath/go-jmespath
 github.com/jonboulle/clockwork
 # github.com/json-iterator/go v1.1.8 => github.com/json-iterator/go v1.1.8
 github.com/json-iterator/go
-# github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024 => github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024
-github.com/jstemmer/go-junit-report
-github.com/jstemmer/go-junit-report/formatter
-github.com/jstemmer/go-junit-report/parser
-# github.com/jteeuwen/go-bindata v3.0.7+incompatible => github.com/jteeuwen/go-bindata v3.0.7+incompatible
-github.com/jteeuwen/go-bindata
-github.com/jteeuwen/go-bindata/go-bindata
 # github.com/karrick/godirwalk v1.7.5 => github.com/karrick/godirwalk v1.7.5
 github.com/karrick/godirwalk
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2 => github.com/konsorten/go-windows-terminal-sequences v1.0.1
@@ -1658,6 +1651,7 @@ k8s.io/client-go/transport/spdy
 k8s.io/client-go/util/cert
 k8s.io/client-go/util/certificate
 k8s.io/client-go/util/certificate/csr
+k8s.io/client-go/util/clientutil
 k8s.io/client-go/util/connrotation
 k8s.io/client-go/util/exec
 k8s.io/client-go/util/flowcontrol
@@ -1696,6 +1690,11 @@ k8s.io/component-base/featuregate
 k8s.io/component-base/featuregate/testing
 k8s.io/component-base/logs
 k8s.io/component-base/metrics
+k8s.io/component-base/metrics/legacyregistry
+k8s.io/component-base/metrics/prometheus/clientgo
+k8s.io/component-base/metrics/prometheus/clientgo/leaderelection
+k8s.io/component-base/metrics/prometheus/restclient
+k8s.io/component-base/metrics/prometheus/workqueue
 k8s.io/component-base/metrics/testutil
 k8s.io/component-base/version
 # k8s.io/cri-api v0.0.0 => ./staging/src/k8s.io/cri-api
@@ -1769,7 +1768,10 @@ k8s.io/kube-openapi/pkg/util/sets
 # k8s.io/kube-proxy v0.0.0 => ./staging/src/k8s.io/kube-proxy
 k8s.io/kube-proxy/config/v1alpha1
 # k8s.io/kube-scheduler v0.0.0 => ./staging/src/k8s.io/kube-scheduler
+k8s.io/kube-scheduler/config/v1
 k8s.io/kube-scheduler/config/v1alpha1
+k8s.io/kube-scheduler/config/v1alpha2
+k8s.io/kube-scheduler/extender/v1
 # k8s.io/kubelet v0.0.0 => ./staging/src/k8s.io/kubelet
 k8s.io/kubelet/config/v1beta1
 # k8s.io/legacy-cloud-providers v0.0.0 => ./staging/src/k8s.io/legacy-cloud-providers
@@ -1825,6 +1827,7 @@ k8s.io/sample-apiserver/pkg/generated/informers/externalversions/wardle/v1alpha1
 k8s.io/sample-apiserver/pkg/generated/informers/externalversions/wardle/v1beta1
 k8s.io/sample-apiserver/pkg/generated/listers/wardle/v1alpha1
 k8s.io/sample-apiserver/pkg/generated/listers/wardle/v1beta1
+k8s.io/sample-apiserver/pkg/generated/openapi
 k8s.io/sample-apiserver/pkg/registry
 k8s.io/sample-apiserver/pkg/registry/wardle/fischer
 k8s.io/sample-apiserver/pkg/registry/wardle/flunder

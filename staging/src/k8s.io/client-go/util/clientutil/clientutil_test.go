@@ -75,7 +75,7 @@ func TestCreateClientUtils(t *testing.T) {
 	for _, test := range tests {
 		t.Logf("execute test case [%s] for CreateClientFromKubeconfigFile", test.description)
 
-		_, err := CreateClientFromKubeconfigFile(test.kubeconfigFile)
+		_, err := CreateClientFromKubeconfigFile(test.kubeconfigFile, "kube-test")
 		if test.expectedError != nil && err.Error() != test.expectedError.Error() {
 			t.Fatalf("failed validate expected error. error: %v", err)
 		}
@@ -84,7 +84,7 @@ func TestCreateClientUtils(t *testing.T) {
 	for _, test := range tests {
 		t.Logf("execute test case [%s] for CreateClientConfigFromKubeconfigFileAndSetQps", test.description)
 
-		config, err := CreateClientConfigFromKubeconfigFileAndSetQps(test.kubeconfigFile, test.qps, test.burst, "")
+		config, err := CreateClientConfigFromKubeconfigFileAndSetQps(test.kubeconfigFile, test.qps, test.burst, "", "kube-test")
 
 		if err != nil && test.expectedError == nil {
 			t.Fatalf("failed validate expected error. error: %v", err)
