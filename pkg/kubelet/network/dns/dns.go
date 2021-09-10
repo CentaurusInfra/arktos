@@ -113,16 +113,16 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 	}
 
 	const kubeDNSPrefix = "kube-dns-"
-        var kubeDNSServiceName = kubeDNSPrefix + networkName
+	var kubeDNSServiceName = kubeDNSPrefix + networkName
 
-        // Get all services and find out the cluster IP of service kube-dns-{network}
-        for i := range services {
-                service := services[i]
+	// Get all services and find out the cluster IP of service kube-dns-{network}
+	for i := range services {
+		service := services[i]
 
-                // ignore services where ClusterIP is "None" or empty
-                if !v1helper.IsServiceIPSet(service) {
-                        continue
-                }
+		// ignore services where ClusterIP is "None" or empty
+		if !v1helper.IsServiceIPSet(service) {
+			continue
+		}
 
 		// Get the cluster IP of service kube-dns-{network} as name server
 		// inside the file /etc/resolv.conf of pod
@@ -130,10 +130,10 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 			ip := net.ParseIP(service.Spec.ClusterIP)
 			if ip != nil {
 				klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip,  networkName, pod.Tenant)
-                        	return []net.IP{ip}, nil
-                	}
-                }
-        }
+				return []net.IP{ip}, nil
+			}
+		}
+	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
 		return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
