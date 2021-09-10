@@ -622,7 +622,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	PodOverhead:                                    {Default: true, PreRelease: featuregate.Beta},
 	InPlacePodVerticalScaling:                      {Default: false, PreRelease: featuregate.Alpha},
 	PerNetworkServiceIPAlloc:                       {Default: false, PreRelease: featuregate.Alpha},
-	MandatoryArktosNetwork:                         {Default: true, PreRelease: featuregate.Beta},
+	MandatoryArktosNetwork:                         {Default: false, PreRelease: featuregate.Alpha},
 	WorkloadInfoDefaulting:                         {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleGCController:                          {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleRSController:                          {Default: false, PreRelease: featuregate.Alpha},
