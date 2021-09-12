@@ -533,7 +533,7 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 		c.watcherIdx++
 	}()
 
-	go watcher.process(ctx, initEvents, watchRV)
+	go watcher.process(ctx, initEvents, watchRV, triggerSupported)
 	return watcher, nil
 }
 
@@ -1337,7 +1337,7 @@ func (c *cacheWatcher) sendWatchCacheEvent(event *watchCacheEvent) {
 	}
 }
 
-func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEvent, resourceVersion uint64) {
+func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEvent, resourceVersion uint64, sendBookmarkEvent bool) {
 	defer utilruntime.HandleCrash()
 
 	// Check how long we are processing initEvents.
@@ -1365,13 +1365,14 @@ func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEven
 	processingTime := time.Since(startTime)
 	if processingTime > initProcessThreshold {
 		klog.V(2).Infof("processing %d initEvents of %s took %v, watcher [%p]", len(initEvents), objType, processingTime, c)
+	}
 
-		// send Bookmark event
-		if len(initEvents) > 0 {	// To reach here, it is almost impossible that len(initEvents) == 0. Just in case.
-			fakeBookmarkEvent := &watchCacheEvent{Type: watch.Bookmark, Object: initEvents[len(initEvents)-1].Object.DeepCopyObject()}
-			c.sendWatchCacheEvent(fakeBookmarkEvent)
-			klog.Infof("Sent fake event for next resource version [%v], key [%v]", initEvents[len(initEvents)-1].ResourceVersion, initEvents[len(initEvents)-1].Key)
-		}
+	// send Bookmark event
+	if len(initEvents) > 0 && sendBookmarkEvent {
+		e := initEvents[len(initEvents)-1]
+		fakeBookmarkEvent := &watchCacheEvent{Type: watch.Bookmark, Object: e.Object}
+		c.sendWatchCacheEvent(fakeBookmarkEvent)
+		klog.Infof("Sent fake event for next resource version [%v], key [%v], watcher [%p]", e.ResourceVersion, e.Key, c)
 	}
 
 	defer close(c.result)
