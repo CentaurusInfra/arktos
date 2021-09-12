@@ -1365,6 +1365,13 @@ func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEven
 	processingTime := time.Since(startTime)
 	if processingTime > initProcessThreshold {
 		klog.V(2).Infof("processing %d initEvents of %s took %v, watcher [%p]", len(initEvents), objType, processingTime, c)
+
+		// send Bookmark event
+		if len(initEvents) > 0 {	// To reach here, it is almost impossible that len(initEvents) == 0. Just in case.
+			fakeBookmarkEvent := &watchCacheEvent{Type: watch.Bookmark, Object: initEvents[len(initEvents)-1].Object.DeepCopyObject()}
+			c.sendWatchCacheEvent(fakeBookmarkEvent)
+			klog.Infof("Sent fake event for next resource version [%v], key [%v]", initEvents[len(initEvents)-1].ResourceVersion, initEvents[len(initEvents)-1].Key)
+		}
 	}
 
 	defer close(c.result)
