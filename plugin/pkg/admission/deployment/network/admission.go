@@ -7,7 +7,6 @@ import (
 	"k8s.io/apiserver/pkg/admission"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	apps "k8s.io/kubernetes/pkg/apis/apps"
-	labelsutil "k8s.io/kubernetes/pkg/util/labels"
 )
 
 // PluginName indicates name of admission plugin.
@@ -32,19 +31,15 @@ func (p plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfa
 		return nil
 	}
 
-	d, ok := attributes.GetObject().(* apps.Deployment)
+	d, ok := attributes.GetObject().(*apps.Deployment)
 	if !ok {
 		return apierrors.NewBadRequest("Resource was marked with kind Deployment but was unable to be converted")
 	}
 
-	// template inherits from deployment with network lable, if template has empty network associated
+	// template and pod template shall have consistent network labels
 	networkOfDeploy := d.ObjectMeta.Labels[arktosv1.NetworkLabel]
 	networkInTemplate := d.Spec.Template.Labels[arktosv1.NetworkLabel]
-	if len(networkOfDeploy) > 0 && len(networkInTemplate) == 0 {
-		d.Spec.Template.Labels = labelsutil.CloneAndAddLabel(d.Spec.Template.Labels, arktosv1.NetworkLabel, networkOfDeploy)
-	}
-
-	if d.ObjectMeta.Labels[arktosv1.NetworkLabel] != d.Spec.Template.Labels[arktosv1.NetworkLabel] {
+	if networkOfDeploy != networkInTemplate {
 		return apierrors.NewBadRequest("invalid deployment with conflicting network label")
 	}
 

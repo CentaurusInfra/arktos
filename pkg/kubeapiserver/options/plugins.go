@@ -98,7 +98,7 @@ var AllOrderedPlugins = []string{
 	validatingwebhook.PluginName,            // ValidatingAdmissionWebhook
 	podresourceallocation.PluginName,        // PodResourceAllocation
 	resourcequota.PluginName,                // ResourceQuota
-	deploymentNetwork.PluginName,	         // DeploymentNetwork
+	deploymentNetwork.PluginName,            // DeploymentNetwork
 	deny.PluginName,                         // AlwaysDeny
 }
 
