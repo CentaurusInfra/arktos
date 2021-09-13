@@ -19,6 +19,11 @@ package secret
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
 
 	"k8s.io/api/core/v1"
@@ -154,4 +159,94 @@ func NewWatchingSecretManager(kubeClients []clientset.Interface) Manager {
 	return &secretManager{
 		manager: manager.NewWatchBasedManager(listSecret, watchSecret, newSecret, gr, getSecretNames),
 	}
+}
+
+type byHostSecretManager struct {
+	kubeClients []clientset.Interface
+	hostName    string
+	stores      []cache.Store
+}
+
+// ensure this is the same as cache.MetaNamespaceKeyFunc
+func (s *byHostSecretManager) key(tenant, namespace, name string) string {
+	result := name
+	if len(namespace) > 0 {
+		result = namespace + "/" + result
+	} else {
+		result = metav1.NamespaceDefault + "/" + result
+	}
+	if len(tenant) > 0 && tenant != metav1.TenantSystem {
+		result = tenant + "/" + result
+	} else {
+		result = metav1.TenantSystem + "/" + result
+	}
+	return result
+}
+
+func (s *byHostSecretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+	key := s.key(tenant, namespace, name)
+	klog.V(2).Infof("get secret: %s", key)
+	for _, store := range s.stores {
+		klog.V(6).Infof("store keys: [%v]", store.ListKeys())
+		object, _, err := store.GetByKey(key)
+		if err != nil {
+			return nil, err
+		}
+		if object, ok := object.(*v1.Secret); ok {
+			return object, nil
+		}
+		return nil, fmt.Errorf("unexpected object type: %v", object)
+
+	}
+	return nil, fmt.Errorf("secret not found: %s-%s-%s", tenant, namespace, name)
+}
+
+func (s *byHostSecretManager) RegisterPod(pod *v1.Pod) {
+}
+
+func (s *byHostSecretManager) UnregisterPod(pod *v1.Pod) {
+}
+
+func MetaNamespaceKeyFunc(obj interface{}) (string, error) {
+	meta, err := meta.Accessor(obj)
+	if err != nil {
+		return "", fmt.Errorf("object has no meta: %v", err)
+	}
+
+	metaKey := meta.GetName()
+	if len(meta.GetNamespace()) > 0 {
+		metaKey = meta.GetNamespace() + "/" + metaKey
+	} else {
+		metaKey = metav1.NamespaceDefault + "/" + metaKey
+	}
+
+	if len(meta.GetTenant()) > 0 {
+		metaKey = meta.GetTenant() + "/" + metaKey
+	} else {
+		metaKey = metav1.TenantSystem + "/" + metaKey
+	}
+
+	return metaKey, nil
+}
+
+func NewByHostWatchingSecretManager(kubeClients []clientset.Interface, hostName string) Manager {
+
+	klog.Infof("create secret manager for host: %s", hostName)
+	stores := make([]cache.Store, len(kubeClients))
+
+	for i, tenantPartitionClient := range kubeClients {
+		listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
+			options.LabelSelector=hostName
+			return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(core.NamespaceAll, core.TenantAll).List(options)
+		}
+		watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
+			options.LabelSelector=hostName
+			return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(core.NamespaceAll, core.TenantAll).Watch(options)
+		}
+		stores[i] = cache.NewStore(MetaNamespaceKeyFunc)
+		r := cache.NewReflector(&cache.ListWatch{ListFunc: listFunc, WatchFunc: watchFunc}, &v1.Secret{}, stores[i], 0)
+		go r.Run(wait.NeverStop)
+	}
+
+	return &byHostSecretManager{kubeClients: kubeClients, hostName: hostName, stores: stores}
 }

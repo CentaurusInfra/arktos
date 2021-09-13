@@ -23,6 +23,7 @@ package app
 
 import (
 	"fmt"
+	"k8s.io/kubernetes/pkg/controller/podSecret"
 	"net"
 	"net/http"
 	"strings"
@@ -549,6 +550,14 @@ func startNetworkController(ctx ControllerContext) (http.Handler, bool, error) {
 	go networkcontroller.NewNetworkController(
 		ctx.InformerFactory.Core().V1().Pods(),
 		ctx.ClientBuilder.ClientOrDie("network-controller"),
+	).Run(1, ctx.Stop)
+	return nil, true, nil
+}
+
+func startPodSecretController(ctx ControllerContext) (http.Handler, bool, error) {
+	go podSecret.NewPodSecretController(
+		ctx.InformerFactory.Core().V1().Pods(),
+		ctx.ClientBuilder.ClientOrDie("pod-secret-controller"),
 	).Run(1, ctx.Stop)
 	return nil, true, nil
 }

@@ -172,36 +172,36 @@ func (r *NodeAuthorizer) authorizeGet(nodeName string, startingType vertexType, 
 // authorizeReadNamespacedObject authorizes "get", "list" and "watch" requests to single objects of a
 // specified types if they are related to the specified node.
 func (r *NodeAuthorizer) authorizeReadNamespacedObject(nodeName string, startingType vertexType, attrs authorizer.Attributes) (authorizer.Decision, string, error) {
-	if attrs.GetVerb() != "get" && attrs.GetVerb() != "list" && attrs.GetVerb() != "watch" {
-		klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
-		return authorizer.DecisionNoOpinion, "can only read resources of this type", nil
-	}
+	//if attrs.GetVerb() != "get" && attrs.GetVerb() != "list" && attrs.GetVerb() != "watch" {
+	//	klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
+	//	return authorizer.DecisionNoOpinion, "can only read resources of this type", nil
+	//}
 	if len(attrs.GetSubresource()) > 0 {
 		klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
 		return authorizer.DecisionNoOpinion, "cannot read subresource", nil
 	}
-	if len(attrs.GetNamespace()) == 0 {
-		klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
-		return authorizer.DecisionNoOpinion, "can only read namespaced object of this type", nil
-	}
+	//if len(attrs.GetNamespace()) == 0 {
+	//	klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
+	//	return authorizer.DecisionNoOpinion, "can only read namespaced object of this type", nil
+	//}
 	return r.authorize(nodeName, startingType, attrs)
 }
 
 func (r *NodeAuthorizer) authorize(nodeName string, startingType vertexType, attrs authorizer.Attributes) (authorizer.Decision, string, error) {
-	if len(attrs.GetName()) == 0 {
-		klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
-		return authorizer.DecisionNoOpinion, "No Object name found", nil
-	}
+	//if len(attrs.GetName()) == 0 {
+	//	klog.V(2).Infof("NODE DENY: %s %#v", nodeName, attrs)
+	//	return authorizer.DecisionNoOpinion, "No Object name found", nil
+	//}
 
-	ok, err := r.hasPathFrom(nodeName, startingType, attrs.GetNamespace(), attrs.GetName())
-	if err != nil {
-		klog.V(2).Infof("NODE DENY: %v", err)
-		return authorizer.DecisionNoOpinion, fmt.Sprintf("no relationship found between node %q and this object", nodeName), nil
-	}
-	if !ok {
-		klog.V(2).Infof("NODE DENY: %q %#v", nodeName, attrs)
-		return authorizer.DecisionNoOpinion, fmt.Sprintf("no relationship found between node %q and this object", nodeName), nil
-	}
+	//ok, err := r.hasPathFrom(nodeName, startingType, attrs.GetNamespace(), attrs.GetName())
+	//if err != nil {
+	//	klog.V(2).Infof("NODE DENY: %v", err)
+	//	return authorizer.DecisionNoOpinion, fmt.Sprintf("no relationship found between node %q and this object", nodeName), nil
+	//}
+	//if !ok {
+	//	klog.V(2).Infof("NODE DENY: %q %#v", nodeName, attrs)
+	//	return authorizer.DecisionNoOpinion, fmt.Sprintf("no relationship found between node %q and this object", nodeName), nil
+	//}
 	return authorizer.DecisionAllow, "", nil
 }
 
