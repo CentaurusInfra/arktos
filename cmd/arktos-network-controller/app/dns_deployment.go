@@ -186,10 +186,10 @@ func ensureToCreateConfigMap(net *v1.Network, client kubernetes.Interface, domai
 }
 
 func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kubeAPIServerIP, kubeAPIServerPort, saltSuffix string) error {
-	name := getSuffixedName(dnsBaseName + "-" + net.Name, saltSuffix)
+	name := getSuffixedName(dnsBaseName+"-"+net.Name, saltSuffix)
 	label := dnsServiceDefaultName + "-" + net.Name
 	saName := getSuffixedName(dnsBaseName, saltSuffix)
-	configmap := getSuffixedName(dnsBaseName + "-" + net.Name, saltSuffix)
+	configmap := getSuffixedName(dnsBaseName+"-"+net.Name, saltSuffix)
 	readOnlyRootFilesystem := true
 
 	if _, err := client.AppsV1().DeploymentsWithMultiTenancy(metav1.NamespaceSystem, net.Tenant).Get(name, metav1.GetOptions{}); err != nil {
