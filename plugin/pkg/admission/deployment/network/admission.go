@@ -36,7 +36,7 @@ func (p plugin) Admit(attributes admission.Attributes, o admission.ObjectInterfa
 		return apierrors.NewBadRequest("Resource was marked with kind Deployment but was unable to be converted")
 	}
 
-	// template and pod template shall have consistent network labels
+	// deployment and pod template shall have consistent network labels
 	networkOfDeploy := d.ObjectMeta.Labels[arktosv1.NetworkLabel]
 	networkInTemplate := d.Spec.Template.Labels[arktosv1.NetworkLabel]
 	if networkOfDeploy != networkInTemplate {
