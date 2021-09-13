@@ -904,10 +904,10 @@ func (nc *Controller) monitorNodeHealth() error {
 						// we need to mark node for retry to force MarkPodsNotReady execution
 						// in the next iteration.
 						nc.nodesToRetry.Store(node.Name, struct{}{})
-						// mark the node for retry and continue for other TPs
-						donePodEvictionOnNode = false
-						continue
 					}
+					// mark the node for retry and continue for other TPs
+					donePodEvictionOnNode = false
+					continue
 				}
 
 				if nc.useTaintBasedEvictions {
