@@ -67,14 +67,14 @@ install_cni_bridge() {
 }
 
 check_mizar_prerequisite() {
+    [[ ! -f "/usr/bin/pip3" ]] && sudo apt install python3-pip -y
     declare -a packages=( netaddr docker grpcio grpcio-tools scapy kubernetes )
         for package in ${packages[@]}; do
             if [[ $(pip3 freeze | grep "\b$package") ]]; then
                 continue
             else
                 sudo wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/bootstrap.sh -P /tmp/
-                sudo sed -i 's/docker.io/docker-ce/g' /tmp/bootstrap.sh
-                sudo sed -i '3,9d;61,78d' /tmp/bootstrap.sh
+                sudo sed -i '78,98d;3,11d' /tmp/bootstrap.sh
                 sudo bash /tmp/bootstrap.sh
             fi
     done
@@ -189,7 +189,7 @@ install_mizar_arktos_containerd () {
     if [ ! "$(${CONTAINERD_DIR}/containerd --version)" == "$(containerd --version)" ] ; then
       echo "arktos containerd not found..."
       [ ! -f "$HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz" ] && wget https://github.com/containerd/containerd/releases/download/v1.4.2/containerd-1.4.2-linux-amd64.tar.gz -P $HOME/arktos-containerd/
-      tar -zxf $HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz --directory /usr/
+      sudo tar -zxf $HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz --directory /usr/
       echo "installing arktos containerd..."
       sudo systemctl stop containerd
       sudo mv /usr/bin/containerd /usr/bin/containerd.bak
