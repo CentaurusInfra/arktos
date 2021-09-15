@@ -27,11 +27,12 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	arktosextensions "k8s.io/arktos-ext/pkg/generated/clientset/versioned/typed/arktosextensions/v1"
+	corelisters "k8s.io/client-go/listers/core/v1"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
@@ -54,6 +55,10 @@ const (
 	podDNSNone
 )
 
+type serviceLister interface {
+	List(labels.Selector) ([]*v1.Service, error)
+}
+
 // Configurer is used for setting up DNS resolver configuration when launching pods.
 type Configurer struct {
 	recorder record.EventRecorder
@@ -69,12 +74,12 @@ type Configurer struct {
 	// conjunction with clusterDomain and clusterDNS.
 	ResolverConfig string
 
-	// client to access network CR
-	arktosV1Client arktosextensions.ArktosV1Interface
+	//serviceLister knows how to list services
+	serviceLister []corelisters.ServiceLister
 }
 
 // NewConfigurer returns a DNS configurer for launching pods.
-func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, arktosV1Client arktosextensions.ArktosV1Interface) *Configurer {
+func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, serviceLister []corelisters.ServiceLister) *Configurer {
 	return &Configurer{
 		recorder:       recorder,
 		nodeRef:        nodeRef,
@@ -82,7 +87,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 		clusterDNS:     clusterDNS,
 		ClusterDomain:  clusterDomain,
 		ResolverConfig: resolverConfig,
-		arktosV1Client: arktosV1Client,
+		serviceLister:  serviceLister,
 	}
 }
 
@@ -98,18 +103,41 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		networkName = arktosv1.NetworkDefault
 	}
 
-	if network, err := c.arktosV1Client.NetworksWithMultiTenancy(pod.Tenant).Get(networkName, metav1.GetOptions{}); err == nil {
-		if network.Status.Phase != arktosv1.NetworkReady {
-			return nil, fmt.Errorf("network %s/%s is in %q phase, not ready", network.Tenant, network.Name, network.Status.Phase)
-		}
+	if c.serviceLister == nil || len(c.serviceLister) < 1 {
+                return nil, fmt.Errorf("failed to get serviceLister when getting service IP for network")
+        }
 
-		ip := net.ParseIP(network.Status.DNSServiceIP)
-		if ip != nil {
-			return []net.IP{ip}, nil
-		}
-	} else {
-		klog.Errorf("failed to get network %s/%s: %v", pod.Tenant, networkName, err)
-	}
+        if len(c.serviceLister) > 1 {
+                klog.V(4).Infof("Need locate which serviceLister is correct one in multi-serverListers")
+                klog.V(4).Infof("Temporarily use serviceLister[0] instead before team discussion")
+        }
+        services, err := c.serviceLister[0].List(labels.Everything())
+        if err != nil {
+                return nil, fmt.Errorf("failed to list services when getting service IP for network")
+        }
+
+        const kubeDNSPrefix = "kube-dns-"
+        var kubeDNSServiceName = kubeDNSPrefix + networkName
+
+        // Get all services and find out the cluster IP of service kube-dns-{network}
+        for i := range services {
+                service := services[i]
+
+                // ignore services where ClusterIP is "None" or empty
+                if !v1helper.IsServiceIPSet(service) {
+                        continue
+                }
+
+                // Get the cluster IP of service kube-dns-{network} as name server
+                // inside the file /etc/resolv.conf of pod
+                if service.Tenant == pod.Tenant && service.Name == kubeDNSServiceName {
+                        ip := net.ParseIP(service.Spec.ClusterIP)
+                        if ip != nil {
+                                klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip,  networkName, pod.Tenant)
+                                return []net.IP{ip}, nil
+                        }
+                }
+        }
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
 		return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
@@ -397,6 +425,9 @@ func (c *Configurer) GetPodDNS(pod *v1.Pod) (*runtimeapi.DNSConfig, error) {
 			dnsConfig.Servers = []string{}
 			for _, ip := range clusterDNS {
 				dnsConfig.Servers = append(dnsConfig.Servers, ip.String())
+				nodeInfoMsg := fmt.Sprintf("For verification - ClusterDNS IP : %q ", ip.String())
+				c.recorder.Eventf(c.nodeRef, v1.EventTypeWarning, "GetingClusterDNS", nodeInfoMsg)
+				c.recorder.Eventf(pod, v1.EventTypeWarning, "GettingClusterDNS", "pod: %q. %s", format.Pod(pod), nodeInfoMsg)
 			}
 			dnsConfig.Searches = c.generateSearchesForDNSClusterFirst(dnsConfig.Searches, pod)
 			dnsConfig.Options = defaultDNSOptions
