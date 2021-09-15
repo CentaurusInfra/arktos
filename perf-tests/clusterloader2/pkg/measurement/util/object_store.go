@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,8 +48,13 @@ type ObjectStore struct {
 }
 
 // newObjectStore creates ObjectStore based on given object selector.
-func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSelector) (*ObjectStore, error) {
-	store := cache.NewStore(cache.MetaNamespaceKeyFunc)
+func newObjectStore(obj runtime.Object, lw *cache.ListWatch, selector *ObjectSelector, indexers cache.Indexers) (*ObjectStore, error) {
+	var store cache.Store
+	if indexers == nil {
+		store = cache.NewStore(cache.MetaNamespaceKeyFunc)
+	} else {
+		store = cache.NewIndexer(cache.MetaNamespaceKeyFunc, indexers)
+	}
 	stopCh := make(chan struct{})
 	name := fmt.Sprintf("%sStore", reflect.TypeOf(obj).String())
 	if selector != nil {
@@ -80,8 +86,17 @@ func (s *ObjectStore) Stop() {
 // PodStore is a convenient wrapper around cache.Store.
 type PodStore struct {
 	*ObjectStore
-	listener int
+	listener      int
+	podListerFunc func(labelKey string, labelValue string, ns string) ([]*v1.Pod, error)
 }
+
+const (
+	labelNameKeyIndex  = "label.name"
+	labelGroupKeyIndex = "label.group"
+
+	labelNameKey  = "name"
+	labelGroupKey = "group"
+)
 
 var podStore *PodStore = nil
 var initPodStoreLock sync.Mutex
@@ -93,7 +108,7 @@ func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, er
 
 	if podStore != nil {
 		podStore.listener++
-		klog.Infof("0==== ADD PodStore listener, total %v", podStore.listener)
+		klog.V(4).Infof("ADD PodStore listener, total %v", podStore.listener)
 		return podStore, nil
 	}
 
@@ -103,8 +118,7 @@ func NewPodStore(c clientset.Interface, selector *ObjectSelector) (*PodStore, er
 }
 
 func initPodStore(c clientset.Interface) (*PodStore, error) {
-	klog.Infof("0==== initPodStore")
-	//debug.PrintStack()
+	klog.V(4).Infof("initPodStore")
 	lw := &cache.ListWatch{
 		ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
 			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).List(options)
@@ -113,11 +127,61 @@ func initPodStore(c clientset.Interface) (*PodStore, error) {
 			return c.CoreV1().PodsWithMultiTenancy(metav1.NamespaceAll, util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil)
+	labelIndexers := cache.Indexers{
+		labelNameKeyIndex: func(obj interface{}) ([]string, error) {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				return []string{}, nil
+			}
+			if nameLabel, isOK := pod.Labels[labelNameKey]; isOK {
+				return []string{fmt.Sprintf("%s/%s", pod.Namespace, nameLabel)}, nil
+			}
+			return []string{}, nil
+		},
+		labelGroupKeyIndex: func(obj interface{}) ([]string, error) {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				return []string{}, nil
+			}
+			if groupLabel, isOK := pod.Labels[labelGroupKey]; isOK {
+				return []string{groupLabel}, nil
+			}
+			return []string{}, nil
+		},
+	}
+
+	objectStore, err := newObjectStore(&v1.Pod{}, lw, nil, labelIndexers)
 	if err != nil {
 		return nil, err
 	}
-	return &PodStore{ObjectStore: objectStore, listener: 1}, nil
+
+	index, _ := objectStore.Store.(cache.Indexer)
+	podListerFunc := func(labelKey string, labelValue string, ns string) ([]*v1.Pod, error) {
+		var err error
+		var objs []interface{}
+		switch labelKey {
+		case labelNameKey:
+			objs, err = index.ByIndex(labelNameKeyIndex, fmt.Sprintf("%s/%s", ns, labelValue))
+		case labelGroupKey:
+			objs, err = index.ByIndex(labelGroupKeyIndex, labelValue)
+		default:
+			err = fmt.Errorf("Not supported index [%v]", labelKey)
+		}
+		if err != nil {
+			return nil, err
+		}
+		pods := make([]*v1.Pod, 0, len(objs))
+		for _, obj := range objs {
+			pod, ok := obj.(*v1.Pod)
+			if !ok {
+				continue
+			}
+			pods = append(pods, pod)
+		}
+		return pods, nil
+	}
+
+	return &PodStore{ObjectStore: objectStore, listener: 1, podListerFunc: podListerFunc}, nil
 }
 
 // List returns list of pods (that satisfy conditions provided to NewPodStore).
@@ -137,35 +201,59 @@ func (s *PodStore) Stop() {
 		return
 	}
 	if podStore.listener == 1 {
-		klog.Infof("0==== stop PodStore")
+		klog.V(4).Infof("Stop PodStore")
 		close(s.stopCh)
 		podStore = nil
 	} else {
 		podStore.listener--
-		klog.Infof("0==== REMOVE PodStore listener, total %v", podStore.listener)
+		klog.V(4).Infof("REMOVE PodStore listener, total %v", podStore.listener)
 	}
 }
 
-func FilterPods(pods []*v1.Pod, selector *ObjectSelector) []*v1.Pod {
+func FilterPods(ps *PodStore, selector *ObjectSelector) []*v1.Pod {
 	filteredPods := make([]*v1.Pod, 0)
+
+	// if has name label, use podLister func, otherwise, check every label
 	var selectorMap map[string]string
 	if selector.LabelSelector != "" {
 		selectorMap = getLabelSelectorMapFromString(selector.LabelSelector)
 	}
+	if ps.podListerFunc != nil {
+		labelKeyName := ""
+		labelKeyValue := ""
+		if name, isOK := selectorMap[labelNameKey]; isOK {
+			labelKeyName = labelNameKey
+			labelKeyValue = name
+		} else if group, isOK := selectorMap[labelGroupKey]; isOK {
+			labelKeyName = labelGroupKey
+			labelKeyValue = group
+		}
+		if labelKeyName != "" && labelKeyValue != "" {
+			pods, err := ps.podListerFunc(labelKeyName, labelKeyValue, selector.Namespace)
+			if err != nil {
+				return filteredPods
+			}
+			return pods
+		}
+	}
 
+	// Keep the log here. It should be ok to have a few. Need to take a look if there is a lot of such message as
+	// 	it is an indication that index was not used and test is heavily loaded in below logic.
+	klog.Infof("Label did not match, search all pods by label")
+
+	pods := ps.List()
 	for _, pod := range pods {
 		if selector.Namespace != "" && pod.Namespace != selector.Namespace {
 			continue
 		}
 		if selector.LabelSelector != "" {
-			//klog.Infof("selector LS [%s], pods Labels [%#v]", selector.LabelSelector, pod.Labels)
 			if !isLabelMatch(selectorMap, pod.Labels) {
 				continue
 			}
 		}
 		// TODO - FieldSelector
 		if selector.FieldSelector != "" {
-			klog.Infof("selector FS [%s]", selector.FieldSelector)
+			klog.Warningf("FieldSelector not supported. selector FS [%s]", selector.FieldSelector)
 		}
 		filteredPods = append(filteredPods, pod)
 	}
@@ -188,7 +276,7 @@ func isLabelMatch(targetLS map[string]string, objSelector map[string]string) boo
 }
 
 func getLabelSelectorMapFromString(ls string) map[string]string {
-	separator := ";"	// assume label selectors are separated by ;
+	separator := ";" // assume label selectors are separated by ;
 	labels := strings.Split(ls, separator)
 	lsMap := make(map[string]string, len(labels))
 	for _, label := range labels {
@@ -221,7 +309,7 @@ func NewPVCStore(c clientset.Interface, selector *ObjectSelector) (*PVCStore, er
 			return c.CoreV1().PersistentVolumeClaimsWithMultiTenancy(selector.Namespace, util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.PersistentVolumeClaim{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.PersistentVolumeClaim{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -257,7 +345,7 @@ func NewPVStore(c clientset.Interface, selector *ObjectSelector) (*PVStore, erro
 			return c.CoreV1().PersistentVolumesWithMultiTenancy(util.GetTenant()).Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.PersistentVolume{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.PersistentVolume{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -293,7 +381,7 @@ func NewNodeStore(c clientset.Interface, selector *ObjectSelector) (*NodeStore, 
 			return c.CoreV1().Nodes().Watch(options)
 		},
 	}
-	objectStore, err := newObjectStore(&v1.Node{}, lw, selector)
+	objectStore, err := newObjectStore(&v1.Node{}, lw, selector, nil)
 	if err != nil {
 		return nil, err
 	}
