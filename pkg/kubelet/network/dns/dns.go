@@ -33,6 +33,7 @@ import (
 	corelisters "k8s.io/client-go/listers/core/v1"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
@@ -76,10 +77,13 @@ type Configurer struct {
 
 	//serviceLister knows how to list services
 	serviceLister []corelisters.ServiceLister
+
+	//clientManager knows how to get correct index of multi-serviceListers
+	clientManager *kubeclientmanager.KubeClientManager
 }
 
 // NewConfigurer returns a DNS configurer for launching pods.
-func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, serviceLister []corelisters.ServiceLister) *Configurer {
+func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, serviceLister []corelisters.ServiceLister, clientManager *kubeclientmanager.KubeClientManager) *Configurer {
 	return &Configurer{
 		recorder:       recorder,
 		nodeRef:        nodeRef,
@@ -88,6 +92,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 		ClusterDomain:  clusterDomain,
 		ResolverConfig: resolverConfig,
 		serviceLister:  serviceLister,
+		clientManager:  clientManager,
 	}
 }
 
@@ -107,11 +112,19 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
                 return nil, fmt.Errorf("failed to get serviceLister when getting service IP for network")
         }
 
+	var index int
         if len(c.serviceLister) > 1 {
                 klog.V(4).Infof("Need locate which serviceLister is correct one in multi-serverListers")
-                klog.V(4).Infof("Temporarily use serviceLister[0] instead before team discussion")
-        }
-        services, err := c.serviceLister[0].List(labels.Everything())
+                //klog.V(4).Infof("Temporarily use serviceLister[0] instead before team discussion")
+		// To get correct index of serviceLister based on Por's tenant information
+		index = c.clientManager.PickClient(pod.Tenant);
+        } else {
+		// Only has one serviceLister
+		index = 0;
+	}
+	klog.V(4).Infof("Pod NAME: %q | Index : %q | networkName : %q | Tenant : %q ", pod.Name, index,  networkName, pod.Tenant)
+        services, err := c.serviceLister[index].List(labels.Everything())
+
         if err != nil {
                 return nil, fmt.Errorf("failed to list services when getting service IP for network")
         }
