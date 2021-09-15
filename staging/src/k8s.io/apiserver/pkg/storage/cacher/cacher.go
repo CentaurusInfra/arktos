@@ -527,7 +527,7 @@ func (c *Cacher) Watch(ctx context.Context, key string, resourceVersion string, 
 		c.watcherIdx++
 	}()
 
-	go watcher.process(ctx, initEvents, watchRV)
+	go watcher.process(ctx, initEvents, watchRV, triggerSupported)
 	return watcher, nil
 }
 
@@ -1331,7 +1331,7 @@ func (c *cacheWatcher) sendWatchCacheEvent(event *watchCacheEvent) {
 	}
 }
 
-func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEvent, resourceVersion uint64) {
+func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEvent, resourceVersion uint64, isSendBookmarkEvent bool) {
 	defer utilruntime.HandleCrash()
 
 	// Check how long we are processing initEvents.
@@ -1359,6 +1359,18 @@ func (c *cacheWatcher) process(ctx context.Context, initEvents []*watchCacheEven
 	processingTime := time.Since(startTime)
 	if processingTime > initProcessThreshold {
 		klog.V(2).Infof("processing %d initEvents of %s took %v", len(initEvents), objType, processingTime)
+	}
+
+	// send fake bookmark event
+	// When a large cluster is heavily loaded, if new incoming event is sparse, each node won't get enough events to update
+	//  its latest resource version. Hence in previous large scale density test, init event number is huge. This caused big
+	//  CPU consumption upon watch renewal. By sending bookmark event to rarely updated channel, which is controlled by
+	//  isSendBookmarkEvent, latest resource version of client will be updated and avoid rescanning event queue again and again.
+	if len(initEvents) > 0 && isSendBookmarkEvent {
+		e := initEvents[len(initEvents)-1]
+		fakeBookmarkEvent := &watchCacheEvent{Type: watch.Bookmark, Object: e.Object}
+		c.sendWatchCacheEvent(fakeBookmarkEvent)
+		klog.V(4).Infof("Sent fake event for next resource version [%v], key [%v], watcher [%p]", e.ResourceVersion, e.Key, c)
 	}
 
 	defer close(c.result)
