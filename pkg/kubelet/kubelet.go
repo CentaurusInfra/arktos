@@ -439,9 +439,9 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	var serviceLister corelisters.ServiceLister
+	var serviceLister []corelisters.ServiceLister
 	if hasValidTPClients(kubeDeps.KubeTPClients) {
-		serviceLister := make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
+		serviceLister = make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
 
 		for i := range serviceLister {
 			serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[i].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
@@ -451,7 +451,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			serviceLister[i] = corelisters.NewServiceLister(serviceIndexer)
 		}
 	} else {
-		serviceLister = corelisters.NewServiceLister(serviceIndexer)
+		serviceLister = make([]corelisters.ServiceLister, 1)
+		serviceLister[0] = corelisters.NewServiceLister(serviceIndexer)
 	}
 
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
@@ -984,7 +985,7 @@ type Kubelet struct {
 	masterServiceNamespace string
 
 	// serviceLister knows how to list services
-	serviceLister serviceLister
+	serviceLister []corelisters.ServiceLister
 
 	// nodeLister knows how to list nodes
 	nodeLister corelisters.NodeLister

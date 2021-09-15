@@ -504,11 +504,13 @@ func (kl *Kubelet) getServiceEnvVarMap(ns string, enableServiceLinks bool) (map[
 
 	// Get all service resources from the master (via a cache),
 	// and populate them into service environment variables.
-	if kl.serviceLister == nil {
+	// The line below is tempoary bug to be fixed for muti-tenant and multi-TPs
+	if kl.serviceLister[0] == nil {
 		// Kubelets without masters (e.g. plain GCE ContainerVM) don't set env vars.
 		return m, nil
 	}
-	services, err := kl.serviceLister.List(labels.Everything())
+	// This line below is tempoary bug to be fixed for muti-tenant and multi-TPs
+	services, err := kl.serviceLister[0].List(labels.Everything())
 	if err != nil {
 		return m, fmt.Errorf("failed to list services when setting up env vars")
 	}
