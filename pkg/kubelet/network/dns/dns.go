@@ -113,12 +113,11 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
         }
 
 	var index int
-        if len(c.serviceLister) > 1 {
-                klog.V(4).Infof("Need locate which serviceLister is correct one in multi-serverListers")
-                //klog.V(4).Infof("Temporarily use serviceLister[0] instead before team discussion")
+	if len(c.serviceLister) > 1 {
+		klog.V(4).Infof("Need locate which serviceLister is correct one in multi-serverListers")
 		// To get correct index of serviceLister based on Por's tenant information
 		index = c.clientManager.PickClient(pod.Tenant);
-        } else {
+	} else {
 		// Only has one serviceLister
 		index = 0;
 	}
