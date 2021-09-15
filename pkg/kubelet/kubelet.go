@@ -451,6 +451,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			serviceLister[i] = corelisters.NewServiceLister(serviceIndexer)
 		}
 	} else {
+		klog.Errorf("No Valid TP Clients: %v", err)
 		serviceLister = make([]corelisters.ServiceLister, 1)
 		serviceLister[0] = corelisters.NewServiceLister(serviceIndexer)
 	}
