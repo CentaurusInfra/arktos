@@ -1,40 +1,45 @@
-# Arktos to Enforce the Multi-tenant with Mizar Network Feature
+# Arktos deployment with Mizar CNI 
 
-This document captures the steps applied to an Arktos cluster lab enabling the unique multi-tenant network feature. The machines in this lab used are AWS EC2 t2-large (2 CPUs, 8GB mem), Ubuntu 18.04 LTS.
+The machines in this lab used are AWS EC2 t2-large (2 CPUs, 8GB mem), Ubuntu 18.04 LTS.
 
 The steps might change with the progress of development.
+
+1. To install dependencies required for Arktos, run the following commands: 
+```bash
+wget https://raw.githubusercontent.com/CentaurusInfra/arktos/master/hack/setup-dev-node.sh
+sudo bash setup-dev-node.sh
+git clone https://github.com/CentaurusInfra/arktos.git ~/go/src/k8s.io/arktos
+echo export PATH=$PATH:/usr/local/go/bin\ >> ~/.profile
+echo cd \$HOME/go/src/k8s.io/arktos >> ~/.profile
+source ~/.profile
+```
   
-1. Update Kernel
-To check kernel, run following command
+2. To check kernel, run the following command:
 
 ```bash
 uname -a
 ```
 
-To update Kernel, download and run:
-If it is `5.6.0-rc2` then you can skip downloading ```kernelupdate.sh```
+If kernel version is `5.6.0-rc2` or higher then you can skip the step 3.
+
+3. To update Kernel, run following commands:
 ```bash
 wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/kernelupdate.sh
-bash kernelupdate.sh
+sudo bash kernelupdate.sh
 ```
 
-2. Start Arktos cluster
+4. Start Arktos cluster
 ```bash
 CNIPLUGIN=mizar ./hack/arktos-up.sh
 ```
 
-3. Leave the "arktos-up.sh" terminal and opened a another terminal to the master node. Run the following command to confirm that the first network, "default", in system tenant, has already been created. Its state is empty at this moment.
-```bash
-./cluster/kubectl.sh get net
-NAME      TYPE    VPC                      PHASE   DNS
-default   mizar   system-default-network    
-```
+5. Leave the "arktos-up.sh" terminal and open another terminal to the master node. Run the following command to confirm that the first network, "default", in system tenant, has already been created. 
 
-Now, the default network of system tenant should be Ready.
+Now, the default network of system tenant should be `Ready`.
 ```bash
 ./cluster/kubectl.sh get net
 NAME      TYPE   VPC                       PHASE   DNS
 default   mizar  system-default-network    Ready   10.0.0.207
 ```
 
-From now on, you should be able to play with multi-tenant and the network features.
+Now you can use the Arktos cluster with Mizar CNI.
