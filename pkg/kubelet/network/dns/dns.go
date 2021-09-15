@@ -110,7 +110,7 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 
 	if c.serviceLister == nil || len(c.serviceLister) < 1 {
                 return nil, fmt.Errorf("failed to get serviceLister when getting service IP for network")
-        }
+	}
 
 	var index int
 	if len(c.serviceLister) > 1 {
@@ -122,33 +122,33 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		index = 0;
 	}
 	klog.V(4).Infof("Pod NAME: %q | Index : %q | networkName : %q | Tenant : %q ", pod.Name, index,  networkName, pod.Tenant)
-        services, err := c.serviceLister[index].List(labels.Everything())
+	services, err := c.serviceLister[index].List(labels.Everything())
 
-        if err != nil {
-                return nil, fmt.Errorf("failed to list services when getting service IP for network")
-        }
+	if err != nil {
+		return nil, fmt.Errorf("failed to list services when getting service IP for network")
+	}
 
-        const kubeDNSPrefix = "kube-dns-"
-        var kubeDNSServiceName = kubeDNSPrefix + networkName
+	const kubeDNSPrefix = "kube-dns-"
+	var kubeDNSServiceName = kubeDNSPrefix + networkName
 
-        // Get all services and find out the cluster IP of service kube-dns-{network}
-        for i := range services {
-                service := services[i]
+	// Get all services and find out the cluster IP of service kube-dns-{network}
+	for i := range services {
+		service := services[i]
 
-                // ignore services where ClusterIP is "None" or empty
-                if !v1helper.IsServiceIPSet(service) {
-                        continue
-                }
+		// ignore services where ClusterIP is "None" or empty
+		if !v1helper.IsServiceIPSet(service) {
+			continue
+		}
 
-                // Get the cluster IP of service kube-dns-{network} as name server
-                // inside the file /etc/resolv.conf of pod
-                if service.Tenant == pod.Tenant && service.Name == kubeDNSServiceName {
-                        ip := net.ParseIP(service.Spec.ClusterIP)
-                        if ip != nil {
-                                klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip,  networkName, pod.Tenant)
-                                return []net.IP{ip}, nil
-                        }
-                }
+		// Get the cluster IP of service kube-dns-{network} as name server
+		// inside the file /etc/resolv.conf of pod
+		if service.Tenant == pod.Tenant && service.Name == kubeDNSServiceName {
+			ip := net.ParseIP(service.Spec.ClusterIP)
+			if ip != nil {
+				klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip,  networkName, pod.Tenant)
+				return []net.IP{ip}, nil
+			}
+		}
         }
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
