@@ -861,8 +861,6 @@ func (nc *Controller) monitorNodeHealth() error {
 
 	zoneToNodeConditions := map[string][]*v1.NodeCondition{}
 	for i := range nodes {
-		donePodEvictionOnNode := true
-
 		var gracePeriod time.Duration
 		var observedReadyCondition v1.NodeCondition
 		var currentReadyCondition *v1.NodeCondition
@@ -891,53 +889,53 @@ func (nc *Controller) monitorNodeHealth() error {
 		}
 
 		if currentReadyCondition != nil {
-			for _, tpManager := range nc.tenantPartitionManagers {
+			// get all pods for all TPs on this node
+			// do it once here to avoid this being called multiple times in the code below, when evicting the pods or marking pod not ready
+			allPods := make([]nodeutil.PodTPItem, len(nc.tenantPartitionManagers))
+
+			var err error
+			for i, tpManager := range nc.tenantPartitionManagers {
 				pods, err := tpManager.PodByNodeNameLister(node.Name)
-				if len(pods) == 0 && err == nil {
-					continue
-				}
-
 				if err != nil {
-					utilruntime.HandleError(fmt.Errorf("unable to list pods of node %v: %v", node.Name, err))
-					if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
-						// If error happened during node status transition (Ready -> NotReady)
-						// we need to mark node for retry to force MarkPodsNotReady execution
-						// in the next iteration.
-						nc.nodesToRetry.Store(node.Name, struct{}{})
-					}
-					// mark the node for retry and continue for other TPs
-					donePodEvictionOnNode = false
+					break
+				}
+				allPods[i] = nodeutil.PodTPItem{pods, tpManager}
+			}
+
+			if err != nil {
+				utilruntime.HandleError(fmt.Errorf("unable to list pods of node %v: %v", node.Name, err))
+				if currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue {
+					// If error happened during node status transition (Ready -> NotReady)
+					// we need to mark node for retry to force MarkPodsNotReady execution
+					// in the next iteration.
+					nc.nodesToRetry.Store(node.Name, struct{}{})
+				}
+				continue
+			}
+
+			if nc.useTaintBasedEvictions {
+				nc.processTaintBaseEviction(node, &observedReadyCondition)
+			} else {
+				if err := nc.processNoTaintBaseEvictionHelper(node, &observedReadyCondition, gracePeriod, allPods); err != nil {
+					utilruntime.HandleError(fmt.Errorf("unable to evict all pods from node %v: %v; queuing for retry", node.Name, err))
+				}
+			}
+
+			_, needsRetry := nc.nodesToRetry.Load(node.Name)
+			switch {
+			case currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue:
+				// Report node event only once when status changed.
+				nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
+				fallthrough
+			case needsRetry && observedReadyCondition.Status != v1.ConditionTrue:
+				if err = nodeutil.MarkPodsNotReadyHelper(allPods, node.Name); err != nil {
+					utilruntime.HandleError(fmt.Errorf("unable to mark all pods NotReady on node %v: %v; queuing for retry", node.Name, err))
+					nc.nodesToRetry.Store(node.Name, struct{}{})
 					continue
-				}
-
-				if nc.useTaintBasedEvictions {
-					nc.processTaintBaseEviction(node, &observedReadyCondition)
-				} else {
-					if err := nc.processNoTaintBaseEviction(node, &observedReadyCondition, gracePeriod, pods, tpManager); err != nil {
-						utilruntime.HandleError(fmt.Errorf("unable to evict all pods from node %v: %v; queuing for retry", node.Name, err))
-					}
-				}
-
-				_, needsRetry := nc.nodesToRetry.Load(node.Name)
-				switch {
-				case currentReadyCondition.Status != v1.ConditionTrue && observedReadyCondition.Status == v1.ConditionTrue:
-					// Report node event only once when status changed.
-					nodeutil.RecordNodeStatusChange(nc.recorder, node, "NodeNotReady")
-					fallthrough
-				case needsRetry && observedReadyCondition.Status != v1.ConditionTrue:
-					if err = nodeutil.MarkPodsNotReady(tpManager.Client, pods, node.Name); err != nil {
-						utilruntime.HandleError(fmt.Errorf("unable to mark all pods NotReady on node %v: %v; queuing for retry", node.Name, err))
-						nc.nodesToRetry.Store(node.Name, struct{}{})
-						// mark the node for retry and continue for other TPs
-						donePodEvictionOnNode = false
-						continue
-					}
 				}
 			}
 		}
-		if donePodEvictionOnNode {
-			nc.nodesToRetry.Delete(node.Name)
-		}
+		nc.nodesToRetry.Delete(node.Name)
 	}
 
 	nc.handleDisruption(zoneToNodeConditions, nodes)
@@ -984,6 +982,17 @@ func (nc *Controller) processTaintBaseEviction(node *v1.Node, observedReadyCondi
 			klog.V(2).Infof("Node %s is healthy again, removing all taints", node.Name)
 		}
 	}
+}
+
+func (nc *Controller) processNoTaintBaseEvictionHelper(node *v1.Node, observedReadyCondition *v1.NodeCondition, gracePeriod time.Duration, allPods []nodeutil.PodTPItem) error {
+	for _, podTp := range allPods {
+		err := nc.processNoTaintBaseEviction(node, observedReadyCondition, gracePeriod, podTp.Pods, podTp.TpManager)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func (nc *Controller) processNoTaintBaseEviction(node *v1.Node, observedReadyCondition *v1.NodeCondition, gracePeriod time.Duration, pods []*v1.Pod, tpManager *nodeutil.TenantPartitionManager) error {

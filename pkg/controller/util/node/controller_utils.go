@@ -45,6 +45,11 @@ import (
 	nodepkg "k8s.io/kubernetes/pkg/util/node"
 )
 
+type PodTPItem struct {
+	Pods      []*v1.Pod
+	TpManager *TenantPartitionManager
+}
+
 // DeletePods will delete all pods from master running on given node,
 // and return true if any pods were deleted, or were found pending
 // deletion.
@@ -120,6 +125,18 @@ func SetPodTerminationReason(kubeClient clientset.Interface, pod *v1.Pod, nodeNa
 		return nil, err
 	}
 	return updatedPod, nil
+}
+
+// Helper function to mark pods on all TPs
+func MarkPodsNotReadyHelper(allPods []PodTPItem, nodeName string) error {
+	for _, podTp := range allPods {
+		err := MarkPodsNotReady(podTp.TpManager.Client, podTp.Pods, nodeName)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // MarkPodsNotReady updates ready status of given pods running on
