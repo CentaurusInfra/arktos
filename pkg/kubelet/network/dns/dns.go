@@ -75,15 +75,15 @@ type Configurer struct {
 	// conjunction with clusterDomain and clusterDNS.
 	ResolverConfig string
 
-	//serviceLister knows how to list services
-	serviceLister []corelisters.ServiceLister
+	//serviceListers know how to list services
+	serviceListers []corelisters.ServiceLister
 
 	//clientManager knows how to get correct index of multi-serviceListers
 	clientManager *kubeclientmanager.KubeClientManager
 }
 
 // NewConfigurer returns a DNS configurer for launching pods.
-func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, serviceLister []corelisters.ServiceLister, clientManager *kubeclientmanager.KubeClientManager) *Configurer {
+func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, nodeIP net.IP, clusterDNS []net.IP, clusterDomain, resolverConfig string, serviceListers []corelisters.ServiceLister, clientManager *kubeclientmanager.KubeClientManager) *Configurer {
 	return &Configurer{
 		recorder:       recorder,
 		nodeRef:        nodeRef,
@@ -91,7 +91,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 		clusterDNS:     clusterDNS,
 		ClusterDomain:  clusterDomain,
 		ResolverConfig: resolverConfig,
-		serviceLister:  serviceLister,
+		serviceListers:  serviceListers,
 		clientManager:  clientManager,
 	}
 }
@@ -108,21 +108,21 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		networkName = arktosv1.NetworkDefault
 	}
 
-	if c.serviceLister == nil || len(c.serviceLister) < 1 {
-                return nil, fmt.Errorf("failed to get serviceLister when getting service IP for network")
+	if c.serviceListers == nil || len(c.serviceListers) < 1 {
+                return nil, fmt.Errorf("failed to get serviceListers when getting service IP for network")
 	}
 
 	var index int
-	if len(c.serviceLister) > 1 {
-		klog.V(4).Infof("Need locate which serviceLister is correct one in multi-serverListers")
-		// To get correct index of serviceLister based on Por's tenant information
+	if len(c.serviceListers) > 1 {
+		klog.V(4).Infof("Need locate which serviceLister is correct one in multi-servceListers")
+		// To get correct index of serviceLister based on Pod's tenant information
 		index = c.clientManager.PickClient(pod.Tenant);
 	} else {
 		// Only has one serviceLister
 		index = 0;
 	}
 	klog.V(4).Infof("Pod NAME: %q | Index : %q | networkName : %q | Tenant : %q ", pod.Name, index,  networkName, pod.Tenant)
-	services, err := c.serviceLister[index].List(labels.Everything())
+	services, err := c.serviceListers[index].List(labels.Everything())
 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list services when getting service IP for network")

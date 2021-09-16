@@ -439,21 +439,21 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
-	var serviceLister []corelisters.ServiceLister
+	var serviceListers []corelisters.ServiceLister
 	if hasValidTPClients(kubeDeps.KubeTPClients) {
-		serviceLister = make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
+		serviceListers = make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
 
-		for i := range serviceLister {
+		for i := range serviceListers {
 			serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[i].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
 			r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
 			go r.Run(wait.NeverStop)
 
-			serviceLister[i] = corelisters.NewServiceLister(serviceIndexer)
+			serviceListers[i] = corelisters.NewServiceLister(serviceIndexer)
 		}
 	} else {
 		klog.Errorf("No Valid TP Clients: %v", err)
-		serviceLister = make([]corelisters.ServiceLister, 1)
-		serviceLister[0] = corelisters.NewServiceLister(serviceIndexer)
+		serviceListers = make([]corelisters.ServiceLister, 1)
+		serviceListers[0] = corelisters.NewServiceLister(serviceIndexer)
 	}
 
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
@@ -523,8 +523,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		registerNode:                            registerNode,
 		registerWithTaints:                      registerWithTaints,
 		registerSchedulable:                     registerSchedulable,
-		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, serviceLister, kubeclientmanager.ClientManager),
-		serviceLister:                           serviceLister,
+		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, serviceListers, kubeclientmanager.ClientManager),
+		serviceListers:                           serviceListers,
 		nodeLister:                              nodeLister,
 		masterServiceNamespace:                  masterServiceNamespace,
 		streamingConnectionIdleTimeout:          kubeCfg.StreamingConnectionIdleTimeout.Duration,
@@ -985,8 +985,8 @@ type Kubelet struct {
 	// masterServiceNamespace is the namespace that the master service is exposed in.
 	masterServiceNamespace string
 
-	// serviceLister knows how to list services
-	serviceLister []corelisters.ServiceLister
+	// serviceListers know how to list services
+	serviceListers []corelisters.ServiceLister
 
 	// nodeLister knows how to list nodes
 	nodeLister corelisters.NodeLister
