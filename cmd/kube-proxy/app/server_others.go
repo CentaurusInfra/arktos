@@ -2,6 +2,7 @@
 
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -23,6 +24,9 @@ package app
 import (
 	"errors"
 	"fmt"
+	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/util/clientutil"
+	"k8s.io/kubernetes/cmd/genutils"
 	"net"
 
 	"k8s.io/api/core/v1"
@@ -108,6 +112,26 @@ func newProxyServer(
 	client, eventClient, err := createClients(config.ClientConnection, master)
 	if err != nil {
 		return nil, err
+	}
+
+	// create client for each tenant partition, if applicable
+	var clients []clientset.Interface
+	if len(config.TenantPartitionKubeConfig) == 0 {
+		klog.V(3).Infof("TenantPartitionKubeConfig not set. fall back to scale-up cluster.")
+		clients = []clientset.Interface{client}
+	} else {
+		klog.V(3).Infof("scale-out cluster; make KubeClients based on TenantPartitionKubeConfig arg: %v", config.TenantPartitionKubeConfig)
+		kubeConfigFiles, existed := genutils.ParseKubeConfigFiles(config.TenantPartitionKubeConfig)
+		if !existed {
+			klog.Fatalf("Kubeconfig file(s) [%s] for tenant server does not exist", config.TenantPartitionKubeConfig)
+		}
+		clients = make([]clientset.Interface, len(kubeConfigFiles))
+		for i, kubeConfigFile := range kubeConfigFiles {
+			clients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile, "kube-proxy")
+			if err != nil {
+				klog.Fatalf("failed to initialize kube-proxy client from kubeconfig [%s]: %v", kubeConfigFile, err)
+			}
+		}
 	}
 
 	// Create event recorder
@@ -215,7 +239,7 @@ func newProxyServer(
 	iptInterface.AddReloadFunc(proxier.Sync)
 
 	return &ProxyServer{
-		Client:                 client,
+		Clients:                clients,
 		EventClient:            eventClient,
 		IptInterface:           iptInterface,
 		IpvsInterface:          ipvsInterface,
