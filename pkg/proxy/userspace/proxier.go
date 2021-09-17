@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -475,7 +476,7 @@ func (proxier *Proxier) mergeService(service *v1.Service) sets.String {
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return nil
@@ -537,7 +538,7 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 	if service == nil {
 		return
 	}
-	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return
@@ -576,9 +577,9 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail string) {
 	var svcName types.NamespacedName
 	if current != nil {
-		svcName = types.NamespacedName{Namespace: current.Namespace, Name: current.Name}
+		svcName = types.NamespacedName{Tenant: current.Tenant, Namespace: current.Namespace, Name: current.Name}
 	} else {
-		svcName = types.NamespacedName{Namespace: previous.Namespace, Name: previous.Name}
+		svcName = types.NamespacedName{Tenant: previous.Tenant, Namespace: previous.Namespace, Name: previous.Name}
 	}
 	klog.V(4).Infof("userspace proxy: %s for %s", detail, svcName)
 

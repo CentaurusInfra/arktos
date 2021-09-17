@@ -130,7 +130,7 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 		return false
 	}
 	metrics.EndpointChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
 
 	ect.lock.Lock()
 	defer ect.lock.Unlock()
@@ -246,7 +246,7 @@ func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoint
 				continue
 			}
 			svcPortName := ServicePortName{
-				NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name},
+				NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
 				Port:           port.Name,
 			}
 			for i := range ss.Addresses {
