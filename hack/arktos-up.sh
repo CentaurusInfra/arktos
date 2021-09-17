@@ -40,6 +40,9 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
+echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+[ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
+
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
     echo "WARNING : The kubelet is configured to not fail even if swap is enabled; production deployments should disable swap."
@@ -170,7 +173,6 @@ cleanup()
   [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && mapfile -t WORKLOAD_CTLRMGR_PIDS < <(pgrep -P "${WORKLOAD_CTLRMGR_PID}" ; ps -o pid= -p "${WORKLOAD_CTLRMGR_PID}")
   [[ -n "${WORKLOAD_CTLRMGR_PIDS-}" ]] && sudo kill "${WORKLOAD_CTLRMGR_PIDS[@]}" 2>/dev/null
 
-
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
   [[ -n "${KUBELET_PIDS-}" ]] && sudo kill "${KUBELET_PIDS[@]}" 2>/dev/null
@@ -199,6 +201,8 @@ cleanup()
        echo "Cleanup runtime log folder"
        rm -f -r "${VIRTLET_LOG_DIR}"
   fi
+
+  [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
 
   exit 0
 }
@@ -530,6 +534,13 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
+
+# todo: start flannel daemon deterministically, instead of waiting for arbitrary time
+if [ "${CNIPLUGIN}" == "flannel" ]; then
+    echo "Installing Flannel cni plugin..."
+    sleep 30  #need sometime for KCM to be fully functioning
+    install_flannel
+fi
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 

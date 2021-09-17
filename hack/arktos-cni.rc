@@ -159,6 +159,48 @@ install_arktos_containerd() {
 }
 
 
+install_flannel() {
+    local apiserver_ip=${1:-127.0.0.1}
+    local nodename=${2:-${lohostname}}
+    pushd /tmp
+
+    wget https://github.com/flannel-io/flannel/releases/download/v0.14.0/flanneld-amd64
+    chmod +x ./flanneld-amd64
+    cat << EOF > /tmp/net-conf.json
+{ "Network": "10.244.0.0/16",
+  "Backend": { "Type": "vxlan" }
+}
+EOF
+    sudo mkdir -p /etc/kube-flannel/
+    sudo env NODE_NAME=${nodename} ./flanneld-amd64 --ip-masq --kube-subnet-mgr --kube-api-url=http://${apiserver_ip}:8080 --net-config-path=/tmp/net-conf.json >/tmp/flanneld.log 2>&1 &
+    FLANNELD_PID=$!
+
+    sudo bash -c "cat <<'EOF' > /etc/cni/net.d/10-flannel.conflist
+{
+  \"name\": \"cbr0\",
+  \"cniVersion\": \"0.3.1\",
+  \"plugins\": [
+    {
+      \"type\": \"flannel\",
+      \"delegate\": {
+        \"hairpinMode\": true,
+        \"isDefaultGateway\": true
+      }
+    },
+    {
+      \"type\": \"portmap\",
+      \"capabilities\": {
+        \"portMappings\": true
+      }
+    }
+  ]
+}
+EOF"
+
+    popd
+}
+
+
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
 cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
