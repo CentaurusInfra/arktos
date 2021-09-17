@@ -14,7 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+# Arktos specific network and service support is a feature that each
+# pod is associated to certain network, which has its own DNS service.
+# By default, this feature is enabled in the dev cluster started by this script.
+export DISABLE_NETWORK_SERVICE_SUPPORT=${DISABLE_NETWORK_SERVICE_SUPPORT:-}
 
 IS_SCALE_OUT=${IS_SCALE_OUT:-"false"}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
@@ -39,6 +44,22 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
+
+# check for network service support flags
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+  # tenant controller automatically creates a default network resource for new tenant
+  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+else # when disabled
+  # kube-apiserver not to enforce deployment-network validation
+  DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
+fi
+
+echo "DBG: effective feature gates ${FEATURE_GATES}"
+echo "DBG: effective disabling admission plugins ${DISABLE_ADMISSION_PLUGINS}"
+echo "DBG: effective default network template file is ${ARKTOS_NETWORK_TEMPLATE}"
+echo "DBG: kubelet arg RESOLV_CONF is ${RESOLV_CONF}"
 
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
@@ -111,7 +132,7 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -j4 -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
+    make -j4 -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler cmd/arktos-network-controller"
 else
     echo "skipped the build."
 fi
@@ -170,6 +191,9 @@ cleanup()
   [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && mapfile -t WORKLOAD_CTLRMGR_PIDS < <(pgrep -P "${WORKLOAD_CTLRMGR_PID}" ; ps -o pid= -p "${WORKLOAD_CTLRMGR_PID}")
   [[ -n "${WORKLOAD_CTLRMGR_PIDS-}" ]] && sudo kill "${WORKLOAD_CTLRMGR_PIDS[@]}" 2>/dev/null
 
+  # Check if the arktos network controller is still running
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && mapfile -t ARKTOS_NETWORK_CONTROLLER_PID < <(pgrep -P "${ARKTOS_NETWORK_CONTROLLER_PID}" ; ps -o pid= -p "${ARKTOS_NETWORK_CONTROLLER_PID}")
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && sudo kill "${ARKTOS_NETWORK_CONTROLLER_PID[@]}" 2>/dev/null
 
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
@@ -484,6 +508,10 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrolebinding.yaml
 
   kube::common::start_controller_manager
+
+  # unless arktos service support is disabled, start arktos network controller
+  [ ${DISABLE_NETWORK_SERVICE_SUPPORT} ] ||  kube::common::start_arktos_network_ontroller
+
 #  kube::common::start_workload_controller_manager
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
