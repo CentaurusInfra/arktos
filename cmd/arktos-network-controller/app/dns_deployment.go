@@ -202,6 +202,10 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kube
 				Name:      name,
 				Tenant:    net.Tenant,
 				Namespace: metav1.NamespaceSystem,
+				Labels: map[string]string{
+					clusterAddonLabelKey: label,
+					v1.NetworkLabel:      net.Name,
+				},
 			},
 			Spec: appsv1.DeploymentSpec{
 				Selector: &metav1.LabelSelector{
