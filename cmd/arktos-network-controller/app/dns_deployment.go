@@ -31,8 +31,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, domainName, kubeAPIServerIP, kubeAPIServerPort string) error {
-	if err := ensureToCreateServiceAccount(net, client); err != nil {
+func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, saltSuffix, domainName, kubeAPIServerIP, kubeAPIServerPort string) error {
+	if err := ensureToCreateServiceAccount(net, client, saltSuffix); err != nil {
 		return err
 	}
 
@@ -40,30 +40,38 @@ func deployDNSForNetwork(net *v1.Network, client kubernetes.Interface, domainNam
 		return err
 	}
 
-	if err := ensureToCreateClusterRoleBindging(net, client); err != nil {
+	if err := ensureToCreateClusterRoleBindging(net, client, saltSuffix); err != nil {
 		return err
 	}
 
-	if err := ensureToCreateConfigMap(net, client, domainName); err != nil {
+	if err := ensureToCreateConfigMap(net, client, domainName, saltSuffix); err != nil {
 		return err
 	}
 
-	if err := ensureToCreateDeployment(net, client, kubeAPIServerIP, kubeAPIServerPort); err != nil {
+	if err := ensureToCreateDeployment(net, client, kubeAPIServerIP, kubeAPIServerPort, saltSuffix); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func ensureToCreateServiceAccount(net *v1.Network, client kubernetes.Interface) error {
-	if _, err := client.CoreV1().ServiceAccountsWithMultiTenancy(metav1.NamespaceSystem, net.Name).Get(dnsBaseName, metav1.GetOptions{}); err != nil {
+func getSuffixedName(base, suffix string) string {
+	if len(suffix) == 0 {
+		return base
+	}
+	return base + "-" + suffix
+}
+
+func ensureToCreateServiceAccount(net *v1.Network, client kubernetes.Interface, saltSuffix string) error {
+	saName := getSuffixedName(dnsBaseName, saltSuffix)
+	if _, err := client.CoreV1().ServiceAccountsWithMultiTenancy(metav1.NamespaceSystem, net.Name).Get(saName, metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("unexpected error to get service account %s/%s/%s: %v", net.Tenant, metav1.NamespaceSystem, dnsBaseName, err)
 		}
 
 		sa := &corev1.ServiceAccount{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      dnsBaseName,
+				Name:      saName,
 				Tenant:    net.Tenant,
 				Namespace: metav1.NamespaceSystem,
 			},
@@ -108,7 +116,9 @@ func ensureToCreateClusterRole(net *v1.Network, client kubernetes.Interface) err
 	return nil
 }
 
-func ensureToCreateClusterRoleBindging(net *v1.Network, client kubernetes.Interface) error {
+func ensureToCreateClusterRoleBindging(net *v1.Network, client kubernetes.Interface, saltSuffix string) error {
+	saName := getSuffixedName(dnsBaseName, saltSuffix)
+	crbName := getSuffixedName(dnsRoleBindingName, saltSuffix)
 	if _, err := client.RbacV1().ClusterRoleBindingsWithMultiTenancy(net.Tenant).Get(dnsRoleBindingName, metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("unexpected error to get cluster role binding %s/%s: %v", net.Tenant, dnsRoleBindingName, err)
@@ -116,13 +126,13 @@ func ensureToCreateClusterRoleBindging(net *v1.Network, client kubernetes.Interf
 
 		rolebinding := &rbacv1.ClusterRoleBinding{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:   dnsRoleBindingName,
+				Name:   crbName,
 				Tenant: net.Tenant,
 			},
 			Subjects: []rbacv1.Subject{
 				{
 					Kind:      "ServiceAccount",
-					Name:      dnsBaseName,
+					Name:      saName,
 					Namespace: metav1.NamespaceSystem,
 				},
 			},
@@ -142,8 +152,9 @@ func ensureToCreateClusterRoleBindging(net *v1.Network, client kubernetes.Interf
 	return nil
 }
 
-func ensureToCreateConfigMap(net *v1.Network, client kubernetes.Interface, domainName string) error {
+func ensureToCreateConfigMap(net *v1.Network, client kubernetes.Interface, domainName, saltSuffix string) error {
 	name := dnsBaseName + "-" + net.Name
+	name = getSuffixedName(name, saltSuffix)
 	if _, err := client.CoreV1().ConfigMapsWithMultiTenancy(metav1.NamespaceSystem, net.Tenant).Get(name, metav1.GetOptions{}); err != nil {
 		if !errors.IsNotFound(err) {
 			return fmt.Errorf("unexpected error to get configmap %s/%s/%s: %v", net.Tenant, metav1.NamespaceSystem, name, err)
@@ -174,10 +185,11 @@ func ensureToCreateConfigMap(net *v1.Network, client kubernetes.Interface, domai
 	return nil
 }
 
-func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kubeAPIServerIP, kubeAPIServerPort string) error {
-	name := dnsBaseName + "-" + net.Name
+func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kubeAPIServerIP, kubeAPIServerPort, saltSuffix string) error {
+	name := getSuffixedName(dnsBaseName+"-"+net.Name, saltSuffix)
 	label := dnsServiceDefaultName + "-" + net.Name
-	configmap := dnsBaseName + "-" + net.Name
+	saName := getSuffixedName(dnsBaseName, saltSuffix)
+	configmap := getSuffixedName(dnsBaseName+"-"+net.Name, saltSuffix)
 	readOnlyRootFilesystem := true
 
 	if _, err := client.AppsV1().DeploymentsWithMultiTenancy(metav1.NamespaceSystem, net.Tenant).Get(name, metav1.GetOptions{}); err != nil {
@@ -210,7 +222,7 @@ func ensureToCreateDeployment(net *v1.Network, client kubernetes.Interface, kube
 					},
 					Spec: corev1.PodSpec{
 						PriorityClassName:  "system-cluster-critical",
-						ServiceAccountName: dnsBaseName,
+						ServiceAccountName: saName,
 						Tolerations: []corev1.Toleration{
 							{
 								Key:      "CriticalAddonsOnly",
