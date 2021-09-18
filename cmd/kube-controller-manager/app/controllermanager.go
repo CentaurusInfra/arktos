@@ -462,6 +462,7 @@ func NewControllerInitializers(loopMode ControllerLoopMode) map[string]InitFunc 
 	controllers["network"] = startNetworkController
 
 	controllers["mizar-controllers"] = startMizarStarterController
+        controllers["pod-secret"] = startPodSecretController
 
 	return controllers
 }
