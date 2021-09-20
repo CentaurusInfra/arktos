@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -107,7 +108,7 @@ func NewHollowProxyOrDie(
 	}
 	return &HollowProxy{
 		ProxyServer: &proxyapp.ProxyServer{
-			Client:            client,
+			Clients:           []clientset.Interface{client},
 			EventClient:       eventClient,
 			IptInterface:      iptInterface,
 			Proxier:           proxier,
