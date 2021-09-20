@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -116,6 +117,8 @@ type KubeProxyConfiguration struct {
 	ClusterCIDR string `json:"clusterCIDR"`
 	// hostnameOverride, if non-empty, will be used as the identity instead of the actual hostname.
 	HostnameOverride string `json:"hostnameOverride"`
+	// TenantPartitionKubeConfig specifies kubeconfig files to TP servers in scale-out cluster. none in scale-up cluster.
+	TenantPartitionKubeConfig string `json:"tenantPartitionKubeConfig"`
 	// clientConnection specifies the kubeconfig file and client connection settings for the proxy
 	// server to use when communicating with the apiserver.
 	ClientConnection componentbaseconfigv1alpha1.ClientConnectionConfiguration `json:"clientConnection"`
