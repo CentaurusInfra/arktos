@@ -457,7 +457,6 @@ func buildService(name, namespace, clusterIP, protocol string, port int) *v1.Ser
 //			name:               "api server = Y, kubelet = Y",
 //			ns:                 "test1",
 //			enableServiceLinks: &falseValue,
-//
 //			container: &v1.Container{
 //				
 //				Env: []v1.EnvVar{

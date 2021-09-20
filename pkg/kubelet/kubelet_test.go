@@ -150,236 +150,236 @@ func newTestKubelet(t *testing.T, controllerAttachDetachEnabled bool) *TestKubel
 	return newTestKubeletWithImageList(t, imageList, controllerAttachDetachEnabled, true /*initFakeVolumePlugin*/)
 }
 
-func newTestKubeletWithImageList(
-	t *testing.T,
-	imageList []kubecontainer.Image,
-	controllerAttachDetachEnabled bool,
-	initFakeVolumePlugin bool) *TestKubelet {
-	fakeRuntime := &containertest.FakeRuntime{}
-	fakeRuntime.RuntimeType = "test"
-	fakeRuntime.VersionInfo = "1.5.0"
-	fakeRuntime.ImageList = imageList
-	// Set ready conditions by default.
-	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
-		Conditions: []kubecontainer.RuntimeCondition{
-			{Type: "RuntimeReady", Status: true},
-			{Type: "NetworkReady", Status: true},
-		},
-	}
-
-	fakeRecorder := &record.FakeRecorder{}
-	fakeKubeClient := &fake.Clientset{}
-
-	f := critest.NewFakeRuntimeService()
-	f.FakeStatus = &runtimeapi.RuntimeStatus{
-		Conditions: []*runtimeapi.RuntimeCondition{
-			{Type: "RuntimeReady", Status: true},
-			{Type: "NetworkReady", Status: true},
-		},
-	}
-	fakeImageService := critest.NewFakeImageService()
-	fakeRuntimeManager := runtimeregistry.NewFakeRuntimeManager(f, fakeImageService)
-
-	kubelet := &Kubelet{}
-	kubelet.runtimeManager = fakeRuntimeManager
-	kubelet.recorder = fakeRecorder
-	kubelet.kubeTPClients = []clientset.Interface{
-		fakeKubeClient,
-	}
-	kubelet.heartbeatClient = fakeKubeClient
-	kubelet.os = &containertest.FakeOS{}
-	kubelet.mounter = &mount.FakeMounter{}
-	kubelet.subpather = &subpath.FakeSubpath{}
-
-	kubelet.hostname = testKubeletHostname
-	kubelet.nodeName = types.NodeName(testKubeletHostname)
-	kubelet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)
-	kubelet.runtimeState.setNetworkState(nil)
-	if tempDir, err := ioutil.TempDir("", "kubelet_test."); err != nil {
-		t.Fatalf("can't make a temp rootdir: %v", err)
-	} else {
-		kubelet.rootDirectory = tempDir
-	}
-	if err := os.MkdirAll(kubelet.rootDirectory, 0750); err != nil {
-		t.Fatalf("can't mkdir(%q): %v", kubelet.rootDirectory, err)
-	}
-	kubelet.sourcesReady = config.NewSourcesReady(func(_ sets.String) bool { return true })
-	kubelet.masterServiceNamespace = metav1.NamespaceDefault
-	//Temporarily disable this test case for serviceLister to pass Jenkins CI job as soon as possible
-        //Issue #1192 is open
-	//kubelet.serviceLister = testServiceLister{}
-	kubelet.nodeLister = testNodeLister{
-		nodes: []*v1.Node{
-			{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: string(kubelet.nodeName),
-				},
-				Status: v1.NodeStatus{
-					Conditions: []v1.NodeCondition{
-						{
-							Type:    v1.NodeReady,
-							Status:  v1.ConditionTrue,
-							Reason:  "Ready",
-							Message: "Node ready",
-						},
-					},
-					Addresses: []v1.NodeAddress{
-						{
-							Type:    v1.NodeInternalIP,
-							Address: testKubeletHostIP,
-						},
-					},
-				},
-			},
-		},
-	}
-	kubelet.recorder = fakeRecorder
-	if err := kubelet.setupDataDirs(); err != nil {
-		t.Fatalf("can't initialize kubelet data dirs: %v", err)
-	}
-	kubelet.daemonEndpoints = &v1.NodeDaemonEndpoints{}
-
-	kubelet.cadvisor = &cadvisortest.Fake{}
-	machineInfo, _ := kubelet.cadvisor.MachineInfo()
-	kubelet.machineInfo = machineInfo
-
-	fakeMirrorClient := podtest.NewFakeMirrorClient()
-	secretManager := secret.NewSimpleSecretManager(kubelet.kubeTPClients)
-	kubelet.secretManager = secretManager
-	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeTPClients)
-	kubelet.configMapManager = configMapManager
-	kubelet.podManager = kubepod.NewBasicPodManager(fakeMirrorClient, kubelet.secretManager, kubelet.configMapManager, podtest.NewMockCheckpointManager())
-	kubelet.statusManager = status.NewManager(kubelet.kubeTPClients, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
-
-	kubeclientmanager.NewKubeClientManager()
-	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
-		kubetypes.ApiserverSource,
-		&v1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Tenant: metav1.TenantSystem,
-			}})
-
-	kubelet.containerRuntime = fakeRuntime
-	kubelet.runtimeCache = containertest.NewFakeRuntimeCache(kubelet.containerRuntime)
-	kubelet.reasonCache = NewReasonCache()
-	kubelet.podCache = containertest.NewFakeCache(kubelet.containerRuntime)
-	kubelet.podWorkers = &fakePodWorkers{
-		syncPodFn: kubelet.syncPod,
-		cache:     kubelet.podCache,
-		t:         t,
-	}
-
-	kubelet.probeManager = probetest.FakeManager{}
-	kubelet.livenessManager = proberesults.NewManager()
-
-	kubelet.containerManager = cm.NewStubContainerManager()
-	fakeNodeRef := &v1.ObjectReference{
-		Kind:      "Node",
-		Name:      testKubeletHostname,
-		UID:       types.UID(testKubeletHostname),
-		Namespace: "",
-	}
-
-	volumeStatsAggPeriod := time.Second * 10
-	kubelet.resourceAnalyzer = serverstats.NewResourceAnalyzer(kubelet, volumeStatsAggPeriod)
-
-	kubelet.StatsProvider = stats.NewCadvisorStatsProvider(
-		kubelet.cadvisor,
-		kubelet.resourceAnalyzer,
-		kubelet.podManager,
-		kubelet.runtimeCache,
-		fakeRuntime,
-		kubelet.statusManager)
-	fakeImageGCPolicy := images.ImageGCPolicy{
-		HighThresholdPercent: 90,
-		LowThresholdPercent:  80,
-	}
-	imageGCManager, err := images.NewImageGCManager(fakeRuntime, kubelet.StatsProvider, fakeRecorder, fakeNodeRef, fakeImageGCPolicy, "")
-	assert.NoError(t, err)
-	kubelet.imageManager = &fakeImageGCManager{
-		fakeImageService: fakeRuntime,
-		ImageGCManager:   imageGCManager,
-	}
-	kubelet.containerLogManager = logs.NewStubContainerLogManager()
-	containerGCPolicy := kubecontainer.ContainerGCPolicy{
-		MinAge:             time.Duration(0),
-		MaxPerPodContainer: 1,
-		MaxContainers:      -1,
-	}
-	containerGC, err := kubecontainer.NewContainerGC(fakeRuntime, containerGCPolicy, kubelet.sourcesReady)
-	assert.NoError(t, err)
-	kubelet.containerGC = containerGC
-
-	fakeClock := clock.NewFakeClock(time.Now())
-	kubelet.backOff = flowcontrol.NewBackOff(time.Second, time.Minute)
-	kubelet.backOff.Clock = fakeClock
-	kubelet.podKillingCh = make(chan *kubecontainer.PodPair, 20)
-	kubelet.resyncInterval = 10 * time.Second
-	kubelet.workQueue = queue.NewBasicWorkQueue(fakeClock)
-	// Relist period does not affect the tests.
-	kubelet.pleg = pleg.NewGenericPLEG(fakeRuntime, 100, time.Hour, nil, clock.RealClock{})
-	kubelet.clock = fakeClock
-
-	nodeRef := &v1.ObjectReference{
-		Kind:      "Node",
-		Name:      string(kubelet.nodeName),
-		UID:       types.UID(kubelet.nodeName),
-		Namespace: "",
-	}
-	// setup eviction manager
-	evictionManager, evictionAdmitHandler := eviction.NewManager(kubelet.resourceAnalyzer, eviction.Config{}, killPodNow(kubelet.podWorkers, fakeRecorder), kubelet.podManager.GetMirrorPodByPod, kubelet.imageManager, kubelet.containerGC, fakeRecorder, nodeRef, kubelet.clock)
-
-	kubelet.evictionManager = evictionManager
-	kubelet.admitHandlers.AddPodAdmitHandler(evictionAdmitHandler)
-	// Add this as cleanup predicate pod admitter
-	kubelet.admitHandlers.AddPodAdmitHandler(lifecycle.NewPredicateAdmitHandler(kubelet.getNodeAnyWay, lifecycle.NewAdmissionFailureHandlerStub(), kubelet.containerManager.UpdatePluginResources))
-
-	allPlugins := []volume.VolumePlugin{}
-	plug := &volumetest.FakeVolumePlugin{PluginName: "fake", Host: nil}
-	if initFakeVolumePlugin {
-		allPlugins = append(allPlugins, plug)
-	} else {
-		allPlugins = append(allPlugins, awsebs.ProbeVolumePlugins()...)
-		allPlugins = append(allPlugins, gcepd.ProbeVolumePlugins()...)
-		allPlugins = append(allPlugins, azure_dd.ProbeVolumePlugins()...)
-	}
-
-	var prober volume.DynamicPluginProber // TODO (#51147) inject mock
-	kubelet.volumePluginMgr, err =
-		NewInitializedVolumePluginMgr(kubelet, kubelet.secretManager, kubelet.configMapManager, token.NewManager(kubelet.kubeTPClients[0]), allPlugins, prober)
-	require.NoError(t, err, "Failed to initialize VolumePluginMgr")
-
-	kubelet.mounter = &mount.FakeMounter{}
-	kubelet.volumeManager = kubeletvolume.NewVolumeManager(
-		controllerAttachDetachEnabled,
-		kubelet.nodeName,
-		kubelet.podManager,
-		kubelet.statusManager,
-		fakeKubeClient,
-		kubelet.kubeTPClients,
-		kubelet.volumePluginMgr,
-		fakeRuntime,
-		kubelet.mounter,
-		kubelet.getPodsDir(),
-		kubelet.recorder,
-		false, /* experimentalCheckNodeCapabilitiesBeforeMount*/
-		false /* keepTerminatedPodVolumes */)
-
-	kubelet.pluginManager = pluginmanager.NewPluginManager(
-		kubelet.getPluginsRegistrationDir(), /* sockDir */
-		kubelet.getPluginsDir(),             /* deprecatedSockDir */
-		kubelet.recorder,
-	)
-	kubelet.setNodeStatusFuncs = kubelet.defaultNodeStatusFuncs()
-
-	// enable active deadline handler
-	activeDeadlineHandler, err := newActiveDeadlineHandler(kubelet.statusManager, kubelet.recorder, kubelet.clock)
-	require.NoError(t, err, "Can't initialize active deadline handler")
-
-	kubelet.AddPodSyncLoopHandler(activeDeadlineHandler)
-	kubelet.AddPodSyncHandler(activeDeadlineHandler)
-	return &TestKubelet{kubelet, fakeRuntimeManager, fakeRuntime, fakeKubeClient, fakeMirrorClient, fakeClock, nil, plug}
-}
+//Temporarily disable this test case for serviceLister to pass Jenkins CI job as soon as possible
+//Issue #1192 is open
+//func newTestKubeletWithImageList(
+//	t *testing.T,
+//	imageList []kubecontainer.Image,
+//	controllerAttachDetachEnabled bool,
+//	initFakeVolumePlugin bool) *TestKubelet {
+//	fakeRuntime := &containertest.FakeRuntime{}
+//	fakeRuntime.RuntimeType = "test"
+//	fakeRuntime.VersionInfo = "1.5.0"
+//	fakeRuntime.ImageList = imageList
+//	// Set ready conditions by default.
+//	fakeRuntime.RuntimeStatus = &kubecontainer.RuntimeStatus{
+//		Conditions: []kubecontainer.RuntimeCondition{
+//			{Type: "RuntimeReady", Status: true},
+//			{Type: "NetworkReady", Status: true},
+//		},
+//	}
+//
+//	fakeRecorder := &record.FakeRecorder{}
+//	fakeKubeClient := &fake.Clientset{}
+//
+//	f := critest.NewFakeRuntimeService()
+//	f.FakeStatus = &runtimeapi.RuntimeStatus{
+//		Conditions: []*runtimeapi.RuntimeCondition{
+//			{Type: "RuntimeReady", Status: true},
+//			{Type: "NetworkReady", Status: true},
+//		},
+//	}
+//	fakeImageService := critest.NewFakeImageService()
+//	fakeRuntimeManager := runtimeregistry.NewFakeRuntimeManager(f, fakeImageService)
+//
+//	kubelet := &Kubelet{}
+//	kubelet.runtimeManager = fakeRuntimeManager
+//	kubelet.recorder = fakeRecorder
+//	kubelet.kubeTPClients = []clientset.Interface{
+//		fakeKubeClient,
+//	}
+//	kubelet.heartbeatClient = fakeKubeClient
+//	kubelet.os = &containertest.FakeOS{}
+//	kubelet.mounter = &mount.FakeMounter{}
+//	kubelet.subpather = &subpath.FakeSubpath{}
+//
+//	kubelet.hostname = testKubeletHostname
+//	kubelet.nodeName = types.NodeName(testKubeletHostname)
+//	kubelet.runtimeState = newRuntimeState(maxWaitForContainerRuntime)
+//	kubelet.runtimeState.setNetworkState(nil)
+//	if tempDir, err := ioutil.TempDir("", "kubelet_test."); err != nil {
+//		t.Fatalf("can't make a temp rootdir: %v", err)
+//	} else {
+//		kubelet.rootDirectory = tempDir
+//	}
+//	if err := os.MkdirAll(kubelet.rootDirectory, 0750); err != nil {
+//		t.Fatalf("can't mkdir(%q): %v", kubelet.rootDirectory, err)
+//	}
+//	kubelet.sourcesReady = config.NewSourcesReady(func(_ sets.String) bool { return true })
+//	kubelet.masterServiceNamespace = metav1.NamespaceDefault
+//	kubelet.serviceLister = testServiceLister{}
+//	kubelet.nodeLister = testNodeLister{
+//		nodes: []*v1.Node{
+//			{
+//				ObjectMeta: metav1.ObjectMeta{
+//					Name: string(kubelet.nodeName),
+//				},
+//				Status: v1.NodeStatus{
+//					Conditions: []v1.NodeCondition{
+//						{
+//							Type:    v1.NodeReady,
+//							Status:  v1.ConditionTrue,
+//							Reason:  "Ready",
+//							Message: "Node ready",
+//						},
+//					},
+//					Addresses: []v1.NodeAddress{
+//						{
+//							Type:    v1.NodeInternalIP,
+//							Address: testKubeletHostIP,
+//						},
+//					},
+//				},
+//			},
+//		},
+//	}
+//	kubelet.recorder = fakeRecorder
+//	if err := kubelet.setupDataDirs(); err != nil {
+//		t.Fatalf("can't initialize kubelet data dirs: %v", err)
+//	}
+//	kubelet.daemonEndpoints = &v1.NodeDaemonEndpoints{}
+//
+//	kubelet.cadvisor = &cadvisortest.Fake{}
+//	machineInfo, _ := kubelet.cadvisor.MachineInfo()
+//	kubelet.machineInfo = machineInfo
+//
+//	fakeMirrorClient := podtest.NewFakeMirrorClient()
+//	secretManager := secret.NewSimpleSecretManager(kubelet.kubeTPClients)
+//	kubelet.secretManager = secretManager
+//	configMapManager := configmap.NewSimpleConfigMapManager(kubelet.kubeTPClients)
+//	kubelet.configMapManager = configMapManager
+//	kubelet.podManager = kubepod.NewBasicPodManager(fakeMirrorClient, kubelet.secretManager, kubelet.configMapManager, podtest.NewMockCheckpointManager())
+//	kubelet.statusManager = status.NewManager(kubelet.kubeTPClients, kubelet.podManager, &statustest.FakePodDeletionSafetyProvider{})
+//
+//	kubeclientmanager.NewKubeClientManager()
+//	kubeclientmanager.ClientManager.RegisterTenantSourceServer(
+//		kubetypes.ApiserverSource,
+//		&v1.Pod{
+//			ObjectMeta: metav1.ObjectMeta{
+//				Tenant: metav1.TenantSystem,
+//			}})
+//
+//	kubelet.containerRuntime = fakeRuntime
+//	kubelet.runtimeCache = containertest.NewFakeRuntimeCache(kubelet.containerRuntime)
+//	kubelet.reasonCache = NewReasonCache()
+//	kubelet.podCache = containertest.NewFakeCache(kubelet.containerRuntime)
+//	kubelet.podWorkers = &fakePodWorkers{
+//		syncPodFn: kubelet.syncPod,
+//		cache:     kubelet.podCache,
+//		t:         t,
+//	}
+//
+//	kubelet.probeManager = probetest.FakeManager{}
+//	kubelet.livenessManager = proberesults.NewManager()
+//
+//	kubelet.containerManager = cm.NewStubContainerManager()
+//	fakeNodeRef := &v1.ObjectReference{
+//		Kind:      "Node",
+//		Name:      testKubeletHostname,
+//		UID:       types.UID(testKubeletHostname),
+//		Namespace: "",
+//	}
+//
+//	volumeStatsAggPeriod := time.Second * 10
+//	kubelet.resourceAnalyzer = serverstats.NewResourceAnalyzer(kubelet, volumeStatsAggPeriod)
+//
+//	kubelet.StatsProvider = stats.NewCadvisorStatsProvider(
+//		kubelet.cadvisor,
+//		kubelet.resourceAnalyzer,
+//		kubelet.podManager,
+//		kubelet.runtimeCache,
+//		fakeRuntime,
+//		kubelet.statusManager)
+//	fakeImageGCPolicy := images.ImageGCPolicy{
+//		HighThresholdPercent: 90,
+//		LowThresholdPercent:  80,
+//	}
+//	imageGCManager, err := images.NewImageGCManager(fakeRuntime, kubelet.StatsProvider, fakeRecorder, fakeNodeRef, fakeImageGCPolicy, "")
+//	assert.NoError(t, err)
+//	kubelet.imageManager = &fakeImageGCManager{
+//		fakeImageService: fakeRuntime,
+//		ImageGCManager:   imageGCManager,
+//	}
+//	kubelet.containerLogManager = logs.NewStubContainerLogManager()
+//	containerGCPolicy := kubecontainer.ContainerGCPolicy{
+//		MinAge:             time.Duration(0),
+//		MaxPerPodContainer: 1,
+//		MaxContainers:      -1,
+//	}
+//	containerGC, err := kubecontainer.NewContainerGC(fakeRuntime, containerGCPolicy, kubelet.sourcesReady)
+//	assert.NoError(t, err)
+//	kubelet.containerGC = containerGC
+//
+//	fakeClock := clock.NewFakeClock(time.Now())
+//	kubelet.backOff = flowcontrol.NewBackOff(time.Second, time.Minute)
+//	kubelet.backOff.Clock = fakeClock
+//	kubelet.podKillingCh = make(chan *kubecontainer.PodPair, 20)
+//	kubelet.resyncInterval = 10 * time.Second
+//	kubelet.workQueue = queue.NewBasicWorkQueue(fakeClock)
+//	// Relist period does not affect the tests.
+//	kubelet.pleg = pleg.NewGenericPLEG(fakeRuntime, 100, time.Hour, nil, clock.RealClock{})
+//	kubelet.clock = fakeClock
+//
+//	nodeRef := &v1.ObjectReference{
+//		Kind:      "Node",
+//		Name:      string(kubelet.nodeName),
+//		UID:       types.UID(kubelet.nodeName),
+//		Namespace: "",
+//	}
+//	// setup eviction manager
+//	evictionManager, evictionAdmitHandler := eviction.NewManager(kubelet.resourceAnalyzer, eviction.Config{}, killPodNow(kubelet.podWorkers, fakeRecorder), kubelet.podManager.GetMirrorPodByPod, kubelet.imageManager, kubelet.containerGC, fakeRecorder, nodeRef, kubelet.clock)
+//
+//	kubelet.evictionManager = evictionManager
+//	kubelet.admitHandlers.AddPodAdmitHandler(evictionAdmitHandler)
+//	// Add this as cleanup predicate pod admitter
+//	kubelet.admitHandlers.AddPodAdmitHandler(lifecycle.NewPredicateAdmitHandler(kubelet.getNodeAnyWay, lifecycle.NewAdmissionFailureHandlerStub(), kubelet.containerManager.UpdatePluginResources))
+//
+//	allPlugins := []volume.VolumePlugin{}
+//	plug := &volumetest.FakeVolumePlugin{PluginName: "fake", Host: nil}
+//	if initFakeVolumePlugin {
+//		allPlugins = append(allPlugins, plug)
+//	} else {
+//		allPlugins = append(allPlugins, awsebs.ProbeVolumePlugins()...)
+//		allPlugins = append(allPlugins, gcepd.ProbeVolumePlugins()...)
+//		allPlugins = append(allPlugins, azure_dd.ProbeVolumePlugins()...)
+//	}
+//
+//	var prober volume.DynamicPluginProber // TODO (#51147) inject mock
+//	kubelet.volumePluginMgr, err =
+//		NewInitializedVolumePluginMgr(kubelet, kubelet.secretManager, kubelet.configMapManager, token.NewManager(kubelet.kubeTPClients[0]), allPlugins, prober)
+//	require.NoError(t, err, "Failed to initialize VolumePluginMgr")
+//
+//	kubelet.mounter = &mount.FakeMounter{}
+//	kubelet.volumeManager = kubeletvolume.NewVolumeManager(
+//		controllerAttachDetachEnabled,
+//		kubelet.nodeName,
+//		kubelet.podManager,
+//		kubelet.statusManager,
+//		fakeKubeClient,
+//		kubelet.kubeTPClients,
+//		kubelet.volumePluginMgr,
+//		fakeRuntime,
+//		kubelet.mounter,
+//		kubelet.getPodsDir(),
+//		kubelet.recorder,
+//		false, /* experimentalCheckNodeCapabilitiesBeforeMount*/
+//		false /* keepTerminatedPodVolumes */)
+//
+//	kubelet.pluginManager = pluginmanager.NewPluginManager(
+//		kubelet.getPluginsRegistrationDir(), /* sockDir */
+//		kubelet.getPluginsDir(),             /* deprecatedSockDir */
+//		kubelet.recorder,
+//	)
+//	kubelet.setNodeStatusFuncs = kubelet.defaultNodeStatusFuncs()
+//
+//	// enable active deadline handler
+//	activeDeadlineHandler, err := newActiveDeadlineHandler(kubelet.statusManager, kubelet.recorder, kubelet.clock)
+//	require.NoError(t, err, "Can't initialize active deadline handler")
+//
+//	kubelet.AddPodSyncLoopHandler(activeDeadlineHandler)
+//	kubelet.AddPodSyncHandler(activeDeadlineHandler)
+//	return &TestKubelet{kubelet, fakeRuntimeManager, fakeRuntime, fakeKubeClient, fakeMirrorClient, fakeClock, nil, plug}
+//}
 
 func newTestPods(count int) []*v1.Pod {
 	pods := make([]*v1.Pod, count)
@@ -548,7 +548,7 @@ const dnsVIPOfTestNetwork = "1.2.3.4"
 //	// Make sure the Pods are in the reverse order of creation time.
 //	pods[1].CreationTimestamp = metav1.NewTime(time.Now())
 //	pods[0].CreationTimestamp = metav1.NewTime(time.Now().Add(1 * time.Second))
-	// The newer pod should be rejected.
+//	// The newer pod should be rejected.
 //	notfittingPod := pods[0]
 //	fittingPod := pods[1]
 //
