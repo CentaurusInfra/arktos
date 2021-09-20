@@ -458,7 +458,6 @@ func buildService(name, namespace, clusterIP, protocol string, port int) *v1.Ser
 //			ns:                 "test1",
 //			enableServiceLinks: &falseValue,
 //			container: &v1.Container{
-//				
 //				Env: []v1.EnvVar{
 //					{Name: "FOO", Value: "BAR"},
 //					{Name: "TEST_SERVICE_HOST", Value: "1.2.3.3"},
