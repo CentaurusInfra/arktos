@@ -168,7 +168,7 @@ install_flannel() {
     chmod +x ./flanneld-amd64
     cat << EOF > /tmp/net-conf.json
 { "Network": "10.244.0.0/16",
-  "Backend": { "Type": "vxlan" }
+  "Backend": { "Type": "host-gw" }
 }
 EOF
     sudo mkdir -p /etc/kube-flannel/
