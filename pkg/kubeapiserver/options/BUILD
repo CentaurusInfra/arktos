@@ -29,6 +29,7 @@ go_library(
         "//plugin/pkg/admission/defaultpodnetworkreadiness:go_default_library",
         "//plugin/pkg/admission/defaulttolerationseconds:go_default_library",
         "//plugin/pkg/admission/deny:go_default_library",
+        "//plugin/pkg/admission/deployment/network:go_default_library",
         "//plugin/pkg/admission/eventratelimit:go_default_library",
         "//plugin/pkg/admission/exec:go_default_library",
         "//plugin/pkg/admission/extendedresourcetoleration:go_default_library",
