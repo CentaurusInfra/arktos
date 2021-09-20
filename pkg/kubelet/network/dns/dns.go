@@ -27,19 +27,19 @@ import (
 	"strings"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
-	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/client-go/tools/record"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 	"k8s.io/klog"
+	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
 	"k8s.io/kubernetes/pkg/features"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/util/format"
 )
 
@@ -91,7 +91,7 @@ func NewConfigurer(recorder record.EventRecorder, nodeRef *v1.ObjectReference, n
 		clusterDNS:     clusterDNS,
 		ClusterDomain:  clusterDomain,
 		ResolverConfig: resolverConfig,
-		serviceListers:  serviceListers,
+		serviceListers: serviceListers,
 		clientManager:  clientManager,
 	}
 }
@@ -109,19 +109,19 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 	}
 
 	if c.serviceListers == nil || len(c.serviceListers) < 1 {
-                return nil, fmt.Errorf("failed to get serviceListers when getting service IP for network")
+		return nil, fmt.Errorf("failed to get serviceListers when getting service IP for network")
 	}
 
 	var index int
 	if len(c.serviceListers) > 1 {
 		klog.V(4).Infof("Need locate which serviceLister is correct one in multi-servceListers")
 		// To get correct index of serviceLister based on Pod's tenant information
-		index = c.clientManager.PickClient(pod.Tenant);
+		index = c.clientManager.PickClient(pod.Tenant)
 	} else {
 		// Only has one serviceLister
-		index = 0;
+		index = 0
 	}
-	klog.V(4).Infof("Pod NAME: %q | Index : %q | networkName : %q | Tenant : %q ", pod.Name, index,  networkName, pod.Tenant)
+	klog.V(4).Infof("Pod NAME: %q | Index : %q | networkName : %q | Tenant : %q ", pod.Name, index, networkName, pod.Tenant)
 	services, err := c.serviceListers[index].List(labels.Everything())
 
 	if err != nil {
@@ -145,11 +145,11 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 		if service.Tenant == pod.Tenant && service.Name == kubeDNSServiceName {
 			ip := net.ParseIP(service.Spec.ClusterIP)
 			if ip != nil {
-				klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip,  networkName, pod.Tenant)
+				klog.V(4).Infof("Pod NAME: %q | ClusterDNS IP : %q | networkName : %q | Tenant : %q ", pod.Name, ip, networkName, pod.Tenant)
 				return []net.IP{ip}, nil
 			}
 		}
-        }
+	}
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
 		return nil, fmt.Errorf("network %s/%s not found", pod.Tenant, networkName)
