@@ -1809,8 +1809,8 @@ function start-kube-apiserver {
 
     # If the cluster is large, increase max-requests-inflight limit in apiserver.
     if [[ "${NUM_NODES}" -gt 10000 ]]; then
-      max_request_inflight=5000
-      max_mutating_request_inflight=2000
+      max_request_inflight=20000
+      max_mutating_request_inflight=20000
     else
       if [[ "${NUM_NODES}" -gt 3000 ]]; then
         max_request_inflight=3000
