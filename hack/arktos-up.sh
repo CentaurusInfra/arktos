@@ -239,6 +239,11 @@ function healthcheck {
     CTLRMGR_PID=
   fi
 
+  if [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && ! sudo kill -0 "${ARKTOS_NETWORK_CONTROLLER_PID}" 2>/dev/null; then
+    warning_log "arktos network controller terminated unexpectedly, see ${ARKTOS_NETWORK_CONTROLLER_LOG}"
+    ARKTOS_NETWORK_CONTROLLER_PID=
+  fi
+
 #  if [[ -n "${WORKLOAD_CTLRMGR_PID-}" ]] && ! sudo kill -0 "${WORKLOAD_CTLRMGR_PID}" 2>/dev/null; then
 #    warning_log "workload-controller-manager terminated unexpectedly, see ${WORKLOAD_CONTROLLER_LOG}"
 #    WORKLOAD_CTLRMGR_PID=
