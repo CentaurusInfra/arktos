@@ -196,8 +196,6 @@ go_test(
         "//pkg/kubelet/pod/testing:go_default_library",
         "//pkg/kubelet/runtimeregistry:go_default_library",
         "//pkg/kubelet/secret:go_default_library",
-        "//pkg/kubelet/server/portforward:go_default_library",
-        "//pkg/kubelet/server/remotecommand:go_default_library",
         "//pkg/kubelet/server/stats:go_default_library",
         "//pkg/kubelet/status:go_default_library",
         "//pkg/kubelet/status/testing:go_default_library",
