@@ -755,6 +755,7 @@ function kube::common::start_kubelet {
       ${image_service_endpoint_args[@]+"${image_service_endpoint_args[@]}"}
       "--runtime-request-timeout=${RUNTIME_REQUEST_TIMEOUT}"
       "--port=${KUBELET_PORT}"
+      "--resolv-conf=${RESOLV_CONF}"
       ${KUBELET_FLAGS}
     )
 
