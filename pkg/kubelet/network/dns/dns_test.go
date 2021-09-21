@@ -33,7 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	//utilfeature "k8s.io/apiserver/pkg/util/feature"
 	//arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
+	//fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/tools/record"
 	//featuregatetesting "k8s.io/component-base/featuregate/testing"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
