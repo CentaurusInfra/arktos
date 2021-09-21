@@ -62,8 +62,8 @@ import (
 	"k8s.io/kubernetes/pkg/kubelet/util/sliceutils"
 	//kubeletvolume "k8s.io/kubernetes/pkg/kubelet/volumemanager"
 	//taintutil "k8s.io/kubernetes/pkg/util/taints"
-	"k8s.io/kubernetes/pkg/version"
-	"k8s.io/kubernetes/pkg/volume/util"
+	//"k8s.io/kubernetes/pkg/version"
+	//"k8s.io/kubernetes/pkg/volume/util"
 )
 
 const (

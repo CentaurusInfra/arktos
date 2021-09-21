@@ -334,61 +334,61 @@ fe00::2	ip6-allrouters
 	}
 }
 
-func TestRunInContainerNoSuchPod(t *testing.T) {
-	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-	defer testKubelet.Cleanup()
-	kubelet := testKubelet.kubelet
-	fakeRuntime := testKubelet.fakeRuntime
-	fakeRuntime.PodList = []*containertest.FakePod{}
+//func TestRunInContainerNoSuchPod(t *testing.T) {
+//	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+//	defer testKubelet.Cleanup()
+//	kubelet := testKubelet.kubelet
+//	fakeRuntime := testKubelet.fakeRuntime
+//	fakeRuntime.PodList = []*containertest.FakePod{}
+//
+//	podName := "podFoo"
+//	podNamespace := "nsFoo"
+//	podTenant := "teFoo"
+//	containerName := "containerFoo"
+//	output, err := kubelet.RunInContainer(
+//		kubecontainer.GetPodFullName(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace, Tenant: podTenant}}),
+//		"",
+//		containerName,
+//		[]string{"ls"})
+//	assert.Error(t, err)
+//	assert.Nil(t, output, "output should be nil")
+//}
 
-	podName := "podFoo"
-	podNamespace := "nsFoo"
-	podTenant := "teFoo"
-	containerName := "containerFoo"
-	output, err := kubelet.RunInContainer(
-		kubecontainer.GetPodFullName(&v1.Pod{ObjectMeta: metav1.ObjectMeta{Name: podName, Namespace: podNamespace, Tenant: podTenant}}),
-		"",
-		containerName,
-		[]string{"ls"})
-	assert.Error(t, err)
-	assert.Nil(t, output, "output should be nil")
-}
-
-func TestRunInContainer(t *testing.T) {
-	for _, testError := range []error{nil, errors.New("bar")} {
-		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-		defer testKubelet.Cleanup()
-		kubelet := testKubelet.kubelet
-		fakeRuntime := testKubelet.fakeRuntime
-		fakeCommandRunner := containertest.FakeContainerCommandRunner{
-			Err:    testError,
-			Stdout: "foo",
-		}
-		kubelet.runner = &fakeCommandRunner
-
-		containerID := kubecontainer.ContainerID{Type: "test", ID: "abc1234"}
-		fakeRuntime.PodList = []*containertest.FakePod{
-			{Pod: &kubecontainer.Pod{
-				ID:        "12345678",
-				Name:      "podFoo",
-				Namespace: "nsFoo",
-				Tenant:    "teFoo",
-				Containers: []*kubecontainer.Container{
-					{Name: "containerFoo",
-						ID: containerID,
-					},
-				},
-			}},
-		}
-		cmd := []string{"ls"}
-		actualOutput, err := kubelet.RunInContainer("podFoo_nsFoo_teFoo", "", "containerFoo", cmd)
-		assert.Equal(t, containerID, fakeCommandRunner.ContainerID, "(testError=%v) ID", testError)
-		assert.Equal(t, cmd, fakeCommandRunner.Cmd, "(testError=%v) command", testError)
-		// this isn't 100% foolproof as a bug in a real ContainerCommandRunner where it fails to copy to stdout/stderr wouldn't be caught by this test
-		assert.Equal(t, "foo", string(actualOutput), "(testError=%v) output", testError)
-		assert.Equal(t, err, testError, "(testError=%v) err", testError)
-	}
-}
+//func TestRunInContainer(t *testing.T) {
+//	for _, testError := range []error{nil, errors.New("bar")} {
+//		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+//		defer testKubelet.Cleanup()
+//		kubelet := testKubelet.kubelet
+//		fakeRuntime := testKubelet.fakeRuntime
+//		fakeCommandRunner := containertest.FakeContainerCommandRunner{
+//			Err:    testError,
+//			Stdout: "foo",
+//		}
+//		kubelet.runner = &fakeCommandRunner
+//
+//		containerID := kubecontainer.ContainerID{Type: "test", ID: "abc1234"}
+//		fakeRuntime.PodList = []*containertest.FakePod{
+//			{Pod: &kubecontainer.Pod{
+//				ID:        "12345678",
+//				Name:      "podFoo",
+//				Namespace: "nsFoo",
+//				Tenant:    "teFoo",
+//				Containers: []*kubecontainer.Container{
+//					{Name: "containerFoo",
+//						ID: containerID,
+//					},
+//				},
+//			}},
+//		}
+//		cmd := []string{"ls"}
+//		actualOutput, err := kubelet.RunInContainer("podFoo_nsFoo_teFoo", "", "containerFoo", cmd)
+//		assert.Equal(t, containerID, fakeCommandRunner.ContainerID, "(testError=%v) ID", testError)
+//		assert.Equal(t, cmd, fakeCommandRunner.Cmd, "(testError=%v) command", testError)
+//		// this isn't 100% foolproof as a bug in a real ContainerCommandRunner where it fails to copy to stdout/stderr wouldn't be caught by this test
+//		assert.Equal(t, "foo", string(actualOutput), "(testError=%v) output", testError)
+//		assert.Equal(t, err, testError, "(testError=%v) err", testError)
+//	}
+//}
 
 type testServiceLister struct {
 	services []*v1.Service
@@ -2028,204 +2028,204 @@ func TestPodPhaseWithRestartOnFailure(t *testing.T) {
 	}
 }
 
-func TestGetExec(t *testing.T) {
-	const (
-		podName                = "podFoo"
-		podNamespace           = "nsFoo"
-		podUID       types.UID = "12345678"
-		containerID            = "containerFoo"
-		tty                    = true
-	)
-	var (
-		podFullName = kubecontainer.GetPodFullName(podWithUIDNameNs(podUID, podName, podNamespace))
-		command     = []string{"ls"}
-	)
+//func TestGetExec(t *testing.T) {
+//	const (
+//		podName                = "podFoo"
+//		podNamespace           = "nsFoo"
+//		podUID       types.UID = "12345678"
+//		containerID            = "containerFoo"
+//		tty                    = true
+//	)
+//	var (
+//		podFullName = kubecontainer.GetPodFullName(podWithUIDNameNs(podUID, podName, podNamespace))
+//		command     = []string{"ls"}
+//	)
+//
+//	testcases := []struct {
+//		description string
+//		podFullName string
+//		container   string
+//		expectError bool
+//	}{{
+//		description: "success case",
+//		podFullName: podFullName,
+//		container:   containerID,
+//	}, {
+//		description: "no such pod",
+//		podFullName: "bar" + podFullName,
+//		container:   containerID,
+//		expectError: true,
+//	}, {
+//		description: "no such container",
+//		podFullName: podFullName,
+//		container:   "containerBar",
+//		expectError: true,
+//	}}
+//
+//	for _, tc := range testcases {
+//		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+//		defer testKubelet.Cleanup()
+//		kubelet := testKubelet.kubelet
+//		testKubelet.fakeRuntime.PodList = []*containertest.FakePod{
+//			{Pod: &kubecontainer.Pod{
+//				ID:        podUID,
+//				Name:      podName,
+//				Namespace: podNamespace,
+//				Containers: []*kubecontainer.Container{
+//					{Name: containerID,
+//						ID: kubecontainer.ContainerID{Type: "test", ID: containerID},
+//					},
+//				},
+//			}},
+//		}
+//
+//		description := "streaming - " + tc.description
+//		fakeRuntime := &containertest.FakeStreamingRuntime{FakeRuntime: testKubelet.fakeRuntime}
+//		kubelet.containerRuntime = fakeRuntime
+//		kubelet.streamingRuntime = fakeRuntime
+//
+//		redirect, err := kubelet.GetExec(tc.podFullName, podUID, tc.container, command, remotecommand.Options{})
+//		if tc.expectError {
+//			assert.Error(t, err, description)
+//		} else {
+//			assert.NoError(t, err, description)
+//			assert.Equal(t, containertest.FakeHost, redirect.Host, description+": redirect")
+//		}
+//	}
+//}
 
-	testcases := []struct {
-		description string
-		podFullName string
-		container   string
-		expectError bool
-	}{{
-		description: "success case",
-		podFullName: podFullName,
-		container:   containerID,
-	}, {
-		description: "no such pod",
-		podFullName: "bar" + podFullName,
-		container:   containerID,
-		expectError: true,
-	}, {
-		description: "no such container",
-		podFullName: podFullName,
-		container:   "containerBar",
-		expectError: true,
-	}}
+//func TestGetPortForward(t *testing.T) {
+//	const (
+//		podName                = "podFoo"
+//		podNamespace           = "nsFoo"
+//		podTenant              = "teFoo"
+//		podUID       types.UID = "12345678"
+//		port         int32     = 5000
+//	)
+//
+//	testcases := []struct {
+//		description string
+//		podName     string
+//		expectError bool
+//	}{{
+//		description: "success case",
+//		podName:     podName,
+//	}, {
+//		description: "no such pod",
+//		podName:     "bar",
+//		expectError: true,
+//	}}
+//
+//	for _, tc := range testcases {
+//		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+//		defer testKubelet.Cleanup()
+//		kubelet := testKubelet.kubelet
+//		testKubelet.fakeRuntime.PodList = []*containertest.FakePod{
+//			{Pod: &kubecontainer.Pod{
+//				ID:        podUID,
+//				Name:      podName,
+//				Namespace: podNamespace,
+//				Tenant:    podTenant,
+//				Containers: []*kubecontainer.Container{
+//					{Name: "foo",
+//						ID: kubecontainer.ContainerID{Type: "test", ID: "foo"},
+//					},
+//				},
+//			}},
+//		}
+//
+//		description := "streaming - " + tc.description
+//		fakeRuntime := &containertest.FakeStreamingRuntime{FakeRuntime: testKubelet.fakeRuntime}
+//		kubelet.containerRuntime = fakeRuntime
+//		kubelet.streamingRuntime = fakeRuntime
+//
+//		redirect, err := kubelet.GetPortForward(tc.podName, podNamespace, podTenant, podUID, portforward.V4Options{})
+//		if tc.expectError {
+//			assert.Error(t, err, description)
+//		} else {
+//			assert.NoError(t, err, description)
+//			assert.Equal(t, containertest.FakeHost, redirect.Host, description+": redirect")
+//		}
+//	}
+//}
 
-	for _, tc := range testcases {
-		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-		defer testKubelet.Cleanup()
-		kubelet := testKubelet.kubelet
-		testKubelet.fakeRuntime.PodList = []*containertest.FakePod{
-			{Pod: &kubecontainer.Pod{
-				ID:        podUID,
-				Name:      podName,
-				Namespace: podNamespace,
-				Containers: []*kubecontainer.Container{
-					{Name: containerID,
-						ID: kubecontainer.ContainerID{Type: "test", ID: containerID},
-					},
-				},
-			}},
-		}
-
-		description := "streaming - " + tc.description
-		fakeRuntime := &containertest.FakeStreamingRuntime{FakeRuntime: testKubelet.fakeRuntime}
-		kubelet.containerRuntime = fakeRuntime
-		kubelet.streamingRuntime = fakeRuntime
-
-		redirect, err := kubelet.GetExec(tc.podFullName, podUID, tc.container, command, remotecommand.Options{})
-		if tc.expectError {
-			assert.Error(t, err, description)
-		} else {
-			assert.NoError(t, err, description)
-			assert.Equal(t, containertest.FakeHost, redirect.Host, description+": redirect")
-		}
-	}
-}
-
-func TestGetPortForward(t *testing.T) {
-	const (
-		podName                = "podFoo"
-		podNamespace           = "nsFoo"
-		podTenant              = "teFoo"
-		podUID       types.UID = "12345678"
-		port         int32     = 5000
-	)
-
-	testcases := []struct {
-		description string
-		podName     string
-		expectError bool
-	}{{
-		description: "success case",
-		podName:     podName,
-	}, {
-		description: "no such pod",
-		podName:     "bar",
-		expectError: true,
-	}}
-
-	for _, tc := range testcases {
-		testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-		defer testKubelet.Cleanup()
-		kubelet := testKubelet.kubelet
-		testKubelet.fakeRuntime.PodList = []*containertest.FakePod{
-			{Pod: &kubecontainer.Pod{
-				ID:        podUID,
-				Name:      podName,
-				Namespace: podNamespace,
-				Tenant:    podTenant,
-				Containers: []*kubecontainer.Container{
-					{Name: "foo",
-						ID: kubecontainer.ContainerID{Type: "test", ID: "foo"},
-					},
-				},
-			}},
-		}
-
-		description := "streaming - " + tc.description
-		fakeRuntime := &containertest.FakeStreamingRuntime{FakeRuntime: testKubelet.fakeRuntime}
-		kubelet.containerRuntime = fakeRuntime
-		kubelet.streamingRuntime = fakeRuntime
-
-		redirect, err := kubelet.GetPortForward(tc.podName, podNamespace, podTenant, podUID, portforward.V4Options{})
-		if tc.expectError {
-			assert.Error(t, err, description)
-		} else {
-			assert.NoError(t, err, description)
-			assert.Equal(t, containertest.FakeHost, redirect.Host, description+": redirect")
-		}
-	}
-}
-
-func TestHasHostMountPVC(t *testing.T) {
-	tests := map[string]struct {
-		pvError       error
-		pvcError      error
-		expected      bool
-		podHasPVC     bool
-		pvcIsHostPath bool
-	}{
-		"no pvc": {podHasPVC: false, expected: false},
-		"error fetching pvc": {
-			podHasPVC: true,
-			pvcError:  fmt.Errorf("foo"),
-			expected:  false,
-		},
-		"error fetching pv": {
-			podHasPVC: true,
-			pvError:   fmt.Errorf("foo"),
-			expected:  false,
-		},
-		"host path pvc": {
-			podHasPVC:     true,
-			pvcIsHostPath: true,
-			expected:      true,
-		},
-		"non host path pvc": {
-			podHasPVC:     true,
-			pvcIsHostPath: false,
-			expected:      false,
-		},
-	}
-
-	for k, v := range tests {
-		testKubelet := newTestKubelet(t, false)
-		defer testKubelet.Cleanup()
-		pod := &v1.Pod{
-			Spec: v1.PodSpec{},
-		}
-
-		volumeToReturn := &v1.PersistentVolume{
-			Spec: v1.PersistentVolumeSpec{},
-		}
-
-		if v.podHasPVC {
-			pod.Spec.Volumes = []v1.Volume{
-				{
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{},
-					},
-				},
-			}
-
-			if v.pvcIsHostPath {
-				volumeToReturn.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
-					HostPath: &v1.HostPathVolumeSource{},
-				}
-			}
-
-		}
-
-		testKubelet.fakeKubeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
-			return true, &v1.PersistentVolumeClaim{
-				Spec: v1.PersistentVolumeClaimSpec{
-					VolumeName: "foo",
-				},
-			}, v.pvcError
-		})
-		testKubelet.fakeKubeClient.AddReactor("get", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
-			return true, volumeToReturn, v.pvError
-		})
-
-		actual := testKubelet.kubelet.hasHostMountPVC(pod)
-		if actual != v.expected {
-			t.Errorf("%s expected %t but got %t", k, v.expected, actual)
-		}
-
-	}
-}
+//func TestHasHostMountPVC(t *testing.T) {
+//	tests := map[string]struct {
+//		pvError       error
+//		pvcError      error
+//		expected      bool
+//		podHasPVC     bool
+//		pvcIsHostPath bool
+//	}{
+//		"no pvc": {podHasPVC: false, expected: false},
+//		"error fetching pvc": {
+//			podHasPVC: true,
+//			pvcError:  fmt.Errorf("foo"),
+//			expected:  false,
+//		},
+//		"error fetching pv": {
+//			podHasPVC: true,
+//			pvError:   fmt.Errorf("foo"),
+//			expected:  false,
+//		},
+//		"host path pvc": {
+//			podHasPVC:     true,
+//			pvcIsHostPath: true,
+//			expected:      true,
+//		},
+//		"non host path pvc": {
+//			podHasPVC:     true,
+//			pvcIsHostPath: false,
+//			expected:      false,
+//		},
+//	}
+//
+//	for k, v := range tests {
+//		testKubelet := newTestKubelet(t, false)
+//		defer testKubelet.Cleanup()
+//		pod := &v1.Pod{
+//			Spec: v1.PodSpec{},
+//		}
+//
+//		volumeToReturn := &v1.PersistentVolume{
+//			Spec: v1.PersistentVolumeSpec{},
+//		}
+//
+//		if v.podHasPVC {
+//			pod.Spec.Volumes = []v1.Volume{
+//				{
+//					VolumeSource: v1.VolumeSource{
+//						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{},
+//					},
+//				},
+//			}
+//
+//			if v.pvcIsHostPath {
+//				volumeToReturn.Spec.PersistentVolumeSource = v1.PersistentVolumeSource{
+//					HostPath: &v1.HostPathVolumeSource{},
+//				}
+//			}
+//
+//		}
+//
+//		testKubelet.fakeKubeClient.AddReactor("get", "persistentvolumeclaims", func(action core.Action) (bool, runtime.Object, error) {
+//			return true, &v1.PersistentVolumeClaim{
+//				Spec: v1.PersistentVolumeClaimSpec{
+//					VolumeName: "foo",
+//				},
+//			}, v.pvcError
+//		})
+//		testKubelet.fakeKubeClient.AddReactor("get", "persistentvolumes", func(action core.Action) (bool, runtime.Object, error) {
+//			return true, volumeToReturn, v.pvError
+//		})
+//
+//		actual := testKubelet.kubelet.hasHostMountPVC(pod)
+//		if actual != v.expected {
+//			t.Errorf("%s expected %t but got %t", k, v.expected, actual)
+//		}
+//
+//	}
+//}
 
 func TestHasNonNamespacedCapability(t *testing.T) {
 	createPodWithCap := func(caps []v1.Capability) *v1.Pod {
@@ -2371,147 +2371,147 @@ func TestTruncatePodHostname(t *testing.T) {
 	}
 }
 
-func TestConvertStatusToAPIStatusWithNICStatus(t *testing.T) {
-	pod := &v1.Pod{}
-	criPodStatus := &kubecontainer.PodStatus{
-		SandboxStatuses: []*runtimeapi.PodSandboxStatus{
-			{
-				Network: &runtimeapi.PodSandboxNetworkStatus{
-					Nics: []*runtimeapi.NICStatus{
-						{
-							Name:   "eth0",
-							PortId: "12345",
-							State:  runtimeapi.NICState_NIC_INPROGRESS,
-							Reason: "being provisioning"},
-					},
-				},
-			},
-		},
-	}
-	apiNICStatusExpected := []v1.NICStatus{
-		// todo[vnic-hotplug]: use proper const v1.DeviceInProgress like instead of literal string
-		{Name: "eth0", PortID: "12345", State: "NIC_INPROGRESS", Reason: "being provisioning"},
-	}
+//func TestConvertStatusToAPIStatusWithNICStatus(t *testing.T) {
+//	pod := &v1.Pod{}
+//	criPodStatus := &kubecontainer.PodStatus{
+//		SandboxStatuses: []*runtimeapi.PodSandboxStatus{
+//			{
+//				Network: &runtimeapi.PodSandboxNetworkStatus{
+//					Nics: []*runtimeapi.NICStatus{
+//						{
+//							Name:   "eth0",
+//							PortId: "12345",
+//							State:  runtimeapi.NICState_NIC_INPROGRESS,
+//							Reason: "being provisioning"},
+//					},
+//				},
+//			},
+//		},
+//	}
+//	apiNICStatusExpected := []v1.NICStatus{
+//		// todo[vnic-hotplug]: use proper const v1.DeviceInProgress like instead of literal string
+//		{Name: "eth0", PortID: "12345", State: "NIC_INPROGRESS", Reason: "being provisioning"},
+//	}
+//
+//	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
+//	defer testKubelet.Cleanup()
+//	kubelet := testKubelet.kubelet
+//
+//	apiStatus := kubelet.convertStatusToAPIStatus(pod, criPodStatus)
+//	apiNICStatusActual := apiStatus.NICStatuses
+//	if !reflect.DeepEqual(&apiNICStatusActual, &apiNICStatusExpected) {
+//		t.Errorf("expecting %v, got %v", apiNICStatusExpected, apiNICStatusActual)
+//	}
+//}
 
-	testKubelet := newTestKubelet(t, false /* controllerAttachDetachEnabled */)
-	defer testKubelet.Cleanup()
-	kubelet := testKubelet.kubelet
-
-	apiStatus := kubelet.convertStatusToAPIStatus(pod, criPodStatus)
-	apiNICStatusActual := apiStatus.NICStatuses
-	if !reflect.DeepEqual(&apiNICStatusActual, &apiNICStatusExpected) {
-		t.Errorf("expecting %v, got %v", apiNICStatusExpected, apiNICStatusActual)
-	}
-}
-
-func TestConvertToAPIContainerStatuses(t *testing.T) {
-	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.InPlacePodVerticalScaling, true)()
-	nowTime := time.Now()
-	testContainerName := "ctr0"
-	testContainerID := kubecontainer.ContainerID{Type: "test", ID: testContainerName}
-	testContainer := v1.Container{
-		Name:  testContainerName,
-		Image: "img",
-	}
-	testPod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			UID:       "123456",
-			Name:      "foo",
-			Namespace: "bar",
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{testContainer},
-		},
-	}
-	testKubeContainerStatus := kubecontainer.ContainerStatus{
-		Name:      testContainerName,
-		ID:        testContainerID,
-		Image:     "img",
-		ImageID:   "img1234",
-		State:     kubecontainer.ContainerStateRunning,
-		StartedAt: nowTime,
-	}
-	testPodStatus := &kubecontainer.PodStatus{
-		ID:                testPod.UID,
-		Name:              testPod.Name,
-		Namespace:         testPod.Namespace,
-		ContainerStatuses: []*kubecontainer.ContainerStatus{&testKubeContainerStatus},
-	}
-	Cpu1AndMem1G := v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")}
-	Cpu2AndMem2G := v1.ResourceList{v1.ResourceCPU: resource.MustParse("2"), v1.ResourceMemory: resource.MustParse("2Gi")}
-
-	testKubelet := newTestKubelet(t, false)
-	defer testKubelet.Cleanup()
-	kubelet := testKubelet.kubelet
-	for tdesc, tc := range map[string]struct {
-		Pod            *v1.Pod
-		Resources      []v1.ResourceRequirements
-		PodStatus      *kubecontainer.PodStatus
-		ResourceLimits []v1.ResourceList
-		OldStatus      []v1.ContainerStatus
-		Expected       []v1.ContainerStatus
-	}{
-		"GuaranteedQoSPod with CPU and memory CRI status": {
-			Pod:            testPod,
-			Resources:      []v1.ResourceRequirements{{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G}},
-			PodStatus:      testPodStatus,
-			ResourceLimits: []v1.ResourceList{Cpu1AndMem1G},
-			OldStatus: []v1.ContainerStatus{
-				{
-					Name:      testContainerName,
-					Image:     "img",
-					ImageID:   "img1234",
-					State:     v1.ContainerState{Running: &v1.ContainerStateRunning{}},
-					Resources: v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
-				},
-			},
-			Expected: []v1.ContainerStatus{
-				{
-					Name:        testContainerName,
-					ContainerID: testContainerID.String(),
-					Image:       "img",
-					ImageID:     "img1234",
-					State:       v1.ContainerState{Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(nowTime)}},
-					Resources:   v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
-				},
-			},
-		},
-		"BurstableQoSPod, nil CRI status (not supported by runtime)": {
-			Pod:       testPod,
-			Resources: []v1.ResourceRequirements{{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G}},
-			PodStatus: testPodStatus,
-			OldStatus: []v1.ContainerStatus{
-				{
-					Name:      testContainerName,
-					Image:     "img",
-					ImageID:   "img1234",
-					State:     v1.ContainerState{Running: &v1.ContainerStateRunning{}},
-					Resources: v1.ResourceRequirements{Limits: Cpu2AndMem2G, Requests: Cpu1AndMem1G},
-				},
-			},
-			Expected: []v1.ContainerStatus{
-				{
-					Name:        testContainerName,
-					ContainerID: testContainerID.String(),
-					Image:       "img",
-					ImageID:     "img1234",
-					State:       v1.ContainerState{Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(nowTime)}},
-					Resources:   v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
-				},
-			},
-		},
-		//TODO: more tests
-	} {
-		for i := range tc.Pod.Spec.Containers {
-			tc.Pod.Spec.Containers[i].Resources = tc.Resources[i]
-			tc.Pod.Spec.Containers[i].ResourcesAllocated = tc.Resources[i].Requests
-			if tc.ResourceLimits != nil {
-				tc.PodStatus.ContainerStatuses[i].Resources.Limits = tc.ResourceLimits[i]
-			}
-		}
-
-		t.Logf("TestCase: %q", tdesc)
-		cStatuses := kubelet.convertToAPIContainerStatuses(tc.Pod, tc.PodStatus, tc.OldStatus, tc.Pod.Spec.Containers, false, false)
-		assert.Equal(t, tc.Expected, cStatuses)
-	}
-}
+//func TestConvertToAPIContainerStatuses(t *testing.T) {
+//	defer featuregatetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.InPlacePodVerticalScaling, true)()
+//	nowTime := time.Now()
+//	testContainerName := "ctr0"
+//	testContainerID := kubecontainer.ContainerID{Type: "test", ID: testContainerName}
+//	testContainer := v1.Container{
+//		Name:  testContainerName,
+//		Image: "img",
+//	}
+//	testPod := &v1.Pod{
+//		ObjectMeta: metav1.ObjectMeta{
+//			UID:       "123456",
+//			Name:      "foo",
+//			Namespace: "bar",
+//		},
+//		Spec: v1.PodSpec{
+//			Containers: []v1.Container{testContainer},
+//		},
+//	}
+//	testKubeContainerStatus := kubecontainer.ContainerStatus{
+//		Name:      testContainerName,
+//		ID:        testContainerID,
+//		Image:     "img",
+//		ImageID:   "img1234",
+//		State:     kubecontainer.ContainerStateRunning,
+//		StartedAt: nowTime,
+//	}
+//	testPodStatus := &kubecontainer.PodStatus{
+//		ID:                testPod.UID,
+//		Name:              testPod.Name,
+//		Namespace:         testPod.Namespace,
+//		ContainerStatuses: []*kubecontainer.ContainerStatus{&testKubeContainerStatus},
+//	}
+//	Cpu1AndMem1G := v1.ResourceList{v1.ResourceCPU: resource.MustParse("1"), v1.ResourceMemory: resource.MustParse("1Gi")}
+//	Cpu2AndMem2G := v1.ResourceList{v1.ResourceCPU: resource.MustParse("2"), v1.ResourceMemory: resource.MustParse("2Gi")}
+//
+//	testKubelet := newTestKubelet(t, false)
+//	defer testKubelet.Cleanup()
+//	kubelet := testKubelet.kubelet
+//	for tdesc, tc := range map[string]struct {
+//		Pod            *v1.Pod
+//		Resources      []v1.ResourceRequirements
+//		PodStatus      *kubecontainer.PodStatus
+//		ResourceLimits []v1.ResourceList
+//		OldStatus      []v1.ContainerStatus
+//		Expected       []v1.ContainerStatus
+//	}{
+//		"GuaranteedQoSPod with CPU and memory CRI status": {
+//			Pod:            testPod,
+//			Resources:      []v1.ResourceRequirements{{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G}},
+//			PodStatus:      testPodStatus,
+//			ResourceLimits: []v1.ResourceList{Cpu1AndMem1G},
+//			OldStatus: []v1.ContainerStatus{
+//				{
+//					Name:      testContainerName,
+//					Image:     "img",
+//					ImageID:   "img1234",
+//					State:     v1.ContainerState{Running: &v1.ContainerStateRunning{}},
+//					Resources: v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
+//				},
+//			},
+//			Expected: []v1.ContainerStatus{
+//				{
+//					Name:        testContainerName,
+//					ContainerID: testContainerID.String(),
+//					Image:       "img",
+//					ImageID:     "img1234",
+//					State:       v1.ContainerState{Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(nowTime)}},
+//					Resources:   v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
+//				},
+//			},
+//		},
+//		"BurstableQoSPod, nil CRI status (not supported by runtime)": {
+//			Pod:       testPod,
+//			Resources: []v1.ResourceRequirements{{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G}},
+//			PodStatus: testPodStatus,
+//			OldStatus: []v1.ContainerStatus{
+//				{
+//					Name:      testContainerName,
+//					Image:     "img",
+//					ImageID:   "img1234",
+//					State:     v1.ContainerState{Running: &v1.ContainerStateRunning{}},
+//					Resources: v1.ResourceRequirements{Limits: Cpu2AndMem2G, Requests: Cpu1AndMem1G},
+//				},
+//			},
+//			Expected: []v1.ContainerStatus{
+//				{
+//					Name:        testContainerName,
+//					ContainerID: testContainerID.String(),
+//					Image:       "img",
+//					ImageID:     "img1234",
+//					State:       v1.ContainerState{Running: &v1.ContainerStateRunning{StartedAt: metav1.NewTime(nowTime)}},
+//					Resources:   v1.ResourceRequirements{Limits: Cpu1AndMem1G, Requests: Cpu1AndMem1G},
+//				},
+//			},
+//		},
+//		//TODO: more tests
+//	} {
+//		for i := range tc.Pod.Spec.Containers {
+//			tc.Pod.Spec.Containers[i].Resources = tc.Resources[i]
+//			tc.Pod.Spec.Containers[i].ResourcesAllocated = tc.Resources[i].Requests
+//			if tc.ResourceLimits != nil {
+//				tc.PodStatus.ContainerStatuses[i].Resources.Limits = tc.ResourceLimits[i]
+//			}
+//		}
+//
+//		t.Logf("TestCase: %q", tdesc)
+//		cStatuses := kubelet.convertToAPIContainerStatuses(tc.Pod, tc.PodStatus, tc.OldStatus, tc.Pod.Spec.Containers, false, false)
+//		assert.Equal(t, tc.Expected, cStatuses)
+//	}
+//}
