@@ -18,9 +18,9 @@ limitations under the License.
 package kubelet
 
 import (
-	"testing"
+	//"testing"
 
-	"github.com/stretchr/testify/assert"
+	//"github.com/stretchr/testify/assert"
 
 	"k8s.io/api/core/v1"
 	//apiequality "k8s.io/apimachinery/pkg/api/equality"
