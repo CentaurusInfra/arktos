@@ -26,6 +26,7 @@
 {{$RESTART_COUNT_THRESHOLD_OVERRIDES:= DefaultParam .RESTART_COUNT_THRESHOLD_OVERRIDES ""}}
 {{$DELETING_SATURATION_PODS := DefaultParam .DELETING_SATURATION_PODS true}}
 {{$DELETING_LATENCY_PODS := DefaultParam .DELETING_LATENCY_PODS true}}
+{{$TUNINGSETS_QPS := DefaultParam .TUNINGSETS_QPS 5}}
 #Variables
 {{$namespaces := DivideInt .Nodes $NODES_PER_NAMESPACE}}
 {{$podsPerNamespace := MultiplyInt $PODS_PER_NODE $NODES_PER_NAMESPACE}}
@@ -42,7 +43,7 @@ automanagedNamespaces: {{$namespaces}}
 tuningSets:
 - name: Uniform5qps
   qpsLoad:
-    qps: 5
+    qps: {{$TUNINGSETS_QPS}}
 {{if $ENABLE_CHAOSMONKEY}}
 chaosMonkey:
   nodeFailure:
