@@ -206,7 +206,6 @@ go_test(
         "//pkg/kubelet/util/sliceutils:go_default_library",
         "//pkg/kubelet/volumemanager:go_default_library",
         "//pkg/util/mount:go_default_library",
-        "//pkg/version:go_default_library",
         "//pkg/volume:go_default_library",
         "//pkg/volume/hostpath:go_default_library",
         "//pkg/volume/testing:go_default_library",
