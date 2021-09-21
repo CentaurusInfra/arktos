@@ -210,7 +210,6 @@ go_test(
         "//pkg/util/taints:go_default_library",
         "//pkg/version:go_default_library",
         "//pkg/volume:go_default_library",
-        "//pkg/volume/awsebs:go_default_library",
         "//pkg/volume/hostpath:go_default_library",
         "//pkg/volume/testing:go_default_library",
         "//pkg/volume/util:go_default_library",
