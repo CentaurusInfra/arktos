@@ -19,9 +19,9 @@ package dns
 
 import (
 	"fmt"
-	"io/ioutil"
-	"net"
-	"os"
+	//"io/ioutil"
+	//"net"
+	//"os"
 	"strings"
 	"testing"
 
@@ -31,13 +31,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
-	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	//utilfeature "k8s.io/apiserver/pkg/util/feature"
+	//arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
 	"k8s.io/client-go/tools/record"
-	featuregatetesting "k8s.io/component-base/featuregate/testing"
+	//featuregatetesting "k8s.io/component-base/featuregate/testing"
 	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
-	"k8s.io/kubernetes/pkg/features"
+	//"k8s.io/kubernetes/pkg/features"
 )
 
 var (
