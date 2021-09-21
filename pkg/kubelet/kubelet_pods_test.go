@@ -18,30 +18,30 @@ limitations under the License.
 package kubelet
 
 import (
-	"errors"
-	"fmt"
+	//"errors"
+	//"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
+	//"reflect"
 	//"sort"
 	"testing"
-	"time"
+	//"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	v1 "k8s.io/api/core/v1"
 	//apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/resource"
+	//"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
+	//"k8s.io/apimachinery/pkg/runtime"
+	//"k8s.io/apimachinery/pkg/types"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
-	core "k8s.io/client-go/testing"
+	//core "k8s.io/client-go/testing"
 	//"k8s.io/client-go/tools/record"
 	featuregatetesting "k8s.io/component-base/featuregate/testing"
-	runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
+	//runtimeapi "k8s.io/cri-api/pkg/apis/runtime/v1alpha2"
 
 	// TODO: remove this import if
 	// api.Registry.GroupOrDie(v1.GroupName).GroupVersions[0].String() is changed

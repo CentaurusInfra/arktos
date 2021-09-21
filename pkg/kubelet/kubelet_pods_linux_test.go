@@ -29,7 +29,7 @@ import (
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	kubecontainer "k8s.io/kubernetes/pkg/kubelet/container"
 	"k8s.io/kubernetes/pkg/util/mount"
-	volumetest "k8s.io/kubernetes/pkg/volume/testing"
+	//volumetest "k8s.io/kubernetes/pkg/volume/testing"
 	"k8s.io/kubernetes/pkg/volume/util/subpath"
 )
 
