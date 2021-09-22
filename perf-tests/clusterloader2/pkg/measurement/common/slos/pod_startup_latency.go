@@ -22,7 +22,6 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
