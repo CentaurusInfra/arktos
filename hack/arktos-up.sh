@@ -45,6 +45,9 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
+echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+[ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
+
 # check for network service support flags
 if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
@@ -223,6 +226,8 @@ cleanup()
        echo "Cleanup runtime log folder"
        rm -f -r "${VIRTLET_LOG_DIR}"
   fi
+
+  [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
 
   exit 0
 }
@@ -563,6 +568,13 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" api-resources &>/dev/null
 echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
+
+# todo: start flannel daemon deterministically, instead of waiting for arbitrary time
+if [ "${CNIPLUGIN}" == "flannel" ]; then
+    echo "Installing Flannel cni plugin..."
+    sleep 30  #need sometime for KCM to be fully functioning
+    install_flannel
+fi
 
 while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready at api server"; done
 
