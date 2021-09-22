@@ -2,7 +2,9 @@
 
 This document is intended for new users to install the Arktos platform with Mizar as the underlying network technology.
 
-Prepare lab machine, the preferred OS is **Ubuntu 18.04**. If you are using AWS, the recommended instance size is ```t2.large``` and the storage size is ```128GB``` or more
+Prepare lab machine, the preferred OS is **Ubuntu 18.04**. If you are using AWS, the recommended instance size is ```t2.2xlarge``` and the storage size is ```128GB``` or more.
+
+For On-premise setup, the preferred OS is **Ubuntu 18.04**. The recommended instance size is ```8 CPU and 32GB RAM``` and the storage size is ```128GB``` or more.
 
 The steps might change with the progress of development.
 
