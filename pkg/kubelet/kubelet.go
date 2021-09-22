@@ -439,12 +439,22 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 	}
 
 	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
+	var serviceListers []corelisters.ServiceLister
 	if hasValidTPClients(kubeDeps.KubeTPClients) {
-		serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[0].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
-		r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
-		go r.Run(wait.NeverStop)
+		serviceListers = make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
+
+		for i := range serviceListers {
+			serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[i].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
+			r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
+			go r.Run(wait.NeverStop)
+
+			serviceListers[i] = corelisters.NewServiceLister(serviceIndexer)
+		}
+	} else {
+		klog.Errorf("No Valid TP Clients: %v", err)
+		serviceListers = make([]corelisters.ServiceLister, 1)
+		serviceListers[0] = corelisters.NewServiceLister(serviceIndexer)
 	}
-	serviceLister := corelisters.NewServiceLister(serviceIndexer)
 
 	nodeIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{})
 	if kubeDeps.HeartbeatClient != nil {
@@ -513,8 +523,8 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		registerNode:                            registerNode,
 		registerWithTaints:                      registerWithTaints,
 		registerSchedulable:                     registerSchedulable,
-		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, kubeDeps.ArktosExtClient.ArktosV1()),
-		serviceLister:                           serviceLister,
+		dnsConfigurer:                           dns.NewConfigurer(kubeDeps.Recorder, nodeRef, parsedNodeIP, clusterDNS, kubeCfg.ClusterDomain, kubeCfg.ResolverConfig, serviceListers, kubeclientmanager.ClientManager),
+		serviceListers:                          serviceListers,
 		nodeLister:                              nodeLister,
 		masterServiceNamespace:                  masterServiceNamespace,
 		streamingConnectionIdleTimeout:          kubeCfg.StreamingConnectionIdleTimeout.Duration,
@@ -959,10 +969,13 @@ type Kubelet struct {
 
 	// Set to true to have the node register itself with the apiserver.
 	registerNode bool
+
 	// List of taints to add to a node object when the kubelet registers itself.
 	registerWithTaints []api.Taint
+
 	// Set to true to have the node register itself as schedulable.
 	registerSchedulable bool
+
 	// for internal book keeping; access only from within registerWithApiserver
 	registrationCompleted bool
 
@@ -971,8 +984,10 @@ type Kubelet struct {
 
 	// masterServiceNamespace is the namespace that the master service is exposed in.
 	masterServiceNamespace string
-	// serviceLister knows how to list services
-	serviceLister serviceLister
+
+	// serviceListers know how to list services
+	serviceListers []corelisters.ServiceLister
+
 	// nodeLister knows how to list nodes
 	nodeLister corelisters.NodeLister
 
@@ -988,6 +1003,7 @@ type Kubelet struct {
 
 	// Handles container probing.
 	probeManager prober.Manager
+
 	// Manages container health check results.
 	livenessManager proberesults.Manager
 
@@ -1031,11 +1047,13 @@ type Kubelet struct {
 
 	// Cloud provider interface.
 	cloud cloudprovider.Interface
+
 	// Handles requests to cloud provider with timeout
 	cloudResourceSyncManager cloudresource.SyncManager
 
 	// Indicates that the node initialization happens in an external cloud controller
 	externalCloudProvider bool
+
 	// Reference to this node.
 	nodeRef *v1.ObjectReference
 

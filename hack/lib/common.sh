@@ -647,6 +647,20 @@ function kube::common::start_kubescheduler {
     SCHEDULER_PID=$!
 }
 
+function kube::common::start_arktos_network_ontroller {
+    local CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    ARKTOS_NETWORK_CONTROLLER_LOG=${LOG_DIR}/kube-controller-manager.log
+
+    ${CONTROLPLANE_SUDO} "${GO_OUT}/arktos-network-controller" \
+        --v="${LOG_LEVEL}" \
+        --master="http://127.0.0.1:8080" \
+        --kube-apiserver-ip "${API_HOST_IP_EXTERNAL}" \
+        --kube-apiserver-port=6443 \
+        >"${ARKTOS_NETWORK_CONTROLLER_LOG}" 2>&1 &
+
+    ARKTOS_NETWORK_CONTROLLER_PID=$!
+}
+
 function kube::common::start_kubelet {
     KUBELET_LOG=${LOG_DIR}/kubelet.log
     mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
@@ -755,6 +769,7 @@ function kube::common::start_kubelet {
       ${image_service_endpoint_args[@]+"${image_service_endpoint_args[@]}"}
       "--runtime-request-timeout=${RUNTIME_REQUEST_TIMEOUT}"
       "--port=${KUBELET_PORT}"
+      "--resolv-conf=${RESOLV_CONF}"
       ${KUBELET_FLAGS}
     )
 

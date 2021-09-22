@@ -68,6 +68,7 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --container-runtime-endpoint="containerRuntime,container,/run/containerd/containerd.sock;vmRuntime,vm,/run/virtlet.sock" \
 --runtime-request-timeout=2m \
 --port=10250 \
+--resolv-conf=/run/systemd/resolve/resolv.conf \
 > /tmp/kubelet.worker.log 2>&1 &
 
 echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
