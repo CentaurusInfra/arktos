@@ -18,6 +18,10 @@ package common
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -135,9 +139,16 @@ func (s *serviceCreationLatencyMeasurement) start() error {
 	s.stopCh = make(chan struct{})
 
 	i := informer.NewInformer(
-		s.client,
-		"services",
-		s.selector,
+		&cache.ListWatch{
+			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+				s.selector.ApplySelectors(&options)
+				return s.client.CoreV1().ServicesWithMultiTenancy(s.selector.Namespace, util.GetTenant()).List(options)
+			},
+			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+				s.selector.ApplySelectors(&options)
+				return s.client.CoreV1().ServicesWithMultiTenancy(s.selector.Namespace, util.GetTenant()).Watch(options)
+			},
+		},
 		func(oldObj, newObj interface{}) {
 			f := func() {
 				s.handleObject(oldObj, newObj)
