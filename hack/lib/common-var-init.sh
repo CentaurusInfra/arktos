@@ -215,7 +215,19 @@ REUSE_CERTS=${REUSE_CERTS:-false}
 #
 # Avoid to create loop error at https://coredns.io/plugins/loop/#troubleshooting
 # when create coredns pod
-RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
+RESOLV_CONF=${RESOLV_CONF:-}
+if [ -z ${RESOLV_CONF} ] && [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]
+then
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
+  else
+    RESOLV_CONF=$(mktemp -p /tmp)
+    cat << 'EOF' > ${RESOLV_CONF}
+nameserver 8.8.8.8
+EOF
+  fi
+fi
+
 # --------------------------------------------------------------------------------------------
 # End of 2nd Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
 # --------------------------------------------------------------------------------------------
