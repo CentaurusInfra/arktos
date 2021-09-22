@@ -160,14 +160,15 @@ install_arktos_containerd() {
 
 
 install_flannel() {
-    local apiserver_ip=${1:-127.0.0.1}
-    local nodename=${2:-${lohostname}}
+    local networkcidr="${1:-10.244.0.0/16}"
+    local apiserver_ip=${2:-127.0.0.1}
+    local nodename=${3:-${lohostname}}
     pushd /tmp
 
     wget https://github.com/flannel-io/flannel/releases/download/v0.14.0/flanneld-amd64
     chmod +x ./flanneld-amd64
     cat << EOF > /tmp/net-conf.json
-{ "Network": "10.244.0.0/16",
+{ "Network": "${networkcidr}",
   "Backend": { "Type": "host-gw" }
 }
 EOF

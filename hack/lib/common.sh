@@ -648,14 +648,16 @@ function kube::common::start_kubescheduler {
 }
 
 function kube::common::start_arktos_network_ontroller {
+    local SALT=${1:-}
     local CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
-    ARKTOS_NETWORK_CONTROLLER_LOG=${LOG_DIR}/kube-controller-manager.log
+    ARKTOS_NETWORK_CONTROLLER_LOG=${LOG_DIR}/arktos-network-controller.log
 
     ${CONTROLPLANE_SUDO} "${GO_OUT}/arktos-network-controller" \
         --v="${LOG_LEVEL}" \
         --master="http://127.0.0.1:8080" \
         --kube-apiserver-ip "${API_HOST_IP_EXTERNAL}" \
         --kube-apiserver-port=6443 \
+        --resource-name-salt="${SALT}" \
         >"${ARKTOS_NETWORK_CONTROLLER_LOG}" 2>&1 &
 
     ARKTOS_NETWORK_CONTROLLER_PID=$!

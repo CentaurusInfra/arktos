@@ -22,6 +22,14 @@ KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 # By default, this feature is enabled in the dev cluster started by this script.
 export DISABLE_NETWORK_SERVICE_SUPPORT=${DISABLE_NETWORK_SERVICE_SUPPORT:-}
 
+# flannel is the default cni plugin for scale-out env
+export CNIPLUGIN=${CNIPLUG:-flannel}
+if [ "${CNIPLUGIN}" == "flannel" ]
+then
+  echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+  export ARKTOS_NO_CNI_PREINSTALLED="y"
+fi
+
 echo KUBE_ROOT ${KUBE_ROOT}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -43,6 +51,19 @@ echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
 echo "TENANT_SERVER: |${TENANT_SERVER}|"
 echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
 echo "IS_SCALE_OUT: |${IS_SCALE_OUT}|"
+
+# scale-out specific env vars
+# TP applicable vars
+export TENANT_SERVER_NAME=${TENANT_SERVER_NAME:-${API_HOST}}
+export TENANT_PARTITION_SERVICE_SUBNET=${TENANT_PARTITION_SERVICE_SUBNET:-10.0.0.0/16}
+SERVICE_CLUSTER_IP_RANGE=${TENANT_PARTITION_SERVICE_SUBNET}
+# RP applicable vars
+export RESOURCE_PARTITION_POD_CIDR=${RESOURCE_PARTITION_POD_CIDR:-10.244.0.0/16}
+KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR=${RESOURCE_PARTITION_POD_CIDR}
+
+echo "TENANT_SERVER_NAME: |${TENANT_SERVER_NAME}|"
+echo "TENANT_PARTITION_SERVICE_SUBNET: |${TENANT_PARTITION_SERVICE_SUBNET}|"
+echo "RESOURCE_PARTITION_POD_CIDR: |${RESOURCE_PARTITION_POD_CIDR}|"
 
 if [[ -z "${SCALE_OUT_PROXY_IP}" ]]; then
   echo SCALE_OUT_PROXY_IP is missing. Default to local host ip ${API_HOST}
@@ -140,7 +161,7 @@ fi
 # Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
 # If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
-source ${KUBE_ROOT}/hack/arktos-cni.rc
+[ "${IS_RESOURCE_PARTITION}" == "true" ] && source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
@@ -582,7 +603,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   # Unless arktos service support is disabled, ensure start arktos network controller
   # on TENANT PARTITION nodes other than RESOURCE_PARTITION nodes
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
-     [ ${DISABLE_NETWORK_SERVICE_SUPPORT} ] ||  kube::common::start_arktos_network_ontroller
+    [ ${DISABLE_NETWORK_SERVICE_SUPPORT} ] ||  kube::common::start_arktos_network_ontroller ${TENANT_SERVER_NAME}
   fi
 
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
@@ -642,10 +663,11 @@ echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
+# todo: start flannel daemon deterministically, instead of waiting for arbitrary time
 if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" ]]; then
   echo "Installing Flannel cni plugin... "
   sleep 30  #need sometime for KCM to be fully functioning
-  install_flannel
+  install_flannel "${RESOURCE_PARTITION_POD_CIDR}"
 fi
 
 if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
