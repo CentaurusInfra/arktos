@@ -66,20 +66,6 @@ install_cni_bridge() {
     echo "done with bridge cni plugin installation"
 }
 
-check_mizar_prerequisite() {
-    [[ ! -f "/usr/bin/pip3" ]] && sudo apt install python3-pip -y
-    declare -a packages=( netaddr docker grpcio grpcio-tools scapy kubernetes )
-        for package in ${packages[@]}; do
-            if [[ $(pip3 freeze | grep "\b$package") ]]; then
-                continue
-            else
-                echo "installing mizar python dependencies"
-                sudo pip3 install setuptools netaddr docker grpcio grpcio-tools scapy kubernetes
-                echo "done with mizar python dependencies installation"
-            fi
-    done
-}
-
 install_cni_mizar() {
     sudo rm -rf /opt/cni/bin/
     [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
@@ -221,7 +207,6 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
     install_loopback_cni
 elif [ "${CNIPLUGIN}" == "mizar" ]; then
       echo "cni plugin is mizar; arktos will use mizar to provision pod network"
-      check_mizar_prerequisite
       install_mizar_arktos_containerd
       install_cni_mizar
 else
