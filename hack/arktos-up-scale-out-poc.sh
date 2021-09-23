@@ -15,7 +15,13 @@
 # limitations under the License.
 
 # set up variables
-KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+# Arktos specific network and service support is a feature that each
+# pod is associated to certain network, which has its own DNS service.
+# By default, this feature is enabled in the dev cluster started by this script.
+export DISABLE_NETWORK_SERVICE_SUPPORT=${DISABLE_NETWORK_SERVICE_SUPPORT:-}
+
 echo KUBE_ROOT ${KUBE_ROOT}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -85,6 +91,25 @@ if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
+
+# check for network service support flags
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+  # tenant controller automatically creates a default network resource for new tenant
+  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+else # when disabled
+  # kube-apiserver not to enforce deployment-network validation
+  DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
+fi
+
+echo "DBG: effective feature gates ${FEATURE_GATES}"
+echo "DBG: effective disabling admission plugins ${DISABLE_ADMISSION_PLUGINS}"
+echo "DBG: effective default network template file is ${ARKTOS_NETWORK_TEMPLATE}"
+echo "DBG: kubelet arg RESOLV_CONF is ${RESOLV_CONF}"
+
+echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+[ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
@@ -157,7 +182,7 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
+    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler cmd/arktos-network-controller"
 else
     echo "skipped the build."
 fi
@@ -212,6 +237,10 @@ cleanup()
   [[ -n "${CTLRMGR_PID-}" ]] && mapfile -t CTLRMGR_PIDS < <(pgrep -P "${CTLRMGR_PID}" ; ps -o pid= -p "${CTLRMGR_PID}")
   [[ -n "${CTLRMGR_PIDS-}" ]] && sudo kill "${CTLRMGR_PIDS[@]}" 2>/dev/null
 
+  # Check if the arktos network controller is still running
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && mapfile -t ARKTOS_NETWORK_CONTROLLER_PID < <(pgrep -P "${ARKTOS_NETWORK_CONTROLLER_PID}" ; ps -o pid= -p "${ARKTOS_NETWORK_CONTROLLER_PID}")
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && sudo kill "${ARKTOS_NETWORK_CONTROLLER_PID[@]}" 2>/dev/null
+
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
   [[ -n "${KUBELET_PIDS-}" ]] && sudo kill "${KUBELET_PIDS[@]}" 2>/dev/null
@@ -241,6 +270,8 @@ cleanup()
        rm -f -r "${VIRTLET_LOG_DIR}"
   fi
 
+  [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
+
   exit 0
 }
 # Check if all processes are still running. Prints a warning once each time
@@ -254,6 +285,11 @@ function healthcheck {
   if [[ -n "${CTLRMGR_PID-}" ]] && ! sudo kill -0 "${CTLRMGR_PID}" 2>/dev/null; then
     warning_log "kube-controller-manager terminated unexpectedly, see ${CTLRMGR_LOG}"
     CTLRMGR_PID=
+  fi
+
+  if [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && ! sudo kill -0 "${ARKTOS_NETWORK_CONTROLLER_PID}" 2>/dev/null; then
+    warning_log "arktos network controller terminated unexpectedly, see ${ARKTOS_NETWORK_CONTROLLER_LOG}"
+    ARKTOS_NETWORK_CONTROLLER_PID=
   fi
 
   if [[ -n "${KUBELET_PID-}" ]] && ! sudo kill -0 "${KUBELET_PID}" 2>/dev/null; then
@@ -540,6 +576,13 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   fi
 
   kube::common::start_controller_manager
+
+  # Unless arktos service support is disabled, ensure start arktos network controller
+  # on TENANT PARTITION nodes other than RESOURCE_PARTITION nodes
+  if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+     [ ${DISABLE_NETWORK_SERVICE_SUPPORT} ] ||  kube::common::start_arktos_network_ontroller
+  fi
+
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
@@ -601,6 +644,18 @@ if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+
+  # Set correct podCIDR (i.e 10.244.0.0/16) on RESOURCE_PARTITION node so that
+  # Flannel cni plugin can be installed in process mode successfully
+  ${KUBECTL} patch node ${HOSTNAME_OVERRIDE} -p '{"spec": {"podCIDR": "'${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}'"}}'
+
+  # Todo: start flannel daemon deterministically, instead of waiting for arbitrary time
+  # Ensure to install flannel on RESOURCE PARTITION nodes other than TENANT PARTITION nodes
+  if [ "${CNIPLUGIN}" == "flannel" ]; then
+    echo "Installing Flannel cni plugin... "
+    sleep 30  #need sometime for KCM to be fully functioning
+    install_flannel
+  fi
 fi
 
 if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
@@ -611,6 +666,10 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
+
+  echo "Creating clusterrolebinding system-node-role-bound..."
+  ${KUBECTL} create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
+  ${KUBECTL} get clusterrolebinding/system-node-role-bound -o yaml
 fi
  
 echo ""
