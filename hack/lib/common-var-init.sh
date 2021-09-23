@@ -221,9 +221,14 @@ then
   if [ -f "/run/systemd/resolve/resolv.conf" ]; then
     RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
   else
+    if [ -z ${UPSTREAM_DNS_IP:-} ]
+    then
+      echo "please specify the upstream DNS ip address in env var UPSTREAM_DNS_IP" >&2
+      exit 1
+    fi
     RESOLV_CONF=$(mktemp -p /tmp)
-    cat << 'EOF' > ${RESOLV_CONF}
-nameserver 8.8.8.8
+    cat << EOF > ${RESOLV_CONF}
+nameserver ${UPSTREAM_DNS_IP}
 EOF
   fi
 fi
