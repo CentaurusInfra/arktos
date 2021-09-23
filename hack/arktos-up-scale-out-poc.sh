@@ -640,22 +640,19 @@ echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
+if [ "${CNIPLUGIN}" == "flannel" ]; then
+  echo "Installing Flannel cni plugin... "
+  sleep 30  #need sometime for KCM to be fully functioning
+  install_flannel
+fi
+
 if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-  # Set correct podCIDR (i.e 10.244.0.0/16) on RESOURCE_PARTITION node so that
-  # Flannel cni plugin can be installed in process mode successfully
-  ${KUBECTL} patch node ${HOSTNAME_OVERRIDE} -p '{"spec": {"podCIDR": "'${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}'"}}'
-
-  # Todo: start flannel daemon deterministically, instead of waiting for arbitrary time
-  # Ensure to install flannel on RESOURCE PARTITION nodes other than TENANT PARTITION nodes
-  if [ "${CNIPLUGIN}" == "flannel" ]; then
-    echo "Installing Flannel cni plugin... "
-    sleep 30  #need sometime for KCM to be fully functioning
-    install_flannel
-  fi
+  # Verify podCIDR is set correctly
+  ${KUBECTL} get nodes -o yaml |grep podCIDR
 fi
 
 if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
