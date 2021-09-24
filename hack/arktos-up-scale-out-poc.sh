@@ -119,8 +119,6 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
   ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
-  #CNIPLUGIN is set to use flannel as default
-  CNIPLUGIN="flannel"
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -130,9 +128,6 @@ echo "DBG: effective feature gates ${FEATURE_GATES}"
 echo "DBG: effective disabling admission plugins ${DISABLE_ADMISSION_PLUGINS}"
 echo "DBG: effective default network template file is ${ARKTOS_NETWORK_TEMPLATE}"
 echo "DBG: kubelet arg RESOLV_CONF is ${RESOLV_CONF}"
-
-echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
-[ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
