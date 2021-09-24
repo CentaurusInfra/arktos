@@ -653,7 +653,7 @@ if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
 
-  # Verify podCIDR is set correctly
+  # Verify whether podCIDR on RESOURCE_PARTITION node is set correctly
   ${KUBECTL} get nodes -o yaml |grep podCIDR
 fi
 
