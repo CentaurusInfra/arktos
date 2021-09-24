@@ -212,7 +212,10 @@ CLUSTER_SIGNING_KEY_FILE=${CLUSTER_SIGNING_KEY_FILE:-"${ROOT_CA_KEY}"}
 # Reuse certs will skip generate new ca/cert files under CERT_DIR
 # it's useful with PRESERVE_ETCD=true because new ca will make existed service account secrets invalided
 REUSE_CERTS=${REUSE_CERTS:-false}
-
+#
+# Avoid to create loop error at https://coredns.io/plugins/loop/#troubleshooting
+# when create coredns pod
+RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
 # --------------------------------------------------------------------------------------------
 # End of 2nd Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
 # --------------------------------------------------------------------------------------------

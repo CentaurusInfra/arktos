@@ -68,7 +68,7 @@ To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](docs
 
 ## Community Meetings 
 
- Pacific Time: **Tuesday, 6:00PM PST (Weekly)**
+ Pacific Time: **Tuesday, 6:00PM PT (Biweekly), starting 7/20/2021.** Please join our slack channel/email group for the latest update. 
 
  Resources: [Meeting Link](https://futurewei.zoom.us/j/92636035970) | [Meeting Summary](https://docs.google.com/document/d/1Cwpp44pQhMZ_MQ4ebralDHCt0AZHqhSkj14kNAzA7lY/edit#)
 

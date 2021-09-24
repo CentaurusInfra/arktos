@@ -599,7 +599,7 @@ func run(s *options.KubeletServer, kubeDeps *kubelet.Dependencies, stopCh <-chan
 			}
 			kubeDeps.KubeTPClients = make([]clientset.Interface, len(kubeConfigFiles))
 			for i, kubeConfigFile := range kubeConfigFiles {
-				kubeDeps.KubeTPClients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile)
+				kubeDeps.KubeTPClients[i], err = clientutil.CreateClientFromKubeconfigFile(kubeConfigFile, "kubelet")
 				if err != nil {
 					return fmt.Errorf("failed to initialize kubelet client from kubeconfig [%s]: %v", kubeConfigFile, err)
 				}
