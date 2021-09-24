@@ -10,7 +10,7 @@
 
 ## Prerequsite
 
-1. 4 dev box (tested on ubuntu 16.04), 2 for RP, 2 for TPs. Record ip as TP1_IP, TP2_IP, RP1_IP, RP2_IP
+1. 4 dev box (tested on ubuntu 18.04), 2 for RP, 2 for TPs. Record ip as TP1_IP, TP2_IP, RP1_IP, RP2_IP
 
 1. One dev box for HA proxy, can share with dev boxes used for TP or RP. Record ip as PROXY_IP
 
@@ -37,11 +37,19 @@ export RESOURCE_PARTITION_IP=[RP1_IP]
 # optional, used for cloud KCM only but not tested
 export SCALE_OUT_PROXY_IP=[PROXY_IP]
 export SCALE_OUT_PROXY_PORT=8888
+export TENANT_SERVER_NAME=tp-name (e.g. tp1)
 
 # required
 export IS_RESOURCE_PARTITION=false
 export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
+export TENANT_PARTITION_SERVICE_SUBNET=service-ip-cidr
 ```
+
+an examplative allocation for 2 TPs could be
+
+| tp1 | tp2 |
+| --- | --- |
+| 10.0.0.0/16 | 10.1.0.0/16 |
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
 
@@ -59,11 +67,32 @@ Note:
 ```
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
+export RESOURCE_PARTITION_POD_CIDR=pod-cidr
 ```
+
+an examplative allocation of pod cidr for 2 RPs could be
+
+| rp1 | rp2 |
+| --- | --- |
+| 10.244.0.0/16 | 10.245.0.0/16 |
 
 1. Run ./hack/arktos-up-scale-out-poc.sh
 
 1. Expected last line of output: "Resource Partition Cluster is Running ..."
+
+### Patching Network Routing Across RPs
+Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.Below is what we did in our test lab, where RP1/RP2 nodes are in same subnet.
+On both RP nodes, manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
+
+on RP1,
+```
+sudo ip r add 10.245.0.0/24 via RP2-IP
+```
+
+on RP2
+```
+sudo ip r add 10.244.0.0/24 via RP1-IP
+```
 
 ### Test Cluster
 
