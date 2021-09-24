@@ -98,6 +98,8 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
   ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  #CNIPLUGIN is set to use flannel as default
+  CNIPLUGIN="flannel"
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -640,7 +642,7 @@ echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
-if [ "${CNIPLUGIN}" == "flannel" ]; then
+if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" ]]; then
   echo "Installing Flannel cni plugin... "
   sleep 30  #need sometime for KCM to be fully functioning
   install_flannel
@@ -663,10 +665,6 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
-
-  echo "Creating clusterrolebinding system-node-role-bound..."
-  ${KUBECTL} create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
-  ${KUBECTL} get clusterrolebinding/system-node-role-bound -o yaml
 fi
  
 echo ""
