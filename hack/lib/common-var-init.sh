@@ -215,7 +215,24 @@ REUSE_CERTS=${REUSE_CERTS:-false}
 #
 # Avoid to create loop error at https://coredns.io/plugins/loop/#troubleshooting
 # when create coredns pod
-RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
+RESOLV_CONF=${RESOLV_CONF:-}
+if [ -z ${RESOLV_CONF} ] && [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]
+then
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
+  else
+    if [ -z ${UPSTREAM_DNS_IP:-} ]
+    then
+      echo "please specify the upstream DNS ip address in env var UPSTREAM_DNS_IP" >&2
+      exit 1
+    fi
+    RESOLV_CONF=$(mktemp -p /tmp)
+    cat << EOF > ${RESOLV_CONF}
+nameserver ${UPSTREAM_DNS_IP}
+EOF
+  fi
+fi
+
 # --------------------------------------------------------------------------------------------
 # End of 2nd Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
 # --------------------------------------------------------------------------------------------
