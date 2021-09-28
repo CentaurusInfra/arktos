@@ -42,7 +42,7 @@ export TENANT_SERVER_NAME=tp-name (e.g. tp1)
 # required
 export IS_RESOURCE_PARTITION=false
 export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
-export TENANT_PARTITION_SERVICE_SUBNET=service-ip-cidr
+export TENANT_PARTITION_SERVICE_SUBNET=[service-ip-cidr]
 ```
 
 an examplative allocation for 2 TPs could be
@@ -67,7 +67,7 @@ Note:
 ```
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
-export RESOURCE_PARTITION_POD_CIDR=pod-cidr
+export RESOURCE_PARTITION_POD_CIDR=[pod-cidr]
 ```
 
 an examplative allocation of pod cidr for 2 RPs could be
@@ -81,17 +81,21 @@ an examplative allocation of pod cidr for 2 RPs could be
 1. Expected last line of output: "Resource Partition Cluster is Running ..."
 
 ### Patching Network Routing Across RPs
-Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.Below is what we did in our test lab, where RP1/RP2 nodes are in same subnet.
-On both RP nodes, manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
+Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.
+
+Below is what we did in our test lab using AWS EC2 resources, where RP1/RP2 nodes are in same subnet.
+On both RP nodes,
+1. stop the source/dest check (on AWS console, using EC2 instance Action menu, choosing Networking | Change source-destination check);
+2. manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
 
 on RP1,
 ```
-sudo ip r add 10.245.0.0/24 via RP2-IP
+sudo ip r add 10.245.0.0/24 via [RP2-IP]
 ```
 
 on RP2
 ```
-sudo ip r add 10.244.0.0/24 via RP1-IP
+sudo ip r add 10.244.0.0/24 via [RP1-IP]
 ```
 
 ### Test Cluster
