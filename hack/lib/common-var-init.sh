@@ -219,12 +219,16 @@ RESOLV_CONF=${RESOLV_CONF:-}
 if [ -z ${RESOLV_CONF} ] && [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]
 then
   if [ -f "/run/systemd/resolve/resolv.conf" ]; then
-    RESOLV_CONF=${RESOLV_CONF:-"/run/systemd/resolve/resolv.conf"}
+    # ubuntu 18.04/20.04
+    RESOLV_CONF="/run/systemd/resolve/resolv.conf"
+  elif [ -f "/run/resolvconf/resolv.conf" ]; then
+    # ubuntu 16.04
+    RESOLV_CONF="/run/resolvconf/resolv.conf"
   else
     if [ -z ${UPSTREAM_DNS_IP:-} ]
     then
-      echo "please specify the upstream DNS ip address in env var UPSTREAM_DNS_IP" >&2
-      exit 1
+      echo "Warning: no upstream DNS ip address is provided; fall back to 8.8.8.8"
+      UPSTREAM_DNS_IP="8.8.8.8"
     fi
     RESOLV_CONF=$(mktemp -p /tmp)
     cat << EOF > ${RESOLV_CONF}
