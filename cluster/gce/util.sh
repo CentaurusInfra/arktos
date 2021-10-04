@@ -53,6 +53,10 @@ if [[ "${MASTER_OS_DISTRIBUTION}" == "gci" ]]; then
     DEFAULT_GCI_PROJECT=google-containers
     if [[ "${GCI_VERSION}" == "cos"* ]]; then
         DEFAULT_GCI_PROJECT=cos-cloud
+    elif [[ "${GCI_VERSION}" == "ubuntu"* ]]; then
+        DEFAULT_GCI_PROJECT=ubuntu-os-cloud
+    else
+        DEFAULT_GCI_PROJECT="${MASTER_IMAGE_PROJECT}"
     fi
     MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-${DEFAULT_GCI_PROJECT}}
     # If the master image is not set, we use the latest GCI image.
@@ -74,6 +78,10 @@ function set-linux-node-image() {
     DEFAULT_GCI_PROJECT=google-containers
     if [[ "${GCI_VERSION}" == "cos"* ]]; then
       DEFAULT_GCI_PROJECT=cos-cloud
+    elif [[ "${GCI_VERSION}" == "ubuntu"* ]]; then
+      DEFAULT_GCI_PROJECT=ubuntu-os-cloud
+    else
+      DEFAULT_GCI_PROJECT="${NODE_IMAGE_PROJECT}"
     fi
 
     # If the node image is not set, we use the latest GCI image.
@@ -1308,6 +1316,7 @@ KUBELET_ARGS: $(yaml-quote ${KUBELET_ARGS})
 REQUIRE_METADATA_KUBELET_CONFIG_FILE: $(yaml-quote true)
 ENABLE_NETD: $(yaml-quote ${ENABLE_NETD:-false})
 ENABLE_NODE_TERMINATION_HANDLER: $(yaml-quote ${ENABLE_NODE_TERMINATION_HANDLER:-false})
+GCI_VERSION: $(yaml-quote ${GCI_VERSION})
 CUSTOM_NETD_YAML: |
 $(echo "${CUSTOM_NETD_YAML:-}" | sed -e "s/'/''/g")
 CUSTOM_CALICO_NODE_DAEMONSET_YAML: |
@@ -2059,7 +2068,7 @@ function update-or-verify-gcloud() {
     ${sudo_prefix} gcloud ${gcloud_prompt:-} components update
   else
     local version=$(gcloud version --format=json)
-    python -c'
+    python3 -c'
 import json,sys
 from distutils import version
 

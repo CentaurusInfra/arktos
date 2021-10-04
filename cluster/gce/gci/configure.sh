@@ -65,9 +65,9 @@ function download-kube-env {
       -o "${tmp_kube_env}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-env
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+for k,v in yaml.load(sys.stdin).items():
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_env}" > "${KUBE_HOME}/kube-env")
     rm -f "${tmp_kube_env}"
@@ -155,9 +155,9 @@ function download-kube-master-certs {
       -o "${tmp_kube_master_certs}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-master-certs
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+for k,v in yaml.load(sys.stdin).items():
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_master_certs}" > "${KUBE_HOME}/kube-master-certs")
     rm -f "${tmp_kube_master_certs}"
@@ -195,7 +195,7 @@ function validate-hash {
 # Get default service account credentials of the VM.
 GCE_METADATA_INTERNAL="http://metadata.google.internal/computeMetadata/v1/instance"
 function get-credentials {
-  curl "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python -c \
+  curl "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python3 -c \
     'import sys; import json; print(json.loads(sys.stdin.read())["access_token"])'
 }
 
@@ -422,6 +422,16 @@ EOF
   chmod a+x "${KUBE_BIN}/crictl"
 }
 
+# Install Docker & Containerd
+function install-container-runtime {
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+  echo \
+  "deb [arch=amd64 signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+  sudo apt-get -y update
+  sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+}
+
 function install-exec-auth-plugin {
   if [[ ! "${EXEC_AUTH_PLUGIN_URL:-}" ]]; then
       return
@@ -527,6 +537,9 @@ function load-docker-images {
 # and places them into suitable directories. Files are placed in /home/kubernetes.
 function install-kube-binary-config {
   cd "${KUBE_HOME}"
+  if [[ "${GCI_VERSION}" != "cos"* ]]; then
+    install-container-runtime
+  fi
   local -r server_binary_tar_urls=( $(split-commas "${SERVER_BINARY_TAR_URL}") )
   local -r server_binary_tar="${server_binary_tar_urls[0]##*/}"
   if [[ -n "${SERVER_BINARY_TAR_HASH:-}" ]]; then
