@@ -84,8 +84,6 @@ func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref 
 }
 
 func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
-	manager.tenant2apiLock.RLock()
-	defer manager.tenant2apiLock.RUnlock()
 	if kubeClients == nil || len(kubeClients) == 0 {
 		klog.Errorf("invalid kubeClients : %v", kubeClients)
 		return nil
@@ -96,6 +94,8 @@ func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface,
 }
 
 func (manager *KubeClientManager) PickClient(tenant string) int {
+	manager.tenant2apiLock.RLock()
+	defer manager.tenant2apiLock.RUnlock()
 	pick, ok := manager.tenant2api[strings.ToLower(tenant)]
 	if !ok {
 		klog.Warningf("no registered client for tenant %s, defaulted to client #0", tenant)
