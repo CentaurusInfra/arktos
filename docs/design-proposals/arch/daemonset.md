@@ -2,7 +2,7 @@
 
 Due to the nature Arktos being a multiple-tenanted system, DaemonSet is only allowed in system tenant; only cluster admin is permitted to create/delete/update DaemonSet resources.
 
-Multiple-TP laso causes similar issue to Kube-proxy; changes to kube-proxy is covered in this design.
+Multiple-TP also causes similar issue to Kube-proxy; changes to kube-proxy is covered in this design.
 
 ### What is not covered yet
 At this stage of Arktos, PVC/PV for storage volume is not fully supported - out of scope of this DaemonSet design.
