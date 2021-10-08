@@ -75,7 +75,7 @@ Below is the diagram of kubelet environment preparing process:
 <p align="center"> <img src="images/daemonset_OPD/daemonset-support-DS-creating-podStarting-envPreparing.jpg"> </p>
 
 There are two significant required functionalities for kubelet, at high level:
-1. Keeping track of daemon Pod's TP origin.
+1. Keeping track of system tenant Pod's TP origin.
    <p/>One trivial way is maintaining a map in memory for daemon Pod by UUID to TP origin.
    <p/>For regular tenanted Pods, either deriving TP based on tenant name or leveraging the origin tracking is fine. It is segguested to start with that regular tenanted Pods still use the simple TP-derived-from-tenant-name mechanism. It can be revisted in later the general system tenanted resource management design.
 2. Retrieving supporting resources by TP origin.
