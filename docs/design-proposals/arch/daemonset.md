@@ -2,6 +2,8 @@
 
 Due to the nature Arktos being a multiple-tenanted system, DaemonSet is only allowed in system tenant; only cluster admin is permitted to create/delete/update DaemonSet resources.
 
+Multiple-TP laso causes similar issue to Kube-proxy; changes to kube-proxy is covered in this design.
+
 ### What is not covered yet
 At this stage of Arktos, PVC/PV for storage volume is not fully supported - out of scope of this DaemonSet design.
 
@@ -48,7 +50,21 @@ This is a variant of the above-mentioned DS in RP: cluster admin manages DaemonS
 
 This architecture mitigates the DS sync problem, but it brings more incompatibility of scale-out and scale-up, as scale-up has no such sync in the first place.
 
-### Reequired Changes
+Regarding the scope of changes to keep track of TP origin, there are options:
+
+**System-tenant Resources Only**
+Only resources of system tenant need to keep track of TP origin; user tenant has not change.
+
+Its pro is smaller memory footprint; smaller impact on existing system design.
+
+**All tenants**
+All reources used in kubelet (and kube-proxy), regardless of tenat they are in, keep track of theit TP origin.
+
+Its pro is consistency, no assumption that user tenant being on one single TP.
+
+We'll implement by keeping track for all tenants.
+
+### Required Changes
 The minimum changes required to support DaemonSet of Arktos
 
 #### API Server (admission Controller)
@@ -72,3 +88,10 @@ There are two significant required functionalities for kubelet, at high level:
 2. Retrieving supporting resources by TP origin.
    <p/>Secret and configmap resources each is managed via a local cached store being replenished by external API servers (TP's). Current store implementation simply derives TP by tenant name of the resource. To accomodate the DaemonSet design, the cache store should accept requests to get resource with specified TP origin; it should be able to keep system-tenanted secret or configmap without losing their TP origins; also it should use the resource-specific TP origin to replenish the staled resource instead of the simple tenant-name derived one.
    <p/>The specific detail the changes of store should be carefully considered before the kubelet module implementation.
+3. Keeping track of TP origin of service in Service lister, using services from proper TP when identifying services of the Pod.
+
+#### Kube-proxy
+In scale-out env, for services that are exposed from the system-tenanted Pods, kube-proxy shall be able to tell which TP a certain system-tenanted service is from and locate the endpoints from that TP only. Kube-proxy needs to have similar origin tracking mechanism.
+￼
+￼The TP origin is the significant new property of system-tenanted service nd endpoint, as in 
+￼<p align="center"> <img src="images/daemonset_OPD/kube-proxy-svc-ep-manage.jpg"> </p>
