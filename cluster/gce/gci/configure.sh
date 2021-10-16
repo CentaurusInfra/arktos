@@ -362,11 +362,13 @@ EOF
 
 ####downloading flannel yaml
 function install-flannel-yml {
+  local -r flannel_tar="${FLANNEL_VERSION:-v0.14.0}.tar.gz"
   echo "downloading flannel"
-  download-or-bust "" "https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml"
+  download-or-bust "" "https://github.com/flannel-io/flannel/archive/refs/tags/${flannel_tar}"
   local -r flannel_dir="${KUBE_HOME}/flannel"
   mkdir -p "${flannel_dir}"
-  mv "${KUBE_HOME}/kube-flannel.yml" "${flannel_dir}"
+  tar xzf "${KUBE_HOME}/${flannel_tar}" -C ${flannel_dir} --strip-components 1
+  mv "${flannel_dir}/Documentation/kube-flannel.yml" "${flannel_dir}"
   echo "change docker registry to gcr.io"
   sed -i 's+quay.io/coreos+gcr.io/workload-controller-manager+g' ${flannel_dir}/kube-flannel.yml
 }
