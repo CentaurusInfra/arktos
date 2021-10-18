@@ -667,8 +667,8 @@ function write-master-env {
 
 
 function write-proxy-env {
-  build-proxy-kube-env "${KUBE_TEMP}/proxy-kube-env.yaml"
-  build-proxy-certs "${KUBE_TEMP}/kube-proxy-certs.yaml"
+  build-proxy-kube-env "${KUBE_TEMP}/proxy-env.yaml"
+  build-proxy-certs "${KUBE_TEMP}/proxy-certs.yaml"
 }
 
 function write-partitionserver-env {
@@ -1656,8 +1656,8 @@ function build-proxy-kube-env {
 
   rm -f ${file}
   cat >>$file <<EOF
-KUBERNETES_SCALEOUT_PROXY_APP: $(yaml-quote ${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy})
-KUBERNETES_SCALEOUT_SERVER_TYPE:  $(yaml-quote ${KUBERNETES_SCALEOUT_SERVER_TYPE:-proxy}) 
+ARKTOS_SCALEOUT_PROXY_APP: $(yaml-quote ${ARKTOS_SCALEOUT_PROXY_APP:-haproxy})
+ARKTOS_SCALEOUT_SERVER_TYPE:  $(yaml-quote ${ARKTOS_SCALEOUT_SERVER_TYPE:-proxy}) 
 KUBE_BEARER_TOKEN: $(yaml-quote ${KUBE_BEARER_TOKEN})
 SCALEOUT_PROXY_NAME: $(yaml-quote ${SCALEOUT_PROXY_NAME:-${KUBE_GCE_INSTANCE_PREFIX}-proxy})
 PROXY_CONFIG_FILE: $(yaml-quote ${PROXY_CONFIG_FILE:-"haproxy.cfg"})

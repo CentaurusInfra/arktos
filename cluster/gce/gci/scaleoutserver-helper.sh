@@ -17,13 +17,12 @@
 # A library of helper functions and constant for GCI distro
 source "${KUBE_ROOT}/cluster/gce/gci/helper.sh"
 
-# create-apiserver-instance creates the apiserver instance. If called with
+# create-proxy-instance creates the proxy instance. If called with
 # an argument, the argument is used as the name to a reserved IP
-# address for the apiserver. (In the case of upgrade/repair, we re-use
-# the same IP.)
+# address for the proxyserver. 
 #
 # It requires a whole slew of assumed variables, partially due to to
-# the call to write-apiservr-env. Listing them would be rather
+# the call to write-proxy-env. Listing them would be rather
 # futile. Instead, we list the required calls to ensure any additional
 #
 # variables are set:
@@ -39,7 +38,7 @@ function create-proxy-instance {
   [[ -n ${2:-} ]] && address="${2}"
   [[ -n ${3:-} ]] && private_network_ip="${3}"
   write-proxy-env
-  ensure-gci-metadata-files
+  #ensure-gci-metadata-files
   create-proxy-instance-internal "${name}" "${address}" "${private_network_ip}"
 }
 
@@ -68,17 +67,17 @@ function create-proxy-instance-internal() {
     "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
     "${address:-}" "${private_network_ip:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
 
-  local metadata="kube-env=${KUBE_TEMP}/proxy-kube-env.yaml"
+  local metadata="kube-env=${KUBE_TEMP}/proxy-env.yaml"
   metadata="${metadata},user-data=${KUBE_ROOT}/cluster/gce/gci/proxyserver.yaml"
   metadata="${metadata},configure-sh=${KUBE_ROOT}/cluster/gce/gci/configure.sh"
   metadata="${metadata},setup-sh=${KUBE_ROOT}/cluster/gce/gci/proxy-configure-helper.sh"
   metadata="${metadata},proxy-config=${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
   #metadata="${metadata},cluster-name=${KUBE_TEMP}/cluster-name.txt"
-  metadata="${metadata},gci-update-strategy=${KUBE_TEMP}/gci-update.txt"
-  metadata="${metadata},gci-ensure-gke-docker=${KUBE_TEMP}/gci-ensure-gke-docker.txt"
-  metadata="${metadata},gci-docker-version=${KUBE_TEMP}/gci-docker-version.txt"
-  metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-proxy-certs.yaml"
-  metadata="${metadata},${MASTER_EXTRA_METADATA}"
+  #metadata="${metadata},gci-update-strategy=${KUBE_TEMP}/gci-update.txt"
+  #metadata="${metadata},gci-ensure-gke-docker=${KUBE_TEMP}/gci-ensure-gke-docker.txt"
+  #metadata="${metadata},gci-docker-version=${KUBE_TEMP}/gci-docker-version.txt"
+  metadata="${metadata},kube-master-certs=${KUBE_TEMP}/proxy-certs.yaml"
+  #metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   for attempt in $(seq 1 ${retries}); do
     if result=$(${gcloud} compute instances create "${server_name}" \

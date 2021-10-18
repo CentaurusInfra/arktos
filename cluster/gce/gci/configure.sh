@@ -195,7 +195,7 @@ function download-controller-config {
 function download-proxy-config {
   local -r dest="$1"
   echo "Downloading proxy config file, if it exists"
-  # Fetch kubelet config file from GCE metadata server.
+  # Fetch proxy config file from GCE metadata server.
   (
     umask 077
     local -r tmp_proxy_config="/tmp/proxy.config"
@@ -652,14 +652,15 @@ if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     download-tenantpartition-kubeconfigs
 fi
 
-# master certs
-if [[ "${KUBERNETES_MASTER:-}" == "true" || "${KUBERNETES_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
+# master/proxy certs
+# will do: use ARKTOS_SCALEOUT_SERVER_TYPE to figure out server type: tp, rp, proxy
+if [[ "${KUBERNETES_MASTER:-}" == "true" || "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
   download-kube-master-certs
 fi
 
-if [[ "${KUBERNETES_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
-  mkdir -p /etc/${KUBERNETES_SCALEOUT_PROXY_APP}
-  download-proxy-config "/etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp"
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
+  mkdir -p /etc/${ARKTOS_SCALEOUT_PROXY_APP}
+  download-proxy-config "/etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp"
 else
   echo "install binaries and kube-system manifests"
   # binaries and kube-system manifests

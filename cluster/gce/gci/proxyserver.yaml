@@ -22,6 +22,7 @@ write_files:
 
       [Install]
       WantedBy=kubernetes.target
+
   - path: /etc/systemd/system/proxyserver-setup.service
     permissions: 0644
     owner: root
@@ -38,7 +39,6 @@ write_files:
       ExecStartPre=/bin/chmod 544 /home/kubernetes/bin/proxy-configure-helper.sh
       ExecStart=/home/kubernetes/bin/proxy-configure-helper.sh
       ExecStartPost=/bin/bash -c "sleep 20 && for npid in $(pidof haproxy); do sudo prlimit --pid $npid --nofile=500000:500000 ; done"
-
 
       [Install]
       WantedBy=kubernetes.target

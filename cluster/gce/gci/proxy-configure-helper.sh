@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2016 The Kubernetes Authors.
-# Copyright 2020 Authors of Arktos - file modified.
+# Copyright 2020 Authors of Arktos - file created.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,7 +36,7 @@ function setup-proxy() {
   sed -i '$ahaproxy       soft    nofile          1000000' /etc/security/limits.conf
 
   apt update -y
-  apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}
+  apt install -y ${ARKTOS_SCALEOUT_PROXY_APP}
 
   patch-haproxy-prometheus
   direct-haproxy-logging
@@ -45,14 +44,14 @@ function setup-proxy() {
 }
 
 function config-proxy() {
-  rm -f /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
-  mv /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
+  rm -f /etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
+  mv /etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp /etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
   echo "DBG ========================================"
-  cat /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
+  cat /etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}
   echo "VDBG ========================================"
 
   echo "Restart proxy service"
-  systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}
+  systemctl restart ${ARKTOS_SCALEOUT_PROXY_APP}
 }
 
 function patch-haproxy-prometheus {
@@ -144,7 +143,7 @@ function write-pki-data {
 function create-proxy-pki {
   echo "Creating proxy pki files"
 
-  local -r pki_dir="/etc/${KUBERNETES_SCALEOUT_PROXY_APP}/pki"
+  local -r pki_dir="/etc/${ARKTOS_SCALEOUT_PROXY_APP}/pki"
   mkdir -p "${pki_dir}/private"
   mkdir -p "${pki_dir}/issued"
 
@@ -174,7 +173,7 @@ function create-proxy-pki {
   fi
 
   if [[ ! -z "${SHARED_CA_CERT:-}" ]]; then
-    CA_KEY_PATH="/etc/${KUBERNETES_SCALEOUT_PROXY_APP}/ca.crt"
+    CA_KEY_PATH="/etc/${ARKTOS_SCALEOUT_PROXY_APP}/ca.crt"
     write-pki-data "${SHARED_CA_CERT}" "${CA_KEY_PATH}"
   fi
 
