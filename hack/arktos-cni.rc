@@ -71,9 +71,6 @@ install_cni_mizar() {
     [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
     [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
     sudo find /etc/cni/net.d/ -type f -not -name '10-mizarcni.conf' -delete
-
-    export FEATURE_GATES="AllAlpha=false,MandatoryArktosNetwork=true"
-    export ARKTOS_NETWORK_TEMPLATE=mizar
 }
 
 build_alktron() {
@@ -249,9 +246,10 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
     install_cni_alktron
     install_loopback_cni
 elif [ "${CNIPLUGIN}" == "mizar" ]; then
-      echo "cni plugin is mizar; arktos will use mizar to provision pod network"
-      install_mizar_arktos_containerd
-      install_cni_mizar
+    echo "cni plugin is mizar; arktos will use mizar to provision pod network"
+    install_mizar_arktos_containerd
+    install_cni_mizar
+    install_loopback_cni
 else
     echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
     echo "suggest to use bridge cni plugin."

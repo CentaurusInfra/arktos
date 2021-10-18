@@ -45,7 +45,7 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
-echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+echo "DBG: ${CNIPLUGIN} CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
 # check for network service support flags
@@ -53,7 +53,11 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
-  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  if [ "${CNIPLUGIN}" == "mizar" ]; then
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-mizar-network.tmpl"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -225,11 +229,6 @@ cleanup()
   if [[ -e "${VIRTLET_LOG_DIR}" ]]; then
        echo "Cleanup runtime log folder"
        rm -f -r "${VIRTLET_LOG_DIR}"
-  fi
-
-  # Kill arktos-network-controller process
-  if [[ "${CNIPLUGIN}" == "mizar" ]] && [[ ! "$(ps -ax|grep arktos-network-controller | grep -v grep | wc -l)" -eq 0 ]]; then
-    sudo killall arktos-network-controller 2>/dev/null
   fi
 
   [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
@@ -516,7 +515,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     kube::common::start_apiserver $i
   done
   #remove workload controller manager cluster role and rolebinding applying per this already be added to bootstrappolicy
-  
+
   # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
 
@@ -560,9 +559,8 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
 fi
 
 # Applying mizar cni
-if [[ "${CNIPLUGIN}" = "mizar" ]]; then
+if [[ "${CNIPLUGIN}" == "mizar" ]]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.yaml
-  ${KUBE_ROOT}/_output/local/bin/linux/amd64/arktos-network-controller --kubeconfig=/var/run/kubernetes/admin.kubeconfig --kube-apiserver-ip="$(hostname -I | awk '{print $1}')" > /tmp/arktos-network-controller.log 2>&1 &
 fi
 
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
