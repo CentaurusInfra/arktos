@@ -444,6 +444,7 @@ NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet, cni
 
 # Network Policy plugin specific settings.
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-bridge}" # calico, flannel, bridge
+FLANNEL_VERSION="${FLANNEL_VERSION:-v0.14.0}"
 
 NON_MASQUERADE_CIDR="0.0.0.0/0"
 

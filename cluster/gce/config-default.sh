@@ -425,6 +425,7 @@ NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with co
 
 # Network Policy plugin specific settings.
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet doesn't work with container runtime, update to cni and flannel
+FLANNEL_VERSION="${FLANNEL_VERSION:-v0.14.0}"
 
 NON_MASQUERADE_CIDR="0.0.0.0/0"
 
