@@ -178,7 +178,25 @@ API_SECURE_PORT=${API_SECURE_PORT:-6443}
 # WARNING: For DNS to work on most setups you should export API_HOST as the docker0 ip address,
 API_HOST=${API_HOST:-"${lohostname}"}
 API_HOST_IP=${API_HOST_IP:-"0.0.0.0"}
-API_HOST_IP_EXTERNAL=${API_HOST_IP_EXTERNAL:-"${hostip}"}
+
+# Fix the issue 1211 at https://github.com/CentaurusInfra/arktos/issues/1211
+API_HOST_IP_EXTERNAL=${API_HOST_IP_EXTERNAL:-}
+if [ -z ${API_HOST_IP_EXTERNAL} ]
+then
+  if [ -f "/etc/netplan/50-cloud-init.yaml" ]; then
+    # ubuntu 18.04
+    DEFAULT_INTERFACE=`egrep -v '(^#|^$)' /etc/netplan/50-cloud-init.yaml |grep set-name: |head -1 |awk -F':' '{print $2}'`
+    DEFAULT_INTERFACE_IP=`ip addr show ${DEFAULT_INTERFACE} | grep 'inet\b' | awk '{print $2}' | cut -d/ -f1`
+    API_HOST_IP_EXTERNAL=${DEFAULT_INTERFACE_IP}
+    echo "DBG: arg API_HOST_IP_EXTERNAL is ${API_HOST_IP_EXTERNAL}"
+  else
+    echo "Warning: The arg API_HOST_IP_EXTERNAL can not be set automatically."
+    echo "Warning: Please get single IP address by getting the interface from "
+    echo "Warning: default route (i.e - ip route, ip addrees show <interface>)"
+    echo "Warning: Then run command - export API_HOST_IP_EXTERNAL=<IP address>"
+  fi
+fi
+
 ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
 NODE_PORT_RANGE=${NODE_PORT_RANGE:-""}
 API_BIND_ADDR=${API_BIND_ADDR:-"0.0.0.0"}
