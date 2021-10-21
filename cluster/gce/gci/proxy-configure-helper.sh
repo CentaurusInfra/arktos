@@ -39,7 +39,6 @@ function setup-proxy() {
   apt install -y ${ARKTOS_SCALEOUT_PROXY_APP}
 
   patch-haproxy-prometheus
-  direct-haproxy-logging
 
 }
 
@@ -67,32 +66,6 @@ function patch-haproxy-prometheus {
   cp /usr/local/sbin/haproxy /usr/sbin/haproxy
   systemctl start haproxy
   haproxy -vv|grep Prometheus
-}
-
-function direct-haproxy-logging {
-  pushd /etc/rsyslog.d
-  haproxy_conf=`find . -name *haproxy.conf`
-
-  if [ -z "$haproxy_conf" ]; then
-    echo "haproxy conf file not found in /etc/rsyslog.d/"
-    return
-  fi
-
-  if grep -q "UDPServerRun 514" "$haproxy_conf"; then
-    echo "skipped updating haproxy.conf for directing logging"
-    return
-  fi
-
-     echo '
-$ModLoad imudp
-$UDPServerRun 514
-local0.* -/var/log/haproxy.log
-' >> $haproxy_conf
-
-  service rsyslog restart
-  echo "haproxy logging directed to /var/log/haproxy.log only"
-
-  popd
 }
 
 function start-proxy-prometheus {

@@ -43,34 +43,6 @@ write_files:
       [Install]
       WantedBy=kubernetes.target
 
-  - path: /etc/systemd/system/kube-logrotate.timer
-    permissions: 0644
-    owner: root
-    content: |
-      [Unit]
-      Description=kube-logrotate invocation
-
-      [Timer]
-      OnCalendar=*-*-* *:00/5:00
-
-      [Install]
-      WantedBy=kubernetes.target
-
-  - path: /etc/systemd/system/kube-logrotate.service
-    permissions: 0644
-    owner: root
-    content: |
-      [Unit]
-      Description=Kubernetes log rotation
-      After=proxyserver-setup.service
-
-      [Service]
-      Type=oneshot
-      ExecStart=-/usr/sbin/logrotate /etc/logrotate.conf
-
-      [Install]
-      WantedBy=kubernetes.target
-
   - path: /etc/systemd/system/kubernetes.target
     permissions: 0644
     owner: root
@@ -85,7 +57,5 @@ runcmd:
  - systemctl daemon-reload
  - systemctl enable proxy-installation.service
  - systemctl enable proxyserver-setup.service
- - systemctl enable kube-logrotate.timer
- - systemctl enable kube-logrotate.service
  - systemctl enable kubernetes.target
  - systemctl start kubernetes.target
