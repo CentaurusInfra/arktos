@@ -185,7 +185,7 @@ if [ -z ${API_HOST_IP_EXTERNAL} ]
 then
   if [ -f "/etc/netplan/50-cloud-init.yaml" ]; then
     # ubuntu 18.04
-    DEFAULT_INTERFACE=`egrep -v '(^#|^$)' /etc/netplan/50-cloud-init.yaml |grep set-name: |head -1 |awk -F':' '{print $2}'`
+    DEFAULT_INTERFACE=`egrep -v '(^#|^$)' /etc/netplan/50-cloud-init.yaml | grep set-name: | head -1 | awk -F':' '{print $2}'`
     DEFAULT_INTERFACE_IP=`ip addr show ${DEFAULT_INTERFACE} | grep 'inet\b' | awk '{print $2}' | cut -d/ -f1`
     API_HOST_IP_EXTERNAL=${DEFAULT_INTERFACE_IP}
     echo "DBG: arg API_HOST_IP_EXTERNAL is ${API_HOST_IP_EXTERNAL}"
