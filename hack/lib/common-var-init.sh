@@ -184,18 +184,16 @@ API_HOST_IP_EXTERNAL=${API_HOST_IP_EXTERNAL:-}
 if [ -z ${API_HOST_IP_EXTERNAL} ]
 then
   if [ -f "/etc/netplan/50-cloud-init.yaml" ]; then
-    # ubuntu 18.04
+    # Ubuntu 18.04
     DEFAULT_INTERFACE=`egrep -v '(^#|^$)' /etc/netplan/50-cloud-init.yaml | grep set-name: | head -1 | awk -F':' '{print $2}'`
-    DEFAULT_INTERFACE_IP=`ip addr show ${DEFAULT_INTERFACE} | grep 'inet\b' | awk '{print $2}' | cut -d/ -f1`
-    API_HOST_IP_EXTERNAL=${DEFAULT_INTERFACE_IP}
-    echo "DBG: arg API_HOST_IP_EXTERNAL is ${API_HOST_IP_EXTERNAL}"
   else
-    echo "Warning: The arg API_HOST_IP_EXTERNAL can not be set automatically."
-    echo "Warning: Please get single IP address by getting the interface from "
-    echo "Warning: default route (i.e - ip route, ip addrees show <interface>)"
-    echo "Warning: Then run command - export API_HOST_IP_EXTERNAL=<IP address>"
-    exit 1
+    # Ubuntu 16.04 or GCE VM
+    DEFAULT_INTERFACE=`ip route |grep default |awk '{print $5}'`
   fi
+
+  DEFAULT_INTERFACE_IP=`ip addr show ${DEFAULT_INTERFACE} | grep 'inet\b' | awk '{print $2}' | cut -d/ -f1`
+  API_HOST_IP_EXTERNAL=${DEFAULT_INTERFACE_IP}
+  echo "DBG: arg API_HOST_IP_EXTERNAL is ${API_HOST_IP_EXTERNAL}"
 fi
 
 ADVERTISE_ADDRESS=${ADVERTISE_ADDRESS:-""}
