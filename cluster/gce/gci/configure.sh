@@ -537,7 +537,8 @@ function load-docker-images {
 # and places them into suitable directories. Files are placed in /home/kubernetes.
 function install-kube-binary-config {
   cd "${KUBE_HOME}"
-  if [[ "${GCI_VERSION}" != "cos"* ]]; then
+  OS=$(cat /etc/os-release | grep "^ID="| cut -c 4-)
+  if [[ "${OS}" == "ubuntu" ]]; then
     install-container-runtime
   fi
   local -r server_binary_tar_urls=( $(split-commas "${SERVER_BINARY_TAR_URL}") )

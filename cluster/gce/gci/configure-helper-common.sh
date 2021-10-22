@@ -3256,7 +3256,8 @@ EOF
 }
 
 function wait-till-apiserver-ready() {
-  if [[ "${GCI_VERSION}" != "cos"* ]]; then
+  OS=$(cat /etc/os-release | grep "^ID="| cut -c 4-)
+  if [[ "${OS}" == "ubuntu" ]]; then
     cp /home/kubernetes/bin/kubectl /usr/local/bin/kubectl
     chmod +x /usr/local/bin/kubectl
   fi
