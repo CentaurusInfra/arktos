@@ -194,6 +194,7 @@ then
     echo "Warning: Please get single IP address by getting the interface from "
     echo "Warning: default route (i.e - ip route, ip addrees show <interface>)"
     echo "Warning: Then run command - export API_HOST_IP_EXTERNAL=<IP address>"
+    exit 1
   fi
 fi
 
