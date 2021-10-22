@@ -21,7 +21,7 @@ write_files:
       ExecStart=/home/kubernetes/bin/configure.sh
 
       [Install]
-      WantedBy=kubernetes.target
+      WantedBy=multi-user.target
 
   - path: /etc/systemd/system/proxyserver-setup.service
     permissions: 0644
@@ -41,21 +41,11 @@ write_files:
       ExecStartPost=/bin/bash -c "sleep 20 && for npid in $(pidof haproxy); do sudo prlimit --pid $npid --nofile=500000:500000 ; done"
 
       [Install]
-      WantedBy=kubernetes.target
-
-  - path: /etc/systemd/system/kubernetes.target
-    permissions: 0644
-    owner: root
-    content: |
-      [Unit]
-      Description=Kubernetes
-
-      [Install]
       WantedBy=multi-user.target
 
 runcmd:
  - systemctl daemon-reload
  - systemctl enable proxy-installation.service
  - systemctl enable proxyserver-setup.service
- - systemctl enable kubernetes.target
- - systemctl start kubernetes.target
+ - systemctl enable multi-user.target
+ - systemctl start multi-user.target
