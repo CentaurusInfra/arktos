@@ -52,7 +52,9 @@ ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 CLUSTER_READY_ADDITIONAL_TIME_SECONDS="${CLUSTER_READY_ADDITIONAL_TIME_SECONDS:-30}"
 
 if [[ "${KUBERNETES_PROVIDER:-}" == "gce" ]]; then
-  if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+  if [[ "${KUBE_CREATE_NODES}" == "true" && "${ARKTOS_SCALEOUT_SERVER_TYPE}" == "" ]]; then
+    EXPECTED_NUM_NODES="$(get-num-nodes)"
+  elif [[ "${KUBE_CREATE_NODES}" == "true" && "${ARKTOS_SCALEOUT_SERVER_TYPE}" == "rp" ]]; then
     EXPECTED_NUM_NODES="$(get-num-nodes)"
   else
     EXPECTED_NUM_NODES="0"
@@ -80,6 +82,8 @@ if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
   else
     NUM_MASTERS=1
   fi
+
+  echo ""
   EXPECTED_NUM_NODES=$((EXPECTED_NUM_NODES+NUM_MASTERS))
 fi
 
@@ -173,7 +177,7 @@ while true; do
   #  - Total number of componentstatuses.
   #  - Number of "healthy" components.
   cs_status=$(kubectl_retry get componentstatuses -o template --template='{{range .items}}{{with index .conditions 0}}{{.type}}:{{.status}}{{end}}{{"\n"}}{{end}}') || true
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     cs_status=$(kubectl_retry get componentstatuses -o template --template='{{range .items}}{{with (and (ne .metadata.name "scheduler") (index .conditions 0))}}{{.type}}:{{.status}}{{end}}{{"\n"}}{{end}}') || true
   fi
   componentstatuses=$(echo "${cs_status}" | grep -c 'Healthy:') || true

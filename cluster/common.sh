@@ -952,6 +952,11 @@ EOF
 TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
     fi
+    if [ -n "${RESOURCE_SERVER_KUBECONFIG:-}" ]; then
+      cat >>$file <<EOF
+RESOURCE_SERVER_KUBECONFIG: $(yaml-quote ${RESOURCE_SERVER_KUBECONFIG})
+EOF
+    fi
 
   else
     # Node-only env vars.
