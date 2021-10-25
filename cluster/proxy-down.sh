@@ -47,13 +47,18 @@ if gcloud compute instances describe "${SCALEOUT_PROXY_NAME}" --zone "${ZONE}" -
 fi
 # Delete firewall rule for the proxy.
 delete-firewall-rules "${SCALEOUT_PROXY_NAME}-https"
-echo "Deleting proxy's reserved IP"
+
+if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+  delete-firewall-rules "promethues-${SCALEOUT_PROXY_NAME}"
+fi
+
+echo "Deleting proxy ${SCALEOUT_PROXY_NAME} reserved IP"
 if gcloud compute addresses describe "${SCALEOUT_PROXY_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
   gcloud compute addresses delete \
     --project "${PROJECT}" \
     --region "${REGION}" \
     --quiet \
-    "${PROXY_NAME}-ip"
+    "${SCALEOUT_PROXY_NAME}-ip"
 fi
 if gcloud compute addresses describe "${SCALEOUT_PROXY_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
   gcloud compute addresses delete \

@@ -133,7 +133,7 @@ function main() {
     start-kube-apiserver
     start-kube-controller-manager
 
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]]; then
+    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" != "rp" ]]; then
       start-kube-scheduler
     fi
     wait-till-apiserver-ready
