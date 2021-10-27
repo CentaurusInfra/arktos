@@ -364,6 +364,9 @@ function generate-shared-ca-cert {
 
   cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/ca.crt ${SHARED_CA_DIRECTORY}/ca.crt
   cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/private/ca.key ${SHARED_CA_DIRECTORY}/ca.key
+
+  export SHARED_CA_CERT_BASE64=$(cat "${SHARED_CA_DIRECTORY}/ca.crt" | base64 | tr -d '\r\n')
+  export SHARED_CA_KEY_BASE64=$(cat "${SHARED_CA_DIRECTORY}/ca.key" | base64 | tr -d '\r\n')
 }
 
 # master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
@@ -443,7 +446,6 @@ function setup_proxy {
   export KUBE_BEARER_TOKEN=${SHARED_APISERVER_TOKEN}
   export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
   export PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
-  export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
   export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
   export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
   create-arktos-proxy

@@ -29,6 +29,7 @@ release_filegroup(
         "master.yaml",
         "node.yaml",
         "partitionserver.yaml",
+        "proxyserver.yaml",
         "shutdown.sh",
     ],
     visibility = ["//visibility:public"],
@@ -41,6 +42,7 @@ pkg_tar(
         "//cluster/gce/gci/mounter": "gci-mounter",
         "configure-helper.sh": "gci-configure-helper.sh",
         "partitionserver-configure-helper.sh": "partitionserver-configure-helper.sh",
+        "proxy-configure-helper.sh": "proxy-configure-helper.sh",
         "health-monitor.sh": "health-monitor.sh",
         "configure-helper-common.sh": "configure-helper-common.sh",
     },
@@ -71,5 +73,6 @@ filegroup(
     srcs = [
         "configure-helper.sh",
         "partitionserver-configure-helper.sh",
+        "proxy-configure-helper.sh",
     ],
 )
