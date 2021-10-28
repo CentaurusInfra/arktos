@@ -101,6 +101,7 @@ kube::build::get_docker_wrapped_binaries() {
     workload-controller-manager,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-scheduler,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
     kube-proxy,"k8s.gcr.io/debian-iptables-${arch}:${debian_iptables_version}"
+    arktos-network-controller,"k8s.gcr.io/debian-base-${arch}:${debian_base_version}"
   )
 
   echo "${targets[@]}"

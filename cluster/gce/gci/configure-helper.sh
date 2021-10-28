@@ -144,7 +144,7 @@ function main() {
     update-legacy-addon-node-labels &
     apply-encryption-config &
     start-cluster-networking   ####start cluster networking if not using default kubenet
-
+    start-arktos-network-controller ${KUBERNETES_MASTER_NAME}
   else
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       start-kube-proxy
@@ -153,6 +153,7 @@ function main() {
       start-node-problem-detector
     fi
   fi
+  # Creating network
   reset-motd
   prepare-mounter-rootfs
   modprobe configs

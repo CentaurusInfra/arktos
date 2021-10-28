@@ -74,6 +74,7 @@ kube::golang::server_targets() {
     cmd/kubeadm
     cmd/hyperkube
     cmd/kube-scheduler
+    cmd/arktos-network-controller
     vendor/k8s.io/apiextensions-apiserver
     cluster/gce/gci/mounter
   )
@@ -94,6 +95,7 @@ kube::golang::server_image_targets() {
     cmd/workload-controller-manager
     cmd/kube-scheduler
     cmd/kube-proxy
+    cmd/arktos-network-controller
   )
   echo "${targets[@]}"
 }

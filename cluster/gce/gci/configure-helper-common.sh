@@ -620,6 +620,9 @@ function create-master-auth {
   if [[ -n "${ADDON_MANAGER_TOKEN:-}" ]]; then
     append_or_replace_prefixed_line "${known_tokens_csv}" "${ADDON_MANAGER_TOKEN},"   "system:addon-manager,uid:system:addon-manager,system:masters"
   fi
+  if [[ -n "${ARKTOS_NETWORK_CONTROLLER_TOKEN:-}" ]]; then
+    append_or_replace_prefixed_line "${known_tokens_csv}" "${ARKTOS_NETWORK_CONTROLLER_TOKEN}," "system:arktos-network-controller,uid:system:arktos-network-controller"
+  fi
   if [[ -n "${EXTRA_STATIC_AUTH_COMPONENTS:-}" ]]; then
     # Create a static Bearer token and kubeconfig for extra, comma-separated components.
     IFS="," read -r -a extra_components <<< "${EXTRA_STATIC_AUTH_COMPONENTS:-}"
@@ -2353,6 +2356,10 @@ function start-kube-controller-manager {
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
 
+  local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
+  local -r network_json="${src_dir}/default_flat_network.json"
+  cp "${network_json}" /etc/srv/kubernetes/
+  params+=" --default-network-template-path=/etc/srv/kubernetes/default_flat_network.json"
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
     sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
@@ -2542,6 +2549,36 @@ function start-cluster-autoscaler {
     cp "${src_file}" /etc/kubernetes/manifests
   fi
 }
+
+# Starts arktos-network-controller
+function start-arktos-network-controller {
+  mkdir -p /etc/srv/kubernetes/arktos-network-controller
+  echo "Start arktos-network-controller"
+  local master_ip=${1:-}  #optional
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
+    create-kubeconfig "arktos-network-controller" ${ARKTOS_NETWORK_CONTROLLER_TOKEN} ${master_ip} "8080" "http"
+  else
+    create-kubeconfig "arktos-network-controller" ${ARKTOS_NETWORK_CONTROLLER_TOKEN} ${master_ip}
+  fi
+  prepare-log-file /var/log/arktos-network-controller.log
+  # Calculate variables and assemble the command line.
+  local params="${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-"--v=4"}"
+  params+=" --kube-apiserver-ip=${master_ip}"
+  params+=" --kubeconfig=/etc/srv/kubernetes/arktos-network-controller/kubeconfig"
+  params+=" --kube-apiserver-port=443"
+
+  local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/arktos-network-controller.docker_tag)
+  local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/arktos-network-controller.manifest"
+  # Evaluate variables.
+  sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${DOCKER_REGISTRY}@g" "${src_file}"
+  sed -i -e "s@{{pillar\['arktos-network-controller_docker_tag'\]}}@${kube_rc_docker_tag}@g" "${src_file}"
+  sed -i -e "s@{{params}}@${params}@g" "${src_file}"
+  kubectl apply -f "${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/crd-network.yaml"
+  cp "${src_file}" /etc/kubernetes/manifests
+}
+
+
+
 
 # A helper function for setting up addon manifests.
 #

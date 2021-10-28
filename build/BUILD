@@ -54,6 +54,10 @@ DOCKERIZED_BINARIES = {
         "base": "@debian-iptables-{ARCH}//image",
         "target": "//cmd/kube-proxy:kube-proxy",
     },
+    "arktos-network-controller": {
+        "base": "@debian-base-{ARCH}//image",
+        "target": "//cmd/arktos-network-controller",
+    },
 }
 
 # In the bash-based build (build/lib/release.sh), the images built for amd64 do not use
