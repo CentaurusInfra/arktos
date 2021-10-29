@@ -144,7 +144,9 @@ function main() {
     update-legacy-addon-node-labels &
     apply-encryption-config &
     start-cluster-networking   ####start cluster networking if not using default kubenet
-    start-arktos-network-controller ${KUBERNETES_MASTER_NAME}
+    if [[ "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" == "true" ]]; then
+      start-arktos-network-controller ${KUBERNETES_MASTER_NAME}
+    fi
   else
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
       start-kube-proxy

@@ -304,6 +304,15 @@ if [[ ! -z "${NODE_ACCELERATORS}" ]]; then
     fi
 fi
 
+# Arktos specific network and service support is a feature that each
+# pod is associated to certain network, which has its own DNS service.
+# By default, this feature is enabled in the dev cluster started by this script.
+DISABLE_NETWORK_SERVICE_SUPPORT="${DISABLE_NETWORK_SERVICE_SUPPORT:-true}"
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+fi
+
 # Optional: Install cluster DNS.
 # Set CLUSTER_DNS_CORE_DNS to 'false' to install kube-dns instead of CoreDNS.
 CLUSTER_DNS_CORE_DNS="${CLUSTER_DNS_CORE_DNS:-true}"

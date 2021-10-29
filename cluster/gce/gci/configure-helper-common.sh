@@ -2566,6 +2566,9 @@ function start-arktos-network-controller {
   params+=" --kube-apiserver-ip=${master_ip}"
   params+=" --kubeconfig=/etc/srv/kubernetes/arktos-network-controller/kubeconfig"
   params+=" --kube-apiserver-port=443"
+  if [[ "${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false}" == "true" ]]; then
+      params+=" --master=http://127.0.0.1:8080"
+  fi
 
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/arktos-network-controller.docker_tag)
   local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/arktos-network-controller.manifest"
