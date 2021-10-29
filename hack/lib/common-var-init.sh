@@ -184,7 +184,7 @@ API_HOST_IP_EXTERNAL=${API_HOST_IP_EXTERNAL:-}
 if [ -z ${API_HOST_IP_EXTERNAL} ]
 then
   if [ -f "/etc/netplan/50-cloud-init.yaml" ]; then
-    # Ubuntu 18.04
+    # Ubuntu 18.04 and Ubuntu 20.04
     DEFAULT_INTERFACE=`egrep -v '(^#|^$)' /etc/netplan/50-cloud-init.yaml | grep set-name: | head -1 | awk -F':' '{print $2}'`
   else
     # Ubuntu 16.04 or GCE VM
