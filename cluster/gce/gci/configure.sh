@@ -313,6 +313,9 @@ function install-cni-network {
     bridge)
     setup-bridge-cni-conf
     ;;
+    mizar)
+    install-mizar-yml
+    ;;
   esac
 }
 
@@ -373,6 +376,15 @@ function install-flannel-yml {
   sed -i 's+quay.io/coreos+gcr.io/workload-controller-manager+g' ${flannel_dir}/kube-flannel.yml
 }
 
+# Downloading mizar yaml
+function install-mizar-yml {
+  echo "downloading mizar"
+  download-or-bust "" "https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.yaml"
+  local -r mizar_dir="${KUBE_HOME}/mizar"
+  mkdir -p "${mizar_dir}"
+  mv "${KUBE_HOME}/deploy.mizar.yaml" "${mizar_dir}"
+}
+
 function install-cni-binaries {
   if [[ -n "${CNI_VERSION:-}" ]]; then
       local -r cni_tar="cni-plugins-amd64-${CNI_VERSION}.tgz"
@@ -391,7 +403,12 @@ function install-cni-binaries {
   local -r cni_dir="${KUBE_HOME}/cni"
   mkdir -p "${cni_dir}/bin"
   tar xzf "${KUBE_HOME}/${cni_tar}" -C "${cni_dir}/bin" --overwrite
-  mv "${cni_dir}/bin"/* "${KUBE_BIN}"
+  if [[ "${NETWORK_POLICY_PROVIDER:-"none"}" == "mizar" ]]; then
+    mkdir -p /opt/cni/bin
+    mv "${cni_dir}/bin"/* /opt/cni/bin/
+  else
+    mv "${cni_dir}/bin"/* "${KUBE_BIN}"
+  fi
   rmdir "${cni_dir}/bin"
   rm -f "${KUBE_HOME}/${cni_tar}"
 }
@@ -432,6 +449,15 @@ function install-container-runtime {
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
   sudo apt-get -y update
   sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+  if [[ "${NETWORK_POLICY_PROVIDER:-"none"}" == "mizar" ]] && [[ "${CONTAINER_RUNTIME:-}" == "containerd" ]]; then
+    cd ${KUBE_HOME}
+    wget https://github.com/containerd/containerd/releases/download/v1.4.2/containerd-1.4.2-linux-amd64.tar.gz
+    cd /usr
+    sudo tar -xvf ${KUBE_HOME}/containerd-1.4.2-linux-amd64.tar.gz
+    sudo rm -rf ${KUBE_HOME}/containerd-1.4.2-linux-amd64.tar.gz
+    cd ${KUBE_HOME}
+  fi
+
 }
 
 function install-exec-auth-plugin {

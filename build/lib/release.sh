@@ -455,6 +455,7 @@ function kube::release::package_kube_manifests_tarball() {
   cp "${src_dir}/kube-addon-manager.yaml" "${dst_dir}"
   cp "${src_dir}/arktos-network-controller.manifest" "${dst_dir}"
   cp "${src_dir}/default_flat_network.json" "${dst_dir}"
+  cp "${src_dir}/default_mizar_network.json" "${dst_dir}"
   cp "${src_dir}/crd-network.yaml" "${dst_dir}"
   cp "${src_dir}/glbc.manifest" "${dst_dir}"
   cp "${src_dir}/etcd-empty-dir-cleanup.yaml" "${dst_dir}/"

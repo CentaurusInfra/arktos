@@ -2357,9 +2357,16 @@ function start-kube-controller-manager {
   fi
 
   local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
-  local -r network_json="${src_dir}/default_flat_network.json"
-  cp "${network_json}" /etc/srv/kubernetes/
-  params+=" --default-network-template-path=/etc/srv/kubernetes/default_flat_network.json"
+  if [[ "${NETWORK_POLICY_PROVIDER:-"flannel"}" == "mizar" ]]; then
+    local -r network_json="${src_dir}/default_mizar_network.json"
+    cp "${network_json}" /etc/srv/kubernetes/
+    params+=" --default-network-template-path=/etc/srv/kubernetes/default_mizar_network.json"
+  else
+    local -r network_json="${src_dir}/default_flat_network.json"
+    cp "${network_json}" /etc/srv/kubernetes/
+    params+=" --default-network-template-path=/etc/srv/kubernetes/default_flat_network.json"
+  fi
+
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
     sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
@@ -3176,6 +3183,9 @@ function start-cluster-networking {
     bridge)
     start-bridge-networking
     ;;
+    mizar)
+    start-mizar
+    ;;
   esac
 }
 
@@ -3186,6 +3196,16 @@ function start-flannel-ds {
     kubectl apply -f "${KUBE_HOME}/flannel/kube-flannel.yml"
   else 
     echo "failed to install flannel ds, cannot find required yaml file"
+  fi
+}
+
+function start-mizar {
+  if [[ -f "${KUBE_HOME}/mizar/deploy.mizar.yaml" ]]; then
+    echo "installing mizar cni"
+    sleep 5
+    kubectl apply -f "${KUBE_HOME}//mizar/deploy.mizar.yaml"
+  else
+    echo "failed to install mizar cni, cannot find required yaml file"
   fi
 }
 
@@ -3325,6 +3345,10 @@ function setup-containerd {
   local config_path="${CONTAINERD_CONFIG_PATH:-"/etc/containerd/config.toml"}"
   mkdir -p "$(dirname "${config_path}")"
   local cni_template_path="${KUBE_HOME}/cni.template"
+  local bin_folder="${KUBE_HOME}/bin"
+  if [[ "${NETWORK_POLICY_PROVIDER:-"flannel"}" == "mizar" ]]; then
+    bin_folder="/opt/cni/bin"
+  fi
   cat > "${cni_template_path}" <<EOF
 {
   "name": "k8s-pod-network",
@@ -3376,14 +3400,22 @@ oom_score = -999
   stream_server_address = "127.0.0.1"
   max_container_log_line_size = ${CONTAINERD_MAX_CONTAINER_LOG_LINE:-262144}
 [plugins.cri.cni]
-  bin_dir = "${KUBE_HOME}/bin"
+  bin_dir = "${bin_folder}"
   conf_dir = "/etc/cni/net.d"
   conf_template = "${cni_template_path}"
 [plugins.cri.registry.mirrors."docker.io"]
   endpoint = ["https://mirror.gcr.io","https://registry-1.docker.io"]
 EOF
   chmod 644 "${config_path}"
-
+  if [[ "${NETWORK_POLICY_PROVIDER:-"none"}" == "mizar" ]] && [[ "${CONTAINER_RUNTIME:-}" == "containerd" ]]; then
+      echo "Update Arktos containerd"
+      wget -qO- https://github.com/CentaurusInfra/containerd/releases/download/tenant-cni-args/containerd.zip | zcat > /tmp/containerd
+      chmod +x /tmp/containerd
+      systemctl stop containerd
+      mv /usr/bin/containerd /usr/bin/containerd.bak
+      mv /tmp/containerd /usr/bin/
+      systemctl restart docker
+  fi
   echo "Restart containerd to load the config change"
   systemctl restart containerd
 }
