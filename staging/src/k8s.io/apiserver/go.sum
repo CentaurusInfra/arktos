@@ -209,6 +209,7 @@ github.com/urfave/cli v1.20.0/go.mod h1:70zkFmudgCuE/ngEzBv17Jvp/497gISqfk5gWijb
 github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18 h1:MPPkRncZLN9Kh4MEFmbnK4h3BD7AUmskWv2+EeZJCCs=
 github.com/xiang90/probing v0.0.0-20160813154853-07dd2e8dfe18/go.mod h1:UETIi67q53MR2AWcXfiuqkDkRtnGDLqkBTpCHuJHxtU=
 go.etcd.io/bbolt v1.3.3/go.mod h1:IbVyRI1SCnLcuJnV2u8VeU0CEYM7e686BmAb1XKL+uU=
+go.etcd.io/etcd v0.5.0-alpha.5.0.20200224211402-c65a9e2dd1fd h1:JwlSZ9TSTcRHDGbIr5QG3MEmKyMK99BbNLMJtwnJ0rY=
 go.etcd.io/etcd v0.5.0-alpha.5.0.20200224211402-c65a9e2dd1fd/go.mod h1:dnLIgRNXwCJa5e+c6mIZCrds/GIG4ncV9HhK5PX7jPg=
 go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569 h1:nSQar3Y0E3VQF/VdZ8PTAilaXpER+d7ypdABCrpwMdg=
 go.uber.org/atomic v0.0.0-20181018215023-8dc6146f7569/go.mod h1:gD2HeocX3+yG+ygLZcrzQJaqmWj9AIm7n08wl/qW/PE=
@@ -297,9 +298,15 @@ honnef.co/go/tools v0.0.0-20190102054323-c2f93a96b099/go.mod h1:rf3lG4BRIbNafJWh
 honnef.co/go/tools v0.0.0-20190523083050-ea95bdfd59fc/go.mod h1:rf3lG4BRIbNafJWhAfAdb/ePZxsR/4RtNHQocxwk9r4=
 k8s.io/gengo v0.0.0-20190128074634-0689ccc1d7d6/go.mod h1:ezvh/TsK7cY6rbqRK0oQQ8IAqLxYwwyPxAX1Pzy0ii0=
 k8s.io/klog v0.0.0-20181102134211-b9b56d5dfc92/go.mod h1:Gq+BEi5rUBO/HRz0bTSXDUcqjScdoY3a9IHpCEIOOfk=
+k8s.io/klog v1.0.0 h1:Pt+yjF5aB1xDSVbau4VsWe+dQNzA0qv1LlXdC2dF6Q8=
 k8s.io/klog v1.0.0/go.mod h1:4Bi6QPql/J/LkTDqv7R/cd3hPo4k2DG6Ptcz060Ez5I=
 k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6 h1:Oh3Mzx5pJ+yIumsAD0MOECPVeXsVot0UkiaCGVyfGQY=
 k8s.io/kube-openapi v0.0.0-20200410145947-61e04a5be9a6/go.mod h1:GRQhZsXIAJ1xR0C9bd8UpWHZ5plfAS9fzPjJuQ6JL3E=
+k8s.io/kubernetes v1.22.4 h1:N5kU4bJEghcB2226/GH9Bca+oNcH6JTplcr9euN5ti8=
+k8s.io/kubernetes v1.23.0 h1:r2DrryCpnmFfBuelpUNSWXHtD6Zy7SdwaCcycV5DsJE=
+k8s.io/kubernetes/staging/src/k8s.io/apiserver v0.0.0-20211202115333-2ac6a4121f5b h1:HVMwGBxZiWKy+EyrNNw6LahmLwd1iIniJ6kCTAPPsw0=
+k8s.io/kubernetes/staging/src/k8s.io/apiserver v0.0.0-20211208133546-9968b0eff06f h1:EDYwXIJJfhBxsA2Xx3rpm0Q23LkD6cqKzJAA18XtJcc=
+k8s.io/kubernetes/staging/src/k8s.io/apiserver v0.0.0-20211208165346-2daa3415eca5 h1:TsgtmWPSnJoSIUAeIRGGHlyn1wPRaDRFxLxV9iyJKqw=
 k8s.io/utils v0.0.0-20190221042446-c2654d5206da h1:ElyM7RPonbKnQqOcw7dG2IK5uvQQn3b/WPHqD5mBvP4=
 k8s.io/utils v0.0.0-20190221042446-c2654d5206da/go.mod h1:8k8uAuAQ0rXslZKaEWd0c3oVhZz7sSzSiPnVZayjIX0=
 sigs.k8s.io/structured-merge-diff/v3 v3.0.0-20200116222232-67a7b8c61874 h1:0KsuGbLhWdIxv5DA1OnbFz5hI/Co9kuxMfMUa5YsAHY=

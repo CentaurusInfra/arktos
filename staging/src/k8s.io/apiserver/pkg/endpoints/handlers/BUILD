@@ -93,10 +93,12 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/server/httplog:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/dryrun:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/feature:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/util/openstack:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/util/wsstream:go_default_library",
         "//vendor/github.com/evanphx/json-patch:go_default_library",
         "//vendor/golang.org/x/net/websocket:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
+        "//vendor/k8s.io/kubernetes/staging/src/k8s.io/apiserver/pkg/util/openstack:go_default_library",
         "//vendor/k8s.io/utils/trace:go_default_library",
     ],
 )
