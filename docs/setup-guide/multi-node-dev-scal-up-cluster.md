@@ -114,7 +114,7 @@ W0803 22:50:37.646432       1 client_config.go:608] Neither --kubeconfig nor --m
 E0803 22:51:07.648172       1 main.go:251] Failed to create SubnetManager: error retrieving pod spec for 'kube-system/kube-flannel-ds-vgftf': Get "https://10.0.0.1:443/api/v1/namespaces/kube-system/pods/kube-flannel-ds-xxxxx": dial tcp 10.0.0.1:443: i/o timeout
 ```
 
-5. On worker node, add one more rule of Linux iptables to fix the above issue
+5. (Optional)On worker node, add one more rule of Linux iptables to fix the above issue
 
 At the moment this doc is written, kube-proxy does not support multi-tenancy yet, and it won't be deployed in the cluster. After kube-proxy issue has been fixed (we will allocate resource to cope with it soon), probably we will also need to copy over kube-proxy related secret and artifacts.
 
@@ -133,7 +133,7 @@ Then you should see pod 'pod/kube-flannel-ds-xxxxx' is in Running state after yo
 
 6. Test whether the ngnix application can be deployed successfully
 
-NOTE: You need first run the following command to create clusterrolebinding 'system-node-role-bound' to bind the group 'system:nodes' to clusterrole 'system:node' so that the master node has corresponding permission to get secret for every namespace and transfer the secret to worker node during pod creation.
+NOTE: (Optional)You need first run the following command to create clusterrolebinding 'system-node-role-bound' to bind the group 'system:nodes' to clusterrole 'system:node' so that the master node has corresponding permission to get secret for every namespace and transfer the secret to worker node during pod creation.
 
 ```bash
 ./cluster/kubectl.sh create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
