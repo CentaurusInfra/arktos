@@ -26,8 +26,7 @@ srw-rw---- 1 root docker 0 Aug  9 23:18 /var/run/docker.sock
   
   Please run the command to add the permission for 'others' using sudo
 ```bash
-sudo chmod o+rw /var/run/docker.sock
-ls -al
+sudo chmod o+rw /var/run/docker.sock; sudo ls -alg /var/run/docker.sock
 ```
 
 
