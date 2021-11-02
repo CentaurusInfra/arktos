@@ -15,7 +15,21 @@
 # limitations under the License.
 
 # set up variables
-KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
+
+# Arktos specific network and service support is a feature that each
+# pod is associated to certain network, which has its own DNS service.
+# By default, this feature is enabled in the dev cluster started by this script.
+export DISABLE_NETWORK_SERVICE_SUPPORT=${DISABLE_NETWORK_SERVICE_SUPPORT:-}
+
+# flannel is the default cni plugin for scale-out env
+export CNIPLUGIN=${CNIPLUG:-flannel}
+if [ "${CNIPLUGIN}" == "flannel" ]
+then
+  echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+  export ARKTOS_NO_CNI_PREINSTALLED="y"
+fi
+
 echo KUBE_ROOT ${KUBE_ROOT}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
 
@@ -37,6 +51,19 @@ echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
 echo "TENANT_SERVER: |${TENANT_SERVER}|"
 echo "RESOURCE_SERVER: |${RESOURCE_SERVER}|"
 echo "IS_SCALE_OUT: |${IS_SCALE_OUT}|"
+
+# scale-out specific env vars
+# TP applicable vars
+export TENANT_SERVER_NAME=${TENANT_SERVER_NAME:-${API_HOST}}
+export TENANT_PARTITION_SERVICE_SUBNET=${TENANT_PARTITION_SERVICE_SUBNET:-10.0.0.0/16}
+SERVICE_CLUSTER_IP_RANGE=${TENANT_PARTITION_SERVICE_SUBNET}
+# RP applicable vars
+export RESOURCE_PARTITION_POD_CIDR=${RESOURCE_PARTITION_POD_CIDR:-10.244.0.0/16}
+KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR=${RESOURCE_PARTITION_POD_CIDR}
+
+echo "TENANT_SERVER_NAME: |${TENANT_SERVER_NAME}|"
+echo "TENANT_PARTITION_SERVICE_SUBNET: |${TENANT_PARTITION_SERVICE_SUBNET}|"
+echo "RESOURCE_PARTITION_POD_CIDR: |${RESOURCE_PARTITION_POD_CIDR}|"
 
 if [[ -z "${SCALE_OUT_PROXY_IP}" ]]; then
   echo SCALE_OUT_PROXY_IP is missing. Default to local host ip ${API_HOST}
@@ -86,6 +113,22 @@ if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
+# check for network service support flags
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+  # tenant controller automatically creates a default network resource for new tenant
+  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+else # when disabled
+  # kube-apiserver not to enforce deployment-network validation
+  DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
+fi
+
+echo "DBG: effective feature gates ${FEATURE_GATES}"
+echo "DBG: effective disabling admission plugins ${DISABLE_ADMISSION_PLUGINS}"
+echo "DBG: effective default network template file is ${ARKTOS_NETWORK_TEMPLATE}"
+echo "DBG: kubelet arg RESOLV_CONF is ${RESOLV_CONF}"
+
 # warn if users are running with swap allowed
 if [ "${FAIL_SWAP_ON}" == "false" ]; then
     echo "WARNING : The kubelet is configured to not fail even if swap is enabled; production deployments should disable swap."
@@ -113,7 +156,7 @@ fi
 # Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
 # If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
-source ${KUBE_ROOT}/hack/arktos-cni.rc
+[ "${IS_RESOURCE_PARTITION}" == "true" ] && source ${KUBE_ROOT}/hack/arktos-cni.rc
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
@@ -157,7 +200,7 @@ do
 done
 
 if [ "x${GO_OUT}" == "x" ]; then
-    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler"
+    make -C "${KUBE_ROOT}" WHAT="cmd/kubectl cmd/hyperkube cmd/kube-apiserver cmd/kube-controller-manager cmd/workload-controller-manager cmd/cloud-controller-manager cmd/kubelet cmd/kube-proxy cmd/kube-scheduler cmd/arktos-network-controller"
 else
     echo "skipped the build."
 fi
@@ -212,6 +255,10 @@ cleanup()
   [[ -n "${CTLRMGR_PID-}" ]] && mapfile -t CTLRMGR_PIDS < <(pgrep -P "${CTLRMGR_PID}" ; ps -o pid= -p "${CTLRMGR_PID}")
   [[ -n "${CTLRMGR_PIDS-}" ]] && sudo kill "${CTLRMGR_PIDS[@]}" 2>/dev/null
 
+  # Check if the arktos network controller is still running
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && mapfile -t ARKTOS_NETWORK_CONTROLLER_PID < <(pgrep -P "${ARKTOS_NETWORK_CONTROLLER_PID}" ; ps -o pid= -p "${ARKTOS_NETWORK_CONTROLLER_PID}")
+  [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && sudo kill "${ARKTOS_NETWORK_CONTROLLER_PID[@]}" 2>/dev/null
+
   # Check if the kubelet is still running
   [[ -n "${KUBELET_PID-}" ]] && mapfile -t KUBELET_PIDS < <(pgrep -P "${KUBELET_PID}" ; ps -o pid= -p "${KUBELET_PID}")
   [[ -n "${KUBELET_PIDS-}" ]] && sudo kill "${KUBELET_PIDS[@]}" 2>/dev/null
@@ -241,6 +288,8 @@ cleanup()
        rm -f -r "${VIRTLET_LOG_DIR}"
   fi
 
+  [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
+
   exit 0
 }
 # Check if all processes are still running. Prints a warning once each time
@@ -254,6 +303,11 @@ function healthcheck {
   if [[ -n "${CTLRMGR_PID-}" ]] && ! sudo kill -0 "${CTLRMGR_PID}" 2>/dev/null; then
     warning_log "kube-controller-manager terminated unexpectedly, see ${CTLRMGR_LOG}"
     CTLRMGR_PID=
+  fi
+
+  if [[ -n "${ARKTOS_NETWORK_CONTROLLER_PID-}" ]] && ! sudo kill -0 "${ARKTOS_NETWORK_CONTROLLER_PID}" 2>/dev/null; then
+    warning_log "arktos network controller terminated unexpectedly, see ${ARKTOS_NETWORK_CONTROLLER_LOG}"
+    ARKTOS_NETWORK_CONTROLLER_PID=
   fi
 
   if [[ -n "${KUBELET_PID-}" ]] && ! sudo kill -0 "${KUBELET_PID}" 2>/dev/null; then
@@ -540,6 +594,13 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   fi
 
   kube::common::start_controller_manager
+
+  # Unless arktos service support is disabled, ensure start arktos network controller
+  # on TENANT PARTITION nodes other than RESOURCE_PARTITION nodes
+  if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+    [ ${DISABLE_NETWORK_SERVICE_SUPPORT} ] ||  kube::common::start_arktos_network_ontroller ${TENANT_SERVER_NAME}
+  fi
+
   if [[ "${EXTERNAL_CLOUD_PROVIDER:-}" == "true" ]]; then
     start_cloud_controller_manager
   fi
@@ -597,10 +658,20 @@ echo "*******************************************"
 echo "Setup Arktos components ..."
 echo ""
 
+# todo: start flannel daemon deterministically, instead of waiting for arbitrary time
+if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" ]]; then
+  echo "Installing Flannel cni plugin... "
+  sleep 30  #need sometime for KCM to be fully functioning
+  install_flannel "${RESOURCE_PARTITION_POD_CIDR}"
+fi
+
 if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   while ! cluster/kubectl.sh get nodes --no-headers | grep -i -w Ready; do sleep 3; echo "Waiting for node ready"; done
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" label node ${HOSTNAME_OVERRIDE} extraRuntime=virtlet
+
+  # Verify whether podCIDR on RESOURCE_PARTITION node is set correctly
+  ${KUBECTL} get nodes -o yaml |grep podCIDR
 fi
 
 if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then

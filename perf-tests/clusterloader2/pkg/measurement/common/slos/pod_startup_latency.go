@@ -18,6 +18,10 @@ package slos
 
 import (
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/watch"
+	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/util/workqueue"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -51,7 +55,13 @@ func createPodStartupLatencyMeasurement() measurement.Measurement {
 	return &podStartupLatencyMeasurement{
 		selector:          measurementutil.NewObjectSelector(),
 		podStartupEntries: measurementutil.NewObjectTransitionTimes(podStartupLatencyMeasurementName),
+		eventQueue:        workqueue.New(),
 	}
+}
+
+type eventData struct {
+	obj      interface{}
+	recvTime time.Time
 }
 
 type podStartupLatencyMeasurement struct {
@@ -60,6 +70,9 @@ type podStartupLatencyMeasurement struct {
 	stopCh            chan struct{}
 	podStartupEntries *measurementutil.ObjectTransitionTimes
 	threshold         time.Duration
+	// This queue can potentially grow indefinitely, beacause we put all changes here.
+	// Usually it's not recommended pattern, but we need it for measuring PodStartupLatency.
+	eventQueue *workqueue.Type
 }
 
 // Execute supports two actions:
@@ -110,18 +123,53 @@ func (p *podStartupLatencyMeasurement) start(c clientset.Interface) error {
 	p.isRunning = true
 	p.stopCh = make(chan struct{})
 	i := informer.NewInformer(
-		c,
-		"pods",
-		p.selector,
-		p.checkPod,
+		&cache.ListWatch{
+			ListFunc: func(options metav1.ListOptions) (runtime.Object, error) {
+				p.selector.ApplySelectors(&options)
+				return c.CoreV1().PodsWithMultiTenancy(p.selector.Namespace, util.GetTenant()).List(options)
+			},
+			WatchFunc: func(options metav1.ListOptions) (watch.Interface, error) {
+				p.selector.ApplySelectors(&options)
+				return c.CoreV1().PodsWithMultiTenancy(p.selector.Namespace, util.GetTenant()).Watch(options)
+			},
+		},
+		p.addEvent,
 	)
+	go p.processEvents()
 	return informer.StartAndSync(i, p.stopCh, informerSyncTimeout)
+}
+
+func (p *podStartupLatencyMeasurement) addEvent(_, obj interface{}) {
+	event := &eventData{obj: obj, recvTime: time.Now()}
+	p.eventQueue.Add(event)
+}
+
+func (p *podStartupLatencyMeasurement) processEvents() {
+	for p.processNextWorkItem() {
+	}
+}
+
+func (p *podStartupLatencyMeasurement) processNextWorkItem() bool {
+	item, quit := p.eventQueue.Get()
+	if quit {
+		return false
+	}
+	defer p.eventQueue.Done(item)
+
+	event, ok := item.(*eventData)
+	if !ok {
+		klog.Warningf("Couldn't convert work item to evetData: %v", item)
+		return true
+	}
+	p.processEvent(event)
+	return true
 }
 
 func (p *podStartupLatencyMeasurement) stop() {
 	if p.isRunning {
 		p.isRunning = false
 		close(p.stopCh)
+		p.eventQueue.ShutDown()
 	}
 }
 
@@ -198,7 +246,8 @@ func (p *podStartupLatencyMeasurement) gatherScheduleTimes(c clientset.Interface
 	return nil
 }
 
-func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
+func (p *podStartupLatencyMeasurement) processEvent(event *eventData) {
+	obj, recvTime := event.obj, event.recvTime
 	if obj == nil {
 		return
 	}
@@ -209,7 +258,8 @@ func (p *podStartupLatencyMeasurement) checkPod(_, obj interface{}) {
 	if pod.Status.Phase == corev1.PodRunning {
 		key := createMetaNamespaceKey(pod.Namespace, pod.Name)
 		if _, found := p.podStartupEntries.Get(key, createPhase); !found {
-			p.podStartupEntries.Set(key, watchPhase, time.Now())
+			ct := recvTime
+			p.podStartupEntries.Set(key, watchPhase, ct)
 			p.podStartupEntries.Set(key, createPhase, pod.CreationTimestamp.Time)
 			var startTime metav1.Time
 			for _, cs := range pod.Status.ContainerStatuses {

@@ -476,8 +476,7 @@ func (tc *NoExecuteTaintManager) handleNodeUpdateInATenantPartition(tpManager *n
 	}
 
 	now := time.Now()
-	for i := range pods {
-		pod := &pods[i]
+	for _, pod := range pods {
 		podNamespacedName := types.NamespacedName{Tenant: pod.Tenant, Namespace: pod.Namespace, Name: pod.Name}
 		tc.processPodOnNode(tpManager.Client, podNamespacedName, nodeName, pod.Spec.Tolerations, taints, now)
 	}

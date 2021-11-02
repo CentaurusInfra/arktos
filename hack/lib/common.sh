@@ -523,7 +523,7 @@ function kube::common::start_controller_manager {
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
       # scale out resource partition
       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-        KUBE_CONTROLLERS="daemonset,nodelifecycle,ttl,serviceaccount,serviceaccount-token"
+        KUBE_CONTROLLERS="daemonset,nodelifecycle,nodeipam,ttl,serviceaccount,serviceaccount-token"
 
         ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
           --v="${LOG_LEVEL}" \
@@ -647,6 +647,22 @@ function kube::common::start_kubescheduler {
     SCHEDULER_PID=$!
 }
 
+function kube::common::start_arktos_network_ontroller {
+    local SALT=${1:-}
+    local CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+    ARKTOS_NETWORK_CONTROLLER_LOG=${LOG_DIR}/arktos-network-controller.log
+
+    ${CONTROLPLANE_SUDO} "${GO_OUT}/arktos-network-controller" \
+        --v="${LOG_LEVEL}" \
+        --master="http://127.0.0.1:8080" \
+        --kube-apiserver-ip "${API_HOST_IP_EXTERNAL}" \
+        --kube-apiserver-port=6443 \
+        --resource-name-salt="${SALT}" \
+        >"${ARKTOS_NETWORK_CONTROLLER_LOG}" 2>&1 &
+
+    ARKTOS_NETWORK_CONTROLLER_PID=$!
+}
+
 function kube::common::start_kubelet {
     KUBELET_LOG=${LOG_DIR}/kubelet.log
     mkdir -p "${POD_MANIFEST_PATH}" &>/dev/null || sudo mkdir -p "${POD_MANIFEST_PATH}"
@@ -755,6 +771,7 @@ function kube::common::start_kubelet {
       ${image_service_endpoint_args[@]+"${image_service_endpoint_args[@]}"}
       "--runtime-request-timeout=${RUNTIME_REQUEST_TIMEOUT}"
       "--port=${KUBELET_PORT}"
+      "--resolv-conf=${RESOLV_CONF}"
       ${KUBELET_FLAGS}
     )
 
@@ -781,11 +798,30 @@ function kube::common::start_kubeproxy {
 
     PROXY_LOG=${LOG_DIR}/kube-proxy.log
 
+    ## in scale-out env, we need to get hold of kubeconfig files for all TPs
+    ## only applicable to node of a RP
+    TP_KUBEONFIGS=""
+    if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
+      serverCount=${#TENANT_SERVERS[@]}
+      kubeconfig_filename="tenant-server-kube-proxy"
+      for (( pos=0; pos<${serverCount}; pos++ ));
+      do
+        # here generate kubeconfig for remote API server. Only work in non secure mode for now
+        kube::util::write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${TENANT_SERVERS[${pos}]}" "${API_PORT}" tenant-server-kube-proxy "" "http"
+        ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/${kubeconfig_filename}.kubeconfig" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+        ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+
+        TP_KUBEONFIGS="${TP_KUBEONFIGS}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
+      done
+      TP_KUBEONFIGS=${TP_KUBEONFIGS::-1}
+    fi
+
     cat <<EOF > /tmp/kube-proxy.yaml
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration
 clientConnection:
   kubeconfig: ${kubeconfigfilepaths}
+tenantPartitionKubeConfig: ${TP_KUBEONFIGS}
 hostnameOverride: ${HOSTNAME_OVERRIDE}
 mode: ${KUBE_PROXY_MODE}
 EOF

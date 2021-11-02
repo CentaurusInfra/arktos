@@ -145,6 +145,7 @@ func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.ConfigFile, "config", o.ConfigFile, "The path to the configuration file.")
 	fs.StringVar(&o.WriteConfigTo, "write-config-to", o.WriteConfigTo, "If set, write the default configuration values to this file and exit.")
 	fs.StringVar(&o.config.ClientConnection.Kubeconfig, "kubeconfig", o.config.ClientConnection.Kubeconfig, "Path to kubeconfig files with authorization information (the master location is set by the master flag).")
+	fs.StringVar(&o.config.TenantPartitionKubeConfig, "tenant-server-kubeconfig", o.config.TenantPartitionKubeConfig, "Comma separated string representing kubeconfig files point to tenant api servers.")
 	fs.StringVar(&o.config.ClusterCIDR, "cluster-cidr", o.config.ClusterCIDR, "The CIDR range of pods in the cluster. When configured, traffic sent to a Service cluster IP from outside this range will be masqueraded and traffic sent from pods to an external LoadBalancer IP will be directed to the respective cluster IP instead")
 	fs.StringVar(&o.config.ClientConnection.ContentType, "kube-api-content-type", o.config.ClientConnection.ContentType, "Content type of requests sent to apiserver.")
 	fs.StringVar(&o.master, "master", o.master, "The address of the Kubernetes API server (overrides any value in kubeconfig)")
@@ -469,7 +470,7 @@ with the apiserver API to configure the proxy.`,
 // ProxyServer represents all the parameters required to start the Kubernetes proxy server. All
 // fields are required.
 type ProxyServer struct {
-	Client                 clientset.Interface
+	Clients                []clientset.Interface
 	EventClient            v1core.EventsGetter
 	IptInterface           utiliptables.Interface
 	IpvsInterface          utilipvs.Interface
@@ -625,29 +626,31 @@ func (s *ProxyServer) Run() error {
 		}
 	}
 
-	informerFactory := informers.NewSharedInformerFactoryWithOptions(s.Client, s.ConfigSyncPeriod,
-		informers.WithTweakListOptions(func(options *metav1.ListOptions) {
-			options.LabelSelector = "!" + apis.LabelServiceProxyName
-		}))
+	for i := range s.Clients {
+		informerFactory := informers.NewSharedInformerFactoryWithOptions(s.Clients[i], s.ConfigSyncPeriod,
+			informers.WithTweakListOptions(func(options *metav1.ListOptions) {
+				options.LabelSelector = "!" + apis.LabelServiceProxyName
+			}))
 
-	// Create configs (i.e. Watches for Services and Endpoints)
-	// Note: RegisterHandler() calls need to happen before creation of Sources because sources
-	// only notify on changes, and the initial update (on process start) may be lost if no handlers
-	// are registered yet.
-	serviceConfig := config.NewServiceConfig(informerFactory.Core().V1().Services(), s.ConfigSyncPeriod)
-	serviceConfig.RegisterEventHandler(s.Proxier)
-	go serviceConfig.Run(wait.NeverStop)
+		// Create configs (i.e. Watches for Services and Endpoints)
+		// Note: RegisterHandler() calls need to happen before creation of Sources because sources
+		// only notify on changes, and the initial update (on process start) may be lost if no handlers
+		// are registered yet.
+		serviceConfig := config.NewServiceConfig(informerFactory.Core().V1().Services(), s.ConfigSyncPeriod)
+		serviceConfig.RegisterEventHandler(s.Proxier)
+		go serviceConfig.Run(wait.NeverStop)
 
-	endpointsConfig := config.NewEndpointsConfig(informerFactory.Core().V1().Endpoints(), s.ConfigSyncPeriod)
-	endpointsConfig.RegisterEventHandler(s.Proxier)
-	go endpointsConfig.Run(wait.NeverStop)
+		endpointsConfig := config.NewEndpointsConfig(informerFactory.Core().V1().Endpoints(), s.ConfigSyncPeriod)
+		endpointsConfig.RegisterEventHandler(s.Proxier)
+		go endpointsConfig.Run(wait.NeverStop)
 
-	// Create API Server Config Manager
-	datapartition.StartAPIServerConfigManager(informerFactory.Core().V1().Endpoints(), s.Client, wait.NeverStop)
+		// Create API Server Config Manager
+		datapartition.StartAPIServerConfigManager(informerFactory.Core().V1().Endpoints(), s.Clients[i], wait.NeverStop)
 
-	// This has to start after the calls to NewServiceConfig and NewEndpointsConfig because those
-	// functions must configure their shared informer event handlers first.
-	informerFactory.Start(wait.NeverStop)
+		// This has to start after the calls to NewServiceConfig and NewEndpointsConfig because those
+		// functions must configure their shared informer event handlers first.
+		informerFactory.Start(wait.NeverStop)
+	}
 
 	// Birth Cry after the birth is successful
 	s.birthCry()

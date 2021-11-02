@@ -212,6 +212,30 @@ CLUSTER_SIGNING_KEY_FILE=${CLUSTER_SIGNING_KEY_FILE:-"${ROOT_CA_KEY}"}
 # Reuse certs will skip generate new ca/cert files under CERT_DIR
 # it's useful with PRESERVE_ETCD=true because new ca will make existed service account secrets invalided
 REUSE_CERTS=${REUSE_CERTS:-false}
+#
+# Avoid to create loop error at https://coredns.io/plugins/loop/#troubleshooting
+# when create coredns pod
+RESOLV_CONF=${RESOLV_CONF:-}
+if [ -z ${RESOLV_CONF} ] && [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]
+then
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    # ubuntu 18.04/20.04
+    RESOLV_CONF="/run/systemd/resolve/resolv.conf"
+  elif [ -f "/run/resolvconf/resolv.conf" ]; then
+    # ubuntu 16.04
+    RESOLV_CONF="/run/resolvconf/resolv.conf"
+  else
+    if [ -z ${UPSTREAM_DNS_IP:-} ]
+    then
+      echo "Warning: no upstream DNS ip address is provided; fall back to 8.8.8.8"
+      UPSTREAM_DNS_IP="8.8.8.8"
+    fi
+    RESOLV_CONF=$(mktemp -p /tmp)
+    cat << EOF > ${RESOLV_CONF}
+nameserver ${UPSTREAM_DNS_IP}
+EOF
+  fi
+fi
 
 # --------------------------------------------------------------------------------------------
 # End of 2nd Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
