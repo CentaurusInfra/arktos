@@ -56,7 +56,7 @@ DOCKERIZED_BINARIES = {
     },
     "arktos-network-controller": {
         "base": "@debian-base-{ARCH}//image",
-        "target": "//cmd/arktos-network-controller",
+        "target": "//cmd/arktos-network-controller:arktos-network-controller",
     },
 }
 

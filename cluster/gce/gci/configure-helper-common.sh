@@ -2580,9 +2580,6 @@ function start-arktos-network-controller {
   cp "${src_file}" /etc/kubernetes/manifests
 }
 
-
-
-
 # A helper function for setting up addon manifests.
 #
 # $1: addon category under /etc/kubernetes
