@@ -55,6 +55,17 @@ Node instance:
 EOF
 }
 
+function validate-python {
+  local ver=$(python -c"import sys; print(sys.version_info.major)")
+  echo "python version: $ver"
+  if [[ $ver -ne 2 && $ver -ne 3 ]]; then
+    apt -y update
+    apt install -y python
+    apt install -y python-pip
+    pip install pyyaml
+  fi
+}
+
 function download-kube-env {
   # Fetch kube-env from GCE metadata server.
   (
@@ -177,6 +188,23 @@ function download-controller-config {
         http://metadata.google.internal/computeMetadata/v1/instance/attributes/controllerconfig; then
       # only write to the final location if curl succeeds
       mv ${tmp_controller_config} ${dest}
+    fi
+  )
+}
+
+function download-proxy-config {
+  local -r dest="$1"
+  echo "Downloading proxy config file, if it exists"
+  # Fetch proxy config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_proxy_config="/tmp/proxy.config"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_proxy_config}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/proxy-config; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_proxy_config} ${dest}
     fi
   )
 }
@@ -612,6 +640,8 @@ set-broken-motd
 KUBE_HOME="/home/kubernetes"
 KUBE_BIN="${KUBE_HOME}/bin"
 
+# validate or install python
+validate-python
 # download and source kube-env
 download-kube-env
 source "${KUBE_HOME}/kube-env"
@@ -624,12 +654,20 @@ if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
     download-tenantpartition-kubeconfigs
 fi
 
-# master certs
-if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
+# master/proxy certs
+# will do: use ARKTOS_SCALEOUT_SERVER_TYPE to figure out server type: tp, rp, proxy
+if [[ "${KUBERNETES_MASTER:-}" == "true" || "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
   download-kube-master-certs
 fi
 
-# binaries and kube-system manifests
-install-kube-binary-config
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
+  mkdir -p /etc/${ARKTOS_SCALEOUT_PROXY_APP}
+  download-proxy-config "/etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp"
+else
+  echo "install binaries and kube-system manifests"
+  # binaries and kube-system manifests
+  install-kube-binary-config
+fi
+
 
 echo "Done for installing kubernetes files"

@@ -1,0 +1,51 @@
+#cloud-config
+
+write_files:
+  - path: /etc/systemd/system/proxy-installation.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Download and install proxy binaries and configurations
+      After=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      ExecStartPre=/bin/mkdir -p /home/kubernetes/bin
+      ExecStartPre=/bin/mount --bind /home/kubernetes/bin /home/kubernetes/bin
+      ExecStartPre=/bin/mount -o remount,exec /home/kubernetes/bin
+      # Use --retry-connrefused opt only if it's supported by curl.
+      ExecStartPre=/bin/bash -c 'OPT=""; if curl --help | grep -q -- "--retry-connrefused"; then OPT="--retry-connrefused"; fi; /usr/bin/curl --fail --retry 5 --retry-delay 3 $OPT --silent --show-error -H "X-Google-Metadata-Request: True" -o /home/kubernetes/bin/configure.sh http://metadata.google.internal/computeMetadata/v1/instance/attributes/configure-sh'
+      ExecStartPre=/bin/chmod 544 /home/kubernetes/bin/configure.sh
+      ExecStart=/home/kubernetes/bin/configure.sh
+
+      [Install]
+      WantedBy=multi-user.target
+
+  - path: /etc/systemd/system/proxyserver-setup.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Unit]
+      Description=Download and install proxy and configure
+      After=proxy-installation.service
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      # Use --retry-connrefused opt only if it's supported by curl.
+      ExecStartPre=/bin/bash -c 'OPT=""; if curl --help | grep -q -- "--retry-connrefused"; then OPT="--retry-connrefused"; fi; /usr/bin/curl --fail --retry 5 --retry-delay 3 $OPT --silent --show-error -H "X-Google-Metadata-Request: True" -o /home/kubernetes/bin/proxy-configure-helper.sh http://metadata.google.internal/computeMetadata/v1/instance/attributes/setup-sh'
+      ExecStartPre=/bin/chmod 544 /home/kubernetes/bin/proxy-configure-helper.sh
+      ExecStart=/home/kubernetes/bin/proxy-configure-helper.sh
+      ExecStartPost=/bin/bash -c "sleep 20 && for npid in $(pidof haproxy); do sudo prlimit --pid $npid --nofile=500000:500000 ; done"
+
+      [Install]
+      WantedBy=multi-user.target
+
+runcmd:
+ - systemctl daemon-reload
+ - systemctl enable proxy-installation.service
+ - systemctl enable proxyserver-setup.service
+ - systemctl enable multi-user.target
+ - systemctl start multi-user.target

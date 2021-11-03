@@ -39,6 +39,7 @@ source "${KUBE_ROOT}/cluster/gce/windows/node-helper.sh"
 if [[ "${MASTER_OS_DISTRIBUTION}" == "trusty" || "${MASTER_OS_DISTRIBUTION}" == "gci" || "${MASTER_OS_DISTRIBUTION}" == "ubuntu" ]]; then
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/master-helper.sh"
   source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/partitionserver-helper.sh"
+  source "${KUBE_ROOT}/cluster/gce/${MASTER_OS_DISTRIBUTION}/scaleoutserver-helper.sh"
 else
   echo "Cannot operate on cluster using master os distro: ${MASTER_OS_DISTRIBUTION}" >&2
   exit 1
@@ -664,6 +665,12 @@ function write-master-env {
   build-kube-master-certs "${KUBE_TEMP}/kube-master-certs.yaml"
 }
 
+
+function write-proxy-env {
+  build-proxy-kube-env "${KUBE_TEMP}/proxy-env.yaml"
+  build-proxy-certs "${KUBE_TEMP}/proxy-certs.yaml"
+}
+
 function write-partitionserver-env {
   # If the user requested that the master be part of the cluster, set the
   # environment variable to program the master kubelet to register itself.
@@ -1181,6 +1188,22 @@ ETCD_GRPC_PROXY_CLIENT_CERT: $(yaml-quote ${ETCD_GRPC_PROXY_CLIENT_CERT_BASE64:-
 EOF
 }
 
+
+function build-proxy-certs {
+  local file=$1
+  rm -f ${file}
+  cat >$file <<EOF
+PROXY_CA_CERT: $(yaml-quote ${PROXY_CA_CERT_BASE64:-})
+PROXY_CA_KEY: $(yaml-quote ${PROXY_CA_KEY_BASE64:-})
+PROXY_CERT: $(yaml-quote ${PROXY_CERT_BASE64:-})
+PROXY_KEY: $(yaml-quote ${PROXY_KEY_BASE64:-})
+PROXY_KUBECFG_CERT: $(yaml-quote ${PROXY_KUBECFG_CERT_BASE64:-})
+PROXY_KUBECFG_KEY: $(yaml-quote ${PROXY_KUBECFG_KEY_BASE64:-})
+SHARED_CA_CERT: $(yaml-quote ${SHARED_CA_CERT_BASE64:-}) 
+SHARED_CA_KEY: $(yaml-quote ${SHARED_CA_CERT_BASE64:-})
+EOF
+}
+
 # $1: if 'true', we're building a master yaml, else a node
 function build-linux-kube-env {
   local master="$1"
@@ -1628,6 +1651,19 @@ EOF
     fi
 }
 
+function build-proxy-kube-env {
+  local file="$1"
+
+  rm -f ${file}
+  cat >>$file <<EOF
+ARKTOS_SCALEOUT_PROXY_APP: $(yaml-quote ${ARKTOS_SCALEOUT_PROXY_APP:-haproxy})
+ARKTOS_SCALEOUT_SERVER_TYPE:  $(yaml-quote ${ARKTOS_SCALEOUT_SERVER_TYPE:-proxy}) 
+KUBE_BEARER_TOKEN: $(yaml-quote ${KUBE_BEARER_TOKEN})
+SCALEOUT_PROXY_NAME: $(yaml-quote ${SCALEOUT_PROXY_NAME:-${KUBE_GCE_INSTANCE_PREFIX}-proxy})
+PROXY_CONFIG_FILE: $(yaml-quote ${PROXY_CONFIG_FILE:-"haproxy.cfg"})
+ENABLE_PROMETHEUS_DEBUG: $(yaml-quote ${ENABLE_PROMETHEUS_DEBUG:-false})
+EOF
+}
 
 function build-windows-kube-env {
   local file="$1"
@@ -2427,14 +2463,15 @@ function proxy-up() {
   detect-project
   detect-subnetworks
 
-  echo "create proxy vm"
-  create-proxy-vm
-
-  echo "setup proxy service"
-  setup-proxy
+  
+  export PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
+  export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
   build_haproxy_cfg_generator
-  update-proxy ${TPIP} ${RPIP}
+  update-proxy-cfg ${TPIP} ${RPIP}
 
+  echo "create proxy vm and setup proxy service using metadata"
+  create-proxy-vm
+  
   echo "create kubeconfig with proxy IP:port"
   export KUBE_CERT="${KUBE_TEMP}/easy-rsa-master/proxy/pki/issued/kubecfg.crt"
   export KUBE_KEY="${KUBE_TEMP}/easy-rsa-master/proxy/pki/private/kubecfg.key"
@@ -2450,43 +2487,9 @@ function proxy-up() {
   # ensures KUBECONFIG is set
   get-kubeconfig-basicauth
 
-  start-proxy-prometheus
-
-  echo "done"
-}
-
-function start-proxy-prometheus {
-  echo "Start prometheus on proxy"
-
-  export RELEASE="2.2.1"
-  ssh-to-node ${SCALEOUT_PROXY_NAME} "cd /tmp/ && wget https://github.com/prometheus/prometheus/releases/download/v${RELEASE}/prometheus-${RELEASE}.linux-amd64.tar.gz \
-  && tar xvf prometheus-${RELEASE}.linux-amd64.tar.gz "
-
-  ssh-to-node ${SCALEOUT_PROXY_NAME} "cat <<EOF >/tmp/prometheus-metrics.yaml
-global:
-  scrape_interval: 10s
-scrape_configs:
-  - job_name: prometheus-metrics
-    static_configs:
-    - targets: ['127.0.0.1:8404']
-EOF"
-
-  ssh-to-node ${SCALEOUT_PROXY_NAME} "cat <<EOF >/tmp/prometheus.service
-[Unit]
-Description=prometheus service
-Requires=network-online.target
-After=network-online.target
-
-[Service]
-Restart=always
-RestartSec=10
-ExecStart=/tmp/prometheus-${RELEASE}.linux-amd64/prometheus --config.file=/tmp/prometheus-metrics.yaml --web.listen-address=:9090 --web.enable-admin-api
-
-[Install]
-WantedBy=multi-user.target
-EOF"
-
-  ssh-to-node ${SCALEOUT_PROXY_NAME} "sudo mv /tmp/prometheus.service /etc/systemd/system/ && sudo systemctl daemon-reload && sudo systemctl start prometheus.service"
+  echo "Waiting proxy up......"
+  sleep 150
+  echo "Done"
 }
 
 function test_resource_upload() {
@@ -2916,84 +2919,13 @@ function create-etcd-apiserver-certs {
   popd
 }
 
-function create-proxy-vm() {
-  echo "Starting proxy and configuring proxy firewalls"
 
-  gcloud compute firewall-rules create "${PROXY_NAME}-https" \
-    --project "${NETWORK_PROJECT}" \
-    --network "${NETWORK}" \
-    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888,tcp:8404" &
 
-  # We have to make sure the disk is created before creating the master VM, so
-  # run this in the foreground.
-#  gcloud compute disks create "${MASTER_NAME}-pd" \
-#    --project "${PROJECT}" \
-#    --zone "${ZONE}" \
-#    --type "${MASTER_DISK_TYPE}" \
-#    --size "${MASTER_DISK_SIZE}"
-
-  # Reserve the master's IP so that it can later be transferred to another VM
-  # without disrupting the kubelets.
-  create-static-ip "${PROXY_NAME}-ip" "${REGION}"
-  create-static-internalip "${PROXY_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
-  PROXY_RESERVED_IP=$(gcloud compute addresses describe "${PROXY_NAME}-ip" \
-    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-  PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
-    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
-
-  echo "PROXY_NAME: ${PROXY_NAME} PROXY_RESERVED_IP: ${PROXY_RESERVED_IP}, PROXY_RESERVED_INTERNAL_IP: ${PROXY_RESERVED_INTERNAL_IP}"
-  create-proxy-certs "${PROXY_RESERVED_IP}" "${PROXY_RESERVED_INTERNAL_IP}"
-
-  local enable_ip_aliases
-  if [[ "${NODE_IPAM_MODE:-}" == "CloudAllocator" ]]; then
-    enable_ip_aliases=true
-  else
-    enable_ip_aliases=false
-  fi
-  local network=$(make-gcloud-network-argument \
-  "${NETWORK_PROJECT}" "${REGION}" "${NETWORK}" "${SUBNETWORK:-}" \
-  "${PROXY_RESERVED_IP:-}" "${PROXY_RESERVED_INTERNAL_IP:-}" "${enable_ip_aliases:-}" "${IP_ALIAS_SIZE:-}")
-
-  local retries=5
-  local sleep_sec=10
-  for attempt in $(seq 1 ${retries}); do
-    if result=$(gcloud compute instances create "${PROXY_NAME}" \
-      --project "${PROJECT}" \
-      --zone "${ZONE}" \
-      --machine-type "${MASTER_SIZE}" \
-      --image-project="${PROXY_IMAGE_PROJECT}" \
-      --image "${PROXY_IMAGE}" \
-      --tags "${PROXY_TAG}" \
-      --scopes "storage-ro,compute-rw,monitoring,logging-write" \
-      --boot-disk-size "${MASTER_ROOT_DISK_SIZE}" \
-      ${network} 2>&1); then
-      echo "${result}" >&2
-      export PROXY_RESERVED_IP
-      export PROXY_RESERVED_INTERNAL_IP
-
-      # pass back the proxy reserved IP
-      echo ${PROXY_RESERVED_IP} > ${KUBE_TEMP}/proxy-reserved-ip.txt
-      cat ${KUBE_TEMP}/proxy-reserved-ip.txt
-
-      return 0
-    else
-      echo "${result}" >&2
-      if [[ ! "${result}" =~ "try again later" ]]; then
-        echo "Failed to create master instance due to non-retryable error" >&2
-        return 1
-      fi
-      sleep $sleep_sec
-    fi
-  done
-
-  echo "Failed to create proxy instance despite ${retries} attempts" >&2
-  return 1
-}
-
-function update-proxy() {
+function update-proxy-cfg() {
   local -r TP_IP=$1
   local -r RP_IP=$2
 
+  echo "update-proxy using tp/rp IP"
   local -r proxy_template=${KUBE_ROOT}/cmd/haproxy-cfg-generator/data/haproxy.cfg.template
 
   TENANT_PARTITION_IP="${TP_IP:-}" RESOURCE_PARTITION_IP="${RP_IP:-}" /tmp/haproxy_cfg_generator -tls-mode=${HAPROXY_TLS_MODE} -template=${proxy_template} -target="${PROXY_CONFIG_FILE_TMP}"
@@ -3007,19 +2939,6 @@ function update-proxy() {
   sed -i -e "/^ONEBOX_ONLY:/d"  "${PROXY_CONFIG_FILE_TMP}"
   sed -i -e "s/KUBEMARK_ONLY://g" "${PROXY_CONFIG_FILE_TMP}"
 
-  load-proxy-cfg
-}
-
-function load-proxy-cfg {
-  gcloud compute scp --zone="${ZONE}" "${PROXY_CONFIG_FILE_TMP}" "${PROXY_NAME}:~/${PROXY_CONFIG_FILE}"
-  ssh-to-node ${PROXY_NAME} "sudo rm -f /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
-  ssh-to-node ${PROXY_NAME} "sudo mv ~/${PROXY_CONFIG_FILE} /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}"
-  echo "DBG ========================================"
-  cat ${PROXY_CONFIG_FILE_TMP}
-  echo "VDBG ========================================"
-
-  echo "Restart proxy service"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
 }
 
 function build_haproxy_cfg_generator() {
@@ -3027,86 +2946,38 @@ function build_haproxy_cfg_generator() {
   go build -o /tmp/haproxy_cfg_generator "${KUBE_ROOT}/cmd/haproxy-cfg-generator/"
 }
 
-function setup-proxy() {
-  ssh-to-node ${PROXY_NAME} "sudo sysctl -w net.ipv4.ip_local_port_range='12000 65000'"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$afs.file-max = 1000000' /etc/sysctl.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sysctl -p"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       hard    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$a*       soft    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       hard    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$aroot       soft    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       hard    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '\$ahaproxy       soft    nofile          1000000' /etc/security/limits.conf"
-  ssh-to-node ${PROXY_NAME} "sudo apt update -y"
-  ssh-to-node ${PROXY_NAME} "sudo apt install -y ${KUBERNETES_SCALEOUT_PROXY_APP}"
 
-  patch-haproxy-prometheus
-  direct-haproxy-logging
+function create-proxy-vm() {
+  echo "Starting proxy and configuring proxy firewalls"
 
-  pushd ${KUBE_TEMP}/easy-rsa-master/proxy
-  cat pki/issued/${PROXY_NAME}.crt > pki/kubemark-client-proxy.pem
-  cat pki/private/${PROXY_NAME}.key >> pki/kubemark-client-proxy.pem
-  tar -cpvzf scaleout-proxy-certs.tar.gz pki
-  popd
-  gcloud compute scp --zone="${ZONE}" "${KUBE_TEMP}/easy-rsa-master/proxy/scaleout-proxy-certs.tar.gz" "${PROXY_NAME}:~/"
-  ssh-to-node ${PROXY_NAME} "sudo tar -xpf ~/scaleout-proxy-certs.tar.gz -C /etc/haproxy/"
-  ssh-to-node ${PROXY_NAME} "sudo chmod +rx /etc/haproxy/pki"
+  gcloud compute firewall-rules create "${PROXY_NAME}-https" \
+    --project "${NETWORK_PROJECT}" \
+    --network "${NETWORK}" \
+    --allow "tcp:443,tcp:6443,tcp:8080,tcp:8888,tcp:8404" &
 
-  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ -v SHARED_CA_DIRECTORY ]]; then
-    echo "DBG: copy over the CA cert to proxy server"
-    gcloud compute scp --zone="${ZONE}" "${SHARED_CA_DIRECTORY}/ca.crt" "${PROXY_NAME}:/tmp/"
-    ssh-to-node ${PROXY_NAME} "sudo mv /tmp/ca.crt /etc/${KUBERNETES_SCALEOUT_PROXY_APP}/"
+
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+    gcloud compute firewall-rules create "promethues-${PROXY_NAME}" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:9090 &
   fi
 
-  ssh-to-node ${PROXY_NAME} "sudo sed -i '/^ExecStart=.*/a ExecStartPost=/bin/bash -c \"sleep 20 && for npid in \$(pidof ${KUBERNETES_SCALEOUT_PROXY_APP}); do sudo prlimit --pid \$npid --nofile=500000:500000 ; done\"' /lib/systemd/system/${KUBERNETES_SCALEOUT_PROXY_APP}.service"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl daemon-reload"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl restart ${KUBERNETES_SCALEOUT_PROXY_APP}"
-}
+  # Reserve the master's IP so that it can later be transferred to another VM
+  create-static-ip "${PROXY_NAME}-ip" "${REGION}"
+  create-static-internalip "${PROXY_NAME}-internalip" "${REGION}" "${SUBNETWORK}"
+  PROXY_RESERVED_IP=$(gcloud compute addresses describe "${PROXY_NAME}-ip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
-function patch-haproxy-prometheus {
-  # based on https://www.haproxy.com/blog/haproxy-exposes-a-prometheus-metrics-endpoint
-  echo 'Patching Haproxy to expose prometheus...'
-  ssh-to-node ${PROXY_NAME} "sudo apt install -y git ca-certificates gcc libc6-dev liblua5.3-dev libpcre3-dev libssl-dev libsystemd-dev make wget zlib1g-dev"
-  ssh-to-node ${PROXY_NAME} "git clone https://github.com/haproxy/haproxy.git /tmp/haproxy"
-  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;git checkout tags/v2.3.0"
-  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;make TARGET=linux-glibc USE_LUA=1 USE_OPENSSL=1 USE_PCRE=1 USE_ZLIB=1 USE_SYSTEMD=1 EXTRA_OBJS=contrib/prometheus-exporter/service-prometheus.o -j4"
-  ssh-to-node ${PROXY_NAME} "cd /tmp/haproxy;sudo make install-bin"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl reset-failed haproxy.service"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl stop haproxy"
-  ssh-to-node ${PROXY_NAME} "sudo cp /usr/local/sbin/haproxy /usr/sbin/haproxy"
-  ssh-to-node ${PROXY_NAME} "sudo systemctl start haproxy"
-  ssh-to-node ${PROXY_NAME} "haproxy -vv|grep Prometheus"
-}
+  echo "PROXY_NAME: ${PROXY_NAME} PROXY_RESERVED_IP: ${PROXY_RESERVED_IP}, PROXY_RESERVED_INTERNAL_IP: ${PROXY_RESERVED_INTERNAL_IP}"
+  create-proxy-certs "${PROXY_RESERVED_IP}" "${PROXY_RESERVED_INTERNAL_IP}"
 
-function direct-haproxy-logging {
-  tmp_folder=`mktemp -d -t`
-  pushd $tmp_folder
-  gcloud compute scp --zone="${ZONE}" "${PROXY_NAME}:/etc/rsyslog.d/*haproxy.conf" .
-  haproxy_conf=`find . -name *haproxy.conf`
+  echo "Starting to createe proxy instance"
+  create-proxy-instance "${PROXY_NAME}" "$PROXY_RESERVED_IP" "$PROXY_RESERVED_INTERNAL_IP"
 
-  if [ -z "$haproxy_conf" ]; then
-    echo "haproxy conf file not found in /etc/rsyslog.d/"
-    return
-  fi
-
-  if grep -q "UDPServerRun 514" "$haproxy_conf"; then
-    echo "skipped updating haproxy.conf for directing logging"
-    return
-  fi
-
-     echo '
-$ModLoad imudp
-$UDPServerRun 514
-local0.* -/var/log/haproxy.log
-' >> $haproxy_conf
-
-  gcloud compute scp --zone="${ZONE}" $haproxy_conf "${PROXY_NAME}:/tmp"
-  ssh-to-node ${PROXY_NAME} "sudo mv /tmp/$haproxy_conf /etc/rsyslog.d/"
-  ssh-to-node ${PROXY_NAME} "sudo service rsyslog restart"
-  echo "haproxy logging directed to /var/log/haproxy.log only"
-
-  popd
-  rm -rf $tmp_folder
 }
 
 function create-master() {
