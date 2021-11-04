@@ -292,6 +292,148 @@ I1101 20:48:09.424478   11072 event.go:278] Event(v1.ObjectReference{Kind:"Pod",
 
 ```
 
+2' Follow the following two documents to test with Mizar team Phu - 2.   General pod connectivity: pods in same non-system tenant should be able to communicate;
+
+```bash
+   https://mizar.readthedocs.io/en/latest/user/getting_started/
+```
+
+```bash
+   https://github.com/CentaurusInfra/mizar/blob/dev-next/docs/design/mp_arktos.md
+```
+
+2'.1) Creating a new VPC using yaml file with procedure at https://mizar.readthedocs.io/en/latest/user/getting_started/
+
+``` bash
+    cat ~/TMP/file_name_here.vpc-tenant-phu.yaml
+```
+
+```
+apiVersion: mizar.com/v1
+kind: Vpc
+metadata:
+  name: vpc-tenant-phu
+spec:
+  ip: "24.0.0.0"
+  prefix: "16"
+  dividers: 1
+  status: "Init"
+```
+
+2'.2) Creating a new Subnet using yaml file with procedure at https://mizar.readthedocs.io/en/latest/user/getting_started/
+
+```bash
+    cat ~/TMP/file_name_here.subnets-phu.yaml
+
+```
+
+Note: The 9019248 below is CNI number of above VPC 'vpc-tenant-phu'.
+```
+apiVersion: mizar.com/v1
+kind: Subnet
+metadata:
+  name: net-tenant-phu
+spec:
+  vni: "9019248"
+  ip: "24.0.24.0"
+  prefix: "24"
+  bouncers: 1
+  vpc: "vpc-tenant-phu"
+  status: "Init"
+```
+
+2'.3) Creating a new tenant 'tenant-phu'
+
+```bash
+   ./cluster/kubectl.sh create tenant tenant-phu
+   ./cluster/kubectl.sh get tenant
+   ./cluster/kubectl.sh get network --tenant tenant-phu
+```
+
+2'.4) Creating a new Network using yaml file with procedure at https://github.com/CentaurusInfra/mizar/blob/dev-next/docs/design/mp_arktos.md
+
+```bash
+   cat ~/TMP/file_name_here.network-tenant-phu.yaml
+```
+
+```
+apiVersion: arktos.futurewei.com/v1
+kind: Network
+metadata:
+  name: network-tenant-phu
+  tenant: tenant-phu
+spec:
+  type: mizar
+  vpcID: vpc-tenant-phu
+```
+
+2'.5) Creating a new Network using yaml file with procedure at https://github.com/CentaurusInfra/mizar/blob/dev-next/docs/design/mp_arktos.md
+
+```bash
+   cat ~/TMP/file_name_here.pod-tenant-phu.yaml
+```
+
+```
+   apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-tenant-phu
+  namespace: default
+  tenant: tenant-phu
+  labels:
+    arktos.futurewei.com/network: network-tenant-phu
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+      - containerPort: 443
+```
+
+2'.6) Check the pod of 'nginx-tenant-phu' and see it is in ContainerCreating
+
+```bash
+   cluster/kubectl.sh get pod --tenant system |grep nginx-tenant-phu
+   cluster/kubectl.sh get pod -AT |grep nginx-tenant-phu
+```
+
+2'.7) Check the log of pod mizar-operator
+
+```bash
+   ./cluster/kubectl.sh get pods -AT |grep mizar-operator
+   ./cluster/kubectl.sh log mizar-operator-6b78d7ffc4-9fdh9
+```
+
+```
+<snip>
+Scheduled 1 tasks of which:
+* 1 ran successfully:
+    - 1 BouncerProvisioned(param=<mizar.common.wf_param.HandlerParam object at 0x7f20c8235c10>)
+
+This progress looks :) because there were no failed tasks or missing dependencies
+
+===== Luigi Execution Summary =====
+
+[2021-11-04 17:57:01,937] kopf.objects         [INFO    ] [default/net-tenant-phu-b-9fcc6f7c-f5a9-414d-8efc-7b73576e5e9d] Handler 'bouncer_opr_on_bouncer_provisioned' succeeded.
+[2021-11-04 17:57:01,938] kopf.objects         [INFO    ] [default/net-tenant-phu-b-9fcc6f7c-f5a9-414d-8efc-7b73576e5e9d] Updating is processed: 1 succeeded; 0 failed.
+```
+
+2'.8) Check the log of pod mizar-daemon
+
+```bash
+   ./cluster/kubectl.sh get pods -AT |grep mizar-daemon
+   ./cluster/kubectl.sh log mizar-daemon-5tnlb
+```
+
+```
+<snip>
+INFO:root:Consuming interfaces for pod: nginx-mytenant-22-default-mytenant Current Queue: []
+INFO:root:Deleting interfaces for pod coredns-default-798fbcc5f4-qdkpl-kube-system-mytenant-1 with interfaces []
+ERROR:root:Timeout, no new interface to consume! coredns-default-798fbcc5f4-qdkpl-kube-system-mytenant-1 []
+INFO:root:Consumed
+INFO:root:Deleting interfaces for pod coredns-network-tenant-phu-6776c9c4cb-c7l7c-kube-system-tenant-phu with interfaces []
+```
+
 
 3. Follow up the procedure of issue 1142 at https://github.com/CentaurusInfra/arktos/issues/1142 to test - 3.	General pod isolation: a pod in one tenant may not communicate with pods in other tenants;
 ```bash
@@ -302,3 +444,94 @@ I1101 20:48:09.424478   11072 event.go:278] Event(v1.ObjectReference{Kind:"Pod",
 ```
    Please see the procedure at https://github.com/q131172019/arktos/blob/CarlXie_singleNodeArktosCluster/docs/setup-guide/multi-node-dev-scale-up-cluster-with-Mizar.md to create new worker node to join cluster
 ```
+
+5. General pod connectivity: pods in system tenant should be able to communicate in another single-node cluster with Mizar
+
+Note: if you do this test in same cluster as step 2, when you create new VPC for system tenant, ensure the ip in spec part below is not same as 20.0.0.0.
+
+5.1) Creating a new VPC using yaml file with procedure at https://mizar.readthedocs.io/en/latest/user/getting_started/
+
+``` bash
+    cat ~/TMP/mizar-system-tenant/vpc.yaml
+```
+
+```
+apiVersion: mizar.com/v1
+kind: Vpc
+metadata:
+  name: vpc-ying
+spec:
+  ip: "21.0.0.0"
+  prefix: "16"
+  dividers: 1
+  status: "Init"
+```
+
+5.2) Creating a new Subnet using yaml file with procedure at https://mizar.readthedocs.io/en/latest/user/getting_started/
+
+```bash
+    cat ~/TMP/mizar-system-tenant/subnet.yaml
+
+```
+
+Note: The 9131671 below is CNI number of above VPC 'vpc-ying'.
+```
+apiVersion: mizar.com/v1
+kind: Subnet
+metadata:
+  name: net-ying
+spec:
+  vni: "9131671"
+  ip: "21.0.0.0"
+  prefix: "24"
+  bouncers: 1
+  vpc: "vpc-ying"
+  status: "Init"
+```
+
+5.3) Creating a new Network using yaml file with procedure at https://github.com/CentaurusInfra/mizar/blob/dev-next/docs/design/mp_arktos.md
+
+```bash
+   cat ~/TMP/mizar-system-tenant/network.yaml
+```
+
+```
+apiVersion: arktos.futurewei.com/v1
+kind: Network
+metadata:
+  name: network-ying
+spec:
+  type: mizar
+  vpcID: vpc-ying
+```
+
+5.4) Creating a new Netwrk using yaml file with procedure at https://github.com/CentaurusInfra/mizar/blob/dev-next/docs/design/mp_arktos.md
+
+```bash
+   cat ~/TMP/mizar-system-tenant/pod.yaml
+```
+
+```
+cat ~/TMP/mizar-system-tenant/pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ying-nginx
+  labels:
+    arktos.futurewei.com/network: network-ying
+spec:
+  containers:
+  - name: nginx
+    image: nginx
+    ports:
+      - containerPort: 443
+```
+
+5.5) Check the pod of 'ying-nginx' and see it is in ContainerCreating
+
+```bash
+   cluster/kubectl.sh get pod --tenant system |grep ying-nginx
+   cluster/kubectl.sh get pod -AT |grep ying-nginx
+
+```
+
