@@ -286,16 +286,17 @@ E1101 20:48:09.424185   11072 kuberuntime_sandbox.go:86] CreatePodSandbox for po
 E1101 20:48:09.424241   11072 kuberuntime_manager.go:1024] createPodSandbox for pod "my-netpod1_default_mytenant(82f46ddd-2b12-48bd-b3c3-5aaf12265fdb)" failed: rpc error: code = Unknown desc = failed to setup network for sandbox "7292679bedba779c3e93d22be35ed24bb71d6fdc9decd35810a23424b6548423": rpc error: code = DeadlineExceeded desc = Deadline Exceeded
 E1101 20:48:09.424310   11072 pod_workers.go:196] Error syncing pod 82f46ddd-2b12-48bd-b3c3-5aaf12265fdb ("my-netpod1_default_mytenant(82f46ddd-2b12-48bd-b3c3-5aaf12265fdb)"), skipping: failed to "CreatePodSandbox" for "my-netpod1_default_mytenant(82f46ddd-2b12-48bd-b3c3-5aaf12265fdb)" with CreatePodSandboxError: "CreatePodSandbox for pod \"my-netpod1_default_mytenant(82f46ddd-2b12-48bd-b3c3-5aaf12265fdb)\" failed: rpc error: code = Unknown desc = failed to setup network for sandbox \"7292679bedba779c3e93d22be35ed24bb71d6fdc9decd35810a23424b6548423\": rpc error: code = DeadlineExceeded desc = Deadline Exceeded"
 I1101 20:48:09.424478   11072 event.go:278] Event(v1.ObjectReference{Kind:"Pod", Namespace:"default", Name:"my-netpod1", UID:"82f46ddd-2b12-48bd-b3c3-5aaf12265fdb", APIVersion:"v1", ResourceVersion:"2948", FieldPath:"", Tenant:"mytenant"}): type: 'Warning' reason: 'FailedCreatePodSandBox' Failed create pod sandbox: rpc error: code = Unknown desc = failed to setup network for sandbox "7292679bedba779c3e93d22be35ed24bb71d6fdc9decd35810a23424b6548423": rpc error: code = DeadlineExceeded desc = Deadline Exceeded
-
 ```
 
 
 3. Follow up the procedure of issue 1142 at https://github.com/CentaurusInfra/arktos/issues/1142 to test - 3.	General pod isolation: a pod in one tenant may not communicate with pods in other tenants;
+
 ```bash
    Stop test when step 2 failed to test
 ```
 
 4. Build two node scale-up cluster to test - 4.	Worker node joining: new worker node should be able to join cluster, and basic pod connectivity should be provided.
+
 4.1) Suppose you have a simple node cluster with Mizar and verify successfully using the proecedure at https://github.com/CentaurusInfra/mizar/wiki/Mizar-Cluster-Health-Criteria
 
 4.2) Create a new worker node by following up the step 1, 2 at the procedure at https://github.com/Click2Cloud-Centaurus/arktos/blob/default-cni-mizar/docs/setup-guide/arktos-with-mizar-cni.md
