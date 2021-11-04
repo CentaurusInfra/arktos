@@ -3,9 +3,11 @@
 0. Pre-requisite - setup local development environment with Mizar
 
 0.1) Create AWS EC2 instance 
+```
      - OS: Ubuntu 18.04 and Ubuntu 20.04
      - Instance Type: t2.2xlarge
-     - Storage Size: 128HB or more
+     - Storage Size: 128GB or more
+```
 
 0.2) Follow up the step 1 in following procedure to upgrade kernel to 5.6.0-rc2
 
