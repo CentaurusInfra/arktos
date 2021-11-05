@@ -41,6 +41,16 @@
    make clean
    ./hack/arktos-up.sh
 ```
+
+OR
+
+```bash
+   sudo groupadd docker
+   sudo usermode -aG docker $USER
+   make clean
+   ./hack/arktos-up.sh
+```
+
    In another window:
 ```bash
    ./hack/arktos-up.sh get all --all-namespaces

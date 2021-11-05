@@ -38,6 +38,15 @@
 
 0.4) Start Arktos cluster in default mode (without mizar)
 ```bash
+   sudo groupadd docker
+   sudo usermode -aG docker $USER
+   make clean
+   ./hack/arktos-up.sh
+```
+
+OR
+
+```bash
    sudo chmod o+rw /var/run/docker.sock; ls -al /var/run/docker.sock
    make clean
    ./hack/arktos-up.sh
