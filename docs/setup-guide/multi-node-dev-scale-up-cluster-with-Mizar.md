@@ -1,4 +1,4 @@
-# How to Setup a Dev Cluster of multir-node on AWS EC2 instance running Ubuntu 18.04, 20.04 x86 
+# How to Setup a Dev Cluster of multi-node on AWS EC2 instance running Ubuntu 18.04, 20.04 x86 
 
 0. Pre-requisite - setup local development environment with Mizar
 
