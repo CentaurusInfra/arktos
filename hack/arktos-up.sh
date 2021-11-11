@@ -45,7 +45,7 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
-echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+echo "DBG: ${CNIPLUGIN} CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
 # check for network service support flags
@@ -53,7 +53,11 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
-  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  if [ "${CNIPLUGIN}" == "mizar" ]; then
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-mizar-network.tmpl"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -88,8 +92,8 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
-# If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron, mizar) before cluster is up.
+# If more advanced cni like Flannel is desired, it should be installed AFTER the cluster is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
@@ -511,7 +515,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     kube::common::start_apiserver $i
   done
   #remove workload controller manager cluster role and rolebinding applying per this already be added to bootstrappolicy
-  
+
   # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
 
@@ -552,6 +556,11 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
         print_color "Unsupported host OS.  Must be Linux or Mac OS X, kubelet aborted."
         ;;
     esac
+fi
+
+# Applying mizar cni
+if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.yaml
 fi
 
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
