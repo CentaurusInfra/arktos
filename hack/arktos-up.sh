@@ -54,7 +54,8 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
   if [ "${CNIPLUGIN}" == "mizar" ]; then
-    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-mizar-network.tmpl"
+    # ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-mizar-network.tmpl"
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
   else
     ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
   fi
@@ -560,7 +561,7 @@ fi
 
 # Applying mizar cni
 if [[ "${CNIPLUGIN}" == "mizar" ]]; then
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.yaml
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f /home/ubuntu/mizar-integ/hong-change/deploy.mizar.next.yaml 
 fi
 
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
