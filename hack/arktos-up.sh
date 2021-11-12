@@ -561,7 +561,7 @@ fi
 
 # Applying mizar cni
 if [[ "${CNIPLUGIN}" == "mizar" ]]; then
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f /home/ubuntu/mizar-integ/hong-change/deploy.mizar.next.yaml 
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
 fi
 
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
