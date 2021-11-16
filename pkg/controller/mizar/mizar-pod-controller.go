@@ -39,8 +39,6 @@ const (
 
 // MizarPodController points to current controller
 type MizarPodController struct {
-	kubeClient clientset.Interface
-
 	// A store of objects, populated by the shared informer passed to MizarPodController
 	lister corelisters.PodLister
 	// listerSynced returns true if the store has been synced at least once.
@@ -59,27 +57,26 @@ type MizarPodController struct {
 }
 
 // NewMizarPodController creates and configures a new controller instance
-func NewMizarPodController(informer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarPodController {
+func NewMizarPodController(podInformer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarPodController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarPodController{
-		kubeClient:   kubeClient,
-		lister:       informer.Lister(),
-		listerSynced: informer.Informer().HasSynced,
+		lister:       podInformer.Lister(),
+		listerSynced: podInformer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
 		grpcHost:     grpcHost,
 		grpcAdaptor:  grpcAdaptor,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.createObj,
 		UpdateFunc: c.updateObj,
 		DeleteFunc: c.deleteObj,
 	})
-	c.lister = informer.Lister()
-	c.listerSynced = informer.Informer().HasSynced
+	c.lister = podInformer.Lister()
+	c.listerSynced = podInformer.Informer().HasSynced
 
 	c.handler = c.handle
 
