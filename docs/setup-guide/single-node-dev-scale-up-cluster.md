@@ -1,13 +1,8 @@
-# How to Setup a Dev Cluster of single node on AWS EC2 instance running Ubuntu 18.04, 16.04 x86 
+# How to Setup a Dev Cluster of single node on AWS EC2 instance running Ubuntu 20.04, 18.04, 16.04 x86 
 
-0. Pre-requisite - setup local development environment
-```
-  https://github.com/q131172019/arktos/blob/CarlXie_singleNodeArktosCluster/docs/setup-guide/setup-dev-env.md
-```
+0. Pre-requisite - setup local development environment based on [set up developer environment](setup-dev-env.md)
 
 1. Run script to create a single arktos cluster
-
-   Note: It is not support to start Arktos Cluster of single node on AWS EC2 instance running Ubuntu 20.04 x86.
 
 ```bash
    $ ./hack/arktos-up.sh
@@ -41,4 +36,12 @@ Alternatively, you can write to the default kubeconfig:
   $ cluster/kubectl.sh
   $ cluster/kubectl.sh get nodes
   $ cluster/kubectl.sh get all --all-namespaces
+```
+
+3. Test whether the ngnix application can be deployed successfully
+```bash
+   ./cluster/kubectl.sh run nginx --image=nginx --replicas=2
+   ./cluster/kubectl.sh get pod -n default -o wide
+   ./cluster/kubectl.sh exec -ti <1st pod> -- curl <IP of 2nd nginx pod>
+   ./cluster/kubectl.sh exec -ti <2nd pod> -- curl <IP of 1st nginx pod>
 ```

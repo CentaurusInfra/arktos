@@ -1,4 +1,4 @@
-## Set up developer environment (updated on 2021-07-22)
+## Set up developer environment (updated on 2021-11-16)
 
 Note: Tested on AWS EC2 Ubuntu 16.04/18.04/20.04 x86 image.
 
@@ -29,20 +29,8 @@ $ echo $PATH
 ```
 
 ### Ensure the permisson of others for file /var/run/docker.sock should be readable and writable
-  Here is output of running command 'ls -al /var/run/docker.sock'
-
+Normally if the machine is rebooted, the permission of this file is changed to default permission.
+Please run the command to add the permission for 'others' using sudo
 ```bash
-srw-rw-rw- 1 root docker 0 Aug  3 22:15 /var/run/docker.sock
-```
-
-  Normally if the machine is rebooted, the permission of this file is changed to default permission below.
-
-```bash
-srw-rw---- 1 root docker 0 Aug  9 23:18 /var/run/docker.sock
-```
-
-  Please run the command to add the permission for 'others' using sudo
-```bash
-sudo chmod o+rw /var/run/docker.sock
-ls -al
+sudo chmod o+rw /var/run/docker.sock; sudo ls -al /var/run/docker.sock
 ```
