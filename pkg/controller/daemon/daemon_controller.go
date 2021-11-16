@@ -54,6 +54,7 @@ import (
 	pluginhelper "k8s.io/kubernetes/pkg/scheduler/framework/plugins/helper"
 	schedulernodeinfo "k8s.io/kubernetes/pkg/scheduler/nodeinfo"
 	"k8s.io/kubernetes/pkg/util/metrics"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 	"k8s.io/utils/integer"
 )
 
@@ -117,11 +118,11 @@ type DaemonSetsController struct {
 	// podStoreSynced returns true if the pod store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
 	podStoreSynced cache.InformerSynced
-	// nodeLister can list/get nodes from the shared informer's store
-	nodeLister corelisters.NodeLister
-	// nodeStoreSynced returns true if the node store has been synced at least once.
+	// nodeListers can list/get nodes from the shared informer's store
+	nodeListers map[string]corelisters.NodeLister
+	// nodeStoreSynceds return true if the node store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
-	nodeStoreSynced cache.InformerSynced
+	nodeStoreSynceds map[string]cache.InformerSynced
 
 	// DaemonSet keys that need to be synced.
 	queue workqueue.RateLimitingInterface
@@ -134,7 +135,7 @@ func NewDaemonSetsController(
 	daemonSetInformer appsinformers.DaemonSetInformer,
 	historyInformer appsinformers.ControllerRevisionInformer,
 	podInformer coreinformers.PodInformer,
-	nodeInformer coreinformers.NodeInformer,
+	nodeInformers map[string]coreinformers.NodeInformer,
 	kubeClient clientset.Interface,
 	failedPodsBackoff *flowcontrol.Backoff,
 ) (*DaemonSetsController, error) {
@@ -203,13 +204,14 @@ func NewDaemonSetsController(
 	dsc.podNodeIndex = podInformer.Informer().GetIndexer()
 	dsc.podStoreSynced = podInformer.Informer().HasSynced
 
-	nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    dsc.addNode,
-		UpdateFunc: dsc.updateNode,
-	},
-	)
-	dsc.nodeStoreSynced = nodeInformer.Informer().HasSynced
-	dsc.nodeLister = nodeInformer.Lister()
+	for _, ni := range nodeInformers {
+		ni.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    dsc.addNode,
+			UpdateFunc: dsc.updateNode,
+		},
+		)
+	}
+	dsc.nodeListers, dsc.nodeStoreSynceds = nodeutil.GetNodeListersAndSyncedFromNodeInformers(nodeInformers)
 
 	dsc.syncHandler = dsc.syncDaemonSet
 	dsc.enqueueDaemonSet = dsc.enqueue
@@ -257,7 +259,7 @@ func (dsc *DaemonSetsController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Starting daemon sets controller")
 	defer klog.Infof("Shutting down daemon sets controller")
 
-	if !controller.WaitForCacheSync("daemon sets", stopCh, dsc.podStoreSynced, dsc.nodeStoreSynced, dsc.historyStoreSynced, dsc.dsStoreSynced) {
+	if !nodeutil.WaitForNodeCacheSync("daemon sets(nodes)", dsc.nodeStoreSynceds) {
 		return
 	}
 
@@ -1143,7 +1145,7 @@ func (dsc *DaemonSetsController) syncDaemonSet(key string) error {
 		return fmt.Errorf("unable to retrieve ds %v from store: %v", key, err)
 	}
 
-	nodeList, err := dsc.nodeLister.List(labels.Everything())
+	nodeList, err := nodeutil.ListNodes(dsc.nodeListers, labels.Everything())
 	if err != nil {
 		return fmt.Errorf("couldn't get list of nodes when syncing daemon set %#v: %v", ds, err)
 	}

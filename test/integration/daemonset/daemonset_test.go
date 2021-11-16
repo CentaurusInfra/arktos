@@ -73,7 +73,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *daemon.DaemonS
 		informers.Apps().V1().DaemonSets(),
 		informers.Apps().V1().ControllerRevisions(),
 		informers.Core().V1().Pods(),
-		informers.Core().V1().Nodes(),
+		map[string]coreinformers.NodeInformer{rpId0: informers.Core().V1().Nodes()},
 		clientset.NewForConfigOrDie(restclient.AddUserAgent(configs, "daemonset-controller")),
 		flowcontrol.NewBackOff(5*time.Second, 15*time.Minute),
 	)
