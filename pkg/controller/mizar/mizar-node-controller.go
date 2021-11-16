@@ -31,6 +31,7 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 const (
@@ -39,13 +40,11 @@ const (
 
 // MizarNodeController points to current controller
 type MizarNodeController struct {
-	kubeClient clientset.Interface
-
 	// A store of objects, populated by the shared informer passed to MizarNodeController
-	lister corelisters.NodeLister
+	nodeListers map[string]corelisters.NodeLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
-	listerSynced cache.InformerSynced
+	nodeListersSynced map[string]cache.InformerSynced
 
 	// To allow injection for testing.
 	handler func(keyWithEventType KeyWithEventType) error
@@ -59,27 +58,29 @@ type MizarNodeController struct {
 }
 
 // NewMizarNodeController creates and configures a new controller instance
-func NewMizarNodeController(informer coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNodeController {
+func NewMizarNodeController(nodeInformers map[string]coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNodeController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
+	klog.V(2).Infof("Mizar NodeController initialized with %v nodeinformers", len(nodeInformers))
+	nodeListers, nodeListersSynced := nodeutil.GetNodeListersAndSyncedFromNodeInformers(nodeInformers)
+
 	c := &MizarNodeController{
-		kubeClient:   kubeClient,
-		lister:       informer.Lister(),
-		listerSynced: informer.Informer().HasSynced,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
-		grpcHost:     grpcHost,
-		grpcAdaptor:  grpcAdaptor,
+		nodeListers:       nodeListers,
+		nodeListersSynced: nodeListersSynced,
+		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
+		grpcHost:          grpcHost,
+		grpcAdaptor:       grpcAdaptor,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc:    c.createObj,
-		UpdateFunc: c.updateObj,
-		DeleteFunc: c.deleteObj,
-	})
-	c.lister = informer.Lister()
-	c.listerSynced = informer.Informer().HasSynced
+	for _, nodeInformer := range nodeInformers {
+		nodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+			AddFunc:    c.createObj,
+			UpdateFunc: c.updateObj,
+			DeleteFunc: c.deleteObj,
+		})
+	}
 
 	c.handler = c.handle
 
@@ -94,7 +95,7 @@ func (c *MizarNodeController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Starting %v controller", controllerForMizarNode)
 	defer klog.Infof("Shutting down %v controller", controllerForMizarNode)
 
-	if !controller.WaitForCacheSync(controllerForMizarNode, stopCh, c.listerSynced) {
+	if !nodeutil.WaitForNodeCacheSync(controllerForMizarNode, c.nodeListersSynced) {
 		return
 	}
 
@@ -179,7 +180,7 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	obj, err := c.lister.Get(name)
+	obj, _, err := nodeutil.GetNodeFromNodelisters(c.nodeListers, name)
 	if err != nil {
 		if eventType == EventType_Delete && errors.IsNotFound(err) {
 			obj = &v1.Node{
