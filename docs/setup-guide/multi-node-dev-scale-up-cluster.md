@@ -31,6 +31,7 @@ OR
 Method #1 - DaemonSet Mode
 
 On master node:
+
 1.0) Make sure the following directories are empty. If not, clean them up using sudo permisson
 ```bash
    sudo ls -alg /opt/cni/bin/; sudo rm -r /opt/cni/bin/*; sudo ls -alg /opt/cni/bin/
@@ -45,9 +46,7 @@ On master node:
    ./hack/arktos-up.sh
 ```
 
-   OR 
    After you first run './hack/arktos-up.sh' successfully, you can use './hack/arktos-up.sh -O' intead
-
 ```bash
    export ARKTOS_NO_CNI_PREINSTALLED=y
    ./hack/arktos-up.sh -O
@@ -82,7 +81,8 @@ On master node:
    Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices' is not supported by Arktos so far.
 
 
-1.3) In the lab machine to be added as a worker node, ensure following worker secret files copied from the master node:
+1.3) On worker node: ensure following worker secret files copied from the master node
+
    If the worker node is a GCP instance  
 ```bash
    gcloud beta compute ssh --zone "us-west2-a" "<worker node machine name>"  --project "<gce project name>"
@@ -96,7 +96,9 @@ On master node:
    scp -i "<private key of keypair of master node>" ubuntu@<master-node-instance>:/var/run/kubernetes/client-ca.crt /tmp/arktos/client-ca.crt
 ```
 
+
 On worker node: start the worker node to register into cluster
+
 1.4) First make sure the following directories in the worker node are empty. If not, clean them up using sudopermission.
 ```bash
    sudo ls -alg /opt/cni/bin/; sudo rm -r /opt/cni/bin/*; sudo ls -alg /opt/cni/bin/
@@ -120,6 +122,7 @@ OR
 ```
 
 On the master node:
+
 1.6) Check status of nodes
 
     You should see the work node is displayed and its status should be "Ready". But probably you will see the worker node is in "NotReady" state.
@@ -268,6 +271,7 @@ I1116 05:39:22.303743       1 iptables.go:228] Adding iptables rule: ! -s 10.244
 ```
 
 1.11) Start 2nd worker node to join cluster by following up the above steps 1.3) through step 1.10).
+
    on master node: Check the status of nodes and pods
 ```bash
    ./cluster/kubectl.sh get nodes
@@ -358,6 +362,7 @@ Commercial support is available at
 ```
 
 Method #2 - Process Mode (to support M TPs X N RPs)
+
 ```bash
    To be completed.
-```bash
+```
