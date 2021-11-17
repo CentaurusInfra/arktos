@@ -36,7 +36,7 @@ const (
 
 	mizarNodeControllerWorkerCount = 2
 
-	rpId0      = "rp0"
+	rpId0 = "rp0"
 )
 
 func TestMizarNodeController_Create(t *testing.T) {
