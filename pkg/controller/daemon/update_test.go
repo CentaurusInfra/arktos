@@ -25,6 +25,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	nodeutil "k8s.io/kubernetes/pkg/util/node"
 )
 
 func TestDaemonSetUpdatesPods(t *testing.T) {
@@ -296,7 +297,7 @@ func TestGetUnavailableNumbers(t *testing.T) {
 
 	for _, c := range cases {
 		c.Manager.dsStore.Add(c.ds)
-		nodeList, err := c.Manager.nodeLister.List(labels.Everything())
+		nodeList, err := nodeutil.ListNodes(c.Manager.nodeListers, labels.Everything())
 		if err != nil {
 			t.Fatalf("error listing nodes: %v", err)
 		}
