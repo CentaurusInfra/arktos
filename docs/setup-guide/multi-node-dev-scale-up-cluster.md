@@ -384,7 +384,7 @@ Commercial support is available at
 ```bash
 ```
 
-1.14) Please follow up the steps to do [end-to-end verification of service in scale-up cluster](https://github.com/CentaurusInfra/arktos/issues/1142)
+1.15) Please follow up the steps to do [end-to-end verification of service in scale-up cluster](https://github.com/CentaurusInfra/arktos/issues/1142)
 
 
 Method #2 - Process Mode (to support M TPs X N RPs)
@@ -614,4 +614,4 @@ Commercial support is available at
   cluster/kubectl.sh get pods --all-namespaces -o wide
 ```
 
-2.11) Please follow up the steps to do [end-to-end verification of service in scale-up cluster](https://github.com/CentaurusInfra/arktos/issues/1142)
+2.12) Please follow up the steps to do [end-to-end verification of service in scale-up cluster](https://github.com/CentaurusInfra/arktos/issues/1142)
