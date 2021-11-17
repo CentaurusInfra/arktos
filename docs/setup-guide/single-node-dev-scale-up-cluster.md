@@ -5,7 +5,7 @@
 1. Run script to create a single arktos cluster
 
 ```bash
-   $ ./hack/arktos-up.sh
+   ./hack/arktos-up.sh
 ```
 
    Note: If your Dev Cluster of single node is on AWS EC2 instance running Ubuntu 18.04, after you run the command './hack/arktos-up.sh', you may experience the following error. Just simply remove the symbolic link and re-run the command './hack/arktos-up.sh'.
@@ -13,29 +13,27 @@
          ln: failed to create symbolic link '/home/ubuntu/go/src/arktos/_output/bin': File exists 
 
 ```bash
-   $ rm -i /home/ubuntu/go/src/arktos/_output/bin
-   $ ./hack/arktos-up.sh
+   rm -i /home/ubuntu/go/src/arktos/_output/bin
+   ./hack/arktos-up.sh
 ```
 
 
 2. Open another terminal to use arktos cluster
 ```bash
-  $ export KUBECONFIG=/var/run/kubernetes/admin.kubeconfig
-
-  $ cluster/kubectl.sh
+  ./cluster/kubectl.sh
 
 Alternatively, you can write to the default kubeconfig:
 
-  $ export KUBERNETES_PROVIDER=local
+  export KUBERNETES_PROVIDER=local
 
-  $ cluster/kubectl.sh config set-cluster local --server=https://<hostname>:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
-  $ cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
-  $ cluster/kubectl.sh config set-context local --cluster=local --user=myself
-  $ cluster/kubectl.sh config use-context local
-  $ cluster/kubectl.sh config get-contexts
-  $ cluster/kubectl.sh
-  $ cluster/kubectl.sh get nodes
-  $ cluster/kubectl.sh get all --all-namespaces
+  ./cluster/kubectl.sh config set-cluster local --server=https://<hostname>:6443 --certificate-authority=/var/run/kubernetes/server-ca.crt
+  ./cluster/kubectl.sh config set-credentials myself --client-key=/var/run/kubernetes/client-admin.key --client-certificate=/var/run/kubernetes/client-admin.crt
+  ./cluster/kubectl.sh config set-context local --cluster=local --user=myself
+  ./cluster/kubectl.sh config use-context local
+  ./cluster/kubectl.sh config get-contexts
+  ./cluster/kubectl.sh
+  ./cluster/kubectl.sh get nodes
+  ./cluster/kubectl.sh get all --all-namespaces
 ```
 
 3. Test whether the ngnix application can be deployed successfully
