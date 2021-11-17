@@ -377,8 +377,11 @@ Commercial support is available at
    cluster/kubectl.sh delete deployment/nginx
 ```
 
-```
+```bash
   cluster/kubectl.sh get pods --all-namespaces -o wide
+```
+
+```bash
 ```
 
 
@@ -605,7 +608,6 @@ Commercial support is available at
 ```bash
    cluster/kubectl.sh delete deployment/nginx
 ```
-
-```
+```bash
   cluster/kubectl.sh get pods --all-namespaces -o wide
 ```
