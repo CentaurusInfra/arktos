@@ -893,7 +893,7 @@ function construct-linux-kubelet-flags {
     
     if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
       flags+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
-      flags+=" --kubeconfig=${RESOURCE_SERVER_KUBECONFIG}"
+      flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
     else
       flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
     fi
@@ -1674,11 +1674,6 @@ EOF
   if [ -n "${TENANT_SERVER_KUBECONFIGS:-}" ]; then
       cat >>$file <<EOF
 TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
-EOF
-  fi
-  if [ -n "${RESOURCE_SERVER_KUBECONFIG:-}" ]; then
-      cat >>$file <<EOF
-RESOURCE_SERVER_KUBECONFIG: $(yaml-quote ${RESOURCE_SERVER_KUBECONFIG})
 EOF
   fi
 }
@@ -2654,12 +2649,12 @@ function kube-up() {
         export MASTER_NAME="${CLUSTER_NAME}-master"  
         export NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-minion"
         export WINDOWS_NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-windows-node"
-        RESOURCE_SERVER_KUBECONFIG="/etc/srv/kubernetes/rp-kubeconfigs/rp-${num}-kubeconfig"
         create-rpmaster $num
         check-cluster
         export ARKTOS_SCALEOUT_SERVER_TYPE="node"
+        NODE_EXTRA_METADATA=${KUBE_NODE_EXTRA_METADATA:-${KUBE_EXTRA_METADATA:-}}
         if [[ "${NODE_EXTRA_METADATA}" != "" ]]; then
-          NODE_EXTRA_METADATA="${NODE_EXTRA_METADATA}, MASTER_EXTRA_METADATA"
+          NODE_EXTRA_METADATA="${NODE_EXTRA_METADATA}, ${MASTER_EXTRA_METADATA}"
         else
           NODE_EXTRA_METADATA="${MASTER_EXTRA_METADATA}"
         fi
@@ -3105,7 +3100,7 @@ function create-proxy-vm() {
   echo "PROXY_NAME: ${PROXY_NAME} PROXY_RESERVED_IP: ${PROXY_RESERVED_IP}, PROXY_RESERVED_INTERNAL_IP: ${PROXY_RESERVED_INTERNAL_IP}"
   create-proxy-certs "${PROXY_RESERVED_IP}" "${PROXY_RESERVED_INTERNAL_IP}"
 
-  echo "Starting to create proxy instance"
+  echo "Starting to createe proxy instance"
   create-proxy-instance "${PROXY_NAME}" "$PROXY_RESERVED_IP" "$PROXY_RESERVED_INTERNAL_IP"
 
 }
