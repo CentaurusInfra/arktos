@@ -20,7 +20,10 @@
 2. Open another terminal to use arktos cluster
 ```bash
   ./cluster/kubectl.sh
-
+  ./cluster/kubectl.sh get nodes
+  ./cluster/kubectl.sh get all --all-namespaces
+```
+```bash
 Alternatively, you can write to the default kubeconfig:
 
   export KUBERNETES_PROVIDER=local
@@ -38,7 +41,13 @@ Alternatively, you can write to the default kubeconfig:
 3. Test whether the ngnix application can be deployed successfully
 ```bash
    ./cluster/kubectl.sh run nginx --image=nginx --replicas=2
+```
+```bash
    ./cluster/kubectl.sh get pod -n default -o wide
+```
+```bash
    ./cluster/kubectl.sh exec -ti <1st pod> -- curl <IP of 2nd nginx pod>
+```
+```bash
    ./cluster/kubectl.sh exec -ti <2nd pod> -- curl <IP of 1st nginx pod>
 ```
