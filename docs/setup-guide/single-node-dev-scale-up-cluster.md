@@ -13,10 +13,9 @@
          ln: failed to create symbolic link '/home/ubuntu/go/src/arktos/_output/bin': File exists 
 
 ```bash
-   rm -i /home/ubuntu/go/src/arktos/_output/bin
+   make clean
    ./hack/arktos-up.sh
 ```
-
 
 2. Open another terminal to use arktos cluster
 ```bash
