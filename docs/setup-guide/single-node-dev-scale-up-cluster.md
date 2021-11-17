@@ -51,3 +51,9 @@ Alternatively, you can write to the default kubeconfig:
 ```bash
    ./cluster/kubectl.sh exec -ti <2nd pod> -- curl <IP of 1st nginx pod>
 ```
+
+4. Clean up the ngnix deployment
+```bash
+   ./cluster/kubectl.sh delete deployment/nginx
+   ./cluster/kubectl.sh get pod -n default -o wide
+```
