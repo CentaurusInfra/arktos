@@ -1,4 +1,4 @@
-# How to Setup a Dev Cluster of multi-nodes with flannel in two modes
+# How to Setup a Scale-UP Dev Cluster of multi-nodes with flannel in two modes
 
 It may be desired to setup a dev cluster having one or more worker nodes in order to play with comprehensive features of Arktos. The simple and easy-to-use arktos-up.sh feels short in this case; this doc describes the minimum effort to run a cluster having 1 master node and extra worker nodes joining after the master is up.
 
@@ -54,7 +54,7 @@ On master node:
 
    Note: arktos-up.sh should be stuck in "Waiting for node ready at api server" messages. Don't worry, the apiserver is already up at this point, just the master node status is not "Ready"  and pod/kube-dns in name space 'kube-system' is not in state of 'Running' as we have not installed the network plugin yet. 
 
-1.2) Open another terminal to the master node to install CNI plugin of flannel and check the status of node
+1.2) Open another terminal on the master node to install CNI plugin of flannel and check the status of node
 ```bash
    ./cluster/kubectl.sh apply -f https://github.com/coreos/flannel/raw/master/Documentation/kube-flannel.yml
 ```
@@ -64,7 +64,7 @@ On master node:
 ```bash
    ./cluster/kubectl.sh get all --all-namespaces
    ./cluster/kubectl.sh get pods --all-namespaces
-   ps -ef |grep falnel |grep -v grep
+   ps -ef |grep flannel |grep -v grep
    sudo cat /etc/cni/net.d/10-flannel.conflist
    cat /tmp/flanneld.log
    cat /run/flannel/subnet.env
@@ -119,6 +119,17 @@ OR
    export ARKTOS_NO_CNI_PREINSTALLED=y
    export KUBELET_IP=`hostname -i`;echo $KUBELET_IP
    ./hack/arktos-worker-up.sh -O
+```
+
+   Check the status of flannel installed on worker node:
+```bash
+   ps -ef |grep flannel |grep -v grep
+   sudo cat /etc/cni/net.d/10-flannel.conflist
+   cat /tmp/flanneld.log
+   cat /run/flannel/subnet.env
+
+   ifconfig -a
+   ip route
 ```
 
 On the master node:
@@ -361,8 +372,240 @@ Commercial support is available at
 </html>
 ```
 
+1.14) Clean up nginx deployment
+```bash
+   cluster/kubectl.sh delete deployment/nginx
+```
+
+```
+  cluster/kubectl.sh get pods --all-namespaces -o wide
+```
+
+
 Method #2 - Process Mode (to support M TPs X N RPs)
 
+On master node:
+
+2.0) Make sure the following directories are empty. If not, clean them up using sudo permisson
 ```bash
-   To be completed.
+   sudo ls -alg /opt/cni/bin/; sudo rm -r /opt/cni/bin/*; sudo ls -alg /opt/cni/bin/
+   sudo ls -alg /etc/cni/net.d/; sudo rm -r /etc/cni/net.d/bridge.conf;sudo rm -r /etc/cni/net.d/10-flannel.conflist sudo ls -alg /etc/cni/net.d/
+```
+
+2.1) bootstrap the cluster by starting the master node and CNI plugin - flannel is automatically installed in process mode
+   Run the following commands when you are first time
+```bash
+   make clean
+   CNIPLUGIN=flannel ./hack/arktos-up.sh
+```
+
+   After you first run './hack/arktos-up.sh' successfully, you can use './hack/arktos-up.sh -O' intead
+```bash
+   CNIPLUGIN=flannel ./hack/arktos-up.sh -O
+```
+
+2.2) Open another terminal on the master node to check the status of node
+```bash
+   ./cluster/kubectl.sh get all --all-namespaces
+   ./cluster/kubectl.sh get pods --all-namespaces
+   ps -ef |grep flannel |grep -v grep
+   sudo cat /etc/cni/net.d/10-flannel.conflist
+   cat /tmp/flanneld.log
+   cat /run/flannel/subnet.env
+
+   ifconfig -a
+   ip route
+```
+```bash
+   ./cluster/kubectl.sh get nodes
+```
+```bash
+   NAME              STATUS   ROLES    AGE    VERSION
+   ip-172-31-22-85   Ready    <none>   9m7s   v0.9.0
+```
+
+   Note: Please reference the blog [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) if you want to know how flannel network works in kubernetes.
+
+   Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices' is not supported by Arktos so far.
+
+2.3) On worker node: ensure following worker secret files copied from the master node
+
+   If the worker node is a GCP instance
+```bash
+   gcloud beta compute ssh --zone "us-west2-a" "<worker node machine name>"  --project "<gce project name>"
+```
+
+   If the worker node is an AWS EC2, you can download files /var/run/kubernetes/kubelet.kubeconfig and /var/run/kubernetes/client-ca.crt from the master node, and then upload to /tmp/arktos/ in the worker node.
+
+```bash
+   mkdir -p /tmp/arktos
+   scp -i "<private key of keypair of master node>" ubuntu@<master-node-instance>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/kubelet.kubeconfig
+   scp -i "<private key of keypair of master node>" ubuntu@<master-node-instance>:/var/run/kubernetes/client-ca.crt /tmp/arktos/client-ca.crt
+```
+
+
+On worker node: start the worker node to register into cluster
+
+2.4) First make sure the following directories in the worker node are empty. If not, clean them up using sudopermission.
+```bash
+   sudo ls -alg /opt/cni/bin/; sudo rm -r /opt/cni/bin/*; sudo ls -alg /opt/cni/bin/
+   sudo ls -alg /etc/cni/net.d/; sudo rm -r /etc/cni/net.d/bridge.conf;sudo rm -r /etc/cni/net.d/10-flannel.conflist sudo ls -alg /etc/cni/net.d/
+```
+
+2.5) Start the worker node and register into cluster
+   Run the following commands when you are first time
+```bash
+   export ARKTOS_NO_CNI_PREINSTALLED=y
+   export KUBELET_IP=`hostname -i`;echo $KUBELET_IP
+   make clean
+   API_HOST_IP_EXTERNAL=<IP of master API host> CNIPLUGIN=flannel ./hack/arktos-worker-up.sh
+```
+   Note: for example, in step 2.2) 172.31.22.85 is IP of master API host - ip-172-31-22-85
+OR
+   After you first run './hack/arktos-up.sh' successfully, you can use './hack/arktos-up.sh -O' intead
+```bash
+   export ARKTOS_NO_CNI_PREINSTALLED=y
+   export KUBELET_IP=`hostname -i`;echo $KUBELET_IP
+   API_HOST_IP_EXTERNAL=<IP of master API host> CNIPLUGIN=flannel ./hack/arktos-worker-up.sh -O
+```
+  Note: for example, in step 2.2) 172.31.22.85 is IP of master API host - ip-172-31-22-85
+
+   Check the status of flannel installed on worker node:
+```bash
+   ps -ef |grep flannel |grep -v grep
+   sudo cat /etc/cni/net.d/10-flannel.conflist
+   cat /tmp/flanneld.log
+   cat /run/flannel/subnet.env
+
+   ifconfig -a
+   ip route
+```
+
+On the master node:
+
+2.6) Check status of nodes
+
+    You should see the work node is displayed and its status should be "Ready". But probably you will see the worker node is in "NotReady" state.
+
+```bash
+   ./cluster/kubectl.sh get nodes
+```
+```bash
+   NAME               STATUS     ROLES    AGE   VERSION
+   ip-172-31-22-85    Ready      <none>   71m   v0.9.0
+   ip-172-31-29-128   NotReady   <none>   59m   v0.9.0
+```
+
+   Check the kubelet log on worker node:
+```bash
+   grep ip-172-31-29-128 /tmp/kubelet.worker.log |tail -2
+```
+```bash
+   E1116 05:30:12.750708   17517 controller.go:129] failed to ensure node lease exists, will retry in 7s, error: leases.coordination.k8s.io "ip-172-31-29-128" is forbidden: User "system:node:ip-172-31-22-85" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease": can only access node lease with the same name as the requesting node
+   E1116 05:30:19.752760   17517 controller.go:129] failed to ensure node lease exists, will retry in 7s, error: leases.coordination.k8s.io "ip-172-31-29-128" is forbidden: User "system:node:ip-172-31-22-85" cannot get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease": can only access node lease with the same name as the requesting node
+```
+
+2.7) Run the following command to create clusterrolebinding 'system-node-role-bound' to bind the group 'system:nodes' to clusterrole 'system:node' so that the master node has corresponding permission to get resource "leases" in API group "coordination.k8s.io" in the namespace "kube-node-lease"
+
+```bash
+   ./cluster/kubectl.sh create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
+   ./cluster/kubectl.sh get clusterrolebinding/system-node-role-bound -o yaml
+```
+
+```bash
+   ./cluster/kubectl.sh get nodes
+```
+
+```bash
+   NAME               STATUS   ROLES    AGE    VERSION
+   ip-172-31-22-85    Ready    <none>   87m    v0.9.0
+   ip-172-31-29-128   Ready    <none>   75m    v0.9.0
+```
+
+2.8) Start 2nd worker node to join cluster by following up the above steps 2.3) through step 2.7).
+
+   on master node: Check the status of nodes and pods
+```bash
+   ./cluster/kubectl.sh get nodes
+```
+
+```bash
+   NAME               STATUS   ROLES    AGE     VERSION
+   ip-172-31-22-85    Ready    <none>   129m    v0.9.0
+   ip-172-31-24-185   Ready    <none>   5m15s   v0.9.0
+   ip-172-31-29-128   Ready    <none>   126m    v0.9.0
+```
+
+```bash
+   ./cluster/kubectl.sh get pods --all-namespaces -o wide
+```
+
+2.9) Test whether the ngnix application can be deployed successfully
+```bash
+   ./cluster/kubectl.sh run nginx --image=nginx --replicas=10
+   ./cluster/kubectl.sh get pods -n default -o wide
+```
+
+```bash
+   NAME                     HASHKEY               READY   STATUS    RESTARTS   AGE   IP            NODE               NOMINATED NODE   READINESS GATES
+   nginx-5d79788459-2z9xm   7135149431889485631   1/1     Running   0          34s   10.244.5.4    ip-172-31-24-185   <none>           <none>
+   nginx-5d79788459-6l8g2   3843739298418711470   1/1     Running   0          34s   10.244.1.19   ip-172-31-29-128   <none>           <none>
+   nginx-5d79788459-7klr7   2834848570761789551   1/1     Running   0          34s   10.244.0.58   ip-172-31-22-85    <none>           <none>
+   nginx-5d79788459-d48dk   9074133381883477042   1/1     Running   0          34s   10.244.5.5    ip-172-31-24-185   <none>           <none>
+   nginx-5d79788459-jknqx   7965692118631704777   1/1     Running   0          34s   10.244.5.3    ip-172-31-24-185   <none>           <none>
+   nginx-5d79788459-jtm8t   3306282595644386936   1/1     Running   0          34s   10.244.1.21   ip-172-31-29-128   <none>           <none>
+   nginx-5d79788459-lg9sn   8426441781750165096   1/1     Running   0          34s   10.244.1.18   ip-172-31-29-128   <none>           <none>
+   nginx-5d79788459-lhtdh   1475896372455155057   1/1     Running   0          34s   10.244.1.20   ip-172-31-29-128   <none>           <none>
+   nginx-5d79788459-lnlv7   5397625964048573894   1/1     Running   0          34s   10.244.5.2    ip-172-31-24-185   <none>           <none>
+   nginx-5d79788459-mgx9l   8679199556520419985   1/1     Running   0          34s   10.244.1.22   ip-172-31-29-128   <none>           <none>
+```
+
+2.10) Test whether nginx pods on three nodes can talk each other using 'curl'
+   If you like, you need test connectivities among 6 subnets on 3 nods
+```bash
+   10.244.5.4  --> 10.244.0.x(58)
+   10.244.5.4  --> 10.244.1.x (18,19,20,21,22)
+   10.244.0.58 --> 10.244.5.x (2,3,4,5)
+   10.244.0.58 --> 10.244.1.x (18,19,20,21,22)
+   10.244.1.19 --> 10.244.0.x(58)
+   10.244.1.19 --> 10.244.5.x (2,3,4,5)
+```
+
+For example:
+```bash
+   ./cluster/kubectl.sh exec -ti nginx-5d79788459-2z9xm -- curl 10.244.0.58
+```
+```bash
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+```
+
+2.11) Clean up nginx deployment
+```bash
+   cluster/kubectl.sh delete deployment/nginx
+```
+
+```
+  cluster/kubectl.sh get pods --all-namespaces -o wide
 ```
