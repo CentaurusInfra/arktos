@@ -152,7 +152,7 @@ function download-resourcepartition-kubeconfigs {
   for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
   do
     config="${rpconfigs_directory}/rp-${rp_num}-kubeconfig"
-    echo "DBG: download tenant partition kubeconfig: ${config}"
+    echo "DBG: download resource partition kubeconfig: ${config}"
     download-resourcepartition-kubeconfig "${config}" "${rp_num}"
   done
 
@@ -698,7 +698,7 @@ fi
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
     download-tenantpartition-kubeconfigs
-    download-resourcepartition-kubeconfigs
+    #download-resourcepartition-kubeconfigs
 fi
 
 # master/proxy certs
