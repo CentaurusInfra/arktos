@@ -615,3 +615,6 @@ Commercial support is available at
 ```
 
 2.12) Please follow up the steps to do [end-to-end verification of service in scale-up cluster](https://github.com/CentaurusInfra/arktos/issues/1142)
+      - Currently the tests on master node in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do pass - can ping service names
+      - Currently the tests on two worker nodes in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do not pass - can not ping service names
+      - Currently other tests do pass
