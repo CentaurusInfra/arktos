@@ -2344,7 +2344,7 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
   if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset"
+    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset,csrsigning,csrapproving,csrcleaner"
   fi
   if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
     RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
