@@ -618,4 +618,6 @@ Commercial support is available at
 
       Note: Currently the tests on master node in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do pass - login nginx pods and can ping service names in same tenant
             Currently the tests on two worker nodes in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do not pass - login nginx pods and can not ping service names in same tenant
+            -- YunWen recommends starting kubelete on worker nodes
+
             Currently other tests do pass
