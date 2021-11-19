@@ -125,6 +125,7 @@ sudo ip r add 10.245.0.0/24 via [RP2-IP]
 on RP2
 ```
 sudo ip r add 10.244.0.0/24 via [RP1-IP]
+```
 
 ### Setting up TPs
 1. Make sure hack/arktos-up.sh can be run at the box
