@@ -39,8 +39,6 @@ const (
 
 // MizarNetworkPolicyController points to current controller
 type MizarNetworkPolicyController struct {
-	kubeClient clientset.Interface
-
 	// A store of objects, populated by the shared informer passed to MizarNetworkPolicyController
 	lister corelisters.NetworkPolicyLister
 	// listerSynced returns true if the store has been synced at least once.
@@ -59,27 +57,26 @@ type MizarNetworkPolicyController struct {
 }
 
 // NewMizarNetworkPolicyController creates and configures a new controller instance
-func NewMizarNetworkPolicyController(informer coreinformers.NetworkPolicyInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNetworkPolicyController {
+func NewMizarNetworkPolicyController(networkPolicyInformer coreinformers.NetworkPolicyInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNetworkPolicyController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarNetworkPolicyController{
-		kubeClient:   kubeClient,
-		lister:       informer.Lister(),
-		listerSynced: informer.Informer().HasSynced,
+		lister:       networkPolicyInformer.Lister(),
+		listerSynced: networkPolicyInformer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNetworkPolicy),
 		grpcHost:     grpcHost,
 		grpcAdaptor:  grpcAdaptor,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	networkPolicyInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.createObj,
 		UpdateFunc: c.updateObj,
 		DeleteFunc: c.deleteObj,
 	})
-	c.lister = informer.Lister()
-	c.listerSynced = informer.Informer().HasSynced
+	c.lister = networkPolicyInformer.Lister()
+	c.listerSynced = networkPolicyInformer.Informer().HasSynced
 
 	c.handler = c.handle
 
