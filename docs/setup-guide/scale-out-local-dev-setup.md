@@ -160,7 +160,7 @@ an examplative allocation of pod cidr for 2 RPs could be
    kube-system   virtlet-xdlr5                                     8190198442816427150   0/3     Pending   0          4m23s   <none>          ip-172-31-29-26    <none>           <none>
 ```
 
-### Join worker node into RP1 cluster
+### Join worker nodes into RP1 cluster 
 1. Make sure hack/arktos-up.sh can be run at the box
 
 2. Ensure following worker secret files copied from the master node
@@ -503,6 +503,17 @@ an examplative allocation of pod cidr for 2 RPs could be
    ./hack/arktos-worker-up.sh
 ```
 Note: here we try to join two worker nodes into RP1 clister
+
+6. On RP1 node, check node status
+```bash
+   ./cluster/kubectl.sh get nodes
+```
+```bash
+   NAME               STATUS     ROLES    AGE   VERSION
+   ip-172-31-13-237   Ready      <none>   23m     v0.9.0
+   ip-172-31-26-244   NotReady   <none>   4m10s   v0.9.0
+   ip-172-31-29-26    NotReady   <none>   12m     v0.9.0
+```
 
 7. On TP1 node, check the status of flannel pods running on worker nodes
 ```bash
