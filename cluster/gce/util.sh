@@ -3353,20 +3353,20 @@ function restart_tp_scheduler_and_controller {
     for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do
       rp_kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-${rp_num}"
-      gcloud compute scp --zone="${KUBE_GCE_ZONE}" "${rp_kubeconfig}" "${tp_vm}:/tmp/rp-kubeconfig-${rp_num}"
+      gcloud compute scp --zone="${ZONE}" "${rp_kubeconfig}" "${tp_vm}:/tmp/rp-kubeconfig-${rp_num}"
     done
 
     echo "DBG: copy rp kubeconfigs to destinations on TP master: ${tp_vm}"
     cmd="sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-scheduler/ && sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-controller-manager/"
-    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
 
     echo "DBG: restart scheduler on TP master: ${tp_vm}"
     cmd="sudo pkill -f kube-scheduler"
-    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
 
     echo "DBG: restart controller manager on TP master: ${tp_vm}"
     cmd="sudo pkill -f kube-controller-manager"
-    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${KUBE_GCE_ZONE}" "${tp_vm}" --command "${cmd}"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
   done
 }
 
