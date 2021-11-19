@@ -62,7 +62,7 @@ type MizarServiceController struct {
 }
 
 // NewMizarServiceController starts mizar service controller
-func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarServiceController {
+func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient arktos.Interface, serviceInformer coreinformers.ServiceInformer, arktosNetworkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarServiceController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -71,7 +71,7 @@ func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient ar
 		kubeClientset:       kubeClientset,
 		netClient:           netClient,
 		serviceLister:       serviceInformer.Lister(),
-		netLister:           arktosInformer.Lister(),
+		netLister:           arktosNetworkInformer.Lister(),
 		serviceListerSynced: serviceInformer.Informer().HasSynced,
 		queue:               workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-service-controller"}),
