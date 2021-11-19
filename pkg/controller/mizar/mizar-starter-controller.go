@@ -37,8 +37,6 @@ const (
 
 // MizarStarterController points to current controller
 type MizarStarterController struct {
-	kubeClient clientset.Interface
-
 	// A store of objects, populated by the shared informer passed to MizarStarterController
 	lister corelisters.ConfigMapLister
 	// listerSynced returns true if the store has been synced at least once.
@@ -59,25 +57,24 @@ type MizarStarterController struct {
 }
 
 // NewMizarStarterController creates and configures a new controller instance
-func NewMizarStarterController(informer coreinformers.ConfigMapInformer, kubeClient clientset.Interface, controllerContext interface{}, startHandler StartHandler) *MizarStarterController {
+func NewMizarStarterController(configMapInformer coreinformers.ConfigMapInformer, kubeClient clientset.Interface, controllerContext interface{}, startHandler StartHandler) *MizarStarterController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarStarterController{
-		kubeClient:        kubeClient,
-		lister:            informer.Lister(),
-		listerSynced:      informer.Informer().HasSynced,
+		lister:            configMapInformer.Lister(),
+		listerSynced:      configMapInformer.Informer().HasSynced,
 		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarStarter),
 		controllerContext: controllerContext,
 		startHandler:      startHandler,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	configMapInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.createObj,
 	})
-	c.lister = informer.Lister()
-	c.listerSynced = informer.Informer().HasSynced
+	c.lister = configMapInformer.Lister()
+	c.listerSynced = configMapInformer.Informer().HasSynced
 
 	c.handler = c.handle
 

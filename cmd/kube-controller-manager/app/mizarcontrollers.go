@@ -84,7 +84,7 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string, grpcAdapt
 	klog.V(2).Infof("Starting %v", controllerName)
 
 	go controllers.NewMizarNodeController(
-		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.ResourceProviderNodeInformers,
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		grpcHost,
 		grpcAdaptor,
