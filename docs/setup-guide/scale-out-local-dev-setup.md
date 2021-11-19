@@ -28,7 +28,26 @@ export RESOURCE_PARTITION_IP=[RP1_IP]
 
 1. Run ./hack/scalability/setup_haproxy.sh (depends on your HA proxy version and environment setup, you might need to comment out some code in the script)
 
--- Method #1 - Install Flannel in process mode
+
+## Method #1 - Install Flannel in process mode
+### Patching Network Routing Across RPs
+Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.
+
+Below is what we did in our test lab using AWS EC2 resources, where RP1/RP2 nodes are in same subnet.
+On both RP nodes,
+1. stop the source/dest check (on AWS console, using EC2 instance Action menu, choosing Networking | Change source-destination check);
+2. manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
+
+on RP1,
+```
+sudo ip r add 10.245.0.0/24 via [RP2-IP]
+```
+
+on RP2
+```
+sudo ip r add 10.244.0.0/24 via [RP1-IP]
+```
+
 ### Setting up TPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
@@ -81,34 +100,14 @@ an examplative allocation of pod cidr for 2 RPs could be
 
 1. Expected last line of output: "Resource Partition Cluster is Running ..."
 
-### Patching Network Routing Across RPs
-Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.
 
-Below is what we did in our test lab using AWS EC2 resources, where RP1/RP2 nodes are in same subnet.
-On both RP nodes,
-1. stop the source/dest check (on AWS console, using EC2 instance Action menu, choosing Networking | Change source-destination check);
-2. manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
-
-on RP1,
-```
-sudo ip r add 10.245.0.0/24 via [RP2-IP]
-```
-
-on RP2
-```
-sudo ip r add 10.244.0.0/24 via [RP1-IP]
-```
-
--- Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
+## Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
 Issues:
 1. ./hack/arktos-up-scale-out-poc.sh should not install flannel in process mode when SCALE_OUT_TP_ENABLE_DAEMONSET=true
    Need bash code change
 
 2. arktos-flannel.deamonset.yaml works for RP1 cluser master node after manual changes and nginx pods can be deployed on RP1 cluster master node
 3. two worker nodes join RP1 cluster in "NotReady" state because flannel pods are Pending
-
-
-
 
 ### Patching Network Routing Across RPs
 Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.
