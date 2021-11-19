@@ -29,7 +29,7 @@ export RESOURCE_PARTITION_IP=[RP1_IP]
 1. Run ./hack/scalability/setup_haproxy.sh (depends on your HA proxy version and environment setup, you might need to comment out some code in the script)
 
 
-## Method #1 - Install Flannel in process mode
+### Method #1 - Install Flannel in process mode
 ### Patching Network Routing Across RPs
 Depending on your situation, you may need to change instruction properly - the bottom line is pods from one RP should be able to access pods of other RP.
 
@@ -101,7 +101,7 @@ an examplative allocation of pod cidr for 2 RPs could be
 1. Expected last line of output: "Resource Partition Cluster is Running ..."
 
 
-## Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
+### Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
 Issues:
 1. ./hack/arktos-up-scale-out-poc.sh should not install flannel in process mode when SCALE_OUT_TP_ENABLE_DAEMONSET=true
    Need bash code change
