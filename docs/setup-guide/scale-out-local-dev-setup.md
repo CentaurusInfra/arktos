@@ -51,7 +51,7 @@ sudo ip r add 10.244.0.0/24 via [RP1-IP]
 ### Setting up TPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
-1. Set up environment variables
+2. Set up environment variables
 
 ```
 # optional, used for cloud KCM only but not tested
@@ -60,6 +60,8 @@ export SCALE_OUT_PROXY_PORT=8888
 export TENANT_SERVER_NAME=tp-name (e.g. tp1)
 
 # required
+export SCALE_OUT_TP_ENABLE_DAEMONSET=false
+
 export IS_RESOURCE_PARTITION=false
 export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
 export TENANT_PARTITION_SERVICE_SUBNET=[service-ip-cidr]
@@ -71,9 +73,10 @@ an examplative allocation for 2 TPs could be
 | --- | --- |
 | 10.0.0.0/16 | 10.1.0.0/16 |
 
-1. Run ./hack/arktos-up-scale-out-poc.sh
-
-1. Expected last line of output: "Tenant Partition Cluster is Running ..."
+3. Run ./hack/arktos-up-scale-out-poc.sh
+```bash
+   Expected last line of output: "Tenant Partition Cluster is Running ..."
+```
 
 Note:
 
@@ -82,9 +85,11 @@ Note:
 ### Setting up RPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
-1. Set up environment variables
+2. Set up environment variables
 
 ```
+export SCALE_OUT_TP_ENABLE_DAEMONSET=false
+
 export IS_RESOURCE_PARTITION=true
 export TENANT_SERVER=[TP1_IP]<,[TP2_IP]>
 export RESOURCE_PARTITION_POD_CIDR=[pod-cidr]
@@ -96,9 +101,10 @@ an examplative allocation of pod cidr for 2 RPs could be
 | --- | --- |
 | 10.244.0.0/16 | 10.245.0.0/16 |
 
-1. Run ./hack/arktos-up-scale-out-poc.sh
-
-1. Expected last line of output: "Resource Partition Cluster is Running ..."
+3. Run ./hack/arktos-up-scale-out-poc.sh
+```bash
+   Expected last line of output: "Resource Partition Cluster is Running ..."
+```
 
 
 ### Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
@@ -118,33 +124,33 @@ On both RP nodes,
 2. manually add relevant routing entries of each node, so that each routing table is complete for all nodes of whole cluster across RPs, e.g. (assuming pod cidr of rp0 is 10.244.0.0/16, rp1 10.245.0.0/16)
 
 on RP1,
-```
-sudo ip r add 10.245.0.0/24 via [RP2-IP]
+```bash
+   sudo ip r add 10.245.0.0/24 via [RP2-IP]
 ```
 
 on RP2
-```
-sudo ip r add 10.244.0.0/24 via [RP1-IP]
+```bash
+   sudo ip r add 10.244.0.0/24 via [RP1-IP]
 ```
 
 ### Setting up TPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
-1. Set up environment variables
+2. Set up environment variables
 
-```
-# optional, used for cloud KCM only but not tested
-export SCALE_OUT_PROXY_IP=[PROXY_IP]
-export SCALE_OUT_PROXY_PORT=8888
-export TENANT_SERVER_NAME=tp-name (e.g. tp1)
+```bash
+   # optional, used for cloud KCM only but not tested
+   export SCALE_OUT_PROXY_IP=[PROXY_IP]
+   export SCALE_OUT_PROXY_PORT=8888
+   export TENANT_SERVER_NAME=tp-name (e.g. tp1)
 
-# required
-export ARKTOS_NO_CNI_PREINSTALLED=y
-export SCALE_OUT_TP_ENABLE_DAEMONSET=true
+   # required
+   export ARKTOS_NO_CNI_PREINSTALLED=y
+   export SCALE_OUT_TP_ENABLE_DAEMONSET=true
 
-export IS_RESOURCE_PARTITION=false
-export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
-export TENANT_PARTITION_SERVICE_SUBNET=[service-ip-cidr]
+   export IS_RESOURCE_PARTITION=false
+   export RESOURCE_SERVER=[RP1_IP]<,[RP2_IP]>
+   export TENANT_PARTITION_SERVICE_SUBNET=[service-ip-cidr]
 ```
 
 an examplative allocation for 2 TPs could be
@@ -153,20 +159,19 @@ an examplative allocation for 2 TPs could be
 | --- | --- |
 | 10.0.0.0/16 | 10.1.0.0/16 |
 
-1. Run ./hack/arktos-up-scale-out-poc.sh 
+3. Run ./hack/arktos-up-scale-out-poc.sh 
+   Expected last line of output: "Tenant Partition Cluster is Running ..."
 
-1. Expected last line of output: "Tenant Partition Cluster is Running ..."
 
 Note:
-
-1. As certificates generating and sharing is confusing and time consuming in local test environment. We will use insecure mode for local test for now. Secured mode can be added back later when main goal is acchieved.
+As certificates generating and sharing is confusing and time consuming in local test environment. We will use insecure mode for local test for now. Secured mode can be added back later when main goal is acchieved.
 
 ### Setting up RPs
 1. Make sure hack/arktos-up.sh can be run at the box
 
 2. Set up environment variables
 
-```
+```bash
 export ARKTOS_NO_CNI_PREINSTALLED=y
 export SCALE_OUT_TP_ENABLE_DAEMONSET=true
 
@@ -324,7 +329,7 @@ Note: here we try to join two worker nodes into RP1 clister
 /tmp/kube-scheduler.log:I1119 00:22:07.571023   22179 eventhandlers.go:239] add event for scheduled pod system/kube-system/kube-flannel-ds-4bm9z
 ```
 
-$8. On worker node #1 - ip-172-31-29-26, check the log of kube-flannel-ds-mp2vr and directory /var/log/pods is blank 
+8. On worker node #1 - ip-172-31-29-26, check the log of kube-flannel-ds-mp2vr and directory /var/log/pods is blank 
 ```bash
    ls -al /var/log/pods
 ```
