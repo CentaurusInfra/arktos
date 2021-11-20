@@ -33,7 +33,7 @@ echo "Kubemark master name: ${MASTER_NAME}"
 detect-master
 
 export KUBE_MASTER_URL="https://${KUBE_MASTER_IP}"
-export KUBECONFIG="${ABSOLUTE_ROOT}/test/kubemark/resources/kubeconfig.kubemark"
+export KUBECONFIG="${ABSOLUTE_ROOT}/test/kubemark/resources/kubeconfig${KUBEMARK_PREFIX}"
 export E2E_MIN_STARTUP_PODS=0
 
 if [[ -z "$*" ]]; then

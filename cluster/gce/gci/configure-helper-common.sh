@@ -1760,7 +1760,7 @@ function start-kube-apiserver {
     # Default is :8080
     params+=" --insecure-port=0"
   fi
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     params+=" --insecure-bind-address=0.0.0.0"
   fi
   params+=" --tls-cert-file=${APISERVER_SERVER_CERT_PATH}"
@@ -2264,9 +2264,9 @@ function start-kube-controller-manager {
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  #if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
-    params+=" --use-service-account-credentials"
-  #fi
+  
+  params+=" --use-service-account-credentials"
+  
   params+=" --cloud-provider=gce"
   ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
   ## TODO: investigate and fix it later
@@ -2278,7 +2278,7 @@ function start-kube-controller-manager {
   fi
 
    # the resource provider kubeconfig
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     local rp_kubeconfigs="/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-1"
     for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do
@@ -2296,8 +2296,8 @@ function start-kube-controller-manager {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
-  if [[ -n "${INSTANCE_PREFIX:-}" ]]; then
-    params+=" --cluster-name=${INSTANCE_PREFIX}"
+  if [[ -n "${CLUSTER_NAME:-}" ]]; then
+    params+=" --cluster-name=${CLUSTER_NAME}"
   fi
   if [[ -n "${CLUSTER_IP_RANGE:-}" ]]; then
     params+=" --cluster-cidr=${CLUSTER_IP_RANGE}"
@@ -2343,20 +2343,17 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset,csrsigning,csrapproving,csrcleaner"
   fi
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
 
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
-    sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
-    sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
     params+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
   fi
@@ -2466,7 +2463,7 @@ function start-kube-scheduler {
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
 
   # the resource provider kubeconfig
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     local rp_kubeconfigs="/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1"
     for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do

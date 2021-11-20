@@ -29,6 +29,9 @@ fi
 
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
+export RESOURCE_DIRECTORY=${RESOURCE_DIRECTORY:-"${KUBE_ROOT}/cluster"}
+export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
+
 echo "Bringing down cluster using provider: $KUBERNETES_PROVIDER"
 
 echo "... calling verify-prereqs" >&2
