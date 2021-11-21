@@ -345,7 +345,7 @@ drwxrwxr-x 13 root syslog 4096 Nov 18 06:25 ..
 Issues:
 1. ./hack/arktos-up-scale-out-poc.sh should not install flannel in process mode when SCALE_OUT_TP_ENABLE_DAEMONSET=true
    Need bash code change
-2. arktos-flannel.deamonset.yaml does not for two worker nodes because they join RP1 cluster in "NotReady" state because flannel pods are Pending
+2. arktos-flannel.deamonset.yaml does not work for two worker nodes because they join RP1 cluster in "NotReady" state because flannel pods are Pending
 
 Progress:
 3. arktos-flannel.deamonset.yaml works for RP1 cluser master node after manual changes and nginx pods can be deployed on RP1 cluster master node
