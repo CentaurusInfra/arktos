@@ -619,5 +619,11 @@ Commercial support is available at
       Note: Currently the tests on master node in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do pass - login nginx pods and can ping service names in same tenant
             Currently the tests on two worker nodes in end-to-end verification of service in scale-up cluster - steps 2.4.6) and 2.4.7) do not pass - login nginx pods and can not ping service names in same tenant
             -- YunWen recommends starting kubelete on worker nodes
+               Yes, after the starting kube-proxy is added into script hack/arktos-worker-up.sh, above issue is really fixed after complete tests/verificatins
+
+            -- After starting kube-proxy on worker node, the worker node joining to cluster still needs step 2.7).
+
+                  ./cluster/kubectl.sh create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
+                  ./cluster/kubectl.sh get clusterrolebinding/system-node-role-bound -o yaml
 
             Currently other tests do pass
