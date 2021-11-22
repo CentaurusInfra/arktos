@@ -196,7 +196,7 @@ an examplative allocation of pod cidr for 2 RPs could be
    export KUBELET_IP=`hostname -i`; echo $KUBELET_IP
 ```
 
-5. Start worker node to join RP1 cluster
+5. Start worker node to join RP1 cluster including start of kubelet and kube-proxy
 ```bash
    ./hack/arktos-worker-up.sh
 ```
@@ -229,84 +229,27 @@ Note: here we try to join two worker nodes into RP1 clister
 8. Test whether the ngnix application can be deployed on RP1 cluster successfully
 ```bash
    ./cluster/kubectl.sh run nginx --image=nginx --replicas=10
-   ./cluster/kubectl.sh get pods -n default -o wide
+   ./cluster/kubectl.sh get pods -n default --tenant system -o wide
 ```
 ```bash
-   NAMESPACE     NAME                                              HASHKEY               READY   STATUS    RESTARTS   AGE     IP              NODE               NOMINATED NODE   READINESS GATES
-   nginx-5d79788459-6rtnl   3730908148668899933   0/1     Pending   0          9s    <none>         ip-172-31-29-26    <none>           <none>
-   nginx-5d79788459-8cx96   7055915722265553081   0/1     Pending   0          9s    <none>         ip-172-31-26-244   <none>           <none>
-   nginx-5d79788459-994nl   5869074441326266477   0/1     Pending   0          9s    <none>         ip-172-31-26-244   <none>           <none>
-   nginx-5d79788459-f9zqc   8691715263191300667   0/1     Pending   0          9s    <none>         ip-172-31-29-26    <none>           <none>
-   nginx-5d79788459-hbzbj   5139024971118873047   0/1     Pending   0          9s    <none>         ip-172-31-26-244   <none>           <none>
-   nginx-5d79788459-kjnjl   3031080773184543669   0/1     Pending   0          9s    <none>         ip-172-31-26-244   <none>           <none>
-   nginx-5d79788459-vc7g5   1034646888068516150   0/1     Pending   0          9s    <none>         ip-172-31-29-26    <none>           <none>
-   nginx-5d79788459-wj5fr   2675269125612355016   1/1     Running   0          9s    10.244.0.192   ip-172-31-13-237   <none>           <none>
-   nginx-5d79788459-x5bjs   8380430494939361657   0/1     Pending   0          9s    <none>         ip-172-31-29-26    <none>           <none>
-   nginx-5d79788459-x8lhc   1892452665592184108   0/1     Pending   0          9s    <none>         ip-172-31-26-244   <none>           <none>
+   NAME                     HASHKEY               READY   STATUS    RESTARTS   AGE    IP             NODE               NOMINATED NODE   READINESS GATES
+   nginx-5d79788459-6rtnl   3730908148668899933   1/1     Running   0          3d3h   10.244.1.4     ip-172-31-29-26    <none>           <none>
+   nginx-5d79788459-8cx96   7055915722265553081   1/1     Running   0          3d3h   10.244.2.3     ip-172-31-26-244   <none>           <none>
+   nginx-5d79788459-994nl   5869074441326266477   1/1     Running   0          3d3h   10.244.2.2     ip-172-31-26-244   <none>           <none>
+   nginx-5d79788459-f9zqc   8691715263191300667   1/1     Running   0          3d3h   10.244.1.5     ip-172-31-29-26    <none>           <none>
+   nginx-5d79788459-hbzbj   5139024971118873047   1/1     Running   0          3d3h   10.244.2.5     ip-172-31-26-244   <none>           <none>
+   nginx-5d79788459-kjnjl   3031080773184543669   1/1     Running   0          3d3h   10.244.2.4     ip-172-31-26-244   <none>           <none>
+   nginx-5d79788459-vc7g5   1034646888068516150   1/1     Running   0          3d3h   10.244.1.2     ip-172-31-29-26    <none>           <none>
+   nginx-5d79788459-wj5fr   2675269125612355016   1/1     Running   0          3d3h   10.244.0.192   ip-172-31-13-237   <none>           <none>
+   nginx-5d79788459-x5bjs   8380430494939361657   1/1     Running   0          3d3h   10.244.1.3     ip-172-31-29-26    <none>           <none>
+   nginx-5d79788459-x8lhc   1892452665592184108   1/1     Running   0          3d3h   10.244.2.6     ip-172-31-26-244   <none>           <none>
 ```
 
-   Check the nginx pod bound to worker node#1 - ip-172-31-29-26 and this means scheduler works
-```bash
-   grep nginx-5d79788459-6rtnl /tmp/*.log
-```
-```
-/tmp/etcd.log:2021-11-19 03:09:38.213300 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.208584057 +0000 UTC m=+1741.479664989, time spent = 4.655472ms, remote = 172.31.5.56:53698, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1578, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/pods/system/default/nginx-5d79788459-6rtnl" mod_revision:0 > success:<request_put:<key:"/registry/pods/system/default/nginx-5d79788459-6rtnl" value_size:1518 >> failure:<>
-/tmp/etcd.log:2021-11-19 03:09:38.218446 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.216455443 +0000 UTC m=+1741.487536394, time spent = 1.957456ms, remote = 172.31.5.56:53698, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1745, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/pods/system/default/nginx-5d79788459-6rtnl" mod_revision:639 > success:<request_put:<key:"/registry/pods/system/default/nginx-5d79788459-6rtnl" value_size:1685 >> failure:<request_range:<key:"/registry/pods/system/default/nginx-5d79788459-6rtnl" > >
-/tmp/etcd.log:2021-11-19 03:09:38.221116 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.219712551 +0000 UTC m=+1741.490793479, time spent = 1.370315ms, remote = 172.31.5.56:53816, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1083, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/events/system/default/nginx-5d79788459-6rtnl.16b8d3d5708de56a" mod_revision:0 > success:<request_put:<key:"/registry/events/system/default/nginx-5d79788459-6rtnl.16b8d3d5708de56a" value_size:994 lease:4007215439623206370 >> failure:<>
-/tmp/kube-apiserver0.log:I1119 03:09:38.218827   21683 wrap.go:47] POST /api/v1/tenants/system/namespaces/default/pods/nginx-5d79788459-6rtnl/binding: (3.539924ms) 201 [hyperkube/v0.9.0 (linux/amd64) kubernetes/$Format/scheduler 172.31.5.56:51082]
-/tmp/kube-controller-manager.log:I1119 03:09:38.214909   22255 event.go:278] Event(v1.ObjectReference{Kind:"ReplicaSet", Namespace:"default", Name:"nginx-5d79788459", UID:"16f900dc-4243-4f01-bbf1-efefa0450ad8", APIVersion:"apps/v1", ResourceVersion:"617", FieldPath:"", Tenant:"system"}): type: 'Normal' reason: 'SuccessfulCreate' Created pod: nginx-5d79788459-6rtnl
-/tmp/kube-controller-manager.log:I1119 03:09:38.219080   22255 vm_controller.go:62] in vm controller, pod nginx-5d79788459-6rtnl is updated
-/tmp/kube-scheduler.log:I1119 03:09:38.214274   22259 eventhandlers.go:183] add event for unscheduled pod system/default/nginx-5d79788459-6rtnl
-/tmp/kube-scheduler.log:I1119 03:09:38.214781   22259 scheduler.go:576] Attempting to schedule pod: system/default/nginx-5d79788459-6rtnl
-/tmp/kube-scheduler.log:I1119 03:09:38.215069   22259 default_binder.go:53] Attempting to bind system/default/nginx-5d79788459-6rtnl to ip-172-31-29-26
-/tmp/kube-scheduler.log:I1119 03:09:38.218901   22259 eventhandlers.go:215] delete event for unscheduled pod system/default/nginx-5d79788459-6rtnl
-/tmp/kube-scheduler.log:I1119 03:09:38.218952   22259 eventhandlers.go:239] add event for scheduled pod system/default/nginx-5d79788459-6rtnl
-/tmp/kube-scheduler.log:I1119 03:09:38.219030   22259 scheduler.go:741] pod system/default/nginx-5d79788459-6rtnl is bound successfully on node "ip-172-31-29-26", 3 nodes evaluated, 3 nodes were found feasible.
-```
-
-   Check the nginx pod bound to worker node#2 - ip-172-31-26-244 and this means scheduler works
-```bash
-   grep nginx-5d79788459-8cx96 /tmp/*.log
-```
-```
-/tmp/etcd.log:2021-11-19 03:09:38.200889 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.199818176 +0000 UTC m=+1741.470899112, time spent = 1.043575ms, remote = 172.31.5.56:53698, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1578, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/pods/system/default/nginx-5d79788459-8cx96" mod_revision:0 > success:<request_put:<key:"/registry/pods/system/default/nginx-5d79788459-8cx96" value_size:1518 >> failure:<>
-/tmp/etcd.log:2021-11-19 03:09:38.206052 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.203511543 +0000 UTC m=+1741.474592492, time spent = 2.511134ms, remote = 172.31.5.56:53698, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1746, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/pods/system/default/nginx-5d79788459-8cx96" mod_revision:624 > success:<request_put:<key:"/registry/pods/system/default/nginx-5d79788459-8cx96" value_size:1686 >> failure:<request_range:<key:"/registry/pods/system/default/nginx-5d79788459-8cx96" > >
-/tmp/etcd.log:2021-11-19 03:09:38.215210 D | etcdserver/api/v3rpc: start time = 2021-11-19 03:09:38.208755337 +0000 UTC m=+1741.479836275, time spent = 6.432314ms, remote = 172.31.5.56:53816, response type = /etcdserverpb.KV/Txn, request count = 1, request size = 1084, response count = 0, response size = 40, request content = compare:<target:MOD key:"/registry/events/system/default/nginx-5d79788459-8cx96.16b8d3d56fdfe5de" mod_revision:0 > success:<request_put:<key:"/registry/events/system/default/nginx-5d79788459-8cx96.16b8d3d56fdfe5de" value_size:995 lease:4007215439623206370 >> failure:<>
-/tmp/kube-apiserver0.log:I1119 03:09:38.206696   21683 wrap.go:47] POST /api/v1/tenants/system/namespaces/default/pods/nginx-5d79788459-8cx96/binding: (3.90753ms) 201 [hyperkube/v0.9.0 (linux/amd64) kubernetes/$Format/scheduler 172.31.5.56:51082]
-/tmp/kube-controller-manager.log:I1119 03:09:38.202593   22255 event.go:278] Event(v1.ObjectReference{Kind:"ReplicaSet", Namespace:"default", Name:"nginx-5d79788459", UID:"16f900dc-4243-4f01-bbf1-efefa0450ad8", APIVersion:"apps/v1", ResourceVersion:"617", FieldPath:"", Tenant:"system"}): type: 'Normal' reason: 'SuccessfulCreate' Created pod: nginx-5d79788459-8cx96
-/tmp/kube-controller-manager.log:I1119 03:09:38.207907   22255 vm_controller.go:62] in vm controller, pod nginx-5d79788459-8cx96 is updated
-/tmp/kube-scheduler.log:I1119 03:09:38.201989   22259 eventhandlers.go:183] add event for unscheduled pod system/default/nginx-5d79788459-8cx96
-/tmp/kube-scheduler.log:I1119 03:09:38.202049   22259 scheduler.go:576] Attempting to schedule pod: system/default/nginx-5d79788459-8cx96
-/tmp/kube-scheduler.log:I1119 03:09:38.202345   22259 default_binder.go:53] Attempting to bind system/default/nginx-5d79788459-8cx96 to ip-172-31-26-244
-/tmp/kube-scheduler.log:I1119 03:09:38.207622   22259 scheduler.go:741] pod system/default/nginx-5d79788459-8cx96 is bound successfully on node "ip-172-31-26-244", 3 nodes evaluated, 3 nodes were found feasible.
-/tmp/kube-scheduler.log:I1119 03:09:38.207807   22259 eventhandlers.go:215] delete event for unscheduled pod system/default/nginx-5d79788459-8cx96
-/tmp/kube-scheduler.log:I1119 03:09:38.207829   22259 eventhandlers.go:239] add event for scheduled pod system/default/nginx-5d79788459-8cx96
-```
-
-9. On worker node #1 - ip-172-31-29-26, check the log of nginx-5d79788459-6rtnl and directory /var/log/pods is blank
-```bash
-   ls -al /var/log/pods
-```
-```bash
-total 8
-drwxr-xr-x  2 root root   4096 Nov 17 23:48 .
-drwxrwxr-x 13 root syslog 4096 Nov 18 06:25 ..
-```
-
-10.  On worker node #2 - ip-172-31-26-244, check the log of nginx-5d79788459-8cx96 and directory /var/log/pods is blank
-```bash
-   ls -al /var/log/pods
-```
-```bash
-total 8
-drwxr-xr-x  2 root root   4096 Nov 18 00:09 .
-drwxrwxr-x 13 root syslog 4096 Nov 18 06:25 ..
-```
-
-11. One RP1 master node - ip-172-31-13-237, check the log of nginx-5d79788459-wj5fr which is successfully deployed on this node
+9. Check the log files in /var/log/pods on three RP1 nodes (ip-172-31-13-237, ip-172-31-29-26, ip-172-31-26-244)
 ```bash
    sudo cat /var/log/pods/system_default_nginx-5d79788459-wj5fr_3dfd5ed6-6b1b-4682-8eaf-94bb57524a63/nginx/0.log
 ```
+
 ```bash
 2021-11-19T03:09:39.500406298Z stdout F /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
 2021-11-19T03:09:39.500437097Z stdout F /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
@@ -332,12 +275,72 @@ drwxrwxr-x 13 root syslog 4096 Nov 18 06:25 ..
 2021-11-19T03:09:39.521111475Z stderr F 2021/11/19 03:09:39 [notice] 1#1: start worker process 38
 ```
 
-12. On TP1 node, delete nginx application
+```bash
+   sudo cat /var/log/pods/system_default_nginx-5d79788459-6rtnl_bb4775a4-a9c7-4487-868e-5ca2f9389fb5/nginx/0.log
+```
+```bash
+2021-11-22T06:13:58.808003171Z stdout F /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2021-11-22T06:13:58.808035483Z stdout F /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2021-11-22T06:13:58.80952329Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2021-11-22T06:13:58.816425099Z stdout F 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2021-11-22T06:13:58.823330754Z stdout F 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+2021-11-22T06:13:58.823545216Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2021-11-22T06:13:58.826990761Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2021-11-22T06:13:58.828414357Z stdout F /docker-entrypoint.sh: Configuration complete; ready for start up
+2021-11-22T06:13:58.834993952Z stderr F 2021/11/22 06:13:58 [notice] 1#1: using the "epoll" event method
+2021-11-22T06:13:58.836495476Z stderr F 2021/11/22 06:13:58 [notice] 1#1: nginx/1.21.4
+2021-11-22T06:13:58.836505289Z stderr F 2021/11/22 06:13:58 [notice] 1#1: built by gcc 10.2.1 20210110 (Debian 10.2.1-6)
+2021-11-22T06:13:58.836510621Z stderr F 2021/11/22 06:13:58 [notice] 1#1: OS: Linux 5.4.0-1059-aws
+2021-11-22T06:13:58.836564739Z stderr F 2021/11/22 06:13:58 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2021-11-22T06:13:58.836572291Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker processes
+2021-11-22T06:13:58.836576914Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 32
+2021-11-22T06:13:58.83658122Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 33
+2021-11-22T06:13:58.836585738Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 34
+2021-11-22T06:13:58.836590167Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 35
+2021-11-22T06:13:58.83659473Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 36
+2021-11-22T06:13:58.836599047Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 37
+2021-11-22T06:13:58.836604594Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 38
+2021-11-22T06:13:58.836621963Z stderr F 2021/11/22 06:13:58 [notice] 1#1: start worker process 39
+```
+
+```
+   sudo cat /var/log/pods/system_default_nginx-5d79788459-8cx96_7a6c7d61-2572-48ea-8d4f-06e750d18b73/nginx/0.log
+
+```
+```
+2021-11-22T05:02:45.622666173Z stdout F /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2021-11-22T05:02:45.622699113Z stdout F /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2021-11-22T05:02:45.623558087Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2021-11-22T05:02:45.631778942Z stdout F 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2021-11-22T05:02:45.63827023Z stdout F 10-listen-on-ipv6-by-default.sh: info: Enabled listen on IPv6 in /etc/nginx/conf.d/default.conf
+2021-11-22T05:02:45.639181646Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2021-11-22T05:02:45.643319505Z stdout F /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2021-11-22T05:02:45.64568454Z stdout F /docker-entrypoint.sh: Configuration complete; ready for start up
+2021-11-22T05:02:45.651482771Z stderr F 2021/11/22 05:02:45 [notice] 1#1: using the "epoll" event method
+2021-11-22T05:02:45.651505399Z stderr F 2021/11/22 05:02:45 [notice] 1#1: nginx/1.21.4
+2021-11-22T05:02:45.651511264Z stderr F 2021/11/22 05:02:45 [notice] 1#1: built by gcc 10.2.1 20210110 (Debian 10.2.1-6)
+2021-11-22T05:02:45.651516704Z stderr F 2021/11/22 05:02:45 [notice] 1#1: OS: Linux 5.4.0-1059-aws
+2021-11-22T05:02:45.65152124Z stderr F 2021/11/22 05:02:45 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2021-11-22T05:02:45.651540832Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker processes
+2021-11-22T05:02:45.651751533Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 33
+2021-11-22T05:02:45.651921707Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 34
+2021-11-22T05:02:45.654343921Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 35
+2021-11-22T05:02:45.65435891Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 36
+2021-11-22T05:02:45.654364973Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 37
+2021-11-22T05:02:45.654370066Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 38
+2021-11-22T05:02:45.654375341Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 39
+2021-11-22T05:02:45.654380663Z stderr F 2021/11/22 05:02:45 [notice] 1#1: start worker process 40
+```
+
+
+10. On TP1 node, delete nginx application
 ```bash
    ./cluster/kubectl.sh delete deployment/nginx
    ./cluster/kubectl.sh get pods -n default -o wide
 ```
 
+11. Please follow up the steps to do [end-to-end verification of service in scale-out cluster](https://github.com/CentaurusInfra/arktos/issues/1143)
+    Note: To be done
 
 
 ### Method #2 - Install Flannel in daemonset mode (For 1 TP X 1+N RPs is under working)
