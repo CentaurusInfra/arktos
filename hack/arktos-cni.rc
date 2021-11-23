@@ -161,7 +161,15 @@ install_arktos_containerd() {
 
 install_flannel() {
     local networkcidr="${1:-10.244.0.0/16}"
-    local apiserver_ip=${2:-127.0.0.1}
+    local apiserver_ip=${API_HOST_IP_EXTERNAL:-127.0.0.1}
+
+    # hack/arktos-worker-up.sh does not call hack/lib/common-var-init.sh, which defines the parameter ${lohostname}
+    # but hack/arktos-cni.rc needs the parameter ${lohostname}, so ${lohostname} has to be defined here
+    if [ -z ${lohostname} ]; then
+      lohostname=$(hostname | tr '[:upper:]' '[:lower:]') 
+    fi
+
+    lohostname=$(hostname | tr '[:upper:]' '[:lower:]')
     local nodename=${3:-${lohostname}}
     pushd /tmp
 

@@ -659,7 +659,7 @@ echo "Setup Arktos components ..."
 echo ""
 
 # todo: start flannel daemon deterministically, instead of waiting for arbitrary time
-if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" ]]; then
+if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" && "${SCALE_OUT_TP_ENABLE_DAEMONSET}" == "false" ]]; then
   echo "Installing Flannel cni plugin... "
   sleep 30  #need sometime for KCM to be fully functioning
   install_flannel "${RESOURCE_PARTITION_POD_CIDR}"
