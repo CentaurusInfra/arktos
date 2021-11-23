@@ -131,7 +131,7 @@ an examplative allocation of pod cidr for 2 RPs could be
 6. Test whether the ngnix application can be deployed successfully
 ```bash
    ./cluster/kubectl.sh run nginx --image=nginx --replicas=2
-   ./cluster/kubectl.sh get pods -n --all-namespaces -o wide
+   ./cluster/kubectl.sh get pods --all-namespaces -o wide
 ```
 ```bash
    NAMESPACE     NAME                                              HASHKEY               READY   STATUS    RESTARTS   AGE     IP              NODE               NOMINATED NODE   READINESS GATES
