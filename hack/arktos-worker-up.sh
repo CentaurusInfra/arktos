@@ -53,7 +53,7 @@ if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
 fi
 
 if [[ ! -s "${KUBE_PROXY_KUBECONFIG}" ]]; then
-    echo "kube-proxy client ca cert not found at ${KUBE_PROXY_KUBECONFIG}."
+    echo "kube-proxy kubeconfig file not found at ${KUBE_PROXY_KUBECONFIG}."
     echo "Please copy this file from Arktos master, e.g. in GCP run:"
     echo "gcloud compute scp <master-vm-node>:/var/run/kubernetes/kube-proxy.kubeconfig /tmp/arktos/"
     die "arktos worker node failed to start."
@@ -68,7 +68,7 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
   serverCount=`ls -al ${SECRET_FOLDER}/${kubeconfig_filename}*.kubeconfig |wc -l`
   if [ "$serverCount" -eq 0 ]; then
     echo "The kubelet kubeconfig file for scale-out not found under directory ${SECRET_FOLDER}."
-    echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
+    echo "Please copy this file from Arktos scale-out RP master, e.g. in GCP run:"
     echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kubelet*.kubeconfig /tmp/arktos/"
     die "Arktos scale-out RP worker node failed to start."
   fi
@@ -121,7 +121,7 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
   serverCount=`ls -al ${SECRET_FOLDER}/${kubeconfig_filename}*.kubeconfig |wc -l`
   if [ "$serverCount" -eq 0 ]; then
     echo "The kube-proxy kubeconfig file for Arktos scale-out not found under directory ${SECRET_FOLDER}."
-    echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
+    echo "Please copy this file from Arktos scale-out RP master, e.g. in GCP run:"
     echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kube-proxy*.kubeconfig /tmp/arktos/"
     die "Arktos scale-out RP worker node failed to start."
   fi
