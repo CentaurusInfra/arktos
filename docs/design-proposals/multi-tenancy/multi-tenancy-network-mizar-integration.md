@@ -6,31 +6,40 @@ authors:
 
 # Arktos Multi-Tenancy Based on Mizar
 
-## Table of Contents
+## Table of Content
+1. [Introduction](#intro)
+2. [Goals](#goal)
+3. [Proposal](#proposal)<br>
+   3.1. [Related Mizar Specs](#mizar-spec)<br>
+   3.2. [Related Arktos Specs](#arktos-spec)<br>
+   3.3. [Arktos Pod Creation Workflow](#pod-creation-wf)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.3.1 [Workflow for default VPC and subnet in tenant](#pod-creation-default-wf)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.3.2 [Workflow for secondary VPC and subnet in tenant](#pod-creation-second-vpc-wf)<br>
+   &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;3.3.3 [Workflow for secondary subnet in VPC](#pod-creation-second-subnet-wf)<br>
 
-## Introduction
+## 1. Introduction <a name="intro"></a>
 
-This document is a part of the multi-tenancy network design document that focus on how to integrated Mizar network solution into Arktos.
+This document is a part of the multi-tenancy network design document that focuses on how to integrated [Mizar network solution](https://github.com/CentaurusInfra/mizar) into Arktos.
 
-The generic network design is in [Multi-Tenancy Network](multi-tenancy-network.md)
+The generic network design is in [Multi-Tenancy Network](multi-tenancy-network.md).
 
-## Goals
+## 2. Goals <a name="goal"></a>
 
-* Primary: Support multi-tenancy communication based on existing Mizar VPC implementation. Multi-tenancy communication 
+* Primary: support multi-tenancy communication based on existing Mizar network implementation. Multi-tenancy communication 
 includes connectivity amongs pods in the same tenant, as well as network isolation across different tenants.
-* Primary: Based on generic multi-tenancy network design, modifying existing Mizar controllers in KCM to automatically 
-attach tenant pod to VPC created for this tenant.
+* Primary: upon tenant creation, automatically create Mizar VPC and subnet for future communication within this tenant.
+* Primary: upon tenant pod creation, automatically attach pod to Mizar VPC/subnet created for this tenant.
 * Primary: Mizar and Arktos decouple, i.e. Mizar manage VPCs and subnets in VPC only, it should not be aware of the ownership
-of different pods.
-* Secondary: Support subnet defined in Mizar.
+of different pods and other objects.
+* Secondary: support multiple subnets in same VPC for a single tenant. (Post 2022-01-30)
+* Secondary: support multiple VPC/subnets in same tenant. (Post 2022-01-30)
 
-
-## Proposal
+## 3. Proposal <a name="proposal"></a>
 
 Inject Mizar adapter into Arktos, completely isolated from Mizar management plane and relatively isolated from Arktos network
 management components.
 
-### Related Mizar Specs
+### 3.1. Related Mizar Specs <a name="mizar-spec"></a>
 
 * VPC Spec
 ```
@@ -70,7 +79,7 @@ metadata:
     mizar.com/subnet: "<subnet name>"
 ```
 
-### Related Arktos Specs
+### 3.2 Related Arktos Specs <a name="arktos-spec"></a>
 * Network Spec
 ```
 apiVersion: arktos.futurewei.com/v1
@@ -94,32 +103,37 @@ metadata:
     arktos.futurewei.com/network: <VPC name defined in arktos> 
 ```
 
-### Arktos Workflow
-#### Workflow for default VPC and subnet in tenant
+### 3.3 Arktos Pod Creation Workflow <a name="pod-creation-wf"></a>
+#### 3.3.1 Workflow for default VPC and subnet in tenant <a name="pod-creation-default-wf"></a>
 1. Client creates Tenant
 2. Tenant controller creates default network object for tenant
-3. Mizar-arktos-network-controller creates Mizar VPC and subnet, updates corresponding arktos network object
+3. Mizar-arktos-network-controller (existing controller) **creates Mizar VPC and subnet, updates corresponding arktos network object (TODO)**
 4. Client creates pod for tenant
-5. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
+5. Mizar-pod-controller (existing controller) **gets VPC and subnet from arktos network object and annotate pod (TODO)**
 
-Note: In 2022-01-30 release cycle, only one VPC and one subnet will be supported in Mizar-Arktos integration. Hence only 
+Note:
+1. In 2022-01-30 release cycle, only one VPC and one subnet will be supported in Mizar-Arktos integration. Hence only 
 default VPC and default subnet will be supported.
+2. Highlighted text described what needs to be done in 2022-01-30 release cycle. Others are existing logic.
+3. It is better simplify pod spec and not add multiple labels/annotations into pod spec for same network configuration. However, in order to 
+minimize changes in Mizar, Arktos will check whether it is possible to not annotate pod with Mizar VPC/Subnet. If it is not possible, Arktos
+will annotate pod with Mizar VPC/Subnet in relase cycle 2022-01-30.
 
-#### Workflow for secondary VPC and subnet in tenant
-1. Client creates secondary network object for tenant
+#### 3.3.2 Workflow for secondary VPC and subnet in tenant <a name="pod-creation-second-vpc-wf"></a>
+1. **Client creates secondary network object for tenant**
 2. Mizar-arktos-network-controller creates Mizar VPC and subnet, update corresponding arktos network object
+3. Client creates pod for tenant, **specifying which network object it will be referring to**
+4. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
+
+**Note**: This is not planned in 2022-01-30 release cycle.
+
+#### 3.3.3 Workflow for secondary subnet in VPC <a name="pod-creation-second-subnet-wf"></a>
+1. **Client creates secondary network object with existing VPC and different subnet**
+2. Mizar-arktos-network-controller **creates Mizar subnet**
 3. Client creates pod for tenant, specifying which network object it will be referring to
 4. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
 
-Note: This is a stretch goal for 2022-01-30 release cycle.
-
-#### Workflow for secondary subnet in VPC
-1. Client creates secondary network object with existing VPC and different subnet
-2. Mizar-arktos-network-controller creates Mizar subnet
-3. Client creates pod for tenant, specifying which network object it will be referring to
-4. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
-
-Note: This is a non-goal in 2022-01-30 release cycle as subnets in same VPC do not isolate from others and behave the same as 
+**Note**: This is a non-goal in 2022-01-30 release cycle as subnets in same VPC do not isolate from others and behave the same as 
 in a single subnet.
 
 
