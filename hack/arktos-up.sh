@@ -37,13 +37,13 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
 fi
 
 # set feature gates if enable Pod priority and preemption
+FEATURE_GATES="${FEATURE_GATES_UP_OUT}
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
 if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
 fi
-FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
 echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
