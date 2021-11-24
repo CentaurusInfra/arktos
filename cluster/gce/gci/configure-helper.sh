@@ -157,7 +157,9 @@ function main() {
   fi
   reset-motd
   prepare-mounter-rootfs
-  modprobe configs
+  if [[ "${KUBE_GCI_VERSION}" == "cos"* ]]; then
+    modprobe configs
+  fi
   if [[ "${ENABLE_PPROF_DEBUG:-false}" == "true" ]]; then
     start-collect-pprof &  #### start collect profiling files
   fi

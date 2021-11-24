@@ -232,7 +232,7 @@ function get-kubeconfig-user-basicauth() {
 #   KUBE_PASSWORD
 function gen-kube-basicauth() {
     KUBE_USER=admin
-    KUBE_PASSWORD=$(python -c 'import string,random; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(16)))')
+    KUBE_PASSWORD=$(python3 -c 'import string,random; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(16)))')
 }
 
 # Get the bearer token for the current-context in kubeconfig if one exists.
@@ -271,7 +271,7 @@ function gen-kube-bearertoken() {
 # Vars set:
 #   KUBE_UID
 function gen-uid {
-    KUBE_UID=$(python -c 'import uuid; print(uuid.uuid1().fields[0])')
+    KUBE_UID=$(python3 -c 'import uuid; print(uuid.uuid1().fields[0])')
 }
 
 function load-or-gen-kube-basicauth() {

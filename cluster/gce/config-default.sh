@@ -88,12 +88,28 @@ if [[ "${NODE_OS_DISTRIBUTION}" == "debian" ]]; then
     NODE_ACCELERATORS=""
 fi
 
+# Networking plugin specific settings.
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
+# Network Policy plugin specific settings.
+NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet doesn't work with container runtime, update to cni and flannel
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  NETWORK_PROVIDER_VERSION="dev"
+  NETWORK_POLICY_PROVIDER="mizar"
+  # Mizar currently needs ubuntu due to python dependencies
+  KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
+  KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
+  KUBE_GCI_VERSION="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_MASTER_IMAGE="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_NODE_IMAGE="ubuntu-2004-focal-v20211202"
+fi
+
 # By default a cluster will be started with the master and nodes
 # on Container-optimized OS (cos, previously known as gci). If
 # you are updating the os image versions, update this variable.
 # Also please update corresponding image for node e2e at:
 # https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/jenkins/image-config.yaml
-GCI_VERSION=${KUBE_GCI_VERSION:-cos-73-11647-163-0}
+GCI_VERSION=${KUBE_GCI_VERSION:-cos-93-16623-39-21}
 MASTER_IMAGE=${KUBE_GCE_MASTER_IMAGE:-}
 MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-cos-cloud}
 NODE_IMAGE=${KUBE_GCE_NODE_IMAGE:-${GCI_VERSION}}
@@ -447,11 +463,6 @@ KUBE_UP_AUTOMATIC_CLEANUP=${KUBE_UP_AUTOMATIC_CLEANUP:-false}
 # Storage backend. 'etcd2' supported, 'etcd3' experimental.
 STORAGE_BACKEND=${STORAGE_BACKEND:-}
 
-# Networking plugin specific settings.
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
-
-# Network Policy plugin specific settings.
-NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet doesn't work with container runtime, update to cni and flannel
 FLANNEL_VERSION="${FLANNEL_VERSION:-v0.14.0}"
 
 NON_MASQUERADE_CIDR="0.0.0.0/0"
@@ -566,7 +577,7 @@ GCE_PRIVATE_CLUSTER="${KUBE_GCE_PRIVATE_CLUSTER:-false}"
 
 # ScaleOut arch vars
 PROXY_IMAGE_PROJECT=${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}
-PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}
+PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-2004-focal-v20211202}
 PROXY_NAME="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 ARKTOS_SCALEOUT_PROXY_APP="${ARKTOS_SCALEOUT_PROXY_APP:-haproxy}"

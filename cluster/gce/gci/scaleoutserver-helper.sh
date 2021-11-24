@@ -84,8 +84,8 @@ function create-proxy-instance-internal() {
       --project "${PROJECT}" \
       --zone "${ZONE}" \
       --machine-type "${MASTER_SIZE}" \
-      --image-project="${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}" \
-      --image "${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}" \
+      --image-project="${PROXY_IMAGE_PROJECT}" \
+      --image "${PROXY_IMAGE}" \
       --tags "${PROXY_TAG}" \
       --scopes "storage-ro,compute-rw,monitoring,logging-write" \
       --metadata-from-file "${metadata}" \
