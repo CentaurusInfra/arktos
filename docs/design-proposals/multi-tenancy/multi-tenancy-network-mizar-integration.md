@@ -1,10 +1,10 @@
 ---
-title: Arktos Multi-Tenancy Based on Mizar
+title: Arktos Multi-Tenancy Network Based on Mizar
 authors:
 - "@sindica"
 ---
 
-# Arktos Multi-Tenancy Based on Mizar
+# Arktos Multi-Tenancy Network Based on Mizar
 
 ## Table of Content
 1. [Introduction](#intro)
@@ -108,6 +108,68 @@ metadata:
 1. Client creates Tenant
 2. Tenant controller creates default network object for tenant
 3. Mizar-arktos-network-controller (existing controller) **creates Mizar VPC and subnet, updates corresponding arktos network object (TODO)**
+   * Target VPC Spec
+```
+# Sample VPC Spec
+
+apiVersion: "mizar.com/v1"
+kind: Vpc
+metadata:
+  name: vpc-tenant-a
+spec:
+  ip: "10.0.0.0"
+  prefix: "8"
+  dividers: 5
+  status: "Init"
+
+# Proposed VPC template
+{
+   "apiVersion": "mizar.com/v1",
+   "kind": "Vpc",
+   "metadata": {
+      "name": "{$vpc_name}"
+   },
+   "spec": {
+      "ip": "{$ip_address}",
+      "prefix": "{$ip_prefix_length}",
+      "dividers": {$num_of_dividers},
+      "status": "Init"
+   }
+}
+```
+
+   * Target Subnet Spec
+```
+# Sample Subnet Spec
+apiVersion: mizar.com/v1
+kind: Subnet
+metadata:
+  name: subnet-tenant-a
+spec:
+  ip: "10.0.0.0"
+  prefix: "8"
+  bouncers: 3
+  vpc: "vpc-tenant-a"
+  status: "Init"
+  
+# Proposed Subnet template
+{
+   "apiVersion": "mizar.com/v1",
+   "kind": "Subnet",
+   "metadata": {
+      "name": "{$subnet_name}"
+   },
+   "spec": {
+      "ip": "{$ip_address}",
+      "prefix": "$ip_prefix_length",
+      "bouncers": {$num_of_bouncers},
+      "vpc": "{$vpc_name}",
+      status: "Init"
+   }
+}
+```
+
+
 4. Client creates pod for tenant
 5. Mizar-pod-controller (existing controller) **gets VPC and subnet from arktos network object and annotate pod (TODO)**
 
