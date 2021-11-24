@@ -911,10 +911,12 @@ function construct-linux-kubelet-flags {
       else
         flags+=" --network-plugin=cni"
       fi
+    elif [[ "${NETWORK_POLICY_PROVIDER:-}" == "mizar" ]]; then
+      # Mizar uses CNI
+      flags+=" --network-plugin=cni"
     else
       # Otherwise use the configured value.
       flags+=" --network-plugin=${NETWORK_PROVIDER}"
-
     fi
   fi
   if [[ -n "${NON_MASQUERADE_CIDR:-}" ]]; then
@@ -1248,6 +1250,7 @@ function build-linux-kube-env {
 
   rm -f ${file}
   cat >$file <<EOF
+KUBE_GCI_VERSION: $(yaml-quote ${GCI_VERSION})
 CLUSTER_NAME: $(yaml-quote ${CLUSTER_NAME})
 ENV_TIMESTAMP: $(yaml-quote $(date -u +%Y-%m-%dT%T%z))
 INSTANCE_PREFIX: $(yaml-quote ${INSTANCE_PREFIX})
@@ -1255,6 +1258,7 @@ NODE_INSTANCE_PREFIX: $(yaml-quote ${NODE_INSTANCE_PREFIX})
 NODE_TAGS: $(yaml-quote ${NODE_TAGS:-})
 NODE_NETWORK: $(yaml-quote ${NETWORK:-})
 NODE_SUBNETWORK: $(yaml-quote ${SUBNETWORK:-})
+SCALEOUT_CLUSTER: $(yaml-quote ${SCALEOUT_CLUSTER:-})
 ARKTOS_SCALEOUT_SERVER_TYPE: $(yaml-quote ${ARKTOS_SCALEOUT_SERVER_TYPE:-})
 SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
 SCALEOUT_RP_COUNT: $(yaml-quote ${SCALEOUT_RP_COUNT:-1})
@@ -1311,6 +1315,7 @@ CA_CERT: $(yaml-quote ${CA_CERT_BASE64:-})
 KUBELET_CERT: $(yaml-quote ${KUBELET_CERT_BASE64:-})
 KUBELET_KEY: $(yaml-quote ${KUBELET_KEY_BASE64:-})
 NETWORK_PROVIDER: $(yaml-quote ${NETWORK_PROVIDER:-})
+NETWORK_PROVIDER_VERSION: $(yaml-quote ${NETWORK_PROVIDER_VERSION:-})
 NETWORK_POLICY_PROVIDER: $(yaml-quote ${NETWORK_POLICY_PROVIDER:-})
 HAIRPIN_MODE: $(yaml-quote ${HAIRPIN_MODE:-})
 E2E_STORAGE_TEST_ENVIRONMENT: $(yaml-quote ${E2E_STORAGE_TEST_ENVIRONMENT:-})
@@ -2143,7 +2148,7 @@ function update-or-verify-gcloud() {
     ${sudo_prefix} gcloud ${gcloud_prompt:-} components update
   else
     local version=$(gcloud version --format=json)
-    python -c'
+    python3 -c'
 import json,sys
 from distutils import version
 
