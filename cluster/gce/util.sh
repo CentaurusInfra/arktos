@@ -2742,13 +2742,18 @@ function create-network() {
       --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" &
   fi
 
+  NODE_TAGS="${NODE_TAG}"
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ )); do
+      NODE_TAGS="${NODE_TAGS},${INSTANCE_PREFIX}-rp-${rp_num}-minion"
+  done
+
   if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${CLUSTER_NAME}-default-internal-node" &>/dev/null; then
     gcloud compute firewall-rules create "${CLUSTER_NAME}-default-internal-node" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-ranges "10.0.0.0/8" \
       --allow "tcp:1-65535,udp:1-65535,icmp" \
-      --target-tags "${NODE_TAG}"&
+      --target-tags "${NODE_TAGS}"&
   fi
 
   if ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NETWORK}-default-ssh" &>/dev/null; then
