@@ -561,6 +561,7 @@ fi
 
 # Applying mizar cni
 if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+  ${KUBECTL} create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   # ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml
 fi
