@@ -118,8 +118,8 @@ fi
 
 # These prefixes must not be prefixes of each other, so that they can be used to
 # detect mutually exclusive sets of nodes.
-NODE_INSTANCE_PREFIX=${NODE_INSTANCE_PREFIX:-"${INSTANCE_PREFIX}-minion"}
-WINDOWS_NODE_INSTANCE_PREFIX=${WINDOWS_NODE_INSTANCE_PREFIX:-"${INSTANCE_PREFIX}-windows-node"}
+NODE_INSTANCE_PREFIX=${NODE_INSTANCE_PREFIX:-"${CLUSTER_NAME}-minion"}
+WINDOWS_NODE_INSTANCE_PREFIX=${WINDOWS_NODE_INSTANCE_PREFIX:-"${CLUSTER_NAME}-windows-node"}
 
 NODE_TAGS="${NODE_TAG}"
 
@@ -462,10 +462,32 @@ function detect-nodes() {
 #   KUBE_MASTER_IP
 function detect-master() {
   detect-project
-  KUBE_MASTER=${MASTER_NAME}
-  echo "Trying to find master named '${MASTER_NAME}'" >&2
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    local server_name
+    for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+    do
+      server_name="${INSTANCE_PREFIX}-tp-${num}-master"
+      detect-master-name "${server_name}"
+    done
+
+    for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      server_name="${INSTANCE_PREFIX}-rp-${num}-master"
+      detect-master-name "${server_name}"
+    done
+  else
+    detect-master-name "${MASTER_NAME}"
+  fi
+}
+
+function detect-master-name {
+  local -r master_name="$1"
+  local -r master_ip="${2:-}"  # optional
+  KUBE_MASTER=${master_name}
+  KUBE_MASTER_IP=${master_ip}
+  echo "Trying to find master named '${master_name}'" >&2
   if [[ -z "${KUBE_MASTER_IP-}" ]]; then
-    local master_address_name="${MASTER_NAME}-ip"
+    local master_address_name="${master_name}-ip"
     echo "Looking for address '${master_address_name}'" >&2
     if ! KUBE_MASTER_IP=$(gcloud compute addresses describe "${master_address_name}" \
       --project "${PROJECT}" --region "${REGION}" -q --format='value(address)') || \
@@ -868,7 +890,13 @@ function construct-linux-kubelet-flags {
   else # For nodes
     flags+=" ${NODE_KUBELET_TEST_ARGS:-}"
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
-    flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
+    
+    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+      flags+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
+      flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
+    else
+      flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
+    fi
   fi
   if [[ "${apiserver}" == "true" ]]; then
     flags+=" --register-schedulable=false"
@@ -1227,6 +1255,9 @@ NODE_INSTANCE_PREFIX: $(yaml-quote ${NODE_INSTANCE_PREFIX})
 NODE_TAGS: $(yaml-quote ${NODE_TAGS:-})
 NODE_NETWORK: $(yaml-quote ${NETWORK:-})
 NODE_SUBNETWORK: $(yaml-quote ${SUBNETWORK:-})
+ARKTOS_SCALEOUT_SERVER_TYPE: $(yaml-quote ${ARKTOS_SCALEOUT_SERVER_TYPE:-})
+SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
+SCALEOUT_RP_COUNT: $(yaml-quote ${SCALEOUT_RP_COUNT:-1})
 CLUSTER_IP_RANGE: $(yaml-quote ${CLUSTER_IP_RANGE:-10.244.0.0/16})
 SERVER_BINARY_TAR_URL: $(yaml-quote ${server_binary_tar_url})
 SERVER_BINARY_TAR_HASH: $(yaml-quote ${SERVER_BINARY_TAR_HASH})
@@ -1409,8 +1440,6 @@ EOF
     # Master-only env vars.
     cat >>$file <<EOF
 KUBERNETES_MASTER: $(yaml-quote "true")
-KUBERNETES_RESOURCE_PARTITION: $(yaml-quote ${KUBERNETES_RESOURCE_PARTITION:-false})
-KUBERNETES_TENANT_PARTITION: $(yaml-quote ${KUBERNETES_TENANT_PARTITION:-false})
 PROXY_RESERVED_IP: $(yaml-quote ${PROXY_RESERVED_IP:-})
 PROXY_RESERVED_INTERNAL_IP: $(yaml-quote ${PROXY_RESERVED_INTERNAL_IP:-})
 KUBE_USER: $(yaml-quote ${KUBE_USER})
@@ -1455,8 +1484,6 @@ KUBE_APISERVER_MAX_REQUEST_INFLIGHT: $(yaml-quote ${KUBE_APISERVER_MAX_REQUEST_I
 KUBE_APISERVER_EXTRA_ARGS: $(yaml-quote ${KUBE_APISERVER_EXTRA_ARGS:-})
 KUBE_CONTROLLER_EXTRA_ARGS: $(yaml-quote ${KUBE_CONTROLLER_EXTRA_ARGS:-})
 KUBE_SCHEDULER_EXTRA_ARGS: $(yaml-quote ${KUBE_SCHEDULER_EXTRA_ARGS:-})
-SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
-SCALEOUT_RP_COUNT: $(yaml-quote ${SCALEOUT_RP_COUNT:-1})
 SHARED_APISERVER_TOKEN: $(yaml-quote ${SHARED_APISERVER_TOKEN:-})
 KUBE_ENABLE_APISERVER_INSECURE_PORT: $(yaml-quote ${KUBE_ENABLE_APISERVER_INSECURE_PORT:-false})
 EOF
@@ -1648,7 +1675,7 @@ EOF
       cat >>$file <<EOF
 TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
-    fi
+  fi
 }
 
 function build-proxy-kube-env {
@@ -1778,14 +1805,10 @@ function create-certs {
 #   CERT_DIR
 #   AGGREGATOR_CERT_DIR
 function setup-easyrsa {
-  if [ -n "${CERT_DIR+x}" ]; then
-    echo "CERT_DIR is already set to ${CERT_DIR}"
-    return 0
-  fi
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
+  local -r cert_create_debug_output=$(mktemp "${CERT_TEMP}/cert_create_debug_output.XXX")
   # Note: This was heavily cribbed from make-ca-cert.sh
   (set -x
-    cd "${KUBE_TEMP}"
+    cd "${CERT_TEMP}"
     curl -L -O --connect-timeout 20 --retry 6 --retry-delay 2 https://storage.googleapis.com/kubernetes-release/easy-rsa/easy-rsa.tar.gz
     tar xzf easy-rsa.tar.gz
     mkdir easy-rsa-master/kubelet
@@ -1793,9 +1816,10 @@ function setup-easyrsa {
     mkdir easy-rsa-master/proxy
     cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/proxy
     mkdir easy-rsa-master/aggregator
-    cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/aggregator) &>${cert_create_debug_output} || true
-  CERT_DIR="${KUBE_TEMP}/easy-rsa-master/easyrsa3"
-  AGGREGATOR_CERT_DIR="${KUBE_TEMP}/easy-rsa-master/aggregator"
+    cp -r easy-rsa-master/easyrsa3/* easy-rsa-master/aggregator) &>"${cert_create_debug_output}" || true
+  CERT_DIR="${CERT_TEMP}/easy-rsa-master/easyrsa3"
+  AGGREGATOR_CERT_DIR="${CERT_TEMP}/easy-rsa-master/aggregator"
+  
   if [ ! -x "${CERT_DIR}/easyrsa" -o ! -x "${AGGREGATOR_CERT_DIR}/easyrsa" ]; then
     # TODO(roberthbailey,porridge): add better error handling here,
     # see https://github.com/kubernetes/kubernetes/issues/55229
@@ -1909,7 +1933,7 @@ function generate-proxy-certs {
 #
 #
 function generate-certs {
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
+  local -r cert_create_debug_output=$(mktemp "${CERT_TEMP}/cert_create_debug_output.XXX")
   # Note: This was heavily cribbed from make-ca-cert.sh
   (set -x
     cd "${CERT_DIR}"
@@ -1926,7 +1950,7 @@ function generate-certs {
     ./easyrsa --subject-alt-name="${SANS}" build-server-full "${MASTER_NAME}" nopass
     ./easyrsa build-client-full kube-apiserver nopass
 
-    kube::util::ensure-cfssl "${KUBE_TEMP}/cfssl"
+    kube::util::ensure-cfssl "${CERT_TEMP}/cfssl"
 
     # make the config for the signer
     echo '{"signing":{"default":{"expiry":"43800h","usages":["signing","key encipherment","client auth"]}}}' > "ca-config.json"
@@ -1940,7 +1964,7 @@ function generate-certs {
     ./easyrsa --dn-mode=org \
       --req-cn=kubecfg --req-org=tenant:system \
       --req-c= --req-st= --req-city= --req-email= --req-ou=system:masters \
-      build-client-full kubecfg nopass) &>${cert_create_debug_output} || true
+      build-client-full kubecfg nopass) &>"${cert_create_debug_output}" || true 
   local output_file_missing=0
   local output_file
   for output_file in \
@@ -1981,10 +2005,10 @@ function generate-certs {
 #
 #
 function generate-aggregator-certs {
-  local -r cert_create_debug_output=$(mktemp "${KUBE_TEMP}/cert_create_debug_output.XXX")
+  local -r cert_create_debug_output=$(mktemp "${CERT_TEMP}/cert_create_debug_output.XXX")
   # Note: This was heavily cribbed from make-ca-cert.sh
   (set -x
-    cd "${KUBE_TEMP}/easy-rsa-master/aggregator"
+    cd "${CERT_TEMP}/easy-rsa-master/aggregator"
     ./easyrsa init-pki
     # this puts the cert into pki/ca.crt and the key into pki/private/ca.key
     ./easyrsa --batch "--req-cn=${AGGREGATOR_PRIMARY_CN}@$(date +%s)" build-ca nopass
@@ -1998,7 +2022,7 @@ function generate-aggregator-certs {
     ./easyrsa --subject-alt-name="${AGGREGATOR_SANS}" build-server-full "${AGGREGATOR_MASTER_NAME}" nopass
     ./easyrsa build-client-full aggregator-apiserver nopass
 
-    kube::util::ensure-cfssl "${KUBE_TEMP}/cfssl"
+    kube::util::ensure-cfssl "${CERT_TEMP}/cfssl"
 
     # make the config for the signer
     echo '{"signing":{"default":{"expiry":"43800h","usages":["signing","key encipherment","client auth"]}}}' > "ca-config.json"
@@ -2007,12 +2031,11 @@ function generate-aggregator-certs {
     mv "proxy-client-key.pem" "pki/private/proxy-client.key"
     mv "proxy-client.pem" "pki/issued/proxy-client.crt"
     rm -f "proxy-client.csr"
-
     # Make a superuser client cert with subject "O=tenant:system, OU=system:masters, CN=kubecfg"
     ./easyrsa --dn-mode=org \
       --req-cn=proxy-clientcfg --req-org=tenant:system \
       --req-c= --req-st= --req-city= --req-email= --req-ou=system:aggregator \
-      build-client-full proxy-clientcfg nopass) &>${cert_create_debug_output} || true
+      build-client-full proxy-clientcfg nopass) &>"${cert_create_debug_output}" || true
   local output_file_missing=0
   local output_file
   for output_file in \
@@ -2033,6 +2056,31 @@ function generate-aggregator-certs {
     echo "=== Failed to generate aggregator certificates: Aborting ===" >&2
     exit 2
   fi
+}
+
+function generate-shared-ca-cert {
+  echo "Create the shared CA for kubemark test"
+  rm -f -r "${SHARED_CA_DIRECTORY}"
+  mkdir -p "${SHARED_CA_DIRECTORY}"
+
+  local -r cert_create_debug_output=$(mktemp "/tmp/cert_create_debug_output.XXXXX")
+  (set -x
+    cd "${SHARED_CA_DIRECTORY}"
+    curl -L -O --connect-timeout 30 --retry 10 --retry-delay 2 https://storage.googleapis.com/kubernetes-release/easy-rsa/easy-rsa.tar.gz
+    tar xzf easy-rsa.tar.gz
+    cd easy-rsa-master/easyrsa3
+    ./easyrsa init-pki
+    ./easyrsa --batch "--req-cn=kubemarktestca" build-ca nopass ) &>${cert_create_debug_output} || {
+    cat "${cert_create_debug_output}" >&2
+    echo "=== Failed to generate shared CA certificates: Aborting ===" >&2
+    exit 2
+  }
+
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/ca.crt ${SHARED_CA_DIRECTORY}/ca.crt
+  cp -f ${SHARED_CA_DIRECTORY}/easy-rsa-master/easyrsa3/pki/private/ca.key ${SHARED_CA_DIRECTORY}/ca.key
+
+  export SHARED_CA_CERT_BASE64=$(cat "${SHARED_CA_DIRECTORY}/ca.crt" | base64 | tr -d '\r\n')
+  export SHARED_CA_KEY_BASE64=$(cat "${SHARED_CA_DIRECTORY}/ca.key" | base64 | tr -d '\r\n')
 }
 
 #
@@ -2463,9 +2511,6 @@ function proxy-up() {
   detect-project
   detect-subnetworks
 
-  
-  export PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig.kubemark-proxy"
-  export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
   build_haproxy_cfg_generator
   update-proxy-cfg ${TPIP} ${RPIP}
 
@@ -2532,6 +2577,7 @@ function kube-up() {
     # Windows nodes take longer to boot and setup so create them first.
     create-windows-nodes
     create-linux-nodes
+    create-node-port
   elif [[ ${KUBE_REPLICATE_EXISTING_MASTER:-} == "true" ]]; then
     if  [[ "${MASTER_OS_DISTRIBUTION}" != "gci" && "${MASTER_OS_DISTRIBUTION}" != "ubuntu" ]]; then
       echo "Master replication supported only for gci and ubuntu"
@@ -2543,6 +2589,7 @@ function kube-up() {
       remove-replica-from-etcd 2379 || true
       remove-replica-from-etcd 4002 || true
     fi
+    create-node-port
   else
     check-existing
     create-network
@@ -2553,15 +2600,92 @@ function kube-up() {
     write-cluster-name
     write-controller-config
     create-autoscaler-config
-    create-master
-    create-nodes-firewall
-    create-nodes-template
-    if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
-      # Windows nodes take longer to boot and setup so create them first.
-      create-windows-nodes
-      create-linux-nodes
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      echo "DBG: Generating shared CA certificates"
+      generate-shared-ca-cert
+      prepare-master
+      # the (shared) bearer token is needed for all TP/RP provisioning
+      export SHARED_APISERVER_TOKEN="$(secure_random 32)"
+      export KUBE_BEARER_TOKEN=${SHARED_APISERVER_TOKEN}
+      echo "DBG: shared bearer token: ${KUBE_BEARER_TOKEN}"
+      declare -a TPSERVER_RESERVED_IP
+      declare -a TPSERVER_RESERVED_INTERNAL_IP
+      declare -a TPSERVER_NAME
+
+      TPIP=${TPIP:-}
+      RPIP=${RPIP:-}
+
+      ### RP server need know what is tp's kubeconfig
+      TPCONFIG_METADATA=${TPCONFIG_METADATA:-}
+      prepare-tpmaster
+      prepare-rpmaster
+      export TPIP
+      export RPIP
+      echo "Start to create tp server"
+      for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
+        echo "Creating tpserver: ${TPSERVER_NAME[$num]:-}"   
+        export ARKTOS_SCALEOUT_SERVER_TYPE="tp"  
+        export CLUSTER_NAME="${INSTANCE_PREFIX}-tp-${num}"
+        export MASTER_NAME="${CLUSTER_NAME}-master"
+        export NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-minion"
+        export WINDOWS_NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-windows-node"
+        if [[ ${num} == 1 ]]; then
+          TENANT_SERVER_KUBECONFIGS="/etc/srv/kubernetes/tp-kubeconfigs/tp-${num}-kubeconfig"
+        else
+          TENANT_SERVER_KUBECONFIGS="${TENANT_SERVER_KUBECONFIGS},/etc/srv/kubernetes/tp-kubeconfigs/tp-${num}-kubeconfig"
+        fi
+        create-tpmaster $num
+        check-cluster
+        validate-cluster-status
+        create-node-port
+      done
+
+      echo "Start to create rp server"
+      
+      for num in $(seq ${SCALEOUT_RP_COUNT:-1}); do
+        echo "Creating rpserver: ${RPSERVER_NAME[$num]:-}"
+        export ARKTOS_SCALEOUT_SERVER_TYPE="rp"    
+        export CLUSTER_NAME="${INSTANCE_PREFIX}-rp-$num"
+        export MASTER_NAME="${CLUSTER_NAME}-master"  
+        export NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-minion"
+        export WINDOWS_NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-windows-node"
+        create-rpmaster $num
+        check-cluster
+        export ARKTOS_SCALEOUT_SERVER_TYPE="node"
+        NODE_EXTRA_METADATA=${KUBE_NODE_EXTRA_METADATA:-${KUBE_EXTRA_METADATA:-}}
+        if [[ "${NODE_EXTRA_METADATA}" != "" ]]; then
+          NODE_EXTRA_METADATA="${NODE_EXTRA_METADATA}, ${MASTER_EXTRA_METADATA}"
+        else
+          NODE_EXTRA_METADATA="${MASTER_EXTRA_METADATA}"
+        fi
+        NODE_EXTRA_METADATA="${NODE_EXTRA_METADATA},rp-${num}=${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-${num}"
+        create-nodes-firewall
+        create-nodes-template
+        if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+          # Windows nodes take longer to boot and setup so create them first.
+          create-windows-nodes
+          create-linux-nodes
+        fi
+
+        export ARKTOS_SCALEOUT_SERVER_TYPE="rp"
+        validate-cluster-status
+        create-node-port
+      done
+      restart_tp_scheduler_and_controller
+    else
+      export ARKTOS_SCALEOUT_SERVER_TYPE=""
+      create-master
+      create-nodes-firewall
+      create-nodes-template
+      if [[ "${KUBE_CREATE_NODES}" == "true" ]]; then
+        # Windows nodes take longer to boot and setup so create them first.
+        create-windows-nodes
+        create-linux-nodes
+      fi
+      check-cluster
+      validate-cluster-status
+      create-node-port
     fi
-    check-cluster
   fi
 }
 
@@ -2618,13 +2742,18 @@ function create-network() {
       --allow "tcp:1-2379,tcp:2382-65535,udp:1-65535,icmp" &
   fi
 
+  NODE_TAGS="${NODE_TAG}"
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ )); do
+      NODE_TAGS="${NODE_TAGS},${INSTANCE_PREFIX}-rp-${rp_num}-minion"
+  done
+
   if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${CLUSTER_NAME}-default-internal-node" &>/dev/null; then
     gcloud compute firewall-rules create "${CLUSTER_NAME}-default-internal-node" \
       --project "${NETWORK_PROJECT}" \
       --network "${NETWORK}" \
       --source-ranges "10.0.0.0/8" \
       --allow "tcp:1-65535,udp:1-65535,icmp" \
-      --target-tags "${NODE_TAG}"&
+      --target-tags "${NODE_TAGS}"&
   fi
 
   if ! gcloud compute firewall-rules describe --project "${NETWORK_PROJECT}" "${NETWORK}-default-ssh" &>/dev/null; then
@@ -2863,9 +2992,9 @@ function create-etcd-certs {
 
   local certServers="${host},${additionalServer}"
   GEN_ETCD_CA_CERT="${ca_cert}" GEN_ETCD_CA_KEY="${ca_key}" \
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certServers}" "peer" "peer"
+    generate-etcd-cert "${CERT_TEMP}/cfssl" "${certServers}" "peer" "peer"
 
-  pushd "${KUBE_TEMP}/cfssl"
+  pushd "${CERT_TEMP}/cfssl"
   ETCD_CA_KEY_BASE64=$(cat "ca-key.pem" | base64 | tr -d '\r\n')
   ETCD_CA_CERT_BASE64=$(cat "ca.pem" | gzip | base64 | tr -d '\r\n')
   ETCD_PEER_KEY_BASE64=$(cat "peer-key.pem" | base64 | tr -d '\r\n')
@@ -2876,7 +3005,7 @@ function create-etcd-certs {
 # Generates SSL certificates for etcd-client and kube-apiserver communication. Uses cfssl program.
 #
 # Assumed vars:
-#   KUBE_TEMP: temporary directory
+#   CERT_TEMP: temporary directory
 #
 # Args:
 #  $1: host server name
@@ -2903,11 +3032,11 @@ function create-etcd-apiserver-certs {
 
   local certsServers="${hostServer},${additionalServer}"
   GEN_ETCD_CA_CERT="${etcd_apiserver_ca_cert}" GEN_ETCD_CA_KEY="${etcd_apiserver_ca_key}" \
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${certsServers}" "server" "etcd-apiserver-server"
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "client" "etcd-apiserver-client"
-    generate-etcd-cert "${KUBE_TEMP}/cfssl" "${hostClient}" "grpcproxy" "etcd-apiserver-grpc-proxy"
+    generate-etcd-cert "${CERT_TEMP}/cfssl" "${certsServers}" "server" "etcd-apiserver-server"
+    generate-etcd-cert "${CERT_TEMP}/cfssl" "${hostClient}" "client" "etcd-apiserver-client"
+    generate-etcd-cert "${CERT_TEMP}/cfssl" "${hostClient}" "grpcproxy" "etcd-apiserver-grpc-proxy"
 
-  pushd "${KUBE_TEMP}/cfssl"
+  pushd "${CERT_TEMP}/cfssl"
   ETCD_APISERVER_CA_KEY_BASE64=$(cat "ca-key.pem" | base64 | tr -d '\r\n')
   ETCD_APISERVER_CA_CERT_BASE64=$(cat "ca.pem" | gzip | base64 | tr -d '\r\n')
   ETCD_APISERVER_SERVER_KEY_BASE64=$(cat "etcd-apiserver-server-key.pem" | base64 | tr -d '\r\n')
@@ -2972,6 +3101,7 @@ function create-proxy-vm() {
   PROXY_RESERVED_INTERNAL_IP=$(gcloud compute addresses describe "${PROXY_NAME}-internalip" \
     --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
 
+  CERT_TEMP="${KUBE_TEMP}"
   echo "PROXY_NAME: ${PROXY_NAME} PROXY_RESERVED_IP: ${PROXY_RESERVED_IP}, PROXY_RESERVED_INTERNAL_IP: ${PROXY_RESERVED_INTERNAL_IP}"
   create-proxy-certs "${PROXY_RESERVED_IP}" "${PROXY_RESERVED_INTERNAL_IP}"
 
@@ -2982,18 +3112,7 @@ function create-proxy-vm() {
 
 function create-master() {
   echo "Starting master and configuring firewalls"
-  gcloud compute firewall-rules create "${MASTER_NAME}-https" \
-    --project "${NETWORK_PROJECT}" \
-    --network "${NETWORK}" \
-    --allow tcp:443 &
-
-  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
-    gcloud compute firewall-rules create "promethues-${MASTER_NAME}" \
-      --project "${NETWORK_PROJECT}" \
-      --network "${NETWORK}" \
-      --source-ranges "0.0.0.0/0" \
-      --allow tcp:9090 &
-  fi
+  prepare-master
 
   # We have to make sure the disk is created before creating the master VM, so
   # run this in the foreground.
@@ -3002,33 +3121,6 @@ function create-master() {
     --zone "${ZONE}" \
     --type "${MASTER_DISK_TYPE}" \
     --size "${MASTER_DISK_SIZE}"
-
-  # Create rule for accessing and securing etcd servers.
-  if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${MASTER_NAME}-etcd" &>/dev/null; then
-    gcloud compute firewall-rules create "${MASTER_NAME}-etcd" \
-      --project "${NETWORK_PROJECT}" \
-      --network "${NETWORK}" \
-      --source-tags "${MASTER_TAG}" \
-      --allow "tcp:2380,tcp:2381" &
-  fi
-
-  # Create rule for etcd grpc proxy.
-  if [[ "${START_ETCD_GRPC_PROXY:-}" == "true" ]]; then
-    gcloud compute firewall-rules create "${MASTER_NAME}-etcd-grpc-proxy" \
-      --project "${NETWORK_PROJECT}" \
-      --network "${NETWORK}" \
-      --source-ranges "0.0.0.0/0" \
-      --allow tcp:23790 &
-  fi
-
-  # Generate a bearer token for this cluster. We push this separately
-  # from the other cluster variables so that the client (this
-  # computer) can forget it later. This should disappear with
-  # http://issue.k8s.io/3168
-  KUBE_PROXY_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
-  if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
-    NODE_PROBLEM_DETECTOR_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
-  fi
 
   # Reserve the master's IP so that it can later be transferred to another VM
   # without disrupting the kubelets.
@@ -3048,9 +3140,7 @@ function create-master() {
   KUBERNETES_MASTER_NAME="${MASTER_RESERVED_IP}"
   MASTER_ADVERTISE_ADDRESS="${MASTER_RESERVED_INTERNAL_IP}"
   KUBERNETES_MASTER_INTERNAL_IP="${MASTER_RESERVED_INTERNAL_IP}"
-  APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
-  APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
-  ETCD_CLUSTERID=${ETCD_CLUSTERID:-0}
+  
   declare -a PARTITIONSERVER_RESERVED_IP
   declare -a PARTITIONSERVER_RESERVED_INTERNAL_IP
   declare -a PARTITIONSERVER_NAME
@@ -3059,21 +3149,16 @@ function create-master() {
   declare -a WORKLOADSERVER_CREATED
   declare -a ETCDSERVER_CREATED
 
-  TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
-  ENABLE_APISERVER=${ENABLE_APISERVER:-false}
-  ENABLE_WORKLOADCONTROLLER=${ENABLE_WORKLOADCONTROLLER:-false}
-  ENABLE_KUBESCHEDULER=${ENABLE_KUBESCHEDULER:-false}
-  ENABLE_KUBECONTROLLER=${ENABLE_KUBECONTROLLER:-false}
-  ENABLE_ETCD=${ENABLE_ETCD:-false}
   # add all external and internal IP to cert
   CREATE_CERT_SERVER_IP="${MASTER_RESERVED_INTERNAL_IP}"
   ###set partition server name, ip
   set-partitionserver true
   echo "MASTER_RESERVED_IP: ${MASTER_RESERVED_IP}, CREATE_CERT_SERVER_IP: ${CREATE_CERT_SERVER_IP}"
+  
+  CERT_TEMP="${KUBE_TEMP}"
   create-certs "${MASTER_RESERVED_IP}" "${CREATE_CERT_SERVER_IP}"
   create-etcd-certs "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
   create-etcd-apiserver-certs "etcd-${MASTER_NAME}" "${MASTER_NAME}" "" "" "${CREATE_CERT_SERVER_IP}"
-
   #if [[ "$(get-num-nodes)" -ge "50" ]]; then
     # We block on master creation for large clusters to avoid doing too much
     # unnecessary work in case master start-up fails (like creation of nodes).
@@ -3082,13 +3167,212 @@ function create-master() {
   create-master-instance "${MASTER_RESERVED_IP}" "${KUBERNETES_MASTER_INTERNAL_IP}"
   #fi
 
-  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-    echo "DBG: in ${MASTER_NAME}: sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
-    ssh-to-node ${MASTER_NAME} "sudo sysctl -w net.netfilter.nf_conntrack_max=26214400"
-  fi
+  
   ENABLE_KUBESCHEDULER=false
   ENABLE_KUBECONTROLLER=false
   create-partitionserver
+  
+}
+
+function prepare-master {
+  gcloud compute firewall-rules create "${INSTANCE_PREFIX}-https" \
+    --project "${NETWORK_PROJECT}" \
+    --network "${NETWORK}" \
+    --allow tcp:443 &
+
+  if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+    gcloud compute firewall-rules create "promethues-${INSTANCE_PREFIX}" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:9090 &
+  fi
+
+  # Create rule for accessing and securing etcd servers.
+  if ! gcloud compute firewall-rules --project "${NETWORK_PROJECT}" describe "${INSTANCE_PREFIX}-etcd" &>/dev/null; then
+    gcloud compute firewall-rules create "${INSTANCE_PREFIX}-etcd" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-tags "${MASTER_TAG}" \
+      --allow "tcp:2380,tcp:2381" &
+  fi
+
+  # Create rule for etcd grpc proxy.
+  if [[ "${START_ETCD_GRPC_PROXY:-}" == "true" ]]; then
+    gcloud compute firewall-rules create "${INSTANCE_PREFIX}-etcd-grpc-proxy" \
+      --project "${NETWORK_PROJECT}" \
+      --network "${NETWORK}" \
+      --source-ranges "0.0.0.0/0" \
+      --allow tcp:23790 &
+  fi
+
+  # Generate a bearer token for this cluster. We push this separately
+  # from the other cluster variables so that the client (this
+  # computer) can forget it later. This should disappear with
+  # http://issue.k8s.io/3168
+  KUBE_PROXY_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+  if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
+    NODE_PROBLEM_DETECTOR_TOKEN=$(dd if=/dev/urandom bs=128 count=1 2>/dev/null | base64 | tr -d "=+/" | dd bs=32 count=1 2>/dev/null)
+  fi
+
+  KUBERNETES_MASTER_NAME="${KUBERNETES_MASTER_NAME:-}"
+  MASTER_ADVERTISE_ADDRESS="${MASTER_ADVERTISE_ADDRESS:-}"
+  KUBERNETES_MASTER_INTERNAL_IP="${KUBERNETES_MASTER_INTERNAL_IP:-}"
+  APISERVER_ADVERTISE_ADDRESS="${APISERVER_ADVERTISE_ADDRESS:-}"
+  APISERVER_SERVICEGROUPID=${APISERVER_SERVICEGROUPID:-0}
+  ETCD_CLUSTERID=${ETCD_CLUSTERID:-0}
+  
+  TOTALSERVER_EXTRA_NUM=${TOTALSERVER_EXTRA_NUM:-0}
+  ENABLE_APISERVER=${ENABLE_APISERVER:-false}
+  ENABLE_WORKLOADCONTROLLER=${ENABLE_WORKLOADCONTROLLER:-false}
+  ENABLE_KUBESCHEDULER=${ENABLE_KUBESCHEDULER:-false}
+  ENABLE_KUBECONTROLLER=${ENABLE_KUBECONTROLLER:-false}
+  ENABLE_ETCD=${ENABLE_ETCD:-false}
+
+  CERT_TEMP="${KUBE_TEMP}"
+}
+
+function prepare-tpmaster {
+  local tpserver_name=""
+  for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
+    tpserver_name="-tp-${num}-master"
+    TPSERVER_NAME[$num]="${INSTANCE_PREFIX}${tpserver_name}"
+    # We have to make sure the disk is created before creating the VM, so
+    gcloud compute disks create "${TPSERVER_NAME[$num]}-pd" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --type "${MASTER_DISK_TYPE}" \
+      --size "${MASTER_DISK_SIZE}"
+
+    if [[ ${num} == 1 ]]; then
+      TPCONFIG_METADATA="tp-${num}=${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${num}"
+    else
+      TPCONFIG_METADATA=${TPCONFIG_METADATA},"tp-${num}=${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${num}"
+    fi
+    create-static-ip "${TPSERVER_NAME[$num]}-ip" "${REGION}"
+    TPSERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${TPSERVER_NAME[$num]}-ip" \
+          --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+    if [[ $num == 1 ]]; then
+      TPIP="${TPSERVER_RESERVED_IP[$num]}"
+    else
+      TPIP=${TPIP},"${TPSERVER_RESERVED_IP[$num]}"
+    fi
+    create-static-internalip "${TPSERVER_NAME[$num]}-internalip" "${REGION}" "${SUBNETWORK}"
+    TPSERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${TPSERVER_NAME[$num]}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+
+   done
+}
+
+function prepare-rpmaster {
+  local rpserver_name=""
+  for num in $(seq ${SCALEOUT_RP_COUNT:-1}); do
+    rpserver_name="-rp-${num}-master"
+    RPSERVER_NAME[$num]="${INSTANCE_PREFIX}${rpserver_name}"
+    # We have to make sure the disk is created before creating the VM, so
+    gcloud compute disks create "${RPSERVER_NAME[$num]}-pd" \
+      --project "${PROJECT}" \
+      --zone "${ZONE}" \
+      --type "${MASTER_DISK_TYPE}" \
+      --size "${MASTER_DISK_SIZE}"
+    
+    create-static-ip "${RPSERVER_NAME[$num]}-ip" "${REGION}"
+    RPSERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${RPSERVER_NAME[$num]}-ip" \
+          --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+    if [[ $num == 1 ]]; then
+      RPIP="${RPSERVER_RESERVED_IP[$num]}"
+    fi
+
+    create-static-internalip "${RPSERVER_NAME[$num]}-internalip" "${REGION}" "${SUBNETWORK}"
+    RPSERVER_RESERVED_INTERNAL_IP[$num]=$(gcloud compute addresses describe "${RPSERVER_NAME[$num]}-internalip" \
+    --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
+  done
+}
+
+function create-tpmaster {
+  local tp_sequence=${1:-1}
+  NODE_TAG="${CLUSTER_NAME}-minion"
+  INITIAL_ETCD_CLUSTER="${MASTER_NAME}"
+  KUBERNETES_MASTER_NAME="${TPSERVER_RESERVED_IP[$tp_sequence]}"
+  MASTER_ADVERTISE_ADDRESS="${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
+  KUBERNETES_MASTER_INTERNAL_IP="${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
+  KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-$tp_sequence"
+
+  if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
+    KUBELET_APISERVER="${TPSERVER_RESERVED_IP[${tp_sequence}]}"
+  fi
+
+  CERT_TEMP="${KUBE_TEMP}/tp$tp_sequence"
+  mkdir -p ${CERT_TEMP}
+  create-certs "${TPSERVER_RESERVED_IP[$tp_sequence]}" "${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
+  create-etcd-certs "${TPSERVER_NAME[$tp_sequence]}" "" "" "${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
+  create-etcd-apiserver-certs "etcd-${TPSERVER_NAME[$tp_sequence]}" "${TPSERVER_NAME[$tp_sequence]}" "" "" "${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
+  create-scaleoutserver-instance "${TPSERVER_NAME[$tp_sequence]:-}" "${TPSERVER_RESERVED_IP[$tp_sequence]:-}" "${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]:-}"
+
+}
+
+function create-rpmaster {
+  local rp_sequence=${1:-1}
+  NODE_TAG="${CLUSTER_NAME}-minion"
+  INITIAL_ETCD_CLUSTER="${MASTER_NAME}"
+  KUBERNETES_MASTER_NAME="${RPSERVER_RESERVED_IP[${rp_sequence}]}"
+  MASTER_ADVERTISE_ADDRESS="${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
+  KUBERNETES_MASTER_INTERNAL_IP="${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
+  KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-$rp_sequence"
+
+  if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
+    KUBELET_APISERVER="${RPSERVER_RESERVED_IP[${rp_sequence}]}"
+  fi
+
+  MASTER_EXTRA_METADATA=${KUBE_MASTER_EXTRA_METADATA:-${KUBE_EXTRA_METADATA:-}}
+  if [[ "${MASTER_EXTRA_METADATA}" != "" ]]; then
+    MASTER_EXTRA_METADATA="${MASTER_EXTRA_METADATA},${TPCONFIG_METADATA}"
+  else
+    MASTER_EXTRA_METADATA="${TPCONFIG_METADATA}"
+  fi
+
+  CERT_TEMP="${KUBE_TEMP}/rp$rp_sequence"
+  mkdir -p ${CERT_TEMP}
+  create-certs "${RPSERVER_RESERVED_IP[$rp_sequence]}" "${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
+  create-etcd-certs "${RPSERVER_NAME[$rp_sequence]}" "" "" "${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
+  create-etcd-apiserver-certs "etcd-${RPSERVER_NAME[$rp_sequence]}" "${RPSERVER_NAME[$rp_sequence]}" "" "" "${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
+  create-scaleoutserver-instance "${RPSERVER_NAME[$rp_sequence]:-}" "${RPSERVER_RESERVED_IP[$rp_sequence]:-}" "${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]:-}"
+
+}
+
+# master machine name format: {KUBE_GCE_ZONE}-kubemark-tp-1-master
+# destination file " --resource-providers=/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig"
+# TODO: avoid calling GCE compute from here
+# TODO: currently the same kubeconfig is used by both scheduler and kube-controller-managers on RP clusters
+#       Pending design on how RP kubeconfigs to be used on the TP cluster:
+#       if the current approach continue to be used,  modify the kubeconfigs so the scheduler and controllers
+#       can have different identity for refined RBAC and logging purposes
+#       if future design is to let scheduler and controller managers to point to a generic server to get those RP
+#       kubeconfigs, the generic service should generate different ones for them.
+# TODO: remove this restart because all tp/rp ip has been reserved and this config should be ready before tp/rp started
+function restart_tp_scheduler_and_controller {
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    tp_vm="${TPSERVER_NAME[$tp_num]}"
+    echo "DBG: copy rp kubeconfigs for scheduler and controller manager to TP master: ${tp_vm}"
+    for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      rp_kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-${rp_num}"
+      gcloud compute scp --zone="${ZONE}" "${rp_kubeconfig}" "${tp_vm}:/tmp/rp-kubeconfig-${rp_num}"
+    done
+
+    echo "DBG: copy rp kubeconfigs to destinations on TP master: ${tp_vm}"
+    cmd="sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-scheduler/ && sudo cp /tmp/rp-kubeconfig-* /etc/srv/kubernetes/kube-controller-manager/"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
+
+    echo "DBG: restart scheduler on TP master: ${tp_vm}"
+    cmd="sudo pkill -f kube-scheduler"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
+
+    echo "DBG: restart controller manager on TP master: ${tp_vm}"
+    cmd="sudo pkill -f kube-controller-manager"
+    gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
+  done
 }
 
 function set-partitionserver {
@@ -3178,6 +3462,7 @@ function set-partitionserver {
     done
   fi
 }
+
 
 function create-partitionserver {
   local partitionserver_name=${CLUSTER_NAME}
@@ -3754,11 +4039,27 @@ function create-autoscaler-config() {
   fi
 }
 
+function validate-cluster-status() {
+  echo "... calling validate-cluster" >&2
+  # Override errexit
+  (validate-cluster) && validate_result="$?" || validate_result="$?"
+
+  # We have two different failure modes from validate cluster:
+  # - 1: fatal error - cluster won't be working correctly
+  # - 2: weak error - something went wrong, but cluster probably will be working correctly
+  # We just print an error message in case 2).
+  if [[ "${validate_result}" == "1" ]]; then
+    exit 1
+  elif [[ "${validate_result}" == "2" ]]; then
+    echo "...ignoring non-fatal errors in validate-cluster" >&2
+  fi
+}
+
 function check-cluster() {
   detect-node-names
-  detect-master
+  detect-master-name "${MASTER_NAME}"
 
-  echo "Waiting up to ${KUBE_CLUSTER_INITIALIZATION_TIMEOUT} seconds for cluster initialization."
+  echo "Waiting up to ${KUBE_CLUSTER_INITIALIZATION_TIMEOUT} seconds for cluster ${MASTER_NAME} initialization."
   echo
   echo "  This will continually check to see if the API for kubernetes is reachable."
   echo "  This may time out if there was some uncaught error during start up."
@@ -3797,10 +4098,11 @@ set +x
 
   echo "Kubernetes cluster created."
 
+  echo "CERT_DIR: ${CERT_DIR}"
   export KUBE_CERT="${CERT_DIR}/pki/issued/kubecfg.crt"
   export KUBE_KEY="${CERT_DIR}/pki/private/kubecfg.key"
   export CA_CERT="${CERT_DIR}/pki/ca.crt"
-  export CONTEXT="${PROJECT}_${INSTANCE_PREFIX}"
+  export CONTEXT="${PROJECT}_${CLUSTER_NAME}"
   (
    umask 077
 
@@ -3822,6 +4124,9 @@ set +x
   echo -e "${color_green}The user name and password to use is located in ${KUBECONFIG}.${color_norm}"
   echo
 
+  echo -e "\nDone, listing cluster services:\n" >&2
+  "${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
+  echo
 }
 
 # Removes master replica from etcd cluster.
@@ -3847,6 +4152,38 @@ function remove-replica-from-etcd() {
   return "${res}"
 }
 
+function remove-instance-templates() {
+  # Get the name of the managed instance group template before we delete the
+  # managed instance group. (The name of the managed instance group template may
+  # change during a cluster upgrade.)
+  detect-node-names # For INSTANCE_GROUPS and WINDOWS_INSTANCE_GROUPS
+  local templates=$(get-template "${PROJECT}")
+  local all_instance_groups=(${INSTANCE_GROUPS[@]:-} ${WINDOWS_INSTANCE_GROUPS[@]:-})
+  for group in ${all_instance_groups[@]:-}; do
+    echo "gcloud compute instance-groups managed describe ${group} --project ${PROJECT} --zone ${ZONE}"
+    if gcloud compute instance-groups managed describe "${group}" --project "${PROJECT}" --zone "${ZONE}" &>/dev/null; then
+      gcloud compute instance-groups managed delete \
+        --project "${PROJECT}" \
+        --quiet \
+        --zone "${ZONE}" \
+        "${group}" &
+    fi
+  done
+
+  # Wait for last batch of jobs
+  kube::util::wait-for-jobs || {
+    echo -e "Failed to delete instance group(s)." >&2
+  }
+
+  for template in ${templates[@]:-}; do
+    if gcloud compute instance-templates describe --project "${PROJECT}" "${template}" &>/dev/null; then
+      gcloud compute instance-templates delete \
+        --project "${PROJECT}" \
+        --quiet \
+        "${template}"
+    fi
+  done
+}
 # Delete a kubernetes cluster. This is called from test-teardown.
 #
 # Assumed vars:
@@ -3861,41 +4198,21 @@ function kube-down() {
   local -r batch=200
 
   detect-project
-  detect-node-names # For INSTANCE_GROUPS and WINDOWS_INSTANCE_GROUPS
+  
 
   echo "Bringing down cluster"
   set +e  # Do not stop on error
 
   if [[ "${KUBE_DELETE_NODES:-}" != "false" ]]; then
-    # Get the name of the managed instance group template before we delete the
-    # managed instance group. (The name of the managed instance group template may
-    # change during a cluster upgrade.)
-    local templates=$(get-template "${PROJECT}")
-
-    local all_instance_groups=(${INSTANCE_GROUPS[@]:-} ${WINDOWS_INSTANCE_GROUPS[@]:-})
-    for group in ${all_instance_groups[@]:-}; do
-      if gcloud compute instance-groups managed describe "${group}" --project "${PROJECT}" --zone "${ZONE}" &>/dev/null; then
-        gcloud compute instance-groups managed delete \
-          --project "${PROJECT}" \
-          --quiet \
-          --zone "${ZONE}" \
-          "${group}" &
-      fi
-    done
-
-    # Wait for last batch of jobs
-    kube::util::wait-for-jobs || {
-      echo -e "Failed to delete instance group(s)." >&2
-    }
-
-    for template in ${templates[@]:-}; do
-      if gcloud compute instance-templates describe --project "${PROJECT}" "${template}" &>/dev/null; then
-        gcloud compute instance-templates delete \
-          --project "${PROJECT}" \
-          --quiet \
-          "${template}"
-      fi
-    done
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      for num in $(seq ${SCALEOUT_RP_COUNT:-1}); do   
+        export NODE_INSTANCE_PREFIX="${INSTANCE_PREFIX}-rp-$num-minion"
+        export WINDOWS_NODE_INSTANCE_PREFIX="${INSTANCE_PREFIX}-rp-$num-windows-node"
+        remove-instance-templates
+      done
+    else
+      remove-instance-templates
+    fi
 
     # Delete the special heapster node (if it exists).
     if [[ -n "${HEAPSTER_MACHINE_TYPE:-}" ]]; then
@@ -3925,41 +4242,98 @@ function kube-down() {
     delete-partitionserver ${server_name}
   done
 
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+    do
+      server_name="${INSTANCE_PREFIX}-tp-${tp_num}-master"
+      export ARKTOS_SCALEOUT_SERVER_TYPE="tp"  
+      export CLUSTER_NAME="${INSTANCE_PREFIX}-tp-${tp_num}"
+      export MASTER_NAME="${CLUSTER_NAME}-master"
+      export NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-minion"
+      export WINDOWS_NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-windows-node"
+      echo "Tear down SCALEOUTSERVER:${server_name}"
+      delete-scaleoutserver ${server_name}
+      NODE_TAG="${INSTANCE_PREFIX}-tp-${tp_num}-minion"
+      delete-firewall-rules \
+      "${NODE_TAG}-http-alt" \
+      "${NODE_TAG}-nodeports"
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${tp_num}"
+      export CONTEXT="${PROJECT}_${CLUSTER_NAME}"
+      clear-kubeconfig
+      rm -rf "${KUBECONFIG}"
+    done
 
-  # Un-register the master replica from etcd and events etcd.
-  remove-replica-from-etcd 2379
-  remove-replica-from-etcd 4002
+    for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+    do
+      server_name="${INSTANCE_PREFIX}-rp-${rp_num}-master"
+      export ARKTOS_SCALEOUT_SERVER_TYPE="tp"  
+      export CLUSTER_NAME="${INSTANCE_PREFIX}-rp-${rp_num}"
+      export MASTER_NAME="${CLUSTER_NAME}-master"
+      export NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-minion"
+      export WINDOWS_NODE_INSTANCE_PREFIX="${CLUSTER_NAME}-windows-node"
+      echo "Tear down SCALEOUTSERVER:${server_name}"
+      delete-scaleoutserver ${server_name}
+      NODE_TAG="${INSTANCE_PREFIX}-rp-${rp_num}-minion"
+      delete-firewall-rules \
+      "${NODE_TAG}-http-alt" \
+      "${NODE_TAG}-nodeports"
+      KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-${rp_num}"
+      export CONTEXT="${PROJECT}_${CLUSTER_NAME}"
+      clear-kubeconfig
+      rm -rf "${KUBECONFIG}"
+    done
 
-  # Delete the master replica (if it exists).
-  if gcloud compute instances describe "${REPLICA_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-    # If there is a load balancer in front of apiservers we need to first update its configuration.
-    if gcloud compute target-pools describe "${MASTER_NAME}" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute target-pools remove-instances "${MASTER_NAME}" \
+    export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+    
+
+    
+    delete-proxy
+
+    rm -rf ${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}-proxy
+    rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
+    rm -rf ${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tmp
+    rm -rf "${SHARED_CA_DIRECTORY}"
+  else
+
+    # Un-register the master replica from etcd and events etcd.
+    remove-replica-from-etcd 2379
+    remove-replica-from-etcd 4002
+
+    # Delete the master replica (if it exists).
+    if gcloud compute instances describe "${REPLICA_NAME}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      # If there is a load balancer in front of apiservers we need to first update its configuration.
+      if gcloud compute target-pools describe "${MASTER_NAME}" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+        gcloud compute target-pools remove-instances "${MASTER_NAME}" \
+          --project "${PROJECT}" \
+          --zone "${ZONE}" \
+          --instances "${REPLICA_NAME}"
+      fi
+      # Now we can safely delete the VM.
+      gcloud compute instances delete \
         --project "${PROJECT}" \
+        --quiet \
+        --delete-disks all \
         --zone "${ZONE}" \
-        --instances "${REPLICA_NAME}"
+        "${REPLICA_NAME}"
     fi
-    # Now we can safely delete the VM.
-    gcloud compute instances delete \
-      --project "${PROJECT}" \
-      --quiet \
-      --delete-disks all \
-      --zone "${ZONE}" \
-      "${REPLICA_NAME}"
+
+    # Delete the master replica pd (possibly leaked by kube-up if master create failed).
+    # TODO(jszczepkowski): remove also possibly leaked replicas' pds
+    local -r replica_pd="${REPLICA_NAME:-${MASTER_NAME}}-pd"
+    if gcloud compute disks describe "${replica_pd}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+      gcloud compute disks delete \
+        --project "${PROJECT}" \
+        --quiet \
+        --zone "${ZONE}" \
+        "${replica_pd}"
+    fi
+
+    # If there are no more remaining master replicas, we should update kubeconfig.
+    export CONTEXT="${PROJECT}_${CLUSTER_NAME}"
+    clear-kubeconfig
   fi
 
-  # Delete the master replica pd (possibly leaked by kube-up if master create failed).
-  # TODO(jszczepkowski): remove also possibly leaked replicas' pds
-  local -r replica_pd="${REPLICA_NAME:-${MASTER_NAME}}-pd"
-  if gcloud compute disks describe "${replica_pd}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
-    gcloud compute disks delete \
-      --project "${PROJECT}" \
-      --quiet \
-      --zone "${ZONE}" \
-      "${replica_pd}"
-  fi
-
-  # Check if this are any remaining master replicas.
+# Check if this are any remaining master replicas.
   local REMAINING_MASTER_COUNT=$(gcloud compute instances list \
     --project "${PROJECT}" \
     --filter="name ~ '$(get-replica-name-regexp)'" \
@@ -3988,22 +4362,33 @@ function kube-down() {
 
   # If there are no more remaining master replicas, we should delete all remaining network resources.
   if [[ "${REMAINING_MASTER_COUNT}" -eq 0 ]]; then
+    
     # Delete firewall rule for the master, etcd servers, and nodes.
-    delete-firewall-rules "${MASTER_NAME}-https" "${MASTER_NAME}-etcd" "${NODE_TAG}-all"
-    echo "Deleting master's reserved IP"
-    if gcloud compute addresses describe "${MASTER_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute addresses delete \
-        --project "${PROJECT}" \
-        --region "${REGION}" \
-        --quiet \
-        "${MASTER_NAME}-ip"
+    delete-firewall-rules "${INSTANCE_PREFIX}-https" "${INSTANCE_PREFIX}-etcd" "${NODE_TAG}-all"
+    if [[ "${ENABLE_PROMETHEUS_DEBUG:-false}" == "true" ]]; then
+      delete-firewall-rules "promethues-${INSTANCE_PREFIX}"
     fi
-    if gcloud compute addresses describe "${MASTER_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
-      gcloud compute addresses delete \
-        --project "${PROJECT}" \
-        --region "${REGION}" \
-        --quiet \
-        "${MASTER_NAME}-internalip"
+
+    if [[ "${START_ETCD_GRPC_PROXY:-}" == "true" ]]; then
+      delete-firewall-rules "${INSTANCE_PREFIX}-etcd-grpc-proxy"
+    fi
+
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+      echo "Deleting master's reserved IP"
+      if gcloud compute addresses describe "${MASTER_NAME}-ip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+        gcloud compute addresses delete \
+          --project "${PROJECT}" \
+          --region "${REGION}" \
+          --quiet \
+          "${MASTER_NAME}-ip"
+      fi
+      if gcloud compute addresses describe "${MASTER_NAME}-internalip" --region "${REGION}" --project "${PROJECT}" &>/dev/null; then
+        gcloud compute addresses delete \
+          --project "${PROJECT}" \
+          --region "${REGION}" \
+          --quiet \
+          "${MASTER_NAME}-internalip"
+      fi
     fi
   fi
 
@@ -4026,7 +4411,6 @@ function kube-down() {
       minions=( "${minions[@]:${batch}}" )
     done
   fi
-
   # If there are no more remaining master replicas: delete routes, pd for influxdb and update kubeconfig
   if [[ "${REMAINING_MASTER_COUNT}" -eq 0 ]]; then
     # Delete routes.
@@ -4061,10 +4445,7 @@ function kube-down() {
     # Delete all remaining firewall rules and network.
     delete-firewall-rules \
       "${CLUSTER_NAME}-default-internal-master" \
-      "${CLUSTER_NAME}-default-internal-node" \
-      "${NETWORK}-default-ssh" \
-      "${NETWORK}-default-rdp" \
-      "${NETWORK}-default-internal"  # Pre-1.5 clusters
+      "${CLUSTER_NAME}-default-internal-node" 
 
     if [[ "${KUBE_DELETE_NETWORK}" == "true" ]]; then
       delete-cloud-nat-router
@@ -4073,25 +4454,9 @@ function kube-down() {
       delete-subnetworks || true
       delete-network || true  # might fail if there are leaked resources that reference the network
     fi
-
-    # If there are no more remaining master replicas, we should update kubeconfig.
-    export CONTEXT="${PROJECT}_${INSTANCE_PREFIX}"
-    clear-kubeconfig
   else
   # If some master replicas remain: cluster has been changed, we need to re-validate it.
-    echo "... calling validate-cluster" >&2
-    # Override errexit
-    (validate-cluster) && validate_result="$?" || validate_result="$?"
-
-    # We have two different failure modes from validate cluster:
-    # - 1: fatal error - cluster won't be working correctly
-    # - 2: weak error - something went wrong, but cluster probably will be working correctly
-    # We just print an error message in case 2).
-    if [[ "${validate_result}" -eq 1 ]]; then
-      exit 1
-    elif [[ "${validate_result}" -eq 2 ]]; then
-      echo "...ignoring non-fatal errors in validate-cluster" >&2
-    fi
+    validate-cluster-status
   fi
   set -e
 }
@@ -4310,6 +4675,10 @@ function test-setup() {
   else
     "${KUBE_ROOT}/cluster/kube-up.sh"
   fi
+
+}
+
+function create-node-port {
   # Open up port 80 & 8080 so common containers on minions can be reached
   # TODO(roberthbailey): Remove this once we are no longer relying on hostPorts.
   local start=`date +%s`
@@ -4450,4 +4819,82 @@ function delete-partitionserver() {
       --region "${REGION}"
   fi
 
+}
+
+
+function delete-scaleoutserver() {
+  local server_name="${1}"
+  echo "Deleting scaleoutserver: ${server_name}"
+  if gcloud compute instances describe "${server_name}" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+    # Now we can safely delete the VM.
+    gcloud compute instances delete \
+      --project "${PROJECT}" \
+      --quiet \
+      --delete-disks all \
+      --zone "${ZONE}" \
+      "${server_name}"
+  fi
+
+  echo "Deleting scaleoutserver disks: ${server_name}-pd"
+  if gcloud compute disks describe "${server_name}-pd" --zone "${ZONE}" --project "${PROJECT}" &>/dev/null; then
+    gcloud compute disks delete  \
+      --project "${PROJECT}" \
+      --quiet \
+      --zone "${ZONE}" \
+      "${server_name}-pd"
+  fi
+
+  echo "Deleting scaleoutserver reserved IP address: ${server_name}-ip"
+  if gcloud compute addresses describe "${server_name}-ip" --project "${PROJECT}" --region "${REGION}" &>/dev/null; then
+    gcloud compute addresses delete "${server_name}-ip" \
+      --quiet \
+      --project "${PROJECT}" \
+      --region "${REGION}"
+  fi
+
+  echo "Deleting scaleoutserver reserved internal IP address: ${server_name}-internalip"
+  if gcloud compute addresses describe "${server_name}-internalip" --project "${PROJECT}" --region "${REGION}"  &>/dev/null; then
+    gcloud compute addresses delete "${server_name}-internalip" \
+      --quiet \
+      --project "${PROJECT}" \
+      --region "${REGION}"
+  fi
+
+}
+
+function delete-proxy {
+    echo "DBG: calling proxy-down.sh"
+    detect-project
+    "${KUBE_ROOT}/cluster/proxy-down.sh"
+}
+
+
+function create-proxy {
+  (
+    echo "DBG: Create arktos-proxy"
+
+    kube::util::ensure-temp-dir
+    export KUBE_TEMP="${KUBE_TEMP}"
+
+    export KUBECONFIG=${PROXY_KUBECONFIG}
+    export SCALEOUT_PROXY_NAME="${INSTANCE_PREFIX}-proxy"
+    echo "DBG: calling proxy-setup.sh"
+    detect-project
+    "${KUBE_ROOT}/cluster/proxy-up.sh"
+  )
+
+}
+
+# setup_proxy setups the proxy service for the scale-out deployment
+# and creates kubeconfig with the proxy service IP and port
+function setup_proxy {
+  export KUBERNETES_SCALEOUT_PROXY=true
+  export KUBE_BEARER_TOKEN=${SHARED_APISERVER_TOKEN}
+  
+  export PROXY_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}-proxy"
+  export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
+  export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
+  export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
+  create-proxy
+  export KUBERNETES_SCALEOUT_PROXY=false
 }

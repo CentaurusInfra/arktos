@@ -32,22 +32,6 @@ function authenticate-docker {
   gcloud beta auth configure-docker -q
 }
 
-function create-arktos-proxy {
-  (
-    echo "DBG: Create arktos-proxy"
-
-    kube::util::ensure-temp-dir
-    export KUBE_TEMP="${KUBE_TEMP}"
-
-    export KUBECONFIG=${PROXY_KUBECONFIG}
-    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
-
-    echo "DBG: calling proxy-setup.sh"
-    detect-project
-    "${KUBE_ROOT}/cluster/proxy-up.sh"
-  )
-
-}
 
 function create-kubemark-master {
   # We intentionally override env vars in subshell to preserve original values.
@@ -60,23 +44,9 @@ function create-kubemark-master {
     echo "DBG: Using kubeconfig file: ${KUBEMARK_CLUSTER_KUBECONFIG}"
     export KUBECONFIG=${KUBEMARK_CLUSTER_KUBECONFIG}
 
-    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
 
-    # the calling function ensures that the cluster is either for RP or TP in scaleout env
-    #
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      echo "Cluster can be either TP or RP. Exit."
-      exit 1
-    fi
-
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp-${RESOURCE_PARTITION_SEQUENCE}"
-    fi
-    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
-    fi
-
-    export KUBE_GCE_INSTANCE_PREFIX
+    
     export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
     export KUBE_CREATE_NODES=false
 
@@ -127,15 +97,8 @@ function delete-kubemark-master {
   # shellcheck disable=SC2030,SC2031
   (
     ## reset CLUSTER_NAME to avoid multi kubemark added after e2e.
-    KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
-    if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-      KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-rp-${RESOURCE_PARTITION_SEQUENCE}"
-    fi
-    if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-        KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX}-tp-${TENANT_PARTITION_SEQUENCE}"
-    fi
-    export KUBE_GCE_INSTANCE_PREFIX
-    export CLUSTER_NAME="${KUBE_GCE_INSTANCE_PREFIX}"
+    export KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}-kubemark"
+    
     export KUBE_DELETE_NETWORK=false
     # Even if the "real cluster" is private, we shouldn't manage cloud nat.
     export KUBE_GCE_PRIVATE_CLUSTER=false
@@ -151,8 +114,3 @@ function delete-kubemark-master {
   )
 }
 
-function delete-proxy {
-    echo "DBG: calling proxy-down.sh"
-    detect-project
-    "${KUBE_ROOT}/cluster/proxy-down.sh"
-}

@@ -39,8 +39,6 @@ const (
 
 // MizarEndpointsController points to current controller
 type MizarEndpointsController struct {
-	kubeClient clientset.Interface
-
 	// A store of endpoints objects, populated by the shared informer passed to MizarEndpointsController
 	endpointsLister corelisters.EndpointsLister
 	// endpointsListerSynced returns true if the store has been synced at least once.
@@ -71,7 +69,6 @@ func NewMizarEndpointsController(endpointsInformer coreinformers.EndpointsInform
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarEndpointsController{
-		kubeClient:            kubeClient,
 		endpointsLister:       endpointsInformer.Lister(),
 		endpointsListerSynced: endpointsInformer.Informer().HasSynced,
 		serviceLister:         serviceInformer.Lister(),

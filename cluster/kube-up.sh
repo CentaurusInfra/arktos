@@ -33,6 +33,9 @@ fi
 
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
+export RESOURCE_DIRECTORY=${RESOURCE_DIRECTORY:-"${KUBE_ROOT}/cluster"}
+export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
+
 if [ -z "${ZONE-}" ]; then
   echo "... Starting cluster using provider: ${KUBERNETES_PROVIDER}" >&2
 else
@@ -54,19 +57,7 @@ if [[ "${PRESET_INSTANCES_ENABLED:-}" == $TRUE && "${IS_PRESET_INSTANCES_DRY_RUN
   exit 0
 fi
 
-echo "... calling validate-cluster" >&2
-# Override errexit
-(validate-cluster) && validate_result="$?" || validate_result="$?"
-
-# We have two different failure modes from validate cluster:
-# - 1: fatal error - cluster won't be working correctly
-# - 2: weak error - something went wrong, but cluster probably will be working correctly
-# We just print an error message in case 2).
-if [[ "${validate_result}" == "1" ]]; then
-	exit 1
-elif [[ "${validate_result}" == "2" ]]; then
-	echo "...ignoring non-fatal errors in validate-cluster" >&2
-fi
+#validate-cluster-status
 
 if [[ "${ENABLE_PROXY:-}" == "true" ]]; then
   # shellcheck disable=SC1091
@@ -100,13 +91,16 @@ if [[ "${ETCD_EXTRA_NUM:-0}" -gt "0" ]]; then
   config-etcd-storagecluster
 fi
 
-
-echo -e "\nDone, listing cluster services:\n" >&2
-"${KUBE_ROOT}/cluster/kubectl.sh" cluster-info
-echo
-
 if [[ "${KUBERNETES_PROVIDER:-gce}" == "aws" ]]; then
   echo "Kubernetes master AWS Internal IP is ${MASTER_INTERNAL_IP}"
+fi
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+  # proxy setup expects a valid RP kubeconfig file to get master IP from;
+    # rp-1 should be safe to assume here
+  export ARKTOS_SCALEOUT_SERVER_TYPE="proxy" 
+  KUBEMARK_CLUSTER_KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-1"
+  setup_proxy
 fi
 
 exit 0

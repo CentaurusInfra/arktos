@@ -547,6 +547,7 @@ function kube::common::start_controller_manager {
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
       else
         KUBE_CONTROLLERS="*,-daemonset,-nodelifecycle,-nodeipam,-ttl"
+        [[ -n ${SCALE_OUT_TP_ENABLE_DAEMONSET} ]] && KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam,-ttl"
 
         RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
         serverCount=${#RESOURCE_SERVERS[@]}
