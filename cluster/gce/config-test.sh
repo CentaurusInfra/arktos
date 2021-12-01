@@ -91,6 +91,20 @@ if [[ "${NODE_OS_DISTRIBUTION}" == "debian" ]]; then
     NODE_ACCELERATORS=""
 fi
 
+# Networking plugin specific settings.
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  NETWORK_PROVIDER_VERSION="0.9"
+  NETWORK_POLICY_PROVIDER="mizar"
+  # Mizar currently needs ubuntu due to python dependencies
+  KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
+  KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
+  KUBE_GCI_VERSION="ubuntu-1804-bionic-v20211115"
+  KUBE_GCE_MASTER_IMAGE="ubuntu-1804-bionic-v20211115"
+  KUBE_GCE_NODE_IMAGE="ubuntu-1804-bionic-v20211115"
+fi
+
 # To avoid failing large tests due to some flakes in starting nodes, allow
 # for a small percentage of nodes to not start during cluster startup.
 ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
@@ -100,7 +114,7 @@ ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 # you are updating the os image versions, update this variable.
 # Also please update corresponding image for node e2e at:
 # https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/jenkins/image-config.yaml
-GCI_VERSION=${KUBE_GCI_VERSION:-cos-73-11647-163-0}
+GCI_VERSION=${KUBE_GCI_VERSION:-cos-93-16623-39-21}
 MASTER_IMAGE=${KUBE_GCE_MASTER_IMAGE:-}
 MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-cos-cloud}
 NODE_IMAGE=${KUBE_GCE_NODE_IMAGE:-${GCI_VERSION}}
@@ -456,8 +470,6 @@ TEST_CLUSTER="${TEST_CLUSTER:-true}"
 STORAGE_BACKEND=${STORAGE_BACKEND:-}
 # Storage media type: application/json and application/vnd.kubernetes.protobuf are supported.
 STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-}
-
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet, cni
 
 # Network Policy plugin specific settings.
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-bridge}" # calico, flannel, bridge

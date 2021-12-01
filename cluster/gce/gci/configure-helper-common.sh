@@ -1194,7 +1194,7 @@ function assemble-docker-flags {
     docker_opts+=" --log-level=warn"
   fi
   local use_net_plugin="true"
-  if [[ "${NETWORK_PROVIDER:-}" == "kubenet" || "${NETWORK_PROVIDER:-}" == "cni" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "kubenet" || "${NETWORK_PROVIDER:-}" == "cni" || "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     # set docker0 cidr to private ip address range to avoid conflict with cbr0 cidr range
     docker_opts+=" --bip=169.254.123.1/24"
   else
@@ -1491,7 +1491,7 @@ function start-collect-pprof {
 # $5: pod name, which should be either etcd or etcd-events
 function prepare-etcd-manifest {
   local host_name=${ETCD_HOSTNAME:-$(hostname -s)}
-  local host_ip=$(python -c "import socket;print(socket.gethostbyname(\"${host_name}\"))")
+  local host_ip=$(python3 -c "import socket;print(socket.gethostbyname(\"${host_name}\"))")
   local etcd_cluster=""
   local cluster_state="new"
   local etcd_protocol="http"
@@ -3127,6 +3127,9 @@ function start-lb-controller {
 ###start cluster networking: flannel, bridge
 function start-cluster-networking {
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    mizar)
+    start-mizar
+    ;;
     flannel)
     start-flannel-ds
     ;;
@@ -3134,6 +3137,111 @@ function start-cluster-networking {
     start-bridge-networking
     ;;
   esac
+}
+
+function create-mizar-daemon-manifest {
+  cat <<EOF >/etc/kubernetes/manifests/mizar-daemon.yaml
+# mizar daemon set of node agents
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mizar-daemon
+  namespace: default
+spec:
+  tolerations:
+    # The daemon shall run on the master node
+    - effect: NoSchedule
+      operator: Exists
+  terminationGracePeriodSeconds: 5
+  hostNetwork: true
+  hostPID: true
+  initContainers:
+  - name: node-init
+    image: mizarnet/mizar:${NETWORK_PROVIDER_VERSION}
+    command: [./node-init.sh]
+    securityContext:
+    # Start mizar daemon static pod
+      privileged: true
+    volumeMounts:
+    - name: mizar
+      mountPath: /home
+  containers:
+  - name: mizar-daemon
+    image: mizarnet/dropletd:${NETWORK_PROVIDER_VERSION}
+    env:
+    - name: FEATUREGATE_BWQOS
+      value: 'false'
+    securityContext:
+      privileged: true
+  volumes:
+  - name: mizar
+    hostPath:
+      path: /var
+      type: Directory
+EOF
+}
+
+function create-mizar-operator-manifest {
+  # Start mizar operator static pod
+  cat <<EOF >/etc/kubernetes/manifests/mizar-operator.yaml
+# mizar operator
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mizar-operator
+  namespace: default
+spec:
+  tolerations:
+    - effect: NoSchedule
+      operator: Exists
+  terminationGracePeriodSeconds: 5
+  hostNetwork: true
+  containers:
+  - name: mizar-operator
+    image: mizarnet/endpointopr:${NETWORK_PROVIDER_VERSION}
+    env:
+    - name: FEATUREGATE_BWQOS
+      value: 'false'
+    securityContext:
+      privileged: true
+EOF
+}
+
+function start-mizar-scaleout {
+    echo "Installing Mizar for scale-out architecture..."
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    create-mizar-daemon-manifest
+  fi
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    create-mizar-operator-manifest
+  fi
+  #TODO BUGBUG - REMOVE THIS BELOW, RP mizar-operator is only for testing
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
+    create-mizar-operator-manifest
+  fi
+}
+
+function start-mizar-scaleup {
+  #Wait for apiserver to setup default namespace
+  until kubectl get ns | grep default; do
+    sleep 5
+  done
+  echo "Installing Mizar for scale-up architecture..."
+  kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
+  wait-until-mizar-ready
+}
+
+function wait-until-mizar-ready {
+  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  #TODO: Wait for all CRDs provisioned
+}
+
+function start-mizar {
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    start-mizar-scaleout
+  else
+    start-mizar-scaleup
+  fi
 }
 
 function start-flannel-ds {
@@ -3339,4 +3447,3 @@ EOF
   echo "Restart containerd to load the config change"
   systemctl restart containerd
 }
-

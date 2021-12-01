@@ -76,9 +76,10 @@ function download-kube-env {
       -o "${tmp_kube_env}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-env
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k, v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_env}" > "${KUBE_HOME}/kube-env")
     rm -f "${tmp_kube_env}"
@@ -208,9 +209,10 @@ function download-kube-master-certs {
       -o "${tmp_kube_master_certs}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-master-certs
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k,v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_master_certs}" > "${KUBE_HOME}/kube-master-certs")
     rm -f "${tmp_kube_master_certs}"
@@ -265,7 +267,7 @@ function validate-hash {
 # Get default service account credentials of the VM.
 GCE_METADATA_INTERNAL="http://metadata.google.internal/computeMetadata/v1/instance"
 function get-credentials {
-  curl "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python -c \
+  curl  --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python3 -c \
     'import sys; import json; print(json.loads(sys.stdin.read())["access_token"])'
 }
 
@@ -376,6 +378,10 @@ function install-node-problem-detector {
 function install-cni-network {
   mkdir -p /etc/cni/net.d
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    mizar)
+    setup-mizar-cni-conf
+    install-mizar-cni-bin
+    ;;
     flannel)
     setup-flannel-cni-conf
     install-flannel-yml
@@ -384,6 +390,33 @@ function install-cni-network {
     setup-bridge-cni-conf
     ;;
   esac
+}
+
+function setup-mizar-cni-conf {
+  cat > /etc/cni/net.d/10-mizarcni.conf <<EOF
+{
+        "cniVersion": "0.3.1",
+        "name": "mizarcni",
+        "type": "mizarcni"
+}
+EOF
+}
+
+function install-mizar-cni-bin {
+  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v0.9/mizarcni -O ${KUBE_BIN}/mizarcni
+  else
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
+  fi
+  chmod +x ${KUBE_BIN}/mizarcni
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    mkdir -p ${KUBE_HOME}/mizar
+    if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+      wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+    else
+      wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+    fi
+  fi
 }
 
 function setup-bridge-cni-conf {
@@ -633,6 +666,13 @@ function install-kube-binary-config {
     mv "${src_dir}/kubelet" "${KUBE_BIN}"
     mv "${src_dir}/kubectl" "${KUBE_BIN}"
 
+    if [ ! -f /usr/bin/kubectl ]; then
+      cp ${KUBE_BIN}/kubectl /usr/bin/
+    fi
+    if [ ! -f /usr/bin/kubelet ]; then
+      cp ${KUBE_BIN}/kubelet /usr/bin/
+    fi
+
     mv "${KUBE_HOME}/kubernetes/LICENSES" "${KUBE_HOME}"
     mv "${KUBE_HOME}/kubernetes/kubernetes-src.tar.gz" "${KUBE_HOME}"
   fi
@@ -643,6 +683,7 @@ function install-kube-binary-config {
   fi
 
   if [[ "${NETWORK_PROVIDER:-}" == "kubenet" ]] || \
+     [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] || \
      [[ "${NETWORK_PROVIDER:-}" == "cni" ]]; then
     install-cni-binaries
     install-cni-network
@@ -672,6 +713,50 @@ function install-kube-binary-config {
   rm -f "${KUBE_HOME}/${server_binary_tar}.sha1"
 }
 
+function ensure-docker() {
+  echo "Installing docker .."
+  set +e
+  which docker > /dev/null
+  DOCKER_INSTALLED=$?
+  set -e
+  if [ $DOCKER_INSTALLED -ne 0 ]; then
+    OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
+    if [[ "${OS_ID}" == "ubuntu"* ]]; then
+      sudo apt-get update -y
+      sudo apt-get install -y apt-transport-https ca-certificates curl
+      curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+      sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+      sudo apt-get update -y
+      sudo apt-get install -o DPkg::Options::="--force-confnew" -y docker-ce
+      #TODO: Add wait-for-docker-up function
+      sleep 5
+    #TODO Add OS-specific support in else branches - above is for ubuntu
+    fi
+  else
+    echo "Docker is running.."
+  fi
+
+  # Use overlay2 storage config
+  rm -rf /etc/docker/daemon.json
+  cat <<EOF >/etc/docker/daemon.json
+{
+        "live-restore": true,
+        "storage-driver": "overlay2",
+        "mtu": 1460
+}
+EOF
+  sudo systemctl daemon-reload
+  sudo systemctl restart docker.service
+  #TODO: Add wait-for-docker-up function
+  sleep 5
+  systemctl status docker > /dev/null
+  DOCKER_START_STATUS=$?
+  if [ $DOCKER_START_STATUS -ne 0 ]; then
+    echo "ERROR: Failed to start docker."
+    exit $DOCKER_START_STATUS
+  fi
+}
+
 ######### Main Function ##########
 # redirect stdout/stderr to a file
 exec >> /var/log/master-init.log 2>&1
@@ -682,6 +767,7 @@ set-broken-motd
 KUBE_HOME="/home/kubernetes"
 KUBE_BIN="${KUBE_HOME}/bin"
 
+ensure-docker
 # validate or install python
 validate-python
 # download and source kube-env

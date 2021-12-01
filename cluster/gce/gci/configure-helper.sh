@@ -152,10 +152,18 @@ function main() {
     if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
       start-node-problem-detector
     fi
+    #TODO: This hack should not be required but without daemonset support, we need to create static pods for Mizar
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+        create-mizar-daemon-manifest
+      fi
+    fi
   fi
   reset-motd
   prepare-mounter-rootfs
-  modprobe configs
+  if [[ "${KUBE_GCI_VERSION}" == "cos"* ]]; then
+    modprobe configs
+  fi
   if [[ "${ENABLE_PPROF_DEBUG:-false}" == "true" ]]; then
     start-collect-pprof &  #### start collect profiling files
   fi
