@@ -17,10 +17,6 @@
 set -e
 die() { echo "$*" 1>&2 ; exit 1; }
 
-if [[ ! -n "${KUBELET_IP}" ]]; then
-    die "KUBELET_IP env var not set"
-fi
-
 # install cni plugin related packages
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 source ${KUBE_ROOT}/hack/arktos-cni.rc
@@ -53,7 +49,7 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --v=3 \
 --container-runtime=remote \
 --hostname-override=${HOSTNAME_OVERRIDE} \
---address=${KUBELET_IP} \
+--address='0.0.0.0' \
 --kubeconfig=${KUBELET_KUBECONFIG} \
 --authorization-mode=Webhook \
 --authentication-token-webhook \
