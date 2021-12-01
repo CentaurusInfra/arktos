@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/uuid"
 	"k8s.io/apiserver/pkg/storage/names"
 	"k8s.io/client-go/informers"
+	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	"k8s.io/client-go/tools/cache"
@@ -65,7 +66,10 @@ var (
 	noExecuteTaints       = []v1.Taint{{Key: "dedicated", Value: "user1", Effect: "NoExecute"}}
 )
 
-const testTenant = "johndoe"
+const (
+	testTenant = "johndoe"
+	rpId0      = "rp0"
+)
 
 func nowPointer() *metav1.Time {
 	now := metav1.Now()
@@ -343,7 +347,7 @@ func newTestController(initialObjects ...runtime.Object) (*daemonSetsController,
 		informerFactory.Apps().V1().DaemonSets(),
 		informerFactory.Apps().V1().ControllerRevisions(),
 		informerFactory.Core().V1().Pods(),
-		informerFactory.Core().V1().Nodes(),
+		map[string]coreinformers.NodeInformer{rpId0: informerFactory.Core().V1().Nodes()},
 		clientset,
 		flowcontrol.NewFakeBackOff(50*time.Millisecond, 500*time.Millisecond, clock.NewFakeClock(time.Now())),
 	)
@@ -355,7 +359,7 @@ func newTestController(initialObjects ...runtime.Object) (*daemonSetsController,
 	dsc.eventRecorder = fakeRecorder
 
 	dsc.podStoreSynced = alwaysReady
-	dsc.nodeStoreSynced = alwaysReady
+	dsc.nodeStoreSynceds[rpId0] = alwaysReady
 	dsc.dsStoreSynced = alwaysReady
 	dsc.historyStoreSynced = alwaysReady
 	podControl := newFakePodControl()

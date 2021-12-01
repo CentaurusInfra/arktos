@@ -47,7 +47,6 @@ const (
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
 type MizarArktosNetworkController struct {
 	netClientset    *arktos.Clientset
-	kubeClientset   *kubernetes.Clientset
 	netLister       arktosv1.NetworkLister
 	netListerSynced cache.InformerSynced
 	syncHandler     func(eventKeyWithType KeyWithEventType) error
@@ -58,7 +57,7 @@ type MizarArktosNetworkController struct {
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, informer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -66,21 +65,20 @@ func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClients
 
 	c := &MizarArktosNetworkController{
 		netClientset:    netClientset,
-		kubeClientset:   kubeClientset,
-		netLister:       informer.Lister(),
-		netListerSynced: informer.Informer().HasSynced,
+		netLister:       networkInformer.Lister(),
+		netListerSynced: networkInformer.Informer().HasSynced,
 		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:        eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
 		grpcHost:        grpcHost,
 		grpcAdaptor:     grpcAdaptor,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	networkInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.createNetwork,
 	})
 
-	c.netLister = informer.Lister()
-	c.netListerSynced = informer.Informer().HasSynced
+	c.netLister = networkInformer.Lister()
+	c.netListerSynced = networkInformer.Informer().HasSynced
 	c.syncHandler = c.syncNetwork
 
 	return c

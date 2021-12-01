@@ -39,8 +39,6 @@ const (
 
 // MizarNamespaceController points to current controller
 type MizarNamespaceController struct {
-	kubeClient clientset.Interface
-
 	// A store of objects, populated by the shared informer passed to MizarNamespaceController
 	lister corelisters.NamespaceLister
 	// listerSynced returns true if the store has been synced at least once.
@@ -59,27 +57,26 @@ type MizarNamespaceController struct {
 }
 
 // NewMizarNamespaceController creates and configures a new controller instance
-func NewMizarNamespaceController(informer coreinformers.NamespaceInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNamespaceController {
+func NewMizarNamespaceController(nsInformer coreinformers.NamespaceInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNamespaceController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarNamespaceController{
-		kubeClient:   kubeClient,
-		lister:       informer.Lister(),
-		listerSynced: informer.Informer().HasSynced,
+		lister:       nsInformer.Lister(),
+		listerSynced: nsInformer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNamespace),
 		grpcHost:     grpcHost,
 		grpcAdaptor:  grpcAdaptor,
 	}
 
-	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+	nsInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc:    c.createObj,
 		UpdateFunc: c.updateObj,
 		DeleteFunc: c.deleteObj,
 	})
-	c.lister = informer.Lister()
-	c.listerSynced = informer.Informer().HasSynced
+	c.lister = nsInformer.Lister()
+	c.listerSynced = nsInformer.Informer().HasSynced
 
 	c.handler = c.handle
 
