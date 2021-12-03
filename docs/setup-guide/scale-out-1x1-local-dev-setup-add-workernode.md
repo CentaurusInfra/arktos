@@ -1,4 +1,4 @@
-# How to Setup a Scale-OUT 1 TP X 1 RP with multi-node Dev Cluster with flannel in process mode
+# How to setup a Scale-Out 1 TP X 1 RP (multi-node join) Dev Cluster with Flannel in process mode
 
 ## Scenarios
 1. One Tenant Partition
@@ -69,7 +69,7 @@
 5. Please follow up the steps to do [end-to-end verification of service in scale-out cluster](https://github.com/CentaurusInfra/arktos/issues/1143)
 
 
-# How to Setup a Scale-UP Multi-node Dev Cluster with flannel in process mode
+# How to setup a Scale-Up Dev Cluster with multi-node with flannel in process mode
 
 ## Scenarios
 1. One Master Node
