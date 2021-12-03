@@ -43,21 +43,27 @@ KUBE_PROXY_KUBECONFIG=${KUBE_PROXY_KUBECONFIG:-"${CERT_DIR}/kube-proxy.kubeconfi
 if [[ ! -s "${KUBELET_KUBECONFIG}" ]]; then
     echo "kubelet kubeconfig file not found at ${KUBELET_KUBECONFIG}."
     echo "Please copy this file from Arktos master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-vm-name>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/"
+    echo "gcloud compute scp <master-vm-name>:${CERT_DIR}/kubelet.kubeconfig ${CERT_DIR}/"
+    echo "OR in AWS run:"
+    echo "scp -i '<private key of keypair>' ubuntu@<master-vm-name>:${CERT_DIR}/kubelet.kubeconfig ${CERT_DIR}/"
     die "arktos worker node failed to start."
 fi
 
 if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
     echo "kubelet client ca cert not found at ${KUBELET_CLIENTCA}."
     echo "Please copy this file from Arktos master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-vm-node>:/var/run/kubernetes/client-ca.crt /tmp/arktos/"
+    echo "gcloud compute scp <master-vm-node>:${CERT_DIR}/client-ca.crt "${CERT_DIR}
+    echo "OR in AWS run:"
+    echo "scp -i '<private key of keypair>' ubuntu@<master-vm-name>:${CERT_DIR}/client-ca.crt ${CERT_DIR}/"
     die "arktos worker node failed to start."
 fi
 
 if [[ ! -s "${KUBE_PROXY_KUBECONFIG}" ]]; then
     echo "kube-proxy kubeconfig file not found at ${KUBE_PROXY_KUBECONFIG}."
     echo "Please copy this file from Arktos master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-vm-node>:/var/run/kubernetes/kube-proxy.kubeconfig /tmp/arktos/"
+    echo "gcloud compute scp <master-vm-node>:${CERT_DIR}/kube-proxy.kubeconfig ${CERT_DIR}/"
+    echo "OR in AWS run:"
+    echo "scp -i '<private key of keypair>' ubuntu@<master-vm-name>:${CERT_DIR}/kube-proxy.kubeconfig ${CERT_DIR}/"
     die "arktos worker node failed to start."
 fi
 
@@ -85,7 +91,9 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
   if [ "$serverCount" -eq 0 ]; then
     echo "The kubelet kubeconfig file for scale-out not found under directory ${CERT_DIR}."
     echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kubelet*.kubeconfig /tmp/arktos/"
+    echo "gcloud compute scp <master-rp-name>:${CERT_DIR}/tenant-server-kubelet*.kubeconfig ${CERT_DIR}/"
+    echo "OR in AWS run:"
+    echo "scp -i '<private key of keypair>' ubuntu@<master-rp-name>:${CERT_DIR}/tenant-server-kubelet*.kubeconfig ${CERT_DIR}/"
     die "Arktos scale-out RP worker node failed to start."
   fi
  
@@ -142,7 +150,9 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
   if [ "$serverCount" -eq 0 ]; then
     echo "The kube-proxy kubeconfig file for Arktos scale-out not found under directory ${CERT_DIR}."
     echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kube-proxy*.kubeconfig /tmp/arktos/"
+    echo "gcloud compute scp <master-rp-name>:${CERT_DIR}/tenant-server-kube-proxy*.kubeconfig ${CERT_DIR}/"
+    echo "OR in AWS run:"
+    echo "scp -i '<private key of keypair>' ubuntu@<master-rp-name>:${CERT_DIR}/tenant-server-kube-proxy*.kubeconfig ${CERT_DIR}/"
     die "Arktos scale-out RP worker node failed to start."
   fi
   for (( pos=0; pos<${serverCount}; pos++ ));
