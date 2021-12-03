@@ -37,7 +37,7 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
 fi
 
 # set feature gates if enable Pod priority and preemption
-FEATURE_GATES="${FEATURE_GATES_UP_OUT}
+FEATURE_GATES="${FEATURE_GATES_COMMON_BASE}"
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
@@ -587,6 +587,12 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLO
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-system
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
+
+# Give the master node corresponding permission to get resource "leases" in API group
+# "coordination.k8s.io" in the namespace "kube-node-lease"
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
+
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get clusterrolebinding/system-node-role-bound -o yaml
 
 echo ""
 echo "Arktos Setup done."

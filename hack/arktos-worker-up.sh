@@ -29,18 +29,16 @@ KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 IS_SCALE_OUT=${IS_SCALE_OUT:-"false"}
 source "${KUBE_ROOT}/hack/lib/common-var-init.sh"
-
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
-mkdir -p /tmp/arktos
+sudo mkdir -p "${CERT_DIR}"
 
-SECRET_FOLDER=${SECRET_FOLDER:-"/tmp/arktos"}
-KUBELET_KUBECONFIG=${KUBELET_KUBECONFIG:-"${SECRET_FOLDER}/kubelet.kubeconfig"}
-KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${SECRET_FOLDER}/client-ca.crt"}
+KUBELET_KUBECONFIG=${KUBELET_KUBECONFIG:-"${CERT_DIR}/kubelet.kubeconfig"}
+KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${CERT_DIR}/client-ca.crt"}
 HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 CLUSTER_DNS=${CLUSTER_DNS:-"10.0.0.10"}
-FEATURE_GATES="${FEATURE_GATES_UP_OUT},MandatoryArktosNetwork=true"
-KUBE_PROXY_KUBECONFIG=${KUBE_PROXY_KUBECONFIG:-"${SECRET_FOLDER}/kube-proxy.kubeconfig"}
+FEATURE_GATES="${FEATURE_GATES_COMMON_BASE},MandatoryArktosNetwork=true"
+KUBE_PROXY_KUBECONFIG=${KUBE_PROXY_KUBECONFIG:-"${CERT_DIR}/kube-proxy.kubeconfig"}
 
 if [[ ! -s "${KUBELET_KUBECONFIG}" ]]; then
     echo "kubelet kubeconfig file not found at ${KUBELET_KUBECONFIG}."
@@ -57,7 +55,7 @@ if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
 fi
 
 if [[ ! -s "${KUBE_PROXY_KUBECONFIG}" ]]; then
-    echo "kube-proxy client ca cert not found at ${KUBE_PROXY_KUBECONFIG}."
+    echo "kube-proxy kubeconfig file not found at ${KUBE_PROXY_KUBECONFIG}."
     echo "Please copy this file from Arktos master, e.g. in GCP run:"
     echo "gcloud compute scp <master-vm-node>:/var/run/kubernetes/kube-proxy.kubeconfig /tmp/arktos/"
     die "arktos worker node failed to start."
@@ -65,13 +63,27 @@ fi
 
 make all WHAT=cmd/hyperkube
 
-echo "Starting kubelet ....."
+echo "DBG: Cleaning old processes for kubelet, kube-proxy and flannel"
+# Check if the kubelet is still running
+KUBELET_PIDS=`ps -ef |grep kubelet |grep -v grep |awk '{print $2}'`
+[[ -n "${KUBELET_PIDS}" ]] && sudo kill -9 `echo ${KUBELET_PIDS}` 2>/dev/null
+
+# Check if the proxy is still running
+PROXY_PIDS=`ps -ef |grep kube-proxy |grep -v grep |awk '{print $2}'`
+[[ -n "${PROXY_PIDS}" ]] && sudo kill -9 `echo ${PROXY_PIDS}` 2>/dev/null
+
+# Check if the flannel is still running
+FLANNELD_PIDS=`ps -ef |grep flannel |grep -v grep |awk '{print $2}'`
+[[ -n "${FLANNELD_PIDS}" ]] && sudo kill `echo ${FLANNELD_PIDS}` 2>/dev/null
+
+
+echo "DBG: Starting kubelet ....."
 KUBELET_FLAGS="--tenant-server-kubeconfig="
 if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   kubeconfig_filename="tenant-server-kubelet"
-  serverCount=`ls -al ${SECRET_FOLDER}/${kubeconfig_filename}*.kubeconfig |wc -l`
+  serverCount=`ls -al ${CERT_DIR}/${kubeconfig_filename}*.kubeconfig |wc -l`
   if [ "$serverCount" -eq 0 ]; then
-    echo "The kubelet kubeconfig file for scale-out not found under directory ${SECRET_FOLDER}."
+    echo "The kubelet kubeconfig file for scale-out not found under directory ${CERT_DIR}."
     echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
     echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kubelet*.kubeconfig /tmp/arktos/"
     die "Arktos scale-out RP worker node failed to start."
@@ -79,7 +91,7 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
  
   for (( pos=0; pos<${serverCount}; pos++ ));
   do
-    KUBELET_FLAGS="${KUBELET_FLAGS}${SECRET_FOLDER}/${kubeconfig_filename}${pos}.kubeconfig,"
+    KUBELET_FLAGS="${KUBELET_FLAGS}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
   done
   KUBELET_FLAGS=${KUBELET_FLAGS::-1}
 fi
@@ -108,31 +120,34 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 ${KUBELET_FLAGS} \
 > ${KUBELET_LOG} 2>&1 &
 
-echo "kubelet has been started. please check ${KUBELET_LOG} for its running log."
+echo "DBG: kubelet has been started. please check ${KUBELET_LOG} for its running log."
 
 if [ "${CNIPLUGIN}" == "flannel" ]; then
-    echo "Installing Flannel cni plugin..."
+    echo "DBG: Installing Flannel cni plugin..."
     sleep 30  #need sometime for KCM to be fully functioning
-    install_flannel
+    if [ "${IS_SCALE_OUT}" == "true" ]; then
+       install_flannel "${RESOURCE_PARTITION_POD_CIDR}" "${API_HOST_IP_EXTERNAL}"
+    else 
+       install_flannel "${KUBE_CONTROLLER_MANAGER_CLUSTER_CIDR}" "${API_HOST_IP_EXTERNAL}"
+    fi
 fi
 
-echo "Starting kube-proxy ....."
+echo "DBG: Starting kube-proxy ....."
 ## in scale-out env, we need to get hold of kubeconfig files for all TPs
 ## only applicable to node of a RP
 TP_KUBEONFIGS=""
 if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
   kubeconfig_filename="tenant-server-kube-proxy"
-  serverCount=`ls -al ${SECRET_FOLDER}/${kubeconfig_filename}*.kubeconfig |wc -l`
+  serverCount=`ls -al ${CERT_DIR}/${kubeconfig_filename}*.kubeconfig |wc -l`
   if [ "$serverCount" -eq 0 ]; then
-    echo "The kube-proxy kubeconfig file for Arktos scale-out not found under directory ${SECRET_FOLDER}."
+    echo "The kube-proxy kubeconfig file for Arktos scale-out not found under directory ${CERT_DIR}."
     echo "Please copy this file from Arktos RP master, e.g. in GCP run:"
     echo "gcloud compute scp <master-rp-name>:/var/run/kubernetes/tenant-server-kube-proxy*.kubeconfig /tmp/arktos/"
     die "Arktos scale-out RP worker node failed to start."
   fi
   for (( pos=0; pos<${serverCount}; pos++ ));
   do
-    TP_KUBEONFIGS="${TP_KUBEONFIGS}${SECRET_FOLDER}/${kubeconfig_filename}${pos}.kubeconfig,"
-    echo $TP_KUBEONFIGS
+    TP_KUBEONFIGS="${TP_KUBEONFIGS}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
   done
   TP_KUBEONFIGS=${TP_KUBEONFIGS::-1}
 fi
@@ -166,6 +181,6 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kube-proxy \
 --master="http://${API_HOST_IP_EXTERNAL}:8080" \
 > ${KUBE_PROXY_LOG} 2>&1 &
 
-echo "kube-proxy has been started. please check ${KUBE_PROXY_LOG} for its running log."
+echo "DBG: kube-proxy has been started. please check ${KUBE_PROXY_LOG} for its running log."
 
 exit 0

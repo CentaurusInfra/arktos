@@ -108,7 +108,7 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
 fi
 
 # set feature gates if enable Pod priority and preemption
-FEATURE_GATES="${FEATURE_GATES_UP_OUT}"
+FEATURE_GATES="${FEATURE_GATES_COMMON_BASE}"
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
@@ -659,7 +659,7 @@ echo "Setup Arktos components ..."
 echo ""
 
 # todo: start flannel daemon deterministically, instead of waiting for arbitrary time
-if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" && "${SCALE_OUT_TP_ENABLE_DAEMONSET}" == "false" ]]; then
+if [[ "${CNIPLUGIN}" == "flannel" && "${IS_RESOURCE_PARTITION}" == "true" ]]; then
   echo "Installing Flannel cni plugin... "
   sleep 30  #need sometime for KCM to be fully functioning
   install_flannel "${RESOURCE_PARTITION_POD_CIDR}"
