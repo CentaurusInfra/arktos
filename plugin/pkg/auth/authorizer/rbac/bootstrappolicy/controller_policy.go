@@ -414,6 +414,15 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 		},
 	})
 
+	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
+		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "mizar-arktos-network-controller"},
+		Rules: []rbacv1.PolicyRule{
+			// mizar arktos network controller needs to watch and update network objects of arktos.futurewei.com
+			rbacv1helpers.NewRule("list", "update").Groups("arktos.futurewei.com").Resources("networks").RuleOrDie(),
+			eventsRule(),
+		},
+	})
+
 	return controllerRoles, controllerRoleBindings
 }
 
