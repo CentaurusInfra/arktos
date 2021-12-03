@@ -163,7 +163,6 @@ if [[ "${IS_SCALE_OUT}" == "true" ]] && [ "${IS_RESOURCE_PARTITION}" == "true" ]
 fi
 
 KUBE_PROXY_YAML="/tmp/kube-proxy.yaml"
-#cat <<EOF > /tmp/kube-proxy.yaml
 cat <<EOF > ${KUBE_PROXY_YAML}
 apiVersion: kubeproxy.config.k8s.io/v1alpha1
 kind: KubeProxyConfiguration

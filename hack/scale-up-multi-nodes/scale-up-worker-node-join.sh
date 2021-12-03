@@ -27,7 +27,7 @@ sudo ls -alg $SECRET_DIR
 echo "Copy secret files from master node $MASTER_IP ......"
 for secret in kubelet.kubeconfig client-ca.crt kube-proxy.kubeconfig
 do
-  scp -i "$AWS_PRIVATE_KEY" ubuntu@$MASTER_IP:$SECRET_DIR/$secret $SECRET_DIR/$secret
+  scp -i "$AWS_PRIVATE_KEY" ubuntu@$MASTER_IP:$SECRET_DIR/$secret $SECRET_DIR/
 done
 
 sudo ls -alg $SECRET_DIR

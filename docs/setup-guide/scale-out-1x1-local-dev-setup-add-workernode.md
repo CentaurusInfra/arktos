@@ -69,7 +69,7 @@
 5. Please follow up the steps to do [end-to-end verification of service in scale-out cluster](https://github.com/CentaurusInfra/arktos/issues/1143)
 
 
-# How to setup a Scale-Up Dev Cluster with multi-node with flannel in process mode
+# How to setup a Scale-Up Multi-node Dev Cluster with flannel in process mode
 
 ## Scenarios
 1. One Master Node
