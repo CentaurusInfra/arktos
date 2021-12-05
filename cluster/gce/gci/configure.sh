@@ -880,6 +880,27 @@ function ensure-container-runtime {
   fi
 }
 
+function ensure-mizar-kernel-and-ifname() {
+  sed -i "s/set-name: .*/set-name: eth0/" /etc/netplan/50-cloud-init.yaml
+  local kernel_ver=`uname -r`
+  echo "Running kernel version: $kernel_ver"
+  local mj_ver=$(echo $kernel_ver | cut -d. -f1)
+  local mn_ver=$(echo $kernel_ver | cut -d. -f2)
+  if [[ "$mj_ver" < "5" ]] || [[ "$mn_ver" < "6" ]]; then
+    echo "Mizar requires an updated kernel: linux-5.6-rc2 or above for TCP to function correctly. Current version is $kernel_ver. Updating.."
+    local mz_kernel_tmp_dir="/tmp/linux-5.6-rc2"
+    mkdir -p $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-headers-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2-dbg_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-libc-dev_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    sudo dpkg -i $mz_kernel_tmp_dir/*.deb
+    sudo reboot
+  else
+    echo "Kernel version needed by Mizar is running."
+  fi
+}
+
 
 ######### Main Function ##########
 # redirect stdout/stderr to a file
@@ -897,6 +918,13 @@ validate-python
 # download and source kube-env
 download-kube-env
 source "${KUBE_HOME}/kube-env"
+
+# This hack is only needed because arktos does not support ubuntu 20.04 with latest kernels
+# When arktos adds support, remove this because mizar works with 20.04 that has 5.11.0 kernel
+# Currently, mizar is only deployed with ubuntu so we can skip that check for this hack.
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  ensure-mizar-kernel-and-ifname
+fi
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
@@ -925,6 +953,5 @@ else
   # binaries and kube-system manifests
   install-kube-binary-config
 fi
-
 
 echo "Done for installing kubernetes files"

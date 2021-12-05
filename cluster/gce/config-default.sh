@@ -102,6 +102,10 @@ if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
   KUBE_GCI_VERSION="ubuntu-2004-focal-v20211202"
   KUBE_GCE_MASTER_IMAGE="ubuntu-2004-focal-v20211202"
   KUBE_GCE_NODE_IMAGE="ubuntu-2004-focal-v20211202"
+#  KUBE_GCI_VERSION="ubuntu-1804-bionic-v20211115"
+#  KUBE_GCE_MASTER_IMAGE="ubuntu-1804-bionic-v20211115"
+#  KUBE_GCE_NODE_IMAGE="ubuntu-1804-bionic-v20211115"
+#  KUBE_CLUSTER_INITIALIZATION_TIMEOUT=600
 fi
 
 # By default a cluster will be started with the master and nodes
