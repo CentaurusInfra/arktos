@@ -154,13 +154,18 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
 	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
-	go controllers.NewMizarArktosNetworkController(
-		networkClient,
-		svcKubeClient,
-		informerFactory.Arktos().V1().Networks(),
-		grpcHost,
-		grpcAdaptor,
-	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	go func() {
+		networkController := controllers.NewMizarArktosNetworkController(
+			networkClient,
+			svcKubeClient,
+			informerFactory.Arktos().V1().Networks(),
+			grpcHost,
+			grpcAdaptor,
+		)
+
+		informerFactory.Start(ctx.Stop)
+		networkController.Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	}()
 	return nil, true, nil
 }
 
