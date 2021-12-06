@@ -77,7 +77,7 @@ fi
 make all WHAT=cmd/hyperkube
 
 sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
---v=3 \
+--v="${LOG_LEVEL}" \
 --container-runtime=remote \
 --hostname-override=${HOSTNAME_OVERRIDE} \
 --address='0.0.0.0' \
