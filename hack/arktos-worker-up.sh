@@ -56,13 +56,14 @@ EOF
 # Ensure CERT_DIR is created for auto-generated kubeconfig
 mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
 CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+
+# Generate kubeconfig
 write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_HOST}" "${API_PORT}" kubelet "" "http"
 ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/kubelet.kubeconfig"
 
-mkdir -p /tmp/arktos
+KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${CERT_DIR}/client-ca.crt"}
+${CONTROLPLANE_SUDO} chown "$(whoami)" "${KUBELET_CLIENTCA}"
 
-SECRET_FOLDER=${SECRET_FOLDER:-"/tmp/arktos"}
-KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${SECRET_FOLDER}/client-ca.crt"}
 HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 CLUSTER_DNS=${CLUSTER_DNS:-"10.0.0.10"}
 
