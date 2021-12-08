@@ -31,7 +31,7 @@ function write_client_kubeconfig {
     local api_port=$5
     local client_id=$6
     local token=${7:-}
-    local protocol=${8:-"https"}
+    local protocol=${8:-"http"}
 
     cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
 apiVersion: v1
