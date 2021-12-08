@@ -496,7 +496,7 @@ var masterServices = sets.NewString("kubernetes")
 
 // getServiceEnvVarMap makes a map[string]string of env vars for services a
 // pod in namespace ns should see.
-func (kl *Kubelet) getServiceEnvVarMap(tenant string, ns string, enableServiceLinks bool) (map[string]string, error) {
+func (kl *Kubelet) getServiceEnvVarMap(podUID types.UID, tenant string, ns string, enableServiceLinks bool) (map[string]string, error) {
 	var (
 		serviceMap = make(map[string]*v1.Service)
 		m          = make(map[string]string)
@@ -504,7 +504,8 @@ func (kl *Kubelet) getServiceEnvVarMap(tenant string, ns string, enableServiceLi
 
 	// Get all service resources from the master (via a cache),
 	// and populate them into service environment variables.
-	index := kubeclientmanager.ClientManager.PickClient(tenant)
+	// todo: remove param of tenant after pod specific origin tracking impl
+	index := kubeclientmanager.ClientManager.PickClient(podUID)
 	if kl.serviceListers[index] == nil {
 		// Kubelets without masters (e.g. plain GCE ContainerVM) don't set env vars.
 		return m, nil
@@ -527,7 +528,11 @@ func (kl *Kubelet) getServiceEnvVarMap(tenant string, ns string, enableServiceLi
 		// from the master service namespace, even if enableServiceLinks is false.
 		// We also add environment variables for other services in the same
 		// namespace, if enableServiceLinks is true.
-		if service.Namespace == kl.masterServiceNamespace && masterServices.Has(serviceName) {
+		targetedTenant := tenant
+		if !utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
+			targetedTenant = metav1.TenantSystem
+		}
+		if service.Tenant == targetedTenant && service.Namespace == kl.masterServiceNamespace && masterServices.Has(serviceName) {
 			if _, exists := serviceMap[serviceName]; !exists {
 				serviceMap[serviceName] = service
 			}
@@ -563,7 +568,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 	// To avoid this users can: (1) wait between starting a service and starting; or (2) detect
 	// missing service env var and exit and be restarted; or (3) use DNS instead of env vars
 	// and keep trying to resolve the DNS name of the service (recommended).
-	serviceEnv, err := kl.getServiceEnvVarMap(pod.Tenant, pod.Namespace, *pod.Spec.EnableServiceLinks)
+	serviceEnv, err := kl.getServiceEnvVarMap(pod.UID, pod.Tenant, pod.Namespace, *pod.Spec.EnableServiceLinks)
 	if err != nil {
 		return result, err
 	}
@@ -587,7 +592,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := cm.Optional != nil && *cm.Optional
-				configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
+				configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name, pod.UID)
 				if err != nil {
 					if errors.IsNotFound(err) && optional {
 						// ignore error when marked optional
@@ -622,7 +627,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					return result, fmt.Errorf("Couldn't get secret %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := s.Optional != nil && *s.Optional
-				secret, err = kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, name)
+				secret, err = kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, name, pod.UID)
 				if err != nil {
 					if errors.IsNotFound(err) && optional {
 						// ignore error when marked optional
@@ -695,7 +700,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					if !hasValidTPClients(kl.kubeTPClients) {
 						return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
-					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
+					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name, pod.UID)
 					if err != nil {
 						if errors.IsNotFound(err) && optional {
 							// ignore error when marked optional
@@ -722,7 +727,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					if !hasValidTPClients(kl.kubeTPClients) {
 						return result, fmt.Errorf("Couldn't get secret %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
-					secret, err = kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, name)
+					secret, err = kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, name, pod.UID)
 					if err != nil {
 						if errors.IsNotFound(err) && optional {
 							// ignore error when marked optional
@@ -847,7 +852,7 @@ func (kl *Kubelet) getPullSecretsForPod(pod *v1.Pod) []v1.Secret {
 	pullSecrets := []v1.Secret{}
 
 	for _, secretRef := range pod.Spec.ImagePullSecrets {
-		secret, err := kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, secretRef.Name)
+		secret, err := kl.secretManager.GetSecret(pod.Tenant, pod.Namespace, secretRef.Name, pod.UID)
 		if err != nil {
 			klog.Warningf("Unable to retrieve pull secret %s/%s for %s/%s due to %v.  The image pull may not succeed.", pod.Namespace, secretRef.Name, pod.Namespace, pod.Name, err)
 			continue
@@ -1971,7 +1976,7 @@ func hasHostNamespace(pod *v1.Pod) bool {
 func (kl *Kubelet) hasHostMountPVC(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant)
+			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.UID)
 			pvc, err := tenantPartitionClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
 			if err != nil {
 				klog.Warningf("unable to retrieve pvc %s:%s - %v", pod.Namespace, volume.PersistentVolumeClaim.ClaimName, err)
