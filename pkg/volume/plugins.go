@@ -417,12 +417,12 @@ type VolumeHost interface {
 	GetNodeAllocatable() (v1.ResourceList, error)
 
 	// Returns a function that returns a secret.
-	GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error)
+	GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
 
 	// Returns a function that returns a configmap.
-	GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error)
+	GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
 
-	GetServiceAccountTokenFunc() func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	GetServiceAccountTokenFunc() func(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 
 	DeleteServiceAccountTokenFunc() func(podUID types.UID)
 

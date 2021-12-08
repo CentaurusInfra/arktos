@@ -1,5 +1,6 @@
 /*
 Copyright 2018 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 )
 
 const (
@@ -38,13 +40,14 @@ const (
 )
 
 // NewManager returns a new token manager.
-func NewManager(c clientset.Interface) *Manager {
+func NewManager(clients []clientset.Interface) *Manager {
 	m := &Manager{
-		getToken: func(name, namespace string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-			if c == nil {
+		getToken: func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+			if len(clients) == 0 {
 				return nil, errors.New("cannot use TokenManager when kubelet is in standalone mode")
 			}
-			return c.CoreV1().ServiceAccounts(namespace).CreateToken(name, tr)
+			idx := kubeclientmanager.ClientManager.PickClient(ownerPod)
+			return clients[idx].CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
 		},
 		cache: make(map[string]*authenticationv1.TokenRequest),
 		clock: clock.RealClock{},
@@ -61,7 +64,7 @@ type Manager struct {
 	cache      map[string]*authenticationv1.TokenRequest
 
 	// mocked for testing
-	getToken func(name, namespace string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getToken func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	clock    clock.Clock
 }
 
@@ -73,7 +76,7 @@ type Manager struct {
 // * If the token is refreshed successfully, save it in the cache and return the token.
 // * If refresh fails and the old token is still valid, log an error and return the old token.
 // * If refresh fails and the old token is no longer valid, return an error
-func (m *Manager) GetServiceAccountToken(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (m *Manager) GetServiceAccountToken(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	key := keyFunc(name, namespace, tr)
 
 	ctr, ok := m.get(key)
@@ -82,7 +85,7 @@ func (m *Manager) GetServiceAccountToken(namespace, name string, tr *authenticat
 		return ctr, nil
 	}
 
-	tr, err := m.getToken(name, namespace, tr)
+	tr, err := m.getToken(tenant, name, namespace, ownerPod, tr)
 	if err != nil {
 		switch {
 		case !ok:

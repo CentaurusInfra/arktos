@@ -295,7 +295,7 @@ func (dswp *desiredStateOfWorldPopulator) processPodVolumes(
 	// Process volume spec for each volume defined in pod
 	for _, podVolume := range pod.Spec.Volumes {
 		pvc, volumeSpec, volumeGidValue, err :=
-			dswp.createVolumeSpec(podVolume, pod.Name, pod.Namespace, pod.Tenant, mountsMap, devicesMap)
+			dswp.createVolumeSpec(podVolume, pod.Name, pod.Namespace, pod.Tenant, pod.UID, mountsMap, devicesMap)
 		if err != nil {
 			klog.Errorf(
 				"Error processing volume %q for pod %q: %v",
@@ -474,7 +474,7 @@ func (dswp *desiredStateOfWorldPopulator) deleteProcessedPod(
 // createVolumeSpec creates and returns a mutatable volume.Spec object for the
 // specified volume. It dereference any PVC to get PV objects, if needed.
 // Returns an error if unable to obtain the volume at this time.
-func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, podName string, podNamespace string, podTenant string, mountsMap map[string]bool, devicesMap map[string]bool) (*v1.PersistentVolumeClaim, *volume.Spec, string, error) {
+func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, podName string, podNamespace string, podTenant string, boundPod types.UID, mountsMap map[string]bool, devicesMap map[string]bool) (*v1.PersistentVolumeClaim, *volume.Spec, string, error) {
 	if pvcSource :=
 		podVolume.VolumeSource.PersistentVolumeClaim; pvcSource != nil {
 		klog.V(5).Infof(
@@ -483,7 +483,7 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, 
 			pvcSource.ClaimName)
 
 		// If podVolume is a PVC, fetch the real PV behind the claim
-		pvc, err := dswp.getPVCExtractPV(podTenant, podNamespace, pvcSource.ClaimName)
+		pvc, err := dswp.getPVCExtractPV(boundPod, podTenant, podNamespace, pvcSource.ClaimName)
 		if err != nil {
 			return nil, nil, "", fmt.Errorf(
 				"error processing PVC %q/%q: %v",
@@ -502,7 +502,7 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, 
 
 		// Fetch actual PV object
 		volumeSpec, volumeGidValue, err :=
-			dswp.getPVSpec(pvc.Tenant, pvName, pvcSource.ReadOnly, pvcUID)
+			dswp.getPVSpec(boundPod, pvc.Tenant, pvName, pvcSource.ReadOnly, pvcUID)
 		if err != nil {
 			return nil, nil, "", fmt.Errorf(
 				"error processing PVC %q/%q: %v",
@@ -557,8 +557,8 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, 
 // the API server, checks whether PVC is being deleted, extracts the name of the PV
 // it is pointing to and returns it.
 // An error is returned if the PVC object's phase is not "Bound".
-func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(tenant string, namespace string, claimName string) (*v1.PersistentVolumeClaim, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, tenant)
+func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(boundPod types.UID, tenant string, namespace string, claimName string) (*v1.PersistentVolumeClaim, error) {
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, boundPod)
 	pvc, err :=
 		tenantPartitionClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(claimName, metav1.GetOptions{})
 	if err != nil || pvc == nil {
@@ -602,8 +602,8 @@ func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(tenant string, namespa
 // getPVSpec fetches the PV object with the given name from the API server
 // and returns a volume.Spec representing it.
 // An error is returned if the call to fetch the PV object fails.
-func (dswp *desiredStateOfWorldPopulator) getPVSpec(tenant string, name string, pvcReadOnly bool, expectedClaimUID types.UID) (*volume.Spec, string, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, tenant)
+func (dswp *desiredStateOfWorldPopulator) getPVSpec(boundPod types.UID, tenant string, name string, pvcReadOnly bool, expectedClaimUID types.UID) (*volume.Spec, string, error) {
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, boundPod)
 	pv, err := tenantPartitionClient.CoreV1().PersistentVolumesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil || pv == nil {
 		return nil, "", fmt.Errorf(

@@ -19,6 +19,7 @@ package configmap
 
 import (
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // fakeManager implements Manager interface for testing purposes.
@@ -31,7 +32,7 @@ func NewFakeManager() Manager {
 	return &fakeManager{}
 }
 
-func (s *fakeManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
+func (s *fakeManager) GetConfigMap(tenant, namespace, name string, podUID types.UID) (*v1.ConfigMap, error) {
 	return nil, nil
 }
 

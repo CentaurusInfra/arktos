@@ -398,20 +398,20 @@ func (expc *expandController) GetNodeAllocatable() (v1.ResourceList, error) {
 	return v1.ResourceList{}, nil
 }
 
-func (expc *expandController) GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error) {
-	return func(_, _, _ string) (*v1.Secret, error) {
+func (expc *expandController) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+	return func(_, _, _ string, _ types.UID) (*v1.Secret, error) {
 		return nil, fmt.Errorf("GetSecret unsupported in expandController")
 	}
 }
 
-func (expc *expandController) GetConfigMapFunc() func(tenant, namespace, name string) (*v1.ConfigMap, error) {
-	return func(_, _, _ string) (*v1.ConfigMap, error) {
+func (expc *expandController) GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+	return func(_, _, _ string, _ types.UID) (*v1.ConfigMap, error) {
 		return nil, fmt.Errorf("GetConfigMap unsupported in expandController")
 	}
 }
 
-func (expc *expandController) GetServiceAccountTokenFunc() func(_, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	return func(_, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (expc *expandController) GetServiceAccountTokenFunc() func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+	return func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 		return nil, fmt.Errorf("GetServiceAccountToken unsupported in expandController")
 	}
 }

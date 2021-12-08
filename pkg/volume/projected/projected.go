@@ -48,9 +48,9 @@ const (
 
 type projectedPlugin struct {
 	host                      volume.VolumeHost
-	getSecret                 func(tenant, namespace, name string) (*v1.Secret, error)
-	getConfigMap              func(tenant, namespace, name string) (*v1.ConfigMap, error)
-	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getSecret                 func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
+	getConfigMap              func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
+	getServiceAccountToken    func(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
 }
 
@@ -269,7 +269,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 		switch {
 		case source.Secret != nil:
 			optional := source.Secret.Optional != nil && *source.Secret.Optional
-			secretapi, err := s.plugin.getSecret(s.pod.Tenant, s.pod.Namespace, source.Secret.Name)
+			secretapi, err := s.plugin.getSecret(s.pod.Tenant, s.pod.Namespace, source.Secret.Name, s.pod.UID)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
 					klog.Errorf("Couldn't get secret %v/%v: %v", s.pod.Namespace, source.Secret.Name, err)
@@ -295,7 +295,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			}
 		case source.ConfigMap != nil:
 			optional := source.ConfigMap.Optional != nil && *source.ConfigMap.Optional
-			configMap, err := s.plugin.getConfigMap(s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name)
+			configMap, err := s.plugin.getConfigMap(s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, s.pod.UID)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
 					klog.Errorf("Couldn't get configMap %v/%v/%v: %v", s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, err)
@@ -339,7 +339,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			if len(tp.Audience) != 0 {
 				auds = []string{tp.Audience}
 			}
-			tr, err := s.plugin.getServiceAccountToken(s.pod.Namespace, s.pod.Spec.ServiceAccountName, &authenticationv1.TokenRequest{
+			tr, err := s.plugin.getServiceAccountToken(s.pod.Tenant, s.pod.Namespace, s.pod.Spec.ServiceAccountName, s.pod.UID, &authenticationv1.TokenRequest{
 				Spec: authenticationv1.TokenRequestSpec{
 					Audiences:         auds,
 					ExpirationSeconds: tp.ExpirationSeconds,

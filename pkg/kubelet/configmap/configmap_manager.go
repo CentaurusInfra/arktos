@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
@@ -38,7 +39,7 @@ import (
 // Manager interface provides methods for Kubelet to manage ConfigMap.
 type Manager interface {
 	// Get configmap by configmap namespace and name.
-	GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error)
+	GetConfigMap(tenant, namespace, name string, podUID types.UID) (*v1.ConfigMap, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -62,8 +63,8 @@ func NewSimpleConfigMapManager(kubeClients []clientset.Interface) Manager {
 	return &simpleConfigMapManager{kubeClients: kubeClients}
 }
 
-func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, tenant)
+func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPod)
 	return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
@@ -81,8 +82,8 @@ type configMapManager struct {
 	manager manager.Manager
 }
 
-func (c *configMapManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
-	object, err := c.manager.GetObject(tenant, namespace, name)
+func (c *configMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+	object, err := c.manager.GetObject(tenant, namespace, name, ownerPod)
 	if err != nil {
 		return nil, err
 	}
@@ -122,8 +123,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getConfigMap := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	getConfigMap := func(tenant, namespace, name string, origin int, opts metav1.GetOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[origin]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	configMapStore := manager.NewObjectStore(getConfigMap, clock.RealClock{}, getTTL, defaultTTL)
@@ -135,16 +136,16 @@ func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manage
 // NewWatchingConfigMapManager creates a manager that keeps a cache of all configmaps
 // necessary for registered pods.
 // It implements the following logic:
-// - whenever a pod is created or updated, we start inidvidual watches for all
+// - whenever a pod is created or updated, we start individual watches for all
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingConfigMapManager(kubeClients []clientset.Interface) Manager {
-	listConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	listConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	watchConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (watch.Interface, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newConfigMap := func() runtime.Object {

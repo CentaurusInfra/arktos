@@ -18,19 +18,21 @@ limitations under the License.
 package kubeclientmanager
 
 import (
-	v1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	clientset "k8s.io/client-go/kubernetes"
 	"reflect"
 	"testing"
+
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	clientset "k8s.io/client-go/kubernetes"
 )
 
 func TestNewKubeClientManagerRunOnce(t *testing.T) {
 	NewKubeClientManager()
-	ClientManager.tenant2api["john"] = 1
+	ClientManager.puid2api["john"] = 1
 	NewKubeClientManager()
 
-	if len(ClientManager.tenant2api) != 1 {
+	if len(ClientManager.puid2api) != 1 {
 		t.Error("KubeClientManager has been initialized more than once")
 	}
 }
@@ -39,86 +41,92 @@ func TestRegisterTenantSourceServer(t *testing.T) {
 	testcases := []struct {
 		pod         *v1.Pod
 		source      string
-		expectedMap map[string]int
+		expectedMap map[types.UID]int
 	}{
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "",
+					UID: "",
 				},
 			},
 			source:      "api",
-			expectedMap: map[string]int{},
+			expectedMap: map[types.UID]int{},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "jane",
+					Tenant: "nonempty",
+					UID:    "jane",
 				},
 			},
 			source:      "noprefix",
-			expectedMap: map[string]int{},
+			expectedMap: map[types.UID]int{},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "john",
+					Tenant: "nonempty",
+					UID:    "john",
 				},
 			},
 			source: "api",
-			expectedMap: map[string]int{
+			expectedMap: map[types.UID]int{
 				"john": 0,
 			},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "alex",
+					Tenant: "nonempty",
+					UID:    "alex",
 				},
 			},
 			source: "api0",
-			expectedMap: map[string]int{
+			expectedMap: map[types.UID]int{
 				"alex": 0,
 			},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "AlEX",
+					Tenant: "nonempty",
+					UID:    "AlEX",
 				},
 			},
 			source: "api1",
-			expectedMap: map[string]int{
-				"alex": 1,
+			expectedMap: map[types.UID]int{
+				"AlEX": 1,
 			},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "AlEX",
+					Tenant: "nonempty",
+					UID:    "AlEX",
 				},
 			},
 			source: "api999",
-			expectedMap: map[string]int{
-				"alex": 999,
+			expectedMap: map[types.UID]int{
+				"AlEX": 999,
 			},
 		},
 		{
 			pod: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
-					Tenant: "AlEX",
+					Tenant: "nonempty",
+					UID:    "AlEX",
 				},
 			},
 			source:      "apixxx",
-			expectedMap: map[string]int{},
+			expectedMap: map[types.UID]int{},
 		},
 	}
 
 	for i, test := range testcases {
 		newKubeClientManagerFunc()()
 		ClientManager.RegisterTenantSourceServer(test.source, test.pod)
-		if !reflect.DeepEqual(test.expectedMap, ClientManager.tenant2api) {
-			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedMap, ClientManager.tenant2api)
+		if !reflect.DeepEqual(test.expectedMap, ClientManager.puid2api) {
+			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedMap, ClientManager.puid2api)
 		}
 	}
 }
@@ -129,14 +137,14 @@ func TestGetTPClient(t *testing.T) {
 
 	testcases := []struct {
 		kubeClients    []clientset.Interface
-		tenant         string
-		tenant2api     map[string]int
+		puid           types.UID
+		puid2api       map[types.UID]int
 		expectedClient clientset.Interface
 	}{
 		{
 			kubeClients: nil, // invalid Client array
-			tenant:      "ron",
-			tenant2api: map[string]int{
+			puid:        "ron",
+			puid2api: map[types.UID]int{
 				"kip": 1,
 			},
 			expectedClient: nil,
@@ -144,8 +152,8 @@ func TestGetTPClient(t *testing.T) {
 		{
 			kubeClients: []clientset.Interface{ // invalid Client array
 			},
-			tenant: "jane",
-			tenant2api: map[string]int{
+			puid: "jane",
+			puid2api: map[types.UID]int{
 				"ale": 1,
 			},
 			expectedClient: nil,
@@ -155,8 +163,8 @@ func TestGetTPClient(t *testing.T) {
 				client0,
 				client1,
 			},
-			tenant: "apple",
-			tenant2api: map[string]int{
+			puid: "apple",
+			puid2api: map[types.UID]int{
 				"apple": 0,
 			},
 			expectedClient: client0,
@@ -166,8 +174,8 @@ func TestGetTPClient(t *testing.T) {
 				client0,
 				client1,
 			},
-			tenant: "apple",
-			tenant2api: map[string]int{
+			puid: "apple",
+			puid2api: map[types.UID]int{
 				"apple": 1,
 			},
 			expectedClient: client1,
@@ -177,8 +185,8 @@ func TestGetTPClient(t *testing.T) {
 				client0,
 				client1,
 			},
-			tenant: "alex",
-			tenant2api: map[string]int{
+			puid: "alex",
+			puid2api: map[types.UID]int{
 				"joe":   1,
 				"katie": 0,
 			},
@@ -187,8 +195,8 @@ func TestGetTPClient(t *testing.T) {
 	}
 	for i, test := range testcases {
 		newKubeClientManagerFunc()()
-		ClientManager.tenant2api = test.tenant2api
-		actualClient := ClientManager.GetTPClient(test.kubeClients, test.tenant)
+		ClientManager.puid2api = test.puid2api
+		actualClient := ClientManager.GetTPClient(test.kubeClients, test.puid)
 		if test.expectedClient != actualClient {
 			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedClient, actualClient)
 		}
