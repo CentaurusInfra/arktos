@@ -17,28 +17,55 @@
 set -e
 die() { echo "$*" 1>&2 ; exit 1; }
 
-if [[ ! -n "${KUBELET_IP}" ]]; then
-    die "KUBELET_IP env var not set"
-fi
-
 # install cni plugin related packages
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
+source ${KUBE_ROOT}/hack/lib/common-var-init.sh
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
-mkdir -p /tmp/arktos
+# creates a self-contained kubeconfig: args are sudo, dest-dir, ca file, host, port, client id, token(optional)
+function write_client_kubeconfig {
+    local sudo=$1
+    local dest_dir=$2
+    local ca_file=$3
+    local api_host=$4
+    local api_port=$5
+    local client_id=$6
+    local token=${7:-}
+    local protocol=${8:-"http"}
 
-SECRET_FOLDER=${SECRET_FOLDER:-"/tmp/arktos"}
-KUBELET_KUBECONFIG=${KUBELET_KUBECONFIG:-"${SECRET_FOLDER}/kubelet.kubeconfig"}
-KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${SECRET_FOLDER}/client-ca.crt"}
+    cat <<EOF | ${sudo} tee "${dest_dir}"/"${client_id}".kubeconfig > /dev/null
+apiVersion: v1
+kind: Config
+clusters:
+  - cluster:
+      server: ${protocol}://${api_host}:${api_port}/
+    name: local-up-cluster
+users:
+  - user:
+    name: local-up-cluster
+contexts:
+  - context:
+      cluster: local-up-cluster
+      user: local-up-cluster
+    name: local-up-cluster
+current-context: local-up-cluster
+EOF
+}
+
+
+# Ensure CERT_DIR is created for auto-generated kubeconfig
+mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
+CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
+
+# Generate kubeconfig
+write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_HOST}" "${API_PORT}" kubelet "" "http"
+${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/kubelet.kubeconfig"
+
+KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${CERT_DIR}/client-ca.crt"}
+${CONTROLPLANE_SUDO} chown "$(whoami)" "${KUBELET_CLIENTCA}"
+
 HOSTNAME_OVERRIDE=${HOSTNAME_OVERRIDE:-"$(hostname)"}
 CLUSTER_DNS=${CLUSTER_DNS:-"10.0.0.10"}
-
-if [[ ! -s "${KUBELET_KUBECONFIG}" ]]; then
-    echo "kubelet kubeconfig file not found at ${KUBELET_KUBECONFIG}."
-    echo "Please copy this file from Arktos master, e.g. in GCP run:"
-    echo "gcloud compute scp <master-vm-name>:/var/run/kubernetes/kubelet.kubeconfig /tmp/arktos/"
-    die "arktos worker node failed to start."
-fi
 
 if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
     echo "kubelet client ca cert not found at ${KUBELET_CLIENTCA}."
@@ -50,11 +77,11 @@ fi
 make all WHAT=cmd/hyperkube
 
 sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
---v=3 \
+--v="${LOG_LEVEL}" \
 --container-runtime=remote \
 --hostname-override=${HOSTNAME_OVERRIDE} \
---address=${KUBELET_IP} \
---kubeconfig=${KUBELET_KUBECONFIG} \
+--address='0.0.0.0' \
+--kubeconfig="${CERT_DIR}/kubelet.kubeconfig" \
 --authorization-mode=Webhook \
 --authentication-token-webhook \
 --client-ca-file=${KUBELET_CLIENTCA} \
@@ -72,4 +99,5 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 > /tmp/kubelet.worker.log 2>&1 &
 
 echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
+
 
