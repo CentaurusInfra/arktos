@@ -23,6 +23,7 @@ import (
 	"sync"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
@@ -88,12 +89,14 @@ func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface,
 		klog.Errorf("invalid kubeClients : %v", kubeClients)
 		return nil
 	}
-	pick := manager.PickClient(tenant)
+	// todo: calling param w/ use pod uid only
+	pick := manager.PickClient(tenant, "dummy")
 	klog.Infof("using client #%v for tenant '%s'", pick, tenant)
 	return kubeClients[pick]
 }
 
-func (manager *KubeClientManager) PickClient(tenant string) int {
+// todo: remove tenant param; use podUID only
+func (manager *KubeClientManager) PickClient(tenant string, podUID types.UID) int {
 	manager.tenant2apiLock.RLock()
 	defer manager.tenant2apiLock.RUnlock()
 	pick, ok := manager.tenant2api[strings.ToLower(tenant)]
