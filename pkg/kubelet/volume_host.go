@@ -258,7 +258,7 @@ func (kvh *kubeletVolumeHost) GetConfigMapFunc() func(tenant, namespace, name st
 	return kvh.configMapManager.GetConfigMap
 }
 
-func (kvh *kubeletVolumeHost) GetServiceAccountTokenFunc() func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (kvh *kubeletVolumeHost) GetServiceAccountTokenFunc() func(tenant, namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	return kvh.tokenManager.GetServiceAccountToken
 }
 

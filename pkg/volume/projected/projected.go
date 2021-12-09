@@ -50,7 +50,7 @@ type projectedPlugin struct {
 	host                      volume.VolumeHost
 	getSecret                 func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
 	getConfigMap              func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
-	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getServiceAccountToken    func(tenant, namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
 }
 
@@ -339,7 +339,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			if len(tp.Audience) != 0 {
 				auds = []string{tp.Audience}
 			}
-			tr, err := s.plugin.getServiceAccountToken(s.pod.Namespace, s.pod.Spec.ServiceAccountName, &authenticationv1.TokenRequest{
+			tr, err := s.plugin.getServiceAccountToken(s.pod.Tenant, s.pod.Namespace, s.pod.Spec.ServiceAccountName, &authenticationv1.TokenRequest{
 				Spec: authenticationv1.TokenRequestSpec{
 					Audiences:         auds,
 					ExpirationSeconds: tp.ExpirationSeconds,

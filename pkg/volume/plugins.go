@@ -422,7 +422,7 @@ type VolumeHost interface {
 	// Returns a function that returns a configmap.
 	GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
 
-	GetServiceAccountTokenFunc() func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	GetServiceAccountTokenFunc() func(tenant, namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 
 	DeleteServiceAccountTokenFunc() func(podUID types.UID)
 

@@ -410,8 +410,8 @@ func (expc *expandController) GetConfigMapFunc() func(tenant, namespace, name st
 	}
 }
 
-func (expc *expandController) GetServiceAccountTokenFunc() func(_, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	return func(_, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (expc *expandController) GetServiceAccountTokenFunc() func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+	return func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 		return nil, fmt.Errorf("GetServiceAccountToken unsupported in expandController")
 	}
 }
