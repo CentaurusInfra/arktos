@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
@@ -38,7 +39,7 @@ import (
 // Manager interface provides methods for Kubelet to manage secrets.
 type Manager interface {
 	// Get secret by secret namespace and name.
-	GetSecret(tenant, namespace, name string) (*v1.Secret, error)
+	GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -62,7 +63,7 @@ func NewSimpleSecretManager(kubeClients []clientset.Interface) Manager {
 	return &simpleSecretManager{kubeClients: kubeClients}
 }
 
-func (s *simpleSecretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+func (s *simpleSecretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
 	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, tenant)
 	return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
@@ -81,7 +82,7 @@ type secretManager struct {
 	manager manager.Manager
 }
 
-func (s *secretManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+func (s *secretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
 	object, err := s.manager.GetObject(tenant, namespace, name)
 	if err != nil {
 		return nil, err

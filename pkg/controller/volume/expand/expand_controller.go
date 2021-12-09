@@ -398,8 +398,8 @@ func (expc *expandController) GetNodeAllocatable() (v1.ResourceList, error) {
 	return v1.ResourceList{}, nil
 }
 
-func (expc *expandController) GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error) {
-	return func(_, _, _ string) (*v1.Secret, error) {
+func (expc *expandController) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+	return func(_, _, _ string, _ types.UID) (*v1.Secret, error) {
 		return nil, fmt.Errorf("GetSecret unsupported in expandController")
 	}
 }

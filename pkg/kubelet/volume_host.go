@@ -250,7 +250,7 @@ func (kvh *kubeletVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 	return node.Status.Allocatable, nil
 }
 
-func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error) {
+func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
 	return kvh.secretManager.GetSecret
 }
 

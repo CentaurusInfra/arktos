@@ -48,7 +48,7 @@ const (
 
 type projectedPlugin struct {
 	host                      volume.VolumeHost
-	getSecret                 func(tenant, namespace, name string) (*v1.Secret, error)
+	getSecret                 func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
 	getConfigMap              func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
 	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
@@ -269,7 +269,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 		switch {
 		case source.Secret != nil:
 			optional := source.Secret.Optional != nil && *source.Secret.Optional
-			secretapi, err := s.plugin.getSecret(s.pod.Tenant, s.pod.Namespace, source.Secret.Name)
+			secretapi, err := s.plugin.getSecret(s.pod.Tenant, s.pod.Namespace, source.Secret.Name, s.pod.UID)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
 					klog.Errorf("Couldn't get secret %v/%v: %v", s.pod.Namespace, source.Secret.Name, err)

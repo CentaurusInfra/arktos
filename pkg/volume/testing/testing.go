@@ -198,8 +198,8 @@ func (f *fakeVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 	return v1.ResourceList{}, nil
 }
 
-func (f *fakeVolumeHost) GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error) {
-	return func(tenant, namespace, name string) (*v1.Secret, error) {
+func (f *fakeVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+	return func(tenant, namespace, name string, _ types.UID) (*v1.Secret, error) {
 		return f.kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 }

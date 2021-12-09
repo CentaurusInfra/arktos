@@ -417,7 +417,7 @@ type VolumeHost interface {
 	GetNodeAllocatable() (v1.ResourceList, error)
 
 	// Returns a function that returns a secret.
-	GetSecretFunc() func(tenant, namespace, name string) (*v1.Secret, error)
+	GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
 
 	// Returns a function that returns a configmap.
 	GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
