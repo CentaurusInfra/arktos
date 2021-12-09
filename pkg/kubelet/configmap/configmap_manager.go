@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	corev1 "k8s.io/kubernetes/pkg/apis/core/v1"
@@ -38,7 +39,7 @@ import (
 // Manager interface provides methods for Kubelet to manage ConfigMap.
 type Manager interface {
 	// Get configmap by configmap namespace and name.
-	GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error)
+	GetConfigMap(tenant, namespace, name string, podUID types.UID) (*v1.ConfigMap, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -62,7 +63,7 @@ func NewSimpleConfigMapManager(kubeClients []clientset.Interface) Manager {
 	return &simpleConfigMapManager{kubeClients: kubeClients}
 }
 
-func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
+func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
 	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, tenant)
 	return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
@@ -81,7 +82,7 @@ type configMapManager struct {
 	manager manager.Manager
 }
 
-func (c *configMapManager) GetConfigMap(tenant, namespace, name string) (*v1.ConfigMap, error) {
+func (c *configMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
 	object, err := c.manager.GetObject(tenant, namespace, name)
 	if err != nil {
 		return nil, err

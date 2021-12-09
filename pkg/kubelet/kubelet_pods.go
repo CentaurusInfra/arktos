@@ -592,7 +592,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 				}
 				optional := cm.Optional != nil && *cm.Optional
-				configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
+				configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name, pod.UID)
 				if err != nil {
 					if errors.IsNotFound(err) && optional {
 						// ignore error when marked optional
@@ -700,7 +700,7 @@ func (kl *Kubelet) makeEnvironmentVariables(pod *v1.Pod, container *v1.Container
 					if !hasValidTPClients(kl.kubeTPClients) {
 						return result, fmt.Errorf("Couldn't get configMap %v/%v, no kubeClient defined", pod.Namespace, name)
 					}
-					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name)
+					configMap, err = kl.configMapManager.GetConfigMap(pod.Tenant, pod.Namespace, name, pod.UID)
 					if err != nil {
 						if errors.IsNotFound(err) && optional {
 							// ignore error when marked optional

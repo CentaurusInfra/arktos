@@ -49,7 +49,7 @@ const (
 type projectedPlugin struct {
 	host                      volume.VolumeHost
 	getSecret                 func(tenant, namespace, name string) (*v1.Secret, error)
-	getConfigMap              func(tenant, namespace, name string) (*v1.ConfigMap, error)
+	getConfigMap              func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
 	getServiceAccountToken    func(namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
 }
@@ -295,7 +295,7 @@ func (s *projectedVolumeMounter) collectData() (map[string]volumeutil.FileProjec
 			}
 		case source.ConfigMap != nil:
 			optional := source.ConfigMap.Optional != nil && *source.ConfigMap.Optional
-			configMap, err := s.plugin.getConfigMap(s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name)
+			configMap, err := s.plugin.getConfigMap(s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, s.pod.UID)
 			if err != nil {
 				if !(errors.IsNotFound(err) && optional) {
 					klog.Errorf("Couldn't get configMap %v/%v/%v: %v", s.pod.Tenant, s.pod.Namespace, source.ConfigMap.Name, err)
