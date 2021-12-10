@@ -323,13 +323,13 @@ func TestDeleteServiceAccountToken(t *testing.T) {
 			testMgr := NewManager(nil)
 			testMgr.clock = clock.NewFakeClock(time.Time{}.Add(30 * 24 * time.Hour))
 
-			successGetToken := func(_, _, _ string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+			successGetToken := func(_, _, _ string, _ types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 				tr.Status = authenticationv1.TokenRequestStatus{
 					ExpirationTimestamp: metav1.Time{Time: testMgr.clock.Now().Add(10 * time.Hour)},
 				}
 				return tr, nil
 			}
-			failGetToken := func(_, _, _ string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+			failGetToken := func(_, _, _ string, _ types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 				return nil, fmt.Errorf("fail tr")
 			}
 
@@ -366,7 +366,7 @@ type fakeTokenGetter struct {
 	err   error
 }
 
-func (ftg *fakeTokenGetter) getToken(tenant, name, namespace string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (ftg *fakeTokenGetter) getToken(tenant, name, namespace string, _ types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	ftg.count++
 	return ftg.tr, ftg.err
 }

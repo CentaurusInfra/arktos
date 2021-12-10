@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 )
 
 const (
@@ -39,13 +40,14 @@ const (
 )
 
 // NewManager returns a new token manager.
-func NewManager(c clientset.Interface) *Manager {
+func NewManager(clients []clientset.Interface) *Manager {
 	m := &Manager{
-		getToken: func(tenant, name, namespace string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-			if c == nil {
+		getToken: func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+			if len(clients) == 0 {
 				return nil, errors.New("cannot use TokenManager when kubelet is in standalone mode")
 			}
-			return c.CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
+			idx := kubeclientmanager.ClientManager.PickClient(tenant, ownerPod)
+			return clients[idx].CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
 		},
 		cache: make(map[string]*authenticationv1.TokenRequest),
 		clock: clock.RealClock{},
@@ -62,7 +64,7 @@ type Manager struct {
 	cache      map[string]*authenticationv1.TokenRequest
 
 	// mocked for testing
-	getToken func(tenant, name, namespace string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getToken func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	clock    clock.Clock
 }
 
@@ -83,7 +85,7 @@ func (m *Manager) GetServiceAccountToken(tenant, namespace, name string, ownerPo
 		return ctr, nil
 	}
 
-	tr, err := m.getToken(tenant, name, namespace, tr)
+	tr, err := m.getToken(tenant, name, namespace, ownerPod, tr)
 	if err != nil {
 		switch {
 		case !ok:
