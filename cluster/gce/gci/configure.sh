@@ -56,13 +56,15 @@ EOF
 }
 
 function validate-python {
-  local ver=$(python -c"import sys; print(sys.version_info.major)")
-  echo "python version: $ver"
-  if [[ $ver -ne 2 && $ver -ne 3 ]]; then
+  local ver=$(python3 -c"import sys; print(sys.version_info.major)")
+  echo "python3 version: $ver"
+  if [[ $ver -ne 3 ]]; then
     apt -y update
-    apt install -y python
-    apt install -y python-pip
+    apt install -y python3
+    apt install -y python3-pip
     pip install pyyaml
+  else
+    echo "python3: $ver is running.."
   fi
 }
 

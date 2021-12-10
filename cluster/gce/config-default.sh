@@ -99,9 +99,9 @@ if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
   # Mizar currently needs ubuntu due to python dependencies
   KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
   KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
-  KUBE_GCI_VERSION="ubuntu-1804-bionic-v20211115"
-  KUBE_GCE_MASTER_IMAGE="ubuntu-1804-bionic-v20211115"
-  KUBE_GCE_NODE_IMAGE="ubuntu-1804-bionic-v20211115"
+  KUBE_GCI_VERSION="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_MASTER_IMAGE="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_NODE_IMAGE="ubuntu-2004-focal-v20211202"
 fi
 
 # By default a cluster will be started with the master and nodes
@@ -568,7 +568,7 @@ GCE_PRIVATE_CLUSTER="${KUBE_GCE_PRIVATE_CLUSTER:-false}"
 
 # ScaleOut arch vars
 PROXY_IMAGE_PROJECT=${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}
-PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}
+PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-2004-focal-v20211202}
 PROXY_NAME="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 ARKTOS_SCALEOUT_PROXY_APP="${ARKTOS_SCALEOUT_PROXY_APP:-haproxy}"
