@@ -937,6 +937,14 @@ function construct-linux-kubelet-flags {
     flags+=" --container-runtime-endpoint=${CONTAINER_RUNTIME_ENDPOINT}"
   fi
 
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    # ubuntu 18.04/20.04
+    flags+=" --resolv-conf=/run/systemd/resolve/resolv.conf"
+  elif [ -f "/run/resolvconf/resolv.conf" ]; then
+    # ubuntu 16.04
+    flags+=" --resolv-conf=/run/resolvconf/resolv.conf"
+  fi
+
   KUBELET_ARGS="${flags}"
 }
 
@@ -1143,6 +1151,12 @@ EOF
 podCidr: ${quoted_master_ip_range}
 EOF
   fi
+
+  if [[ "${MASTER_IMAGE_PROJECT}" == "ubuntu-os-cloud" ]]; then
+    cat <<EOF
+resolvConf: /run/systemd/resolve/resolv.conf
+EOF
+  fi
 }
 
 # cat the Kubelet config yaml in common between linux nodes and windows nodes
@@ -1170,6 +1184,12 @@ authentication:
   x509:
     clientCAFile: /etc/srv/kubernetes/pki/ca-certificates.crt
 EOF
+
+  if [[ "${NODE_IMAGE_PROJECT}" == "ubuntu-os-cloud" ]]; then
+    cat <<EOF
+resolvConf: /run/systemd/resolve/resolv.conf
+EOF
+  fi
 }
 
 # cat the Kubelet config yaml for windows nodes
