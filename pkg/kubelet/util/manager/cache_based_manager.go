@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	storageetcd3 "k8s.io/apiserver/pkg/storage/etcd3"
 	"k8s.io/kubernetes/pkg/kubelet/util"
 
@@ -216,7 +217,8 @@ type cacheBasedManager struct {
 	registeredPods map[objectKey]*v1.Pod
 }
 
-func (c *cacheBasedManager) GetObject(tenant, namespace, name string) (runtime.Object, error) {
+func (c *cacheBasedManager) GetObject(tenant, namespace, name string, ownerPod types.UID) (runtime.Object, error) {
+	// todo: get by owner pod
 	return c.objectStore.Get(tenant, namespace, name)
 }
 

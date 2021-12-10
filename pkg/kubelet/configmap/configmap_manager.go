@@ -83,7 +83,7 @@ type configMapManager struct {
 }
 
 func (c *configMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
-	object, err := c.manager.GetObject(tenant, namespace, name)
+	object, err := c.manager.GetObject(tenant, namespace, name, ownerPod)
 	if err != nil {
 		return nil, err
 	}

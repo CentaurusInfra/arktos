@@ -20,14 +20,15 @@ package manager
 import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // Manager is the interface for registering and unregistering
 // objects referenced by pods in the underlying cache and
 // extracting those from that cache if needed.
 type Manager interface {
-	// Get object by its tenant, namespace and name.
-	GetObject(tenant, namespace, name string) (runtime.Object, error)
+	// Get object by its tenant, namespace and name, plus its owner pod.
+	GetObject(tenant, namespace, name string, ownerPod types.UID) (runtime.Object, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.

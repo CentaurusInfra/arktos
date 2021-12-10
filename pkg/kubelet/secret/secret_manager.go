@@ -83,7 +83,7 @@ type secretManager struct {
 }
 
 func (s *secretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
-	object, err := s.manager.GetObject(tenant, namespace, name)
+	object, err := s.manager.GetObject(tenant, namespace, name, ownerPod)
 	if err != nil {
 		return nil, err
 	}
