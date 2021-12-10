@@ -45,7 +45,7 @@ func TestTokenCachingAndExpiration(t *testing.T) {
 			exp:  time.Hour,
 			f: func(t *testing.T, s *suite) {
 				s.clock.SetTime(s.clock.Now().Add(50 * time.Minute))
-				if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", getTokenRequest()); err != nil {
+				if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", "dummy", getTokenRequest()); err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
 				if s.tg.count != 2 {
@@ -58,7 +58,7 @@ func TestTokenCachingAndExpiration(t *testing.T) {
 			exp:  40 * time.Hour,
 			f: func(t *testing.T, s *suite) {
 				s.clock.SetTime(s.clock.Now().Add(25 * time.Hour))
-				if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", getTokenRequest()); err != nil {
+				if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", "dummy", getTokenRequest()); err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
 				if s.tg.count != 2 {
@@ -75,7 +75,7 @@ func TestTokenCachingAndExpiration(t *testing.T) {
 					err: fmt.Errorf("err"),
 				}
 				s.mgr.getToken = tg.getToken
-				tr, err := s.mgr.GetServiceAccountToken("t", "a", "b", getTokenRequest())
+				tr, err := s.mgr.GetServiceAccountToken("t", "a", "b", "dummy", getTokenRequest())
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
@@ -107,14 +107,14 @@ func TestTokenCachingAndExpiration(t *testing.T) {
 			}
 			s.mgr.getToken = s.tg.getToken
 			s.mgr.clock = s.clock
-			if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", getTokenRequest()); err != nil {
+			if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", "dummy", getTokenRequest()); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if s.tg.count != 1 {
 				t.Fatalf("unexpected client call, got: %d, want: 1", s.tg.count)
 			}
 
-			if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", getTokenRequest()); err != nil {
+			if _, err := s.mgr.GetServiceAccountToken("t", "a", "b", "dummy", getTokenRequest()); err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
 			if s.tg.count != 1 {
@@ -340,7 +340,7 @@ func TestDeleteServiceAccountToken(t *testing.T) {
 				} else {
 					testMgr.getToken = successGetToken
 				}
-				testMgr.GetServiceAccountToken("t", req.namespace, req.name, &req.tr)
+				testMgr.GetServiceAccountToken("t", req.namespace, req.name, "dummy", &req.tr)
 			}
 
 			for _, uid := range c.deletePodUID {

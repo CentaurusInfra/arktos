@@ -105,8 +105,8 @@ func (ctrl *PersistentVolumeController) GetConfigMapFunc() func(tenant, namespac
 	}
 }
 
-func (ctrl *PersistentVolumeController) GetServiceAccountTokenFunc() func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	return func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (ctrl *PersistentVolumeController) GetServiceAccountTokenFunc() func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+	return func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 		return nil, fmt.Errorf("GetServiceAccountToken unsupported in PersistentVolumeController")
 	}
 }

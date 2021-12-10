@@ -785,8 +785,8 @@ func (adc *attachDetachController) GetConfigMapFunc() func(tenant, namespace, na
 	}
 }
 
-func (adc *attachDetachController) GetServiceAccountTokenFunc() func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	return func(_, _, _ string, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (adc *attachDetachController) GetServiceAccountTokenFunc() func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+	return func(_, _, _ string, _ types.UID, _ *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 		return nil, fmt.Errorf("GetServiceAccountToken unsupported in attachDetachController")
 	}
 }

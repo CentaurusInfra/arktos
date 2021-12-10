@@ -214,8 +214,8 @@ func (f *fakeVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string,
 	}
 }
 
-func (f *fakeVolumeHost) GetServiceAccountTokenFunc() func(string, string, string, *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
-	return func(tenant, namespace, name string, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (f *fakeVolumeHost) GetServiceAccountTokenFunc() func(string, string, string, types.UID, *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+	return func(tenant, namespace, name string, _ types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 		return f.kubeClient.CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
 	}
 }
