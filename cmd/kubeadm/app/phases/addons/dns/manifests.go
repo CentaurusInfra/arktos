@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -283,8 +284,8 @@ spec:
           failureThreshold: 5
         readinessProbe:
           httpGet:
-            path: /health
-            port: 8080
+            path: /ready
+            port: 8181
             scheme: HTTP
         securityContext:
           allowPrivilegeEscalation: false
@@ -318,9 +319,9 @@ data:
     .:53 {
         errors
         health
+        ready
         kubernetes {{ .DNSDomain }} in-addr.arpa ip6.arpa {
            pods insecure
-           upstream
            fallthrough in-addr.arpa ip6.arpa
            ttl 30
         }{{ .Federation }}
