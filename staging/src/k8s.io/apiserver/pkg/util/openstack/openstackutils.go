@@ -21,10 +21,10 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/core"
 )
 
 var POD_JSON_STRING_TEMPLATE string

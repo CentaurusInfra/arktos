@@ -6,7 +6,12 @@ go_library(
     importmap = "k8s.io/kubernetes/vendor/k8s.io/apiserver/pkg/util/openstack",
     importpath = "k8s.io/apiserver/pkg/util/openstack",
     visibility = ["//visibility:public"],
-    deps = ["//vendor/k8s.io/klog:go_default_library"],
+    deps = [
+        "//pkg/apis/core:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/runtime:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/runtime/schema:go_default_library",
+        "//vendor/k8s.io/klog:go_default_library",
+    ],
 )
 
 exports_files(

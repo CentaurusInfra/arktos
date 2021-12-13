@@ -98,7 +98,6 @@ go_library(
         "//vendor/github.com/evanphx/json-patch:go_default_library",
         "//vendor/golang.org/x/net/websocket:go_default_library",
         "//vendor/k8s.io/klog:go_default_library",
-        "//vendor/k8s.io/kubernetes/staging/src/k8s.io/apiserver/pkg/util/openstack:go_default_library",
         "//vendor/k8s.io/utils/trace:go_default_library",
     ],
 )
