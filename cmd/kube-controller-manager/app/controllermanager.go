@@ -31,8 +31,6 @@ import (
 	"strconv"
 	"time"
 
-	"k8s.io/client-go/datapartition"
-
 	"github.com/spf13/cobra"
 
 	v1 "k8s.io/api/core/v1"
@@ -271,12 +269,7 @@ func Run(c *config.CompletedConfig, stopCh <-chan struct{}) error {
 			klog.Fatalf("error starting controllers: %v", err)
 		}
 
-		// start API Server Config Manager
-		client := rootClientBuilder.ClientOrDie("apiserver-configuration-manager")
 		klog.Infof("rest client QPS %v, client config [%#v]", rootClientBuilder.ClientConfig.GetConfig().QPS, rootClientBuilder.ClientConfig)
-		datapartition.StartAPIServerConfigManager(controllerContext.InformerFactory.Core().V1().Endpoints(),
-			client, controllerContext.Stop)
-
 		controllerContext.InformerFactory.Start(controllerContext.Stop)
 		controllerContext.ObjectOrMetadataInformerFactory.Start(controllerContext.Stop)
 		close(controllerContext.InformersStarted)
@@ -681,9 +674,7 @@ func shouldTurnOnDynamicClient(client clientset.Interface) bool {
 func getUserAgentFor2ndPartition(controllerContext ControllerContext) string {
 	isNodeControllerEnabled := controllerContext.IsControllerEnabled("nodelifecycle")
 	if isNodeControllerEnabled {
-		// Current parition has node controller enabled, it is resource parition
-		// 2nd partition will be tenant partition
-		return "kcm-tenant-provider"
+		return "kcm-resource-provider"
 	}
-	return "kcm-resource-provider"
+	return "kcm-tenant-provider"
 }

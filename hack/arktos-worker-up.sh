@@ -76,6 +76,9 @@ fi
 
 make all WHAT=cmd/hyperkube
 
+if [[ "${IS_SCALE_OUT}" != "true" ]]; then
+echo "IS_SCALE_OUT false"
+
 sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --v="${LOG_LEVEL}" \
 --container-runtime=remote \
@@ -98,6 +101,37 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --resolv-conf=/run/systemd/resolve/resolv.conf \
 > /tmp/kubelet.worker.log 2>&1 &
 
-echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
+else
 
+echo "IS_SCALE_OUT true"
+# generate kubeconfig fpr tenant partition
+write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_TENANT_SERVER}" "${API_PORT}" "tenant-server-kubelet0" "" "http"
+${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/tenant-server-kubelet0.kubeconfig"
+
+sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
+--v="${LOG_LEVEL}" \
+--container-runtime=remote \
+--hostname-override=${HOSTNAME_OVERRIDE} \
+--address='0.0.0.0' \
+--kubeconfig="${CERT_DIR}/kubelet.kubeconfig" \
+--tenant-server-kubeconfig="${CERT_DIR}/tenant-server-kubelet0.kubeconfig" \
+--authorization-mode=Webhook \
+--authentication-token-webhook \
+--client-ca-file=${KUBELET_CLIENTCA} \
+--feature-gates=AllAlpha=false \
+--cpu-cfs-quota=true \
+--enable-controller-attach-detach=true \
+--cgroups-per-qos=true \
+--cgroup-driver= --cgroup-root= \
+--cluster-dns=${CLUSTER_DNS} \
+--cluster-domain=cluster.local \
+--container-runtime-endpoint="containerRuntime,container,/run/containerd/containerd.sock;vmRuntime,vm,/run/virtlet.sock" \
+--runtime-request-timeout=2m \
+--port=10250 \
+--resolv-conf=/run/systemd/resolve/resolv.conf \
+> /tmp/kubelet.worker.log 2>&1 &
+
+fi
+
+echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
 
