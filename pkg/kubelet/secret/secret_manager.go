@@ -123,8 +123,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingSecretManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getSecret := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	getSecret := func(tenant, namespace, name string, originID int, opts metav1.GetOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	secretStore := manager.NewObjectStore(getSecret, clock.RealClock{}, getTTL, defaultTTL)

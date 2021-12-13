@@ -39,7 +39,7 @@ import (
 type GetObjectTTLFunc func() (time.Duration, bool)
 
 // GetObjectFunc defines a function to get object with a given tenant, namespace and name.
-type GetObjectFunc func(string, string, string, metav1.GetOptions) (runtime.Object, error)
+type GetObjectFunc func(string, string, string, int, metav1.GetOptions) (runtime.Object, error)
 
 type objectKey struct {
 	tenant    string
@@ -188,7 +188,7 @@ func (s *objectStore) Get(tenant, namespace, name string, originID int) (runtime
 			util.FromApiserverCache(&opts)
 		}
 
-		object, err := s.getObject(tenant, namespace, name, opts)
+		object, err := s.getObject(tenant, namespace, name, originID, opts)
 		if err != nil && !apierrors.IsNotFound(err) && data.object == nil && data.err == nil {
 			// Couldn't fetch the latest object, but there is no cached data to return.
 			// Return the fetch result instead.

@@ -123,8 +123,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getConfigMap := func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	getConfigMap := func(tenant, namespace, name string, origin int, opts metav1.GetOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[origin]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	configMapStore := manager.NewObjectStore(getConfigMap, clock.RealClock{}, getTTL, defaultTTL)
