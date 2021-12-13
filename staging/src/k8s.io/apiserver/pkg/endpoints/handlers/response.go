@@ -145,10 +145,9 @@ func transformResponseObject(ctx context.Context, scope *RequestScope, trace *ut
 	responsewriters.WriteObjectNegotiated(serializer, scope, kind.GroupVersion(), w, req, statusCode, obj)
 }
 
-// TODO: add response transformation, fixing the runtime.Interface impl.
 func convertObjectToOpenstackResponse(obj runtime.Object) runtime.Object {
-	klog.Infof("Transform to openstack response object. kind: %s", obj.GetObjectKind().GroupVersionKind().Kind)
-	return obj
+	klog.V(6).Infof("Transform to openstack response object. object: %s", obj)
+	return openstack.ConvertToOpenstackResponse(obj)
 }
 
 // errNotAcceptable indicates Accept negotiation has failed

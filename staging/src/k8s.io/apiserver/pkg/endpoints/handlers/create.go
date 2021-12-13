@@ -22,8 +22,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"k8s.io/apiserver/pkg/util/openstack"
-	"k8s.io/klog"
 	"net/http"
 	"strings"
 	"time"
@@ -44,6 +42,8 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/util/dryrun"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/apiserver/pkg/util/openstack"
+	"k8s.io/klog"
 	utiltrace "k8s.io/utils/trace"
 )
 

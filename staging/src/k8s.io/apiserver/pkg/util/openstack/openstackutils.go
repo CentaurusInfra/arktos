@@ -19,22 +19,24 @@ package openstack
 import (
 	"fmt"
 	"io/ioutil"
-	"k8s.io/klog"
 	"net/http"
+
+	"k8s.io/kubernetes/pkg/apis/core"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/klog"
 )
 
 var POD_JSON_STRING_TEMPLATE string
 
 func init() {
-	t, err := ioutil.ReadFile("openstackRequestTemplate.json")
+	t, err := ioutil.ReadFile("/openstackRequestTemplate.json")
 	if err != nil {
 		klog.Errorf("error reading template file. error : %v", err)
 		return
 	}
 
 	POD_JSON_STRING_TEMPLATE = string(t)
-	klog.V(9).Infof("OpenStack request template: %s", POD_JSON_STRING_TEMPLATE)
-
 }
 
 type Network struct {
@@ -75,6 +77,14 @@ type OpenstackResponse struct {
 	Security_groups []SecurityGroup
 }
 
+func (o *OpenstackResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
 // Convert Openstack request to kubernetes pod request body
 // Revisit this for dynamically generate the json request
 // TODO: fix hard coded flavor and imageRefs with config maps
@@ -88,8 +98,15 @@ func ConvertToOpenstackRequest(body []byte) []byte {
 }
 
 // Convert kubernetes pod response to Openstack response body
-func ConvertToOpenstackResponse(body []byte) []byte {
-	return body
+func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
+	pod := obj.(*core.Pod)
+	osObj := &OpenstackResponse{}
+	osObj.Id = pod.Name
+
+	osObj.Links = []LinkType{{pod.GetSelfLink(), ""}}
+	//osObj.SecurityGroups = nil
+
+	return osObj
 }
 
 func IsOpenstackRequest(req *http.Request) bool {
