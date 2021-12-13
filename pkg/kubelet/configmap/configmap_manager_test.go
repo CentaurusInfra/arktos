@@ -24,18 +24,17 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/util/manager"
 )
 
 func checkObject(t *testing.T, store manager.Store, ns, name string, shouldExist bool) {
-	_, err := store.Get(metav1.TenantSystem, ns, name)
+	_, err := store.Get(metav1.TenantSystem, ns, name, 0)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
@@ -115,6 +114,7 @@ func podWithConfigMaps(ns, podName string, toAttach configMapsToAttach) *v1.Pod 
 }
 
 func TestCacheBasedConfigMapManager(t *testing.T) {
+	kubeclientmanager.NewKubeClientManager()
 	fakeClient := &fake.Clientset{}
 	store := manager.NewObjectStore(getConfigMap(fakeClient), clock.RealClock{}, noObjectTTL, 0)
 	manager := &configMapManager{

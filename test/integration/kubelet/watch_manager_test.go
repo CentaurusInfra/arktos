@@ -101,9 +101,9 @@ func testWatchBasedManager(t *testing.T, tenant string) {
 			for j := 0; j < 100; j++ {
 				name := fmt.Sprintf("s%d", i*100+j)
 				start := time.Now()
-				store.AddReference(tenant, testNamespace, name)
+				store.AddReference(tenant, testNamespace, name, 0)
 				err := wait.PollImmediate(10*time.Millisecond, 10*time.Second, func() (bool, error) {
-					obj, err := store.Get(tenant, testNamespace, name)
+					obj, err := store.Get(tenant, testNamespace, name, 0)
 					if err != nil {
 						t.Logf("failed on %s, retrying: %v", name, err)
 						return false, nil

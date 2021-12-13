@@ -24,18 +24,17 @@ import (
 	"time"
 
 	"k8s.io/api/core/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 	"k8s.io/kubernetes/pkg/kubelet/util/manager"
 )
 
 func checkObject(t *testing.T, store manager.Store, tenant, ns, name string, shouldExist bool) {
-	_, err := store.Get(tenant, ns, name)
+	_, err := store.Get(tenant, ns, name, 0)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
@@ -116,6 +115,7 @@ func TestCacheBasedSecretManagerWithMultiTenancy(t *testing.T) {
 }
 
 func testCacheBasedSecretManager(t *testing.T, tenant string) {
+	kubeclientmanager.NewKubeClientManager()
 	fakeClient := &fake.Clientset{}
 	store := manager.NewObjectStore(getSecret(fakeClient), clock.RealClock{}, noObjectTTL, 0)
 	manager := &secretManager{

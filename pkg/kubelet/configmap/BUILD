@@ -47,6 +47,7 @@ go_test(
     srcs = ["configmap_manager_test.go"],
     embed = [":go_default_library"],
     deps = [
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//pkg/kubelet/util/manager:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
