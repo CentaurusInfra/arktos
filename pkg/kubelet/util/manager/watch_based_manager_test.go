@@ -86,8 +86,8 @@ func testSecretCache(t *testing.T, tenant string) {
 
 	store := newSecretCache(fakeClient)
 
-	store.AddReference(tenant, "ns", "name")
-	_, err := store.Get(tenant, "ns", "name")
+	store.AddReference(tenant, "ns", "name", 0)
+	_, err := store.Get(tenant, "ns", "name", 0)
 	if !apierrors.IsNotFound(err) {
 		t.Errorf("Expected NotFound error, got: %v", err)
 	}
@@ -98,7 +98,7 @@ func testSecretCache(t *testing.T, tenant string) {
 	}
 	fakeWatch.Add(secret)
 	getFn := func() (bool, error) {
-		object, err := store.Get(tenant, "ns", "name")
+		object, err := store.Get(tenant, "ns", "name", 0)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return false, nil
@@ -118,7 +118,7 @@ func testSecretCache(t *testing.T, tenant string) {
 	// Eventually we should observer secret deletion.
 	fakeWatch.Delete(secret)
 	getFn = func() (bool, error) {
-		_, err := store.Get(tenant, "ns", "name")
+		_, err := store.Get(tenant, "ns", "name", 0)
 		if err != nil {
 			if apierrors.IsNotFound(err) {
 				return true, nil
@@ -131,8 +131,8 @@ func testSecretCache(t *testing.T, tenant string) {
 		t.Errorf("unexpected error: %v", err)
 	}
 
-	store.DeleteReference(tenant, "ns", "name")
-	_, err = store.Get(tenant, "ns", "name")
+	store.DeleteReference(tenant, "ns", "name", 0)
+	_, err = store.Get(tenant, "ns", "name", 0)
 	if err == nil || !strings.Contains(err.Error(), "not registered") {
 		t.Errorf("unexpected error: %v", err)
 	}
@@ -163,7 +163,7 @@ func testSecretCacheMultipleRegistrations(t *testing.T, tenant string) {
 
 	store := newSecretCache(fakeClient)
 
-	store.AddReference(tenant, "ns", "name")
+	store.AddReference(tenant, "ns", "name", 0)
 	// This should trigger List and Watch actions eventually.
 	actionsFn := func() (bool, error) {
 		actions := fakeClient.Actions()
@@ -184,15 +184,15 @@ func testSecretCacheMultipleRegistrations(t *testing.T, tenant string) {
 
 	// Next registrations shouldn't trigger any new actions.
 	for i := 0; i < 20; i++ {
-		store.AddReference(tenant, "ns", "name")
-		store.DeleteReference(tenant, "ns", "name")
+		store.AddReference(tenant, "ns", "name", 0)
+		store.DeleteReference(tenant, "ns", "name", 0)
 	}
 	actions := fakeClient.Actions()
 	assert.Equal(t, 2, len(actions), "unexpected actions: %#v", actions)
 
 	// Final delete also doesn't trigger any action.
-	store.DeleteReference(tenant, "ns", "name")
-	_, err := store.Get(tenant, "ns", "name")
+	store.DeleteReference(tenant, "ns", "name", 0)
+	_, err := store.Get(tenant, "ns", "name", 0)
 	if err == nil || !strings.Contains(err.Error(), "not registered") {
 		t.Errorf("unexpected error: %v", err)
 	}

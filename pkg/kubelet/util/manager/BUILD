@@ -10,6 +10,7 @@ go_library(
     importpath = "k8s.io/kubernetes/pkg/kubelet/util/manager",
     visibility = ["//visibility:public"],
     deps = [
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//pkg/kubelet/util:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
@@ -37,6 +38,7 @@ go_test(
     deps = [
         "//pkg/api/v1/pod:go_default_library",
         "//pkg/apis/core/v1:go_default_library",
+        "//pkg/kubelet/kubeclientmanager:go_default_library",
         "//staging/src/k8s.io/api/core/v1:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/api/errors:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",

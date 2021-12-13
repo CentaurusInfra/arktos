@@ -115,8 +115,8 @@ func (c *objectCache) newReflector(tenant, namespace, name string) *objectCacheI
 	}
 }
 
-func (c *objectCache) AddReference(tenant, namespace, name string) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name}
+func (c *objectCache) AddReference(tenant, namespace, name string, originID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
 
 	// AddReference is called from RegisterPod thus it needs to be efficient.
 	// Thus, it is only increasing refCount and in case of first registration
@@ -133,8 +133,8 @@ func (c *objectCache) AddReference(tenant, namespace, name string) {
 	item.refCount++
 }
 
-func (c *objectCache) DeleteReference(tenant, namespace, name string) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name}
+func (c *objectCache) DeleteReference(tenant, namespace, name string, originID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -161,8 +161,8 @@ func (c *objectCache) key(tenant, namespace, name string) string {
 	return result
 }
 
-func (c *objectCache) Get(tenant, namespace, name string) (runtime.Object, error) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name}
+func (c *objectCache) Get(tenant, namespace, name string, originID int) (runtime.Object, error) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
 
 	c.lock.RLock()
 	item, exists := c.items[key]

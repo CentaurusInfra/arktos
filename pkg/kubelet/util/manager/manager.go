@@ -47,16 +47,18 @@ type Manager interface {
 
 // Store is the interface for a object cache that
 // can be used by cacheBasedManager.
+// Since tenant-namespae-name trinity can't uniquely identify a resource in scale-out env,
+// one more factor, origin ID, is needed, representing the origin API server identifier.
 type Store interface {
 	// AddReference adds a reference to the object to the store.
 	// Note that multiple additions to the store has to be allowed
 	// in the implementations and effectively treated as refcounted.
-	AddReference(tenant, namespace, name string)
+	AddReference(tenant, namespace, name string, originId int)
 	// DeleteReference deletes reference to the object from the store.
 	// Note that object should be deleted only when there was a
 	// corresponding Delete call for each of Add calls (effectively
 	// when refcount was reduced to zero).
-	DeleteReference(tenant, namespace, name string)
+	DeleteReference(tenant, namespace, name string, originId int)
 	// Get an object from a store.
-	Get(tenant, namespace, name string) (runtime.Object, error)
+	Get(tenant, namespace, name string, originId int) (runtime.Object, error)
 }
