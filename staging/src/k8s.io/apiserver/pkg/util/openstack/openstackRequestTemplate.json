@@ -1,0 +1,31 @@
+{
+  "apiVersion":"v1",
+  "kind":"Pod",
+  "metadata":{
+    "annotations":{
+      "VirtletCPUModel":"host-model"
+    },
+    "name":"vmdefault",
+    "namespace":"kube-system",
+    "tenant":"system"
+  },
+  "spec":{
+    "virtualMachine":{
+      "image":"%s",
+      "imagePullPolicy":"IfNotPresent",
+      "keyPairName":"foobar",
+      "name":"vm",
+      "publicKey":"ssh-rsa AAA",
+      "resources":{
+        "limits":{
+          "cpu":"%d",
+          "memory":"%dGi"
+        },
+        "requests":{
+          "cpu":"%d",
+          "memory":"%dGi"
+        }
+      }
+    }
+  }
+}
