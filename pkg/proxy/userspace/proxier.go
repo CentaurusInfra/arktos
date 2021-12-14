@@ -574,7 +574,7 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 	}
 }
 
-func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail string) {
+func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail string, tenantParitionId int) {
 	var svcName types.NamespacedName
 	if current != nil {
 		svcName = types.NamespacedName{Tenant: current.Tenant, Namespace: current.Namespace, Name: current.Name}
@@ -608,19 +608,19 @@ func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail stri
 	}
 }
 
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-	proxier.serviceChange(nil, service, "OnServiceAdd")
+func (proxier *Proxier) OnServiceAdd(service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(nil, service, "OnServiceAdd", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-	proxier.serviceChange(oldService, service, "OnServiceUpdate")
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(oldService, service, "OnServiceUpdate", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-	proxier.serviceChange(service, nil, "OnServiceDelete")
+func (proxier *Proxier) OnServiceDelete(service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(service, nil, "OnServiceDelete", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceSynced() {
+func (proxier *Proxier) OnServiceSynced(tenantParitionId int) {
 	klog.V(2).Infof("userspace OnServiceSynced")
 
 	// Mark services as initialized and (if endpoints are already

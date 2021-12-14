@@ -636,7 +636,7 @@ func (s *ProxyServer) Run() error {
 		// Note: RegisterHandler() calls need to happen before creation of Sources because sources
 		// only notify on changes, and the initial update (on process start) may be lost if no handlers
 		// are registered yet.
-		serviceConfig := config.NewServiceConfig(informerFactory.Core().V1().Services(), s.ConfigSyncPeriod)
+		serviceConfig := config.NewServiceConfig(informerFactory.Core().V1().Services(), s.ConfigSyncPeriod, i)
 		serviceConfig.RegisterEventHandler(s.Proxier)
 		go serviceConfig.Run(wait.NeverStop)
 

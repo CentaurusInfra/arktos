@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -33,16 +34,16 @@ import (
 type ServiceHandler interface {
 	// OnServiceAdd is called whenever creation of new service object
 	// is observed.
-	OnServiceAdd(service *v1.Service)
+	OnServiceAdd(service *v1.Service, tenantParitionId int)
 	// OnServiceUpdate is called whenever modification of an existing
 	// service object is observed.
-	OnServiceUpdate(oldService, service *v1.Service)
+	OnServiceUpdate(oldService, service *v1.Service, tenantParitionId int)
 	// OnServiceDelete is called whenever deletion of an existing service
 	// object is observed.
-	OnServiceDelete(service *v1.Service)
+	OnServiceDelete(service *v1.Service, tenantParitionId int)
 	// OnServiceSynced is called once all the initial even handlers were
 	// called and the state is fully propagated to local cache.
-	OnServiceSynced()
+	OnServiceSynced(tenantParitionId int)
 }
 
 // EndpointsHandler is an abstract interface of objects which receive
@@ -157,12 +158,14 @@ func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
 type ServiceConfig struct {
 	listerSynced  cache.InformerSynced
 	eventHandlers []ServiceHandler
+	tenantPartitionId int
 }
 
 // NewServiceConfig creates a new ServiceConfig.
-func NewServiceConfig(serviceInformer coreinformers.ServiceInformer, resyncPeriod time.Duration) *ServiceConfig {
+func NewServiceConfig(serviceInformer coreinformers.ServiceInformer, resyncPeriod time.Duration, tenantPartitionId int) *ServiceConfig {
 	result := &ServiceConfig{
 		listerSynced: serviceInformer.Informer().HasSynced,
+		tenantPartitionId: tenantPartitionId,
 	}
 
 	serviceInformer.Informer().AddEventHandlerWithResyncPeriod(
@@ -192,7 +195,7 @@ func (c *ServiceConfig) Run(stopCh <-chan struct{}) {
 
 	for i := range c.eventHandlers {
 		klog.V(3).Info("Calling handler.OnServiceSynced()")
-		c.eventHandlers[i].OnServiceSynced()
+		c.eventHandlers[i].OnServiceSynced(c.tenantPartitionId)
 	}
 }
 
@@ -204,7 +207,7 @@ func (c *ServiceConfig) handleAddService(obj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Info("Calling handler.OnServiceAdd")
-		c.eventHandlers[i].OnServiceAdd(service)
+		c.eventHandlers[i].OnServiceAdd(service, c.tenantPartitionId)
 	}
 }
 
@@ -221,7 +224,7 @@ func (c *ServiceConfig) handleUpdateService(oldObj, newObj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Info("Calling handler.OnServiceUpdate")
-		c.eventHandlers[i].OnServiceUpdate(oldService, service)
+		c.eventHandlers[i].OnServiceUpdate(oldService, service, c.tenantPartitionId)
 	}
 }
 
@@ -240,6 +243,6 @@ func (c *ServiceConfig) handleDeleteService(obj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Info("Calling handler.OnServiceDelete")
-		c.eventHandlers[i].OnServiceDelete(service)
+		c.eventHandlers[i].OnServiceDelete(service, c.tenantPartitionId)
 	}
 }

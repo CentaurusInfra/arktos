@@ -460,7 +460,7 @@ type serviceInfo struct {
 }
 
 // returns a new proxy.ServicePort which abstracts a serviceInfo
-func newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
+func newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo, tenantPartitionId int) proxy.ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 
 	// Store the following for performance reasons.
@@ -674,24 +674,24 @@ func (proxier *Proxier) isInitialized() bool {
 }
 
 // OnServiceAdd is called whenever creation of new service object is observed.
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-	proxier.OnServiceUpdate(nil, service)
+func (proxier *Proxier) OnServiceAdd(service *v1.Service, tenantParitionId int) {
+	proxier.OnServiceUpdate(nil, service, tenantParitionId)
 }
 
 // OnServiceUpdate is called whenever modification of an existing service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-	if proxier.serviceChanges.Update(oldService, service) && proxier.isInitialized() {
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service, tenantParitionId int) {
+	if proxier.serviceChanges.Update(oldService, service, tenantParitionId) && proxier.isInitialized() {
 		proxier.syncRunner.Run()
 	}
 }
 
 // OnServiceDelete is called whenever deletion of an existing service object is observed.
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-	proxier.OnServiceUpdate(service, nil)
+func (proxier *Proxier) OnServiceDelete(service *v1.Service, tenantParitionId int) {
+	proxier.OnServiceUpdate(service, nil, tenantParitionId)
 }
 
 // OnServiceSynced is called once all the initial event handlers were called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnServiceSynced() {
+func (proxier *Proxier) OnServiceSynced(tenantParitionId int) {
 	proxier.mu.Lock()
 	proxier.servicesSynced = true
 	proxier.setInitialized(proxier.servicesSynced && proxier.endpointsSynced)

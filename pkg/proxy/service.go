@@ -174,7 +174,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 	return info
 }
 
-type makeServicePortFunc func(*v1.ServicePort, *v1.Service, *BaseServiceInfo) ServicePort
+type makeServicePortFunc func(*v1.ServicePort, *v1.Service, *BaseServiceInfo, int) ServicePort
 
 // serviceChange contains all changes to services that happened since proxy rules were synced.  For a single object,
 // changes are accumulated, i.e. previous is state from before applying the changes,
@@ -216,7 +216,7 @@ func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, isIPv6Mode *bo
 //   - pass <oldService, service> as the <previous, current> pair.
 // Delete item
 //   - pass <service, nil> as the <previous, current> pair.
-func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
+func (sct *ServiceChangeTracker) Update(previous, current *v1.Service, tenantParitionId int) bool {
 	svc := current
 	if svc == nil {
 		svc = previous
@@ -226,7 +226,7 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
 		return false
 	}
 	metrics.ServiceChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: svc.Tenant, Namespace: svc.Namespace, Name: svc.Name}
+	namespacedName := types.NamespacedName{Tenant: fmt.Sprint("%s_%d", svc.Tenant, tenantParitionId), Namespace: svc.Namespace, Name: svc.Name, }
 
 	sct.lock.Lock()
 	defer sct.lock.Unlock()
@@ -234,10 +234,10 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
 	change, exists := sct.items[namespacedName]
 	if !exists {
 		change = &serviceChange{}
-		change.previous = sct.serviceToServiceMap(previous)
+		change.previous = sct.serviceToServiceMap(previous, tenantParitionId)
 		sct.items[namespacedName] = change
 	}
-	change.current = sct.serviceToServiceMap(current)
+	change.current = sct.serviceToServiceMap(current, tenantParitionId)
 	// if change.previous equal to change.current, it means no change
 	if reflect.DeepEqual(change.previous, change.current) {
 		delete(sct.items, namespacedName)
@@ -279,11 +279,11 @@ type ServiceMap map[ServicePortName]ServicePort
 // serviceToServiceMap translates a single Service object to a ServiceMap.
 //
 // NOTE: service object should NOT be modified.
-func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service) ServiceMap {
+func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service, tenantParitionId int) ServiceMap {
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacedName{Tenant: fmt.Sprint("%s_%d", service.Tenant, tenantParitionId), Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		return nil
 	}
@@ -303,7 +303,7 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service) Servic
 		svcPortName := ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
 		baseSvcInfo := sct.newBaseServiceInfo(servicePort, service)
 		if sct.makeServiceInfo != nil {
-			serviceMap[svcPortName] = sct.makeServiceInfo(servicePort, service, baseSvcInfo)
+			serviceMap[svcPortName] = sct.makeServiceInfo(servicePort, service, baseSvcInfo, tenantParitionId)
 		} else {
 			serviceMap[svcPortName] = baseSvcInfo
 		}
