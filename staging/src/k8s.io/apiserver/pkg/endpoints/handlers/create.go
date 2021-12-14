@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"strings"
 	"time"
@@ -41,6 +42,8 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	"k8s.io/apiserver/pkg/util/dryrun"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	"k8s.io/apiserver/pkg/util/openstack"
+	"k8s.io/klog"
 	utiltrace "k8s.io/utils/trace"
 )
 
@@ -97,7 +100,18 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 
 		decoder := scope.Serializer.DecoderToVersion(s.Serializer, scope.HubGroupVersion)
 
+		if openstack.IsOpenstackRequest(req) {
+			klog.V(4).Infof("convert the request body to arktos vm pod")
+			body, err := ioutil.ReadAll(req.Body)
+			if err != nil {
+				scope.err(err, w, req)
+				return
+			}
+			req.Body = ioutil.NopCloser(bytes.NewBuffer(openstack.ConvertToOpenstackRequest(body)))
+		}
+
 		body, err := limitedReadBody(req, scope.MaxRequestBodyBytes)
+
 		if err != nil {
 			scope.err(err, w, req)
 			return

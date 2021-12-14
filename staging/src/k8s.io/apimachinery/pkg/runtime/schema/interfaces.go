@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -38,3 +39,18 @@ func (emptyObjectKind) SetGroupVersionKind(gvk GroupVersionKind) {}
 
 // GroupVersionKind implements the ObjectKind interface
 func (emptyObjectKind) GroupVersionKind() GroupVersionKind { return GroupVersionKind{} }
+
+// OpenstackObject
+// This is for encoding and decoding flow with the openstackResponse object
+var OpenstackObjectKind = openstackObjectKind{}
+
+type openstackObjectKind struct{}
+
+// SetGroupVersionKind implements the ObjectKind interface
+func (openstackObjectKind) SetGroupVersionKind(gvk GroupVersionKind) {
+}
+
+// GroupVersionKind implements the ObjectKind interface
+func (openstackObjectKind) GroupVersionKind() GroupVersionKind {
+	return GroupVersionKind{"batch", "v1", "openstack"}
+}
