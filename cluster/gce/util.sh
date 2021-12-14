@@ -887,6 +887,11 @@ function construct-linux-kubelet-flags {
       flags+=" --kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
       flags+=" --register-schedulable=false"
     fi
+
+    if [[ "${MASTER_IMAGE_PROJECT}" == "ubuntu-os-cloud" ]]; then
+      # ubuntu 18.04/20.04
+      flags+=" --resolv-conf=/run/systemd/resolve/resolv.conf"
+    fi
   else # For nodes
     flags+=" ${NODE_KUBELET_TEST_ARGS:-}"
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
@@ -896,6 +901,11 @@ function construct-linux-kubelet-flags {
       flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
     else
       flags+=" --kubeconfig=/var/lib/kubelet/kubeconfig"
+    fi
+
+    if [[ "${NODE_IMAGE_PROJECT}" == "ubuntu-os-cloud" ]]; then
+      # ubuntu 18.04/20.04
+      flags+=" --resolv-conf=/run/systemd/resolve/resolv.conf"
     fi
   fi
   if [[ "${apiserver}" == "true" ]]; then
@@ -935,14 +945,6 @@ function construct-linux-kubelet-flags {
   fi
   if [[ -n "${CONTAINER_RUNTIME_ENDPOINT:-}" ]]; then
     flags+=" --container-runtime-endpoint=${CONTAINER_RUNTIME_ENDPOINT}"
-  fi
-
-  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
-    # ubuntu 18.04/20.04
-    flags+=" --resolv-conf=/run/systemd/resolve/resolv.conf"
-  elif [ -f "/run/resolvconf/resolv.conf" ]; then
-    # ubuntu 16.04
-    flags+=" --resolv-conf=/run/resolvconf/resolv.conf"
   fi
 
   KUBELET_ARGS="${flags}"
