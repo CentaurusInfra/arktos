@@ -136,16 +136,16 @@ func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manage
 // NewWatchingConfigMapManager creates a manager that keeps a cache of all configmaps
 // necessary for registered pods.
 // It implements the following logic:
-// - whenever a pod is created or updated, we start inidvidual watches for all
+// - whenever a pod is created or updated, we start individual watches for all
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingConfigMapManager(kubeClients []clientset.Interface) Manager {
-	listConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	listConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchConfigMap := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	watchConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (watch.Interface, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newConfigMap := func() runtime.Object {

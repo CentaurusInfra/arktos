@@ -64,10 +64,10 @@ func testWatchBasedManager(t *testing.T, tenant string) {
 		t.Fatal(err)
 	}
 
-	listObj := func(tenant, namespace string, options metav1.ListOptions) (runtime.Object, error) {
+	listObj := func(tenant, namespace string, _ int, options metav1.ListOptions) (runtime.Object, error) {
 		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(options)
 	}
-	watchObj := func(tenant, namespace string, options metav1.ListOptions) (watch.Interface, error) {
+	watchObj := func(tenant, namespace string, _ int, options metav1.ListOptions) (watch.Interface, error) {
 		return client.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(options)
 	}
 	newObj := func() runtime.Object { return &v1.Secret{} }

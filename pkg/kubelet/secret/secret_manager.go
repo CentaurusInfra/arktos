@@ -140,12 +140,12 @@ func NewCachingSecretManager(kubeClients []clientset.Interface, getTTL manager.G
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingSecretManager(kubeClients []clientset.Interface) Manager {
-	listSecret := func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	listSecret := func(tenant, namespace string, originID int, opts metav1.ListOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchSecret := func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kubeClients, tenant)
+	watchSecret := func(tenant, namespace string, originID int, opts metav1.ListOptions) (watch.Interface, error) {
+		tenantPartitionClient := kubeClients[originID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newSecret := func() runtime.Object {

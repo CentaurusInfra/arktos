@@ -40,13 +40,13 @@ import (
 )
 
 func listSecret(fakeClient clientset.Interface) listObjectFunc {
-	return func(tenant, namespace string, opts metav1.ListOptions) (runtime.Object, error) {
+	return func(tenant, namespace string, _ int, opts metav1.ListOptions) (runtime.Object, error) {
 		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
 }
 
 func watchSecret(fakeClient clientset.Interface) watchObjectFunc {
-	return func(tenant, namespace string, opts metav1.ListOptions) (watch.Interface, error) {
+	return func(tenant, namespace string, _ int, opts metav1.ListOptions) (watch.Interface, error) {
 		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 }

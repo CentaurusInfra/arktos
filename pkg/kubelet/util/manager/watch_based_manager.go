@@ -42,8 +42,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-type listObjectFunc func(string, string, metav1.ListOptions) (runtime.Object, error)
-type watchObjectFunc func(string, string, metav1.ListOptions) (watch.Interface, error)
+type listObjectFunc func(string, string, int, metav1.ListOptions) (runtime.Object, error)
+type watchObjectFunc func(string, string, int, metav1.ListOptions) (watch.Interface, error)
 type newObjectFunc func() runtime.Object
 
 // objectCacheItem is a single item stored in objectCache.
@@ -86,15 +86,15 @@ func (c *objectCache) newStore() cache.Store {
 	return cache.NewStore(cache.MetaNamespaceKeyFunc)
 }
 
-func (c *objectCache) newReflector(tenant, namespace, name string) *objectCacheItem {
+func (c *objectCache) newReflector(tenant, namespace, name string, originID int) *objectCacheItem {
 	fieldSelector := fields.Set{"metadata.name": name}.AsSelector().String()
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.FieldSelector = fieldSelector
-		return c.listObject(tenant, namespace, options)
+		return c.listObject(tenant, namespace, originID, options)
 	}
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.FieldSelector = fieldSelector
-		return c.watchObject(tenant, namespace, options)
+		return c.watchObject(tenant, namespace, originID, options)
 	}
 	store := c.newStore()
 	reflector := cache.NewNamedReflector(
@@ -127,7 +127,7 @@ func (c *objectCache) AddReference(tenant, namespace, name string, originID int)
 	defer c.lock.Unlock()
 	item, exists := c.items[key]
 	if !exists {
-		item = c.newReflector(tenant, namespace, name)
+		item = c.newReflector(tenant, namespace, name, originID)
 		c.items[key] = item
 	}
 	item.refCount++
