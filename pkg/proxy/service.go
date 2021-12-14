@@ -226,7 +226,7 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service, tenantPar
 		return false
 	}
 	metrics.ServiceChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: fmt.Sprint("%s_%d", svc.Tenant, tenantParitionId), Namespace: svc.Namespace, Name: svc.Name, }
+	namespacedName := types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", svc.Tenant, tenantParitionId), Namespace: svc.Namespace, Name: svc.Name, }
 
 	sct.lock.Lock()
 	defer sct.lock.Unlock()
@@ -283,7 +283,7 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service, tenant
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Tenant: fmt.Sprint("%s_%d", service.Tenant, tenantParitionId), Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", service.Tenant, tenantParitionId), Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		return nil
 	}
