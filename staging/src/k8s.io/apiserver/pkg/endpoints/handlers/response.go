@@ -32,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/handlers/responsewriters"
+	"k8s.io/apiserver/pkg/util/openstack"
+	"k8s.io/klog"
 	utiltrace "k8s.io/utils/trace"
 )
 
@@ -135,7 +137,17 @@ func transformResponseObject(ctx context.Context, scope *RequestScope, trace *ut
 		return
 	}
 	kind, serializer, _ := targetEncodingForTransform(scope, mediaType, req)
+
+	// transform to Openstack response structure
+	if openstack.IsOpenstackRequest(req) {
+		obj = convertObjectToOpenstackResponse(obj)
+	}
 	responsewriters.WriteObjectNegotiated(serializer, scope, kind.GroupVersion(), w, req, statusCode, obj)
+}
+
+func convertObjectToOpenstackResponse(obj runtime.Object) runtime.Object {
+	klog.V(6).Infof("Transform to openstack response object. object: %s", obj)
+	return openstack.ConvertToOpenstackResponse(obj)
 }
 
 // errNotAcceptable indicates Accept negotiation has failed
