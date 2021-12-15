@@ -865,6 +865,12 @@ func (og *operationGenerator) getKubeClient(tenant string) clientset.Interface {
 	}
 }
 
+// supposed to be called by controller (e.g. expandController) inside of KCM,
+// assuming the controller is within TP env in scale-out cluster.
+func (og *operationGenerator) getDefaultKubeClient() clientset.Interface {
+	return og.kubeTenantPartitionClients[0]
+}
+
 func (og *operationGenerator) GenerateUnmountVolumeFunc(
 	volumeToUnmount MountedVolume,
 	actualStateOfWorld ActualStateOfWorldMounterUpdater,
@@ -1572,7 +1578,7 @@ func (og *operationGenerator) GenerateExpandVolumeFunc(
 			// k8s doesn't have transactions, we can't guarantee that after updating PV - updating PVC will be
 			// successful, that is why all PVCs for which pvc.Spec.Size > pvc.Status.Size must be reprocessed
 			// until they reflect user requested size in pvc.Status.Size
-			kubeClient := og.getKubeClient(pv.Tenant)
+			kubeClient := og.getDefaultKubeClient()
 			updateErr := util.UpdatePVSize(pv, newSize, kubeClient)
 			if updateErr != nil {
 				detailedErr := fmt.Errorf("Error updating PV spec capacity for volume %q with : %v", util.GetPersistentVolumeClaimQualifiedName(pvc), updateErr)
@@ -1586,7 +1592,7 @@ func (og *operationGenerator) GenerateExpandVolumeFunc(
 		// No Cloudprovider resize needed, lets mark resizing as done
 		// Rest of the volume expand controller code will assume PVC as *not* resized until pvc.Status.Size
 		// reflects user requested size.
-		kubeClient := og.getKubeClient(pv.Tenant)
+		kubeClient := og.getDefaultKubeClient()
 		if !volumePlugin.RequiresFSResize() || !fsVolume {
 			klog.V(4).Infof("Controller resizing done for PVC %s", util.GetPersistentVolumeClaimQualifiedName(pvc))
 
