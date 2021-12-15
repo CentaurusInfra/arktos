@@ -65,15 +65,15 @@ type EndpointsHandler interface {
 
 // EndpointsConfig tracks a set of endpoints configurations.
 type EndpointsConfig struct {
-	listerSynced  cache.InformerSynced
-	eventHandlers []EndpointsHandler
+	listerSynced      cache.InformerSynced
+	eventHandlers     []EndpointsHandler
 	tenantPartitionId int
 }
 
 // NewEndpointsConfig creates a new EndpointsConfig.
 func NewEndpointsConfig(endpointsInformer coreinformers.EndpointsInformer, resyncPeriod time.Duration, tenantParitionId int) *EndpointsConfig {
 	result := &EndpointsConfig{
-		listerSynced: endpointsInformer.Informer().HasSynced,
+		listerSynced:      endpointsInformer.Informer().HasSynced,
 		tenantPartitionId: tenantParitionId,
 	}
 
@@ -158,15 +158,15 @@ func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
 
 // ServiceConfig tracks a set of service configurations.
 type ServiceConfig struct {
-	listerSynced  cache.InformerSynced
-	eventHandlers []ServiceHandler
+	listerSynced      cache.InformerSynced
+	eventHandlers     []ServiceHandler
 	tenantPartitionId int
 }
 
 // NewServiceConfig creates a new ServiceConfig.
 func NewServiceConfig(serviceInformer coreinformers.ServiceInformer, resyncPeriod time.Duration, tenantPartitionId int) *ServiceConfig {
 	result := &ServiceConfig{
-		listerSynced: serviceInformer.Informer().HasSynced,
+		listerSynced:      serviceInformer.Informer().HasSynced,
 		tenantPartitionId: tenantPartitionId,
 	}
 

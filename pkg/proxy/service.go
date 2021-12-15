@@ -226,7 +226,7 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service, tenantPar
 		return false
 	}
 	metrics.ServiceChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", svc.Tenant, tenantParitionId), Namespace: svc.Namespace, Name: svc.Name, }
+	namespacedName := types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", svc.Tenant, tenantParitionId), Namespace: svc.Namespace, Name: svc.Name}
 
 	sct.lock.Lock()
 	defer sct.lock.Unlock()
