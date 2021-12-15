@@ -51,28 +51,30 @@ type ServiceHandler interface {
 type EndpointsHandler interface {
 	// OnEndpointsAdd is called whenever creation of new endpoints object
 	// is observed.
-	OnEndpointsAdd(endpoints *v1.Endpoints)
+	OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int)
 	// OnEndpointsUpdate is called whenever modification of an existing
 	// endpoints object is observed.
-	OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints)
+	OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int)
 	// OnEndpointsDelete is called whever deletion of an existing endpoints
 	// object is observed.
-	OnEndpointsDelete(endpoints *v1.Endpoints)
+	OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int)
 	// OnEndpointsSynced is called once all the initial event handlers were
 	// called and the state is fully propagated to local cache.
-	OnEndpointsSynced()
+	OnEndpointsSynced(tenantPartitionId int)
 }
 
 // EndpointsConfig tracks a set of endpoints configurations.
 type EndpointsConfig struct {
 	listerSynced  cache.InformerSynced
 	eventHandlers []EndpointsHandler
+	tenantPartitionId int
 }
 
 // NewEndpointsConfig creates a new EndpointsConfig.
-func NewEndpointsConfig(endpointsInformer coreinformers.EndpointsInformer, resyncPeriod time.Duration) *EndpointsConfig {
+func NewEndpointsConfig(endpointsInformer coreinformers.EndpointsInformer, resyncPeriod time.Duration, tenantParitionId int) *EndpointsConfig {
 	result := &EndpointsConfig{
 		listerSynced: endpointsInformer.Informer().HasSynced,
+		tenantPartitionId: tenantParitionId,
 	}
 
 	endpointsInformer.Informer().AddEventHandlerWithResyncPeriod(
@@ -102,7 +104,7 @@ func (c *EndpointsConfig) Run(stopCh <-chan struct{}) {
 
 	for i := range c.eventHandlers {
 		klog.V(3).Infof("Calling handler.OnEndpointsSynced()")
-		c.eventHandlers[i].OnEndpointsSynced()
+		c.eventHandlers[i].OnEndpointsSynced(c.tenantPartitionId)
 	}
 }
 
@@ -114,7 +116,7 @@ func (c *EndpointsConfig) handleAddEndpoints(obj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Infof("Calling handler.OnEndpointsAdd")
-		c.eventHandlers[i].OnEndpointsAdd(endpoints)
+		c.eventHandlers[i].OnEndpointsAdd(endpoints, c.tenantPartitionId)
 	}
 }
 
@@ -131,7 +133,7 @@ func (c *EndpointsConfig) handleUpdateEndpoints(oldObj, newObj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Infof("Calling handler.OnEndpointsUpdate")
-		c.eventHandlers[i].OnEndpointsUpdate(oldEndpoints, endpoints)
+		c.eventHandlers[i].OnEndpointsUpdate(oldEndpoints, endpoints, c.tenantPartitionId)
 	}
 }
 
@@ -150,7 +152,7 @@ func (c *EndpointsConfig) handleDeleteEndpoints(obj interface{}) {
 	}
 	for i := range c.eventHandlers {
 		klog.V(4).Infof("Calling handler.OnEndpointsDelete")
-		c.eventHandlers[i].OnEndpointsDelete(endpoints)
+		c.eventHandlers[i].OnEndpointsDelete(endpoints, c.tenantPartitionId)
 	}
 }
 

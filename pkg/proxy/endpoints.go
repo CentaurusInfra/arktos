@@ -18,6 +18,7 @@ limitations under the License.
 package proxy
 
 import (
+	"fmt"
 	"net"
 	"reflect"
 	"strconv"
@@ -120,7 +121,7 @@ func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc
 //   - pass <oldEndpoints, endpoints> as the <previous, current> pair.
 // Delete item
 //   - pass <endpoints, nil> as the <previous, current> pair.
-func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
+func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints, tenantPartitionId int) bool {
 	endpoints := current
 	if endpoints == nil {
 		endpoints = previous
@@ -130,7 +131,7 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 		return false
 	}
 	metrics.EndpointChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", endpoints.Tenant, tenantPartitionId), Namespace: endpoints.Namespace, Name: endpoints.Name}
 
 	ect.lock.Lock()
 	defer ect.lock.Unlock()
@@ -138,14 +139,14 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 	change, exists := ect.items[namespacedName]
 	if !exists {
 		change = &endpointsChange{}
-		change.previous = ect.endpointsToEndpointsMap(previous)
+		change.previous = ect.endpointsToEndpointsMap(previous, tenantPartitionId)
 		ect.items[namespacedName] = change
 	}
 	if t := getLastChangeTriggerTime(endpoints); !t.IsZero() {
 		ect.lastChangeTriggerTimes[namespacedName] =
 			append(ect.lastChangeTriggerTimes[namespacedName], t)
 	}
-	change.current = ect.endpointsToEndpointsMap(current)
+	change.current = ect.endpointsToEndpointsMap(current, tenantPartitionId)
 	// if change.previous equal to change.current, it means no change
 	if reflect.DeepEqual(change.previous, change.current) {
 		delete(ect.items, namespacedName)
@@ -229,7 +230,7 @@ type EndpointsMap map[ServicePortName][]Endpoint
 // This function is used for incremental updated of endpointsMap.
 //
 // NOTE: endpoints object should NOT be modified.
-func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoints) EndpointsMap {
+func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoints, tenantPartitionId int) EndpointsMap {
 	if endpoints == nil {
 		return nil
 	}
@@ -246,7 +247,7 @@ func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoint
 				continue
 			}
 			svcPortName := ServicePortName{
-				NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
+				NamespacedName: types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", endpoints.Tenant, tenantPartitionId), Namespace: endpoints.Namespace, Name: endpoints.Name},
 				Port:           port.Name,
 			}
 			for i := range ss.Addresses {

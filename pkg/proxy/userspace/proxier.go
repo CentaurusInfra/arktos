@@ -636,21 +636,21 @@ func (proxier *Proxier) OnServiceSynced(tenantParitionId int) {
 	go proxier.syncProxyRules()
 }
 
-func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsAdd(endpoints)
+func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsAdd(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsDelete(endpoints)
+func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsDelete(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsSynced() {
+func (proxier *Proxier) OnEndpointsSynced(tenantPartitionId int) {
 	klog.V(2).Infof("userspace OnEndpointsSynced")
-	proxier.loadBalancer.OnEndpointsSynced()
+	proxier.loadBalancer.OnEndpointsSynced(tenantPartitionId)
 
 	// Mark endpoints as initialized and (if services are already
 	// initialized) the entire proxy as initialized

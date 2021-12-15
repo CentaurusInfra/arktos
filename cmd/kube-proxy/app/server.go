@@ -640,7 +640,7 @@ func (s *ProxyServer) Run() error {
 		serviceConfig.RegisterEventHandler(s.Proxier)
 		go serviceConfig.Run(wait.NeverStop)
 
-		endpointsConfig := config.NewEndpointsConfig(informerFactory.Core().V1().Endpoints(), s.ConfigSyncPeriod)
+		endpointsConfig := config.NewEndpointsConfig(informerFactory.Core().V1().Endpoints(), s.ConfigSyncPeriod, i)
 		endpointsConfig.RegisterEventHandler(s.Proxier)
 		go endpointsConfig.Run(wait.NeverStop)
 

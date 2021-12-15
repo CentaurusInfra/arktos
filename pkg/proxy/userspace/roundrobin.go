@@ -262,14 +262,15 @@ func buildPortsToEndpointsMap(endpoints *v1.Endpoints) map[string][]hostPortPair
 	return portsToEndpoints
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Tenant: fmt.Sprintf("%s_%d", endpoints.Tenant, tenantPartitionId),
+			Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
 		newEndpoints := flattenValidEndpoints(portsToEndpoints[portname])
 		state, exists := lb.services[svcPort]
 
@@ -289,7 +290,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 	oldPortsToEndpoints := buildPortsToEndpointsMap(oldEndpoints)
 	registeredEndpoints := make(map[proxy.ServicePortName]bool)
@@ -344,7 +345,7 @@ func (lb *LoadBalancerRR) resetService(svcPort proxy.ServicePortName) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
@@ -356,7 +357,7 @@ func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsSynced() {
+func (lb *LoadBalancerRR) OnEndpointsSynced(tenantPartitionId int) {
 }
 
 // Tests whether two slices are equivalent.  This sorts both slices in-place.
