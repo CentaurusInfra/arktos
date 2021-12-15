@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -43,6 +44,8 @@ import (
 	fakeexec "k8s.io/utils/exec/testing"
 	utilpointer "k8s.io/utils/pointer"
 )
+
+const tpId = 0
 
 func checkAllLines(t *testing.T, table utiliptables.Table, save []byte, expectedLines map[utiliptables.Chain]string) {
 	chainLines := utiliptables.GetChainLines(table, save)
@@ -1110,7 +1113,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	}
 
 	for i := range services {
-		fp.OnServiceAdd(services[i])
+		fp.OnServiceAdd(services[i], tpId)
 	}
 	result := proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 10 {
@@ -1140,10 +1143,10 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "UDP", 1235, 5321, 0)
 	})
 
-	fp.OnServiceUpdate(services[0], oneService)
-	fp.OnServiceDelete(services[1])
-	fp.OnServiceDelete(services[2])
-	fp.OnServiceDelete(services[3])
+	fp.OnServiceUpdate(services[0], oneService, tpId)
+	fp.OnServiceDelete(services[1], tpId)
+	fp.OnServiceDelete(services[2], tpId)
+	fp.OnServiceDelete(services[3], tpId)
 
 	result = proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 1 {
@@ -1251,7 +1254,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 		svc.Spec.HealthCheckNodePort = 345
 	})
 
-	fp.OnServiceAdd(servicev1)
+	fp.OnServiceAdd(servicev1, tpId)
 
 	result := proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
@@ -1266,7 +1269,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// Change service to load-balancer
-	fp.OnServiceUpdate(servicev1, servicev2)
+	fp.OnServiceUpdate(servicev1, servicev2, tpId)
 	result = proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -1280,7 +1283,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 
 	// No change; make sure the service map stays the same and there are
 	// no health-check changes
-	fp.OnServiceUpdate(servicev2, servicev2)
+	fp.OnServiceUpdate(servicev2, servicev2, tpId)
 	result = proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -1293,7 +1296,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// And back to ClusterIP
-	fp.OnServiceUpdate(servicev2, servicev1)
+	fp.OnServiceUpdate(servicev2, servicev1, tpId)
 	result = proxy.UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -1320,7 +1323,7 @@ func makeTestEndpoints(namespace, name string, eptFunc func(*v1.Endpoints)) *v1.
 
 func makeEndpointsMap(proxier *Proxier, allEndpoints ...*v1.Endpoints) {
 	for i := range allEndpoints {
-		proxier.OnEndpointsAdd(allEndpoints[i])
+		proxier.OnEndpointsAdd(allEndpoints[i], tpId)
 	}
 
 	proxier.mu.Lock()
@@ -1341,7 +1344,7 @@ func makeServicePortName(ns, name, port string) proxy.ServicePortName {
 
 func makeServiceMap(proxier *Proxier, allServices ...*v1.Service) {
 	for i := range allServices {
-		proxier.OnServiceAdd(allServices[i])
+		proxier.OnServiceAdd(allServices[i], tpId)
 	}
 
 	proxier.mu.Lock()
@@ -2189,7 +2192,7 @@ func Test_updateEndpointsMap(t *testing.T) {
 		// the fp.oldEndpoints is as we expect.
 		for i := range tc.previousEndpoints {
 			if tc.previousEndpoints[i] != nil {
-				fp.OnEndpointsAdd(tc.previousEndpoints[i])
+				fp.OnEndpointsAdd(tc.previousEndpoints[i], tpId)
 			}
 		}
 		fp.endpointsMap.Update(fp.endpointsChanges)
@@ -2205,11 +2208,11 @@ func Test_updateEndpointsMap(t *testing.T) {
 			prev, curr := tc.previousEndpoints[i], tc.currentEndpoints[i]
 			switch {
 			case prev == nil:
-				fp.OnEndpointsAdd(curr)
+				fp.OnEndpointsAdd(curr, tpId)
 			case curr == nil:
-				fp.OnEndpointsDelete(prev)
+				fp.OnEndpointsDelete(prev, tpId)
 			default:
-				fp.OnEndpointsUpdate(prev, curr)
+				fp.OnEndpointsUpdate(prev, curr, tpId)
 			}
 		}
 		result := fp.endpointsMap.Update(fp.endpointsChanges)

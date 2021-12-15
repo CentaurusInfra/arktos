@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,16 +31,18 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func (proxier *FakeProxier) addEndpoints(endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(nil, endpoints)
+const tpId = 0
+
+func (proxier *FakeProxier) addEndpoints(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(nil, endpoints, tenantPartitionId)
 }
 
-func (proxier *FakeProxier) updateEndpoints(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(oldEndpoints, endpoints)
+func (proxier *FakeProxier) updateEndpoints(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(oldEndpoints, endpoints, tenantPartitionId)
 }
 
-func (proxier *FakeProxier) deleteEndpoints(endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(endpoints, nil)
+func (proxier *FakeProxier) deleteEndpoints(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(endpoints, nil, tenantPartitionId)
 }
 
 func TestGetLocalEndpointIPs(t *testing.T) {
@@ -376,7 +379,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 	for _, tc := range testCases {
 		epTracker.isIPv6Mode = tc.isIPv6Mode
 		// outputs
-		newEndpoints := epTracker.endpointsToEndpointsMap(tc.newEndpoints)
+		newEndpoints := epTracker.endpointsToEndpointsMap(tc.newEndpoints, tpId)
 
 		if len(newEndpoints) != len(tc.expected) {
 			t.Errorf("[%s] expected %d new, got %d: %v", tc.desc, len(tc.expected), len(newEndpoints), spew.Sdump(newEndpoints))
@@ -1210,7 +1213,7 @@ func TestUpdateEndpointsMap(t *testing.T) {
 		// the fp.oldEndpoints is as we expect.
 		for i := range tc.previousEndpoints {
 			if tc.previousEndpoints[i] != nil {
-				fp.addEndpoints(tc.previousEndpoints[i])
+				fp.addEndpoints(tc.previousEndpoints[i], tpId)
 			}
 		}
 		fp.endpointsMap.Update(fp.endpointsChanges)
@@ -1226,11 +1229,11 @@ func TestUpdateEndpointsMap(t *testing.T) {
 			prev, curr := tc.previousEndpoints[i], tc.currentEndpoints[i]
 			switch {
 			case prev == nil:
-				fp.addEndpoints(curr)
+				fp.addEndpoints(curr, tpId)
 			case curr == nil:
-				fp.deleteEndpoints(prev)
+				fp.deleteEndpoints(prev, tpId)
 			default:
-				fp.updateEndpoints(prev, curr)
+				fp.updateEndpoints(prev, curr, tpId)
 			}
 		}
 		result := fp.endpointsMap.Update(fp.endpointsChanges)
@@ -1308,7 +1311,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			name: "Single addEndpoints",
 			scenario: func(fp *FakeProxier) {
 				e := createEndpoints("ns", "ep1", t0)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{t0},
 		},
@@ -1316,10 +1319,10 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			name: "addEndpoints then updatedEndpoints",
 			scenario: func(fp *FakeProxier) {
 				e := createEndpoints("ns", "ep1", t0)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 
 				e1 := modifyEndpoints(e, t1)
-				fp.updateEndpoints(e, e1)
+				fp.updateEndpoints(e, e1, tpId)
 			},
 			expected: []time.Time{t0, t1},
 		},
@@ -1327,13 +1330,13 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			name: "Add two endpoints then modify one",
 			scenario: func(fp *FakeProxier) {
 				e1 := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e1)
+				fp.addEndpoints(e1, tpId)
 
 				e2 := createEndpoints("ns", "ep2", t2)
-				fp.addEndpoints(e2)
+				fp.addEndpoints(e2, tpId)
 
 				e11 := modifyEndpoints(e1, t3)
-				fp.updateEndpoints(e1, e11)
+				fp.updateEndpoints(e1, e11, tpId)
 			},
 			expected: []time.Time{t1, t2, t3},
 		},
@@ -1342,7 +1345,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			scenario: func(fp *FakeProxier) {
 				e := createEndpoints("ns", "ep1", t1)
 				delete(e.Annotations, v1.EndpointsLastChangeTriggerTime)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{},
 		},
@@ -1350,8 +1353,8 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			name: "addEndpoints then deleteEndpoints",
 			scenario: func(fp *FakeProxier) {
 				e := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e)
-				fp.deleteEndpoints(e)
+				fp.addEndpoints(e, tpId)
+				fp.deleteEndpoints(e, tpId)
 			},
 			expected: []time.Time{},
 		},
@@ -1359,10 +1362,10 @@ func TestLastChangeTriggerTime(t *testing.T) {
 			name: "add then delete then add again",
 			scenario: func(fp *FakeProxier) {
 				e := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e)
-				fp.deleteEndpoints(e)
+				fp.addEndpoints(e, tpId)
+				fp.deleteEndpoints(e, tpId)
 				e = modifyEndpoints(e, t2)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{t2},
 		},

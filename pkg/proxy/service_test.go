@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -364,7 +365,7 @@ func TestServiceToServiceMap(t *testing.T) {
 	for _, tc := range testCases {
 		svcTracker.isIPv6Mode = tc.isIPv6Mode
 		// outputs
-		newServices := svcTracker.serviceToServiceMap(tc.service)
+		newServices := svcTracker.serviceToServiceMap(tc.service, tpId)
 
 		if len(newServices) != len(tc.expected) {
 			t.Errorf("[%s] expected %d new, got %d: %v", tc.desc, len(tc.expected), len(newServices), spew.Sdump(newServices))
@@ -400,28 +401,29 @@ func newFakeProxier() *FakeProxier {
 	}
 }
 
-func makeServiceMap(fake *FakeProxier, allServices ...*v1.Service) {
+func makeServiceMap(fake *FakeProxier, tenantPartitionId int, allServices ...*v1.Service) {
 	for i := range allServices {
-		fake.addService(allServices[i])
+		fake.addService(allServices[i], tenantPartitionId)
 	}
 }
 
-func (fake *FakeProxier) addService(service *v1.Service) {
-	fake.serviceChanges.Update(nil, service)
+func (fake *FakeProxier) addService(service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(nil, service, tenantPartitionId)
 }
 
-func (fake *FakeProxier) updateService(oldService *v1.Service, service *v1.Service) {
-	fake.serviceChanges.Update(oldService, service)
+func (fake *FakeProxier) updateService(oldService *v1.Service, service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(oldService, service, tenantPartitionId)
 }
 
-func (fake *FakeProxier) deleteService(service *v1.Service) {
-	fake.serviceChanges.Update(service, nil)
+func (fake *FakeProxier) deleteService(service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(service, nil, tenantPartitionId)
 }
 
 func TestUpdateServiceMapHeadless(t *testing.T) {
 	fp := newFakeProxier()
 
 	makeServiceMap(fp,
+		tpId,
 		makeTestService("ns2", "headless", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
@@ -453,6 +455,7 @@ func TestUpdateServiceTypeExternalName(t *testing.T) {
 	fp := newFakeProxier()
 
 	makeServiceMap(fp,
+		tpId,
 		makeTestService("ns2", "external-name", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeExternalName
 			svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
@@ -519,7 +522,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	}
 
 	for i := range services {
-		fp.addService(services[i])
+		fp.addService(services[i], tpId)
 	}
 	result := UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 8 {
@@ -549,10 +552,10 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "UDP", 1235, 5321, 0)
 	})
 
-	fp.updateService(services[0], oneService)
-	fp.deleteService(services[1])
-	fp.deleteService(services[2])
-	fp.deleteService(services[3])
+	fp.updateService(services[0], oneService, tpId)
+	fp.deleteService(services[1], tpId)
+	fp.deleteService(services[2], tpId)
+	fp.deleteService(services[3], tpId)
 
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 1 {
@@ -601,7 +604,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 		svc.Spec.HealthCheckNodePort = 345
 	})
 
-	fp.addService(servicev1)
+	fp.addService(servicev1, tpId)
 
 	result := UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
@@ -616,7 +619,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// Change service to load-balancer
-	fp.updateService(servicev1, servicev2)
+	fp.updateService(servicev1, servicev2, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -630,7 +633,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 
 	// No change; make sure the service map stays the same and there are
 	// no health-check changes
-	fp.updateService(servicev2, servicev2)
+	fp.updateService(servicev2, servicev2, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -643,7 +646,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// And back to ClusterIP
-	fp.updateService(servicev2, servicev1)
+	fp.updateService(servicev2, servicev1, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)

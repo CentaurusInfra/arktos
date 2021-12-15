@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,6 +26,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubernetes/pkg/proxy"
 )
+
+const tpId = 0
 
 func TestValidateWorks(t *testing.T) {
 	if isValidEndpoint(&hostPortPair{}) {
@@ -111,7 +114,7 @@ func TestLoadBalanceWorksWithSingleEndpoint(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Name: "p", Port: 40}},
 		}},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 	expectEndpoint(t, loadBalancer, service, "endpoint1:40", nil)
 	expectEndpoint(t, loadBalancer, service, "endpoint1:40", nil)
 	expectEndpoint(t, loadBalancer, service, "endpoint1:40", nil)
@@ -148,7 +151,7 @@ func TestLoadBalanceWorksWithMultipleEndpoints(t *testing.T) {
 			Ports:     []v1.EndpointPort{{Name: "p", Port: 1}, {Name: "p", Port: 2}, {Name: "p", Port: 3}},
 		}},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 
 	shuffledEndpoints := loadBalancer.services[service].endpoints
 	if !stringsInSlice(shuffledEndpoints, "endpoint:1", "endpoint:2", "endpoint:3") {
@@ -181,7 +184,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsMultiplePorts(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 
 	shuffledEndpoints := loadBalancer.services[serviceP].endpoints
 	if !stringsInSlice(shuffledEndpoints, "endpoint1:1", "endpoint2:1", "endpoint3:3") {
@@ -227,7 +230,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpointsv1)
+	loadBalancer.OnEndpointsAdd(endpointsv1, tpId)
 
 	shuffledEndpoints := loadBalancer.services[serviceP].endpoints
 	if !stringsInSlice(shuffledEndpoints, "endpoint1:1", "endpoint2:2", "endpoint3:3") {
@@ -262,7 +265,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2)
+	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2, tpId)
 
 	shuffledEndpoints = loadBalancer.services[serviceP].endpoints
 	if !stringsInSlice(shuffledEndpoints, "endpoint4:4", "endpoint5:5") {
@@ -284,7 +287,7 @@ func TestLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 
 	// Clear endpoints
 	endpointsv3 := &v1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: serviceP.Name, Namespace: serviceP.Namespace}, Subsets: nil}
-	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3)
+	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3, tpId)
 
 	endpoint, err = loadBalancer.NextEndpoint(serviceP, nil, false)
 	if err == nil || len(endpoint) != 0 {
@@ -318,8 +321,8 @@ func TestLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints1)
-	loadBalancer.OnEndpointsAdd(endpoints2)
+	loadBalancer.OnEndpointsAdd(endpoints1, tpId)
+	loadBalancer.OnEndpointsAdd(endpoints2, tpId)
 	shuffledFooEndpoints := loadBalancer.services[fooServiceP].endpoints
 	expectEndpoint(t, loadBalancer, fooServiceP, shuffledFooEndpoints[0], nil)
 	expectEndpoint(t, loadBalancer, fooServiceP, shuffledFooEndpoints[1], nil)
@@ -335,7 +338,7 @@ func TestLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 	expectEndpoint(t, loadBalancer, barServiceP, shuffledBarEndpoints[1], nil)
 
 	// Then update the configuration by removing foo
-	loadBalancer.OnEndpointsDelete(endpoints1)
+	loadBalancer.OnEndpointsDelete(endpoints1, tpId)
 	endpoint, err = loadBalancer.NextEndpoint(fooServiceP, nil, false)
 	if err == nil || len(endpoint) != 0 {
 		t.Errorf("Didn't fail with non-existent service")
@@ -366,7 +369,7 @@ func TestStickyLoadBalanceWorksWithNewServiceCalledFirst(t *testing.T) {
 			{Addresses: []v1.EndpointAddress{{IP: "endpoint3"}}, Ports: []v1.EndpointPort{{Port: 3}}},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 
 	client1 := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0}
 	client2 := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 2), Port: 0}
@@ -420,7 +423,7 @@ func TestStickyLoadBalanceWorksWithNewServiceCalledSecond(t *testing.T) {
 			{Addresses: []v1.EndpointAddress{{IP: "endpoint2"}}, Ports: []v1.EndpointPort{{Port: 2}}},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 	loadBalancer.NewService(service, v1.ServiceAffinityClientIP, int(v1.DefaultClientIPServiceAffinitySeconds))
 
 	client1 := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0}
@@ -483,7 +486,7 @@ func TestStickyLoadBalanaceWorksWithMultipleEndpointsRemoveOne(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpointsv1)
+	loadBalancer.OnEndpointsAdd(endpointsv1, tpId)
 	shuffledEndpoints := loadBalancer.services[service].endpoints
 	expectEndpoint(t, loadBalancer, service, shuffledEndpoints[0], client1)
 	client1Endpoint := shuffledEndpoints[0]
@@ -503,7 +506,7 @@ func TestStickyLoadBalanaceWorksWithMultipleEndpointsRemoveOne(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2)
+	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2, tpId)
 	shuffledEndpoints = loadBalancer.services[service].endpoints
 	if client1Endpoint == "endpoint:3" {
 		client1Endpoint = shuffledEndpoints[0]
@@ -525,7 +528,7 @@ func TestStickyLoadBalanaceWorksWithMultipleEndpointsRemoveOne(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3)
+	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3, tpId)
 	shuffledEndpoints = loadBalancer.services[service].endpoints
 	expectEndpoint(t, loadBalancer, service, client1Endpoint, client1)
 	expectEndpoint(t, loadBalancer, service, client2Endpoint, client2)
@@ -556,7 +559,7 @@ func TestStickyLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpointsv1)
+	loadBalancer.OnEndpointsAdd(endpointsv1, tpId)
 	shuffledEndpoints := loadBalancer.services[service].endpoints
 	expectEndpoint(t, loadBalancer, service, shuffledEndpoints[0], client1)
 	expectEndpoint(t, loadBalancer, service, shuffledEndpoints[0], client1)
@@ -576,7 +579,7 @@ func TestStickyLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2)
+	loadBalancer.OnEndpointsUpdate(endpointsv1, endpointsv2, tpId)
 	shuffledEndpoints = loadBalancer.services[service].endpoints
 	expectEndpoint(t, loadBalancer, service, shuffledEndpoints[0], client1)
 	expectEndpoint(t, loadBalancer, service, shuffledEndpoints[1], client2)
@@ -587,7 +590,7 @@ func TestStickyLoadBalanceWorksWithMultipleEndpointsAndUpdates(t *testing.T) {
 
 	// Clear endpoints
 	endpointsv3 := &v1.Endpoints{ObjectMeta: metav1.ObjectMeta{Name: service.Name, Namespace: service.Namespace}, Subsets: nil}
-	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3)
+	loadBalancer.OnEndpointsUpdate(endpointsv2, endpointsv3, tpId)
 
 	endpoint, err = loadBalancer.NextEndpoint(service, nil, false)
 	if err == nil || len(endpoint) != 0 {
@@ -626,8 +629,8 @@ func TestStickyLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 			},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints1)
-	loadBalancer.OnEndpointsAdd(endpoints2)
+	loadBalancer.OnEndpointsAdd(endpoints1, tpId)
+	loadBalancer.OnEndpointsAdd(endpoints2, tpId)
 
 	shuffledFooEndpoints := loadBalancer.services[fooService].endpoints
 	expectEndpoint(t, loadBalancer, fooService, shuffledFooEndpoints[0], client1)
@@ -649,7 +652,7 @@ func TestStickyLoadBalanceWorksWithServiceRemoval(t *testing.T) {
 	expectEndpoint(t, loadBalancer, barService, shuffledBarEndpoints[1], client2)
 
 	// Then update the configuration by removing foo
-	loadBalancer.OnEndpointsDelete(endpoints1)
+	loadBalancer.OnEndpointsDelete(endpoints1, tpId)
 	endpoint, err = loadBalancer.NextEndpoint(fooService, nil, false)
 	if err == nil || len(endpoint) != 0 {
 		t.Errorf("Didn't fail with non-existent service")
@@ -683,7 +686,7 @@ func TestStickyLoadBalanceWorksWithEndpointFails(t *testing.T) {
 			{Addresses: []v1.EndpointAddress{{IP: "endpoint3"}}, Ports: []v1.EndpointPort{{Port: 3}}},
 		},
 	}
-	loadBalancer.OnEndpointsAdd(endpoints)
+	loadBalancer.OnEndpointsAdd(endpoints, tpId)
 
 	client1 := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0}
 	client2 := &net.TCPAddr{IP: net.IPv4(127, 0, 0, 2), Port: 0}
