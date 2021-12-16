@@ -809,7 +809,7 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 		expandableVolumePlugin.RequiresFSResize() &&
 		volumeToMount.VolumeSpec.PersistentVolume != nil {
 		pv := volumeToMount.VolumeSpec.PersistentVolume
-		kubeClient := og.getKubeClient(pv.Tenant)
+		kubeClient := og.getKubeClient(pv.Tenant, volumeToMount.Pod.UID)
 		pvc, err := kubeClient.CoreV1().PersistentVolumeClaims(pv.Spec.ClaimRef.Namespace).Get(pv.Spec.ClaimRef.Name, metav1.GetOptions{})
 		if err != nil {
 			// Return error rather than leave the file system un-resized, caller will log and retry
@@ -857,11 +857,11 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 	return true, nil
 }
 
-func (og *operationGenerator) getKubeClient(tenant string) clientset.Interface {
+func (og *operationGenerator) getKubeClient(tenant string, boundPod types.UID) clientset.Interface {
 	if len(og.kubeTenantPartitionClients) == 1 {
 		return og.kubeTenantPartitionClients[0]
 	} else {
-		return kubeclientmanager.ClientManager.GetTPClient(og.kubeTenantPartitionClients, tenant)
+		return kubeclientmanager.ClientManager.GetTPClient(og.kubeTenantPartitionClients, tenant, boundPod)
 	}
 }
 
