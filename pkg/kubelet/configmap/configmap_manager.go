@@ -64,7 +64,7 @@ func NewSimpleConfigMapManager(kubeClients []clientset.Interface) Manager {
 }
 
 func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, tenant, ownerPod)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPod)
 	return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 

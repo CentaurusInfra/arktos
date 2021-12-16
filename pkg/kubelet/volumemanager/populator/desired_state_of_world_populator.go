@@ -558,7 +558,7 @@ func (dswp *desiredStateOfWorldPopulator) createVolumeSpec(podVolume v1.Volume, 
 // it is pointing to and returns it.
 // An error is returned if the PVC object's phase is not "Bound".
 func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(boundPod types.UID, tenant string, namespace string, claimName string) (*v1.PersistentVolumeClaim, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, tenant, boundPod)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, boundPod)
 	pvc, err :=
 		tenantPartitionClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(namespace, tenant).Get(claimName, metav1.GetOptions{})
 	if err != nil || pvc == nil {
@@ -603,7 +603,7 @@ func (dswp *desiredStateOfWorldPopulator) getPVCExtractPV(boundPod types.UID, te
 // and returns a volume.Spec representing it.
 // An error is returned if the call to fetch the PV object fails.
 func (dswp *desiredStateOfWorldPopulator) getPVSpec(boundPod types.UID, tenant string, name string, pvcReadOnly bool, expectedClaimUID types.UID) (*volume.Spec, string, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, tenant, boundPod)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(dswp.kubeClients, boundPod)
 	pv, err := tenantPartitionClient.CoreV1().PersistentVolumesWithMultiTenancy(tenant).Get(name, metav1.GetOptions{})
 	if err != nil || pv == nil {
 		return nil, "", fmt.Errorf(

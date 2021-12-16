@@ -219,12 +219,12 @@ type cacheBasedManager struct {
 }
 
 func (c *cacheBasedManager) GetObject(tenant, namespace, name string, ownerPod types.UID) (runtime.Object, error) {
-	originID := kubeclientmanager.ClientManager.PickClient(tenant, ownerPod)
+	originID := kubeclientmanager.ClientManager.PickClient(ownerPod)
 	return c.objectStore.Get(tenant, namespace, name, originID)
 }
 
 func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
-	originID := kubeclientmanager.ClientManager.PickClient(pod.Tenant, pod.UID)
+	originID := kubeclientmanager.ClientManager.PickClient(pod.UID)
 	names := c.getReferencedObjects(pod)
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -247,7 +247,7 @@ func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
 }
 
 func (c *cacheBasedManager) UnregisterPod(pod *v1.Pod) {
-	originID := kubeclientmanager.ClientManager.PickClient(pod.Tenant, pod.UID)
+	originID := kubeclientmanager.ClientManager.PickClient(pod.UID)
 	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name, originID: originID}
 	c.lock.Lock()
 	defer c.lock.Unlock()

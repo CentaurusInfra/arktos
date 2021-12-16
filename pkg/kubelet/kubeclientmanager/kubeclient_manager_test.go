@@ -196,7 +196,7 @@ func TestGetTPClient(t *testing.T) {
 	for i, test := range testcases {
 		newKubeClientManagerFunc()()
 		ClientManager.puid2api = test.puid2api
-		actualClient := ClientManager.GetTPClient(test.kubeClients, "dummy", test.puid)
+		actualClient := ClientManager.GetTPClient(test.kubeClients, test.puid)
 		if test.expectedClient != actualClient {
 			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedClient, actualClient)
 		}

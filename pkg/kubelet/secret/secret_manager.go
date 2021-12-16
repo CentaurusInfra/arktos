@@ -64,7 +64,7 @@ func NewSimpleSecretManager(kubeClients []clientset.Interface) Manager {
 }
 
 func (s *simpleSecretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, tenant, ownerPod)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPod)
 	return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 

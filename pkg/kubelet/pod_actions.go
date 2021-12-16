@@ -106,7 +106,7 @@ func (kl *Kubelet) DoPodAction(action *v1.Action, pod *v1.Pod) {
 	}
 	actionStatus.Error = errStr
 	action.Status = actionStatus
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, action.Tenant, pod.UID)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.UID)
 	if _, err := tenantPartitionClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 		klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 	}

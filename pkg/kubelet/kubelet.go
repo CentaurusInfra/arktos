@@ -1837,7 +1837,7 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 	kl.podResizeMutex.Lock()
 	defer kl.podResizeMutex.Unlock()
 	if fit, patchBytes := kl.canResizePod(pod); fit {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant, pod.UID)
+		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.UID)
 		_, patchError := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
 			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
@@ -2222,7 +2222,7 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 				Error:    errStr,
 			}
 			for _, targetPod := range update.Pods {
-				tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, action.Tenant, targetPod.UID)
+				tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, targetPod.UID)
 				if _, err := tenantPartitionClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
 					klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
 				}

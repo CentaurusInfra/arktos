@@ -505,7 +505,7 @@ func (m *manager) syncPod(uid types.UID, status versionedPodStatus) {
 	}
 
 	// TODO: make me easier to express from client code
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(m.kubeClients, status.podTenant, uid)
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(m.kubeClients, uid)
 	pod, err := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(status.podNamespace, status.podTenant).Get(status.podName, metav1.GetOptions{})
 	if errors.IsNotFound(err) {
 		klog.V(3).Infof("Pod %q does not exist on the server", format.PodDesc(status.podName, status.podNamespace, status.podTenant, uid))

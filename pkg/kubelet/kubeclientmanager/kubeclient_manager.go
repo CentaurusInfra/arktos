@@ -100,24 +100,23 @@ func (manager *KubeClientManager) UnregisterTenantSourceServer(ref *v1.Pod) {
 	delete(manager.puid2api, ref.UID)
 }
 
-func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface, tenant string, podUID types.UID) clientset.Interface {
+func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface, podUID types.UID) clientset.Interface {
 	if kubeClients == nil || len(kubeClients) == 0 {
 		klog.Errorf("invalid kubeClients : %v", kubeClients)
 		return nil
 	}
 	// todo: calling param w/ use pod uid only
-	pick := manager.PickClient(tenant, podUID)
-	klog.V(6).Infof("using client #%v for tenant '%s'", pick, tenant)
+	pick := manager.PickClient(podUID)
+	klog.V(6).Infof("using client #%v for pod UID '%s'", pick, podUID)
 	return kubeClients[pick]
 }
 
-// todo: remove tenant param; use podUID only
-func (manager *KubeClientManager) PickClient(tenant string, podUID types.UID) int {
+func (manager *KubeClientManager) PickClient(podUID types.UID) int {
 	manager.tenant2apiLock.RLock()
 	defer manager.tenant2apiLock.RUnlock()
 	pick, ok := manager.puid2api[podUID]
 	if !ok {
-		klog.Warningf("no registered client for tenant %s, defaulted to client #0", tenant)
+		klog.Warningf("no registered client for pod UID %s, defaulted to client #0", podUID)
 		pick = 0
 	}
 	return pick

@@ -46,7 +46,7 @@ func NewManager(clients []clientset.Interface) *Manager {
 			if len(clients) == 0 {
 				return nil, errors.New("cannot use TokenManager when kubelet is in standalone mode")
 			}
-			idx := kubeclientmanager.ClientManager.PickClient(tenant, ownerPod)
+			idx := kubeclientmanager.ClientManager.PickClient(ownerPod)
 			return clients[idx].CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
 		},
 		cache: make(map[string]*authenticationv1.TokenRequest),

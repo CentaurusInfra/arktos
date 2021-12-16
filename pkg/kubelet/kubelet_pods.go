@@ -505,7 +505,7 @@ func (kl *Kubelet) getServiceEnvVarMap(podUID types.UID, tenant string, ns strin
 	// Get all service resources from the master (via a cache),
 	// and populate them into service environment variables.
 	// todo: remove param of tenant after pod specific origin tracking impl
-	index := kubeclientmanager.ClientManager.PickClient(tenant, podUID)
+	index := kubeclientmanager.ClientManager.PickClient(podUID)
 	if kl.serviceListers[index] == nil {
 		// Kubelets without masters (e.g. plain GCE ContainerVM) don't set env vars.
 		return m, nil
@@ -1976,7 +1976,7 @@ func hasHostNamespace(pod *v1.Pod) bool {
 func (kl *Kubelet) hasHostMountPVC(pod *v1.Pod) bool {
 	for _, volume := range pod.Spec.Volumes {
 		if volume.PersistentVolumeClaim != nil {
-			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant, pod.UID)
+			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.UID)
 			pvc, err := tenantPartitionClient.CoreV1().PersistentVolumeClaimsWithMultiTenancy(pod.Namespace, pod.Tenant).Get(volume.PersistentVolumeClaim.ClaimName, metav1.GetOptions{})
 			if err != nil {
 				klog.Warningf("unable to retrieve pvc %s:%s - %v", pod.Namespace, volume.PersistentVolumeClaim.ClaimName, err)
