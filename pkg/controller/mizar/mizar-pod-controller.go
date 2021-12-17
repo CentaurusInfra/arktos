@@ -22,13 +22,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	arktosextv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
+	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	corelisters "k8s.io/client-go/listers/core/v1"
-	arktosextv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
-	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
-	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -46,7 +46,7 @@ type MizarPodController struct {
 	kubeClient clientset.Interface
 
 	// A store of network objects, populated by the shared informer passed to MizarPodController
-	netLister       arktosv1.NetworkLister
+	netLister arktosv1.NetworkLister
 
 	// A store of pod objects, populated by the shared informer passed to MizarPodController
 	lister corelisters.PodLister
@@ -226,16 +226,16 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 
 		const subnetSuffix = "-subnet"
-		subnet :=  vpc + subnetSuffix
+		subnet := vpc + subnetSuffix
 
 		const mizarAnnotationsVpcKey = "mizar.com/vpc"
 		const mizarAnnotationsSubnetKey = "mizar.com/subnet"
 		needUpdate := false
 
 		if len(obj.Annotations) == 0 {
-			obj.Annotations =  map[string]string{
-						mizarAnnotationsVpcKey: vpc,
-						mizarAnnotationsSubnetKey: subnet,
+			obj.Annotations = map[string]string{
+				mizarAnnotationsVpcKey:    vpc,
+				mizarAnnotationsSubnetKey: subnet,
 			}
 
 			klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar is blank and vpc and subnet are being set!")
@@ -277,7 +277,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			klog.Infof("mizar-pod-controller: update pod's annotation to API server successfully")
 
 		}
-        }
+	}
 
 	klog.V(4).Infof("Handling %v %s/%s/%s for event %v", controllerForMizarPod, tenant, namespace, name, eventType)
 

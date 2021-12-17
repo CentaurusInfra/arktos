@@ -95,9 +95,9 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string, grpcAdapt
 func startMizarPodController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
- 
+
 	//informerFactory is needed by arktosinformer.NetworkInformer.Lister(),
-	//which is needed by MizarPodController to get nework's vpcID for 
+	//which is needed by MizarPodController to get nework's vpcID for
 	//updating pod's annotations
 	podKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
 	for _, podKubeconfig := range podKubeconfigs.GetAllConfigs() {
