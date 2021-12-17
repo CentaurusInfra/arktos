@@ -76,7 +76,7 @@ On master node:
    ./cluster/kubectl.sh get nodes
 ```
 
-   Note: Please reference the blog [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) if you want to know how flannel network works in kubernetes.
+   Note: Please reference the blogs [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) and [Flannel Networking Demystify: Support three backend mode - VXLAN, UDP and Host-GW](https://msazure.club/flannel-networking-demystify/) if you want to know more how flannel network works in kubernetes with VXLAN backend mode.
 
    Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices' is not supported by Arktos so far.
 
@@ -429,7 +429,7 @@ On master node:
    ip-172-31-22-85   Ready    <none>   9m7s   v0.9.0
 ```
 
-   Note: Please reference the blog [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) if you want to know how flannel network works in kubernetes.
+   Note: Please reference the blogs [Kubernetes: Flannel networking](https://blog.laputa.io/kubernetes-flannel-networking-6a1cb1f8ec7c) and [Flannel Networking Demystify: Support three backend mode - VXLAN, UDP and Host-GW](https://msazure.club/flannel-networking-demystify/) if you want to know more how flannel network works in kubernetes with Host-GW backend mode.
 
    Note: CNI plugin of Calico is not supported because the resource 'EndpointSlices' is not supported by Arktos so far.
 
