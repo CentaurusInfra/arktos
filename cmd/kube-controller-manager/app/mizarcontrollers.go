@@ -95,13 +95,37 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string, grpcAdapt
 func startMizarPodController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
+ 
+	//informerFactory is needed by arktosinformer.NetworkInformer.Lister(),
+	//which is needed by MizarPodController to get nework's vpcID for 
+	//updating pod's annotations
+	podKubeconfigs := ctx.ClientBuilder.ConfigOrDie(controllerName)
+	for _, podKubeconfig := range podKubeconfigs.GetAllConfigs() {
+		podKubeconfig.QPS *= 5
+		podKubeconfig.Burst *= 10
+	}
 
-	go controllers.NewMizarPodController(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie(controllerName),
-		grpcHost,
-		grpcAdaptor,
-	).Run(mizarPodControllerWorkerCount, ctx.Stop)
+	crConfigs := *podKubeconfigs
+	for _, cfg := range crConfigs.GetAllConfigs() {
+		cfg.ContentType = "application/json"
+		cfg.AcceptContentTypes = "application/json"
+	}
+	networkClient := arktos.NewForConfigOrDie(&crConfigs)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
+
+	go func() {
+		podController := controllers.NewMizarPodController(
+			ctx.InformerFactory.Core().V1().Pods(),
+			ctx.ClientBuilder.ClientOrDie(controllerName),
+			informerFactory.Arktos().V1().Networks(),
+			grpcHost,
+			grpcAdaptor,
+		)
+
+		//Do not forget starting informerFactory
+		informerFactory.Start(ctx.Stop)
+		podController.Run(mizarPodControllerWorkerCount, ctx.Stop)
+	}()
 	return nil, true, nil
 }
 
