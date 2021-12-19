@@ -5,7 +5,7 @@
     "annotations":{
       "VirtletCPUModel":"host-model"
     },
-    "name":"vmdefault",
+    "name":"%s",
     "namespace":"kube-system",
     "tenant":"system"
   },
@@ -14,7 +14,7 @@
       "image":"%s",
       "imagePullPolicy":"IfNotPresent",
       "keyPairName":"foobar",
-      "name":"vm",
+      "name":"%s",
       "publicKey":"ssh-rsa AAA",
       "resources":{
         "limits":{

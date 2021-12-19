@@ -2,7 +2,7 @@
    "server":{
       "name":"testvm",
       "imageRef":"6db08272-a856-49da-8909-7c4c73ab0bac",
-      "flavorRef":"1",
+      "flavorRef":"m1.tiny",
       "min_count":1,
       "max_count":1,
       "networks":[

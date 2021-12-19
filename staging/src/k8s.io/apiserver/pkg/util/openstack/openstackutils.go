@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/klog"
@@ -59,15 +60,21 @@ type LinkType struct {
 	Rel  string
 }
 
-// VM creation request in Openstack
-type OpenstackRequest struct {
+type ServerType struct {
 	Name            string
+	ImageRef        string
 	Flavor          string
+	Min_count       string
+	Max_count       string
 	Networks        []Network
+	Security_groups []SecurityGroup
 	Key_name        string
 	Metadata        MetadataType
-	Security_groups []SecurityGroup
 	User_data       string
+}
+// VM creation request in Openstack
+type OpenstackRequest struct {
+	Server ServerType
 }
 
 // VM creation response in Openstack
@@ -89,12 +96,25 @@ func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
 // Revisit this for dynamically generate the json request
 // TODO: fix hard coded flavor and imageRefs with config maps
 // TODO: post the initial support, consider push down this logic to the create handler to support other media types than Json
-func ConvertToOpenstackRequest(body []byte) []byte {
-	cpu, mem := GetRequestedResource("m1.tiny")
-	imageUrl := GetVmImageUrl("ImageRefID")
+func ConvertToOpenstackRequest(body []byte) ([]byte, error) {
 
-	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, imageUrl, cpu, mem, cpu, mem)
-	return []byte(podJson)
+	obj := OpenstackRequest{}
+
+	err := json.Unmarshal(body, &obj)
+
+	if err != nil {
+		klog.Errorf("error unmarshal request. error %v", err)
+		return nil, err
+	}
+
+	klog.Infof("debug: request struct: %v", obj)
+
+	cpu, mem := GetRequestedResource(obj.Server.Flavor)
+	imageUrl := GetVmImageUrl(obj.Server.ImageRef)
+
+	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, imageUrl, obj.Server.Name, cpu, mem, cpu, mem)
+	klog.Infof("debug: pod json: %s", podJson)
+	return []byte(podJson), nil
 }
 
 // Convert kubernetes pod response to Openstack response body
