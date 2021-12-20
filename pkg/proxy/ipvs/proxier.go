@@ -460,12 +460,13 @@ type serviceInfo struct {
 }
 
 // returns a new proxy.ServicePort which abstracts a serviceInfo
-func newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo) proxy.ServicePort {
+func newServiceInfo(port *v1.ServicePort, service *v1.Service, baseInfo *proxy.BaseServiceInfo, tenantPartitionId int) proxy.ServicePort {
 	info := &serviceInfo{BaseServiceInfo: baseInfo}
 
 	// Store the following for performance reasons.
-	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
-	svcPortName := proxy.ServicePortName{NamespacedName: svcName, Port: port.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
+	svcPortName := proxy.ServicePortName{NamespacednameWithTenantSource: svcName, Port: port.Name}
 	info.serviceNameString = svcPortName.String()
 
 	return info
@@ -674,24 +675,24 @@ func (proxier *Proxier) isInitialized() bool {
 }
 
 // OnServiceAdd is called whenever creation of new service object is observed.
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-	proxier.OnServiceUpdate(nil, service)
+func (proxier *Proxier) OnServiceAdd(service *v1.Service, tenantParitionId int) {
+	proxier.OnServiceUpdate(nil, service, tenantParitionId)
 }
 
 // OnServiceUpdate is called whenever modification of an existing service object is observed.
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-	if proxier.serviceChanges.Update(oldService, service) && proxier.isInitialized() {
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service, tenantParitionId int) {
+	if proxier.serviceChanges.Update(oldService, service, tenantParitionId) && proxier.isInitialized() {
 		proxier.syncRunner.Run()
 	}
 }
 
 // OnServiceDelete is called whenever deletion of an existing service object is observed.
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-	proxier.OnServiceUpdate(service, nil)
+func (proxier *Proxier) OnServiceDelete(service *v1.Service, tenantParitionId int) {
+	proxier.OnServiceUpdate(service, nil, tenantParitionId)
 }
 
 // OnServiceSynced is called once all the initial event handlers were called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnServiceSynced() {
+func (proxier *Proxier) OnServiceSynced(tenantParitionId int) {
 	proxier.mu.Lock()
 	proxier.servicesSynced = true
 	proxier.setInitialized(proxier.servicesSynced && proxier.endpointsSynced)
@@ -702,24 +703,24 @@ func (proxier *Proxier) OnServiceSynced() {
 }
 
 // OnEndpointsAdd is called whenever creation of new endpoints object is observed.
-func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints) {
-	proxier.OnEndpointsUpdate(nil, endpoints)
+func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.OnEndpointsUpdate(nil, endpoints, tenantPartitionId)
 }
 
 // OnEndpointsUpdate is called whenever modification of an existing endpoints object is observed.
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
-	if proxier.endpointsChanges.Update(oldEndpoints, endpoints) && proxier.isInitialized() {
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	if proxier.endpointsChanges.Update(oldEndpoints, endpoints, tenantPartitionId) && proxier.isInitialized() {
 		proxier.syncRunner.Run()
 	}
 }
 
 // OnEndpointsDelete is called whenever deletion of an existing endpoints object is observed.
-func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	proxier.OnEndpointsUpdate(endpoints, nil)
+func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.OnEndpointsUpdate(endpoints, nil, tenantPartitionId)
 }
 
 // OnEndpointsSynced is called once all the initial event handlers were called and the state is fully propagated to local cache.
-func (proxier *Proxier) OnEndpointsSynced() {
+func (proxier *Proxier) OnEndpointsSynced(tenantPartitionId int) {
 	proxier.mu.Lock()
 	proxier.endpointsSynced = true
 	proxier.setInitialized(proxier.servicesSynced && proxier.endpointsSynced)
