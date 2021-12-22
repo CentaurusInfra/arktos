@@ -175,11 +175,12 @@ func makeServiceMap(proxier *Proxier, allServices ...*v1.Service) {
 	proxier.servicesSynced = true
 }
 
-func makeTestService(namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
+func makeTestService(tenant, namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: map[string]string{},
 		},
 		Spec:   v1.ServiceSpec{},
@@ -199,11 +200,12 @@ func makeEndpointsMap(proxier *Proxier, allEndpoints ...*v1.Endpoints) {
 	proxier.endpointsSynced = true
 }
 
-func makeTestEndpoints(namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
+func makeTestEndpoints(tenant, namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
 	ept := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
+			Tenant:    tenant,
 		},
 	}
 	eptFunc(ept)
@@ -224,7 +226,7 @@ func TestCleanupLeftovers(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -237,7 +239,7 @@ func TestCleanupLeftovers(t *testing.T) {
 	)
 	epIP := "10.180.0.1"
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIP,
@@ -415,7 +417,7 @@ func TestNodePortUDP(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -428,7 +430,7 @@ func TestNodePortUDP(t *testing.T) {
 	)
 	epIP := "10.180.0.1"
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIP,
@@ -491,7 +493,7 @@ func TestNodePort(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -506,7 +508,7 @@ func TestNodePort(t *testing.T) {
 	epIPv6 := "1002:ab8::2:10"
 	epIPs := sets.NewString(epIPv4, epIPv6)
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIPv4,
@@ -569,7 +571,7 @@ func TestNodePortNoEndpoint(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -623,7 +625,7 @@ func TestClusterIPNoEndpoint(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Namespace, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Namespace, func(svc *v1.Service) {
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
 				Name:     svcPortName.Port,
@@ -673,7 +675,7 @@ func TestClusterIP(t *testing.T) {
 		Port:                           "p8080",
 	}
 	makeServiceMap(fp,
-		makeTestService(svcPortNameV4.Namespace, svcPortNameV4.Name, func(svc *v1.Service) {
+		makeTestService(svcPortNameV4.Tenant, svcPortNameV4.Namespace, svcPortNameV4.Name, func(svc *v1.Service) {
 			svc.Spec.ClusterIP = svcIPv4
 			svc.Spec.Ports = []v1.ServicePort{{
 				Name:     svcPortNameV4.Port,
@@ -681,7 +683,7 @@ func TestClusterIP(t *testing.T) {
 				Protocol: v1.ProtocolTCP,
 			}}
 		}),
-		makeTestService(svcPortNameV6.Namespace, svcPortNameV6.Name, func(svc *v1.Service) {
+		makeTestService(svcPortNameV6.Tenant, svcPortNameV6.Namespace, svcPortNameV6.Name, func(svc *v1.Service) {
 			svc.Spec.ClusterIP = svcIPv6
 			svc.Spec.Ports = []v1.ServicePort{{
 				Name:     svcPortNameV6.Port,
@@ -694,7 +696,7 @@ func TestClusterIP(t *testing.T) {
 	epIPv4 := "10.180.0.1"
 	epIPv6 := "1009:ab8::5:6"
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortNameV4.Namespace, svcPortNameV4.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortNameV4.Tenant, svcPortNameV4.Namespace, svcPortNameV4.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIPv4,
@@ -705,7 +707,7 @@ func TestClusterIP(t *testing.T) {
 				}},
 			}}
 		}),
-		makeTestEndpoints(svcPortNameV6.Namespace, svcPortNameV6.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortNameV6.Tenant, svcPortNameV6.Namespace, svcPortNameV6.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIPv6,
@@ -775,7 +777,7 @@ func TestExternalIPsNoEndpoint(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "ClusterIP"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.ExternalIPs = []string{svcExternalIPs}
@@ -830,7 +832,7 @@ func TestExternalIPs(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "ClusterIP"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.ExternalIPs = svcExternalIPs.UnsortedList()
@@ -845,7 +847,7 @@ func TestExternalIPs(t *testing.T) {
 
 	epIP := "10.180.0.1"
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIP,
@@ -898,7 +900,7 @@ func TestLoadBalancer(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "LoadBalancer"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -915,7 +917,7 @@ func TestLoadBalancer(t *testing.T) {
 
 	epIP := "10.180.0.1"
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP: epIP,
@@ -974,7 +976,7 @@ func TestOnlyLocalNodePorts(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -993,7 +995,7 @@ func TestOnlyLocalNodePorts(t *testing.T) {
 	otherHostname := "other-hostname"
 
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{
 				{ // **local** endpoint address, should be added as RS
 					Addresses: []v1.EndpointAddress{{
@@ -1074,7 +1076,7 @@ func TestLoadBalanceSourceRanges(t *testing.T) {
 	epIP := "10.180.0.1"
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "LoadBalancer"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -1091,7 +1093,7 @@ func TestLoadBalanceSourceRanges(t *testing.T) {
 		}),
 	)
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{
 					IP:       epIP,
@@ -1176,7 +1178,7 @@ func TestAcceptIPVSTraffic(t *testing.T) {
 
 	for _, svcInfo := range svcInfos {
 		makeServiceMap(fp,
-			makeTestService("ns1", svcInfo.svcName, func(svc *v1.Service) {
+			makeTestService("te", "ns1", svcInfo.svcName, func(svc *v1.Service) {
 				svc.Spec.Type = svcInfo.svcType
 				svc.Spec.ClusterIP = svcInfo.svcIP
 				svc.Spec.Ports = []v1.ServicePort{{
@@ -1197,7 +1199,7 @@ func TestAcceptIPVSTraffic(t *testing.T) {
 		)
 
 		makeEndpointsMap(fp,
-			makeTestEndpoints("ns1", "p80", func(ept *v1.Endpoints) {
+			makeTestEndpoints("te", "ns1", "p80", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{{
 					Addresses: []v1.EndpointAddress{{
 						IP: svcInfo.epIP,
@@ -1236,7 +1238,7 @@ func TestOnlyLocalLoadBalancing(t *testing.T) {
 	}
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "LoadBalancer"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.Ports = []v1.ServicePort{{
@@ -1258,7 +1260,7 @@ func TestOnlyLocalLoadBalancing(t *testing.T) {
 	otherHostname := "other-hostname"
 
 	makeEndpointsMap(fp,
-		makeTestEndpoints(svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
+		makeTestEndpoints(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{
 				{ // **local** endpoint address, should be added as RS
 					Addresses: []v1.EndpointAddress{{
@@ -1341,21 +1343,21 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	fp := NewFakeProxier(ipt, ipvs, ipset, nil, nil)
 
 	services := []*v1.Service{
-		makeTestService("somewhere-else", "cluster-ip", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "cluster-ip", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = "172.16.55.4"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "something", "UDP", 1234, 4321, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "UDP", 1235, 5321, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somesctp", "SCTP", 1236, 6321, 0)
 		}),
-		makeTestService("somewhere-else", "node-port", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "node-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeNodePort
 			svc.Spec.ClusterIP = "172.16.55.10"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "blahblah", "UDP", 345, 678, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "moreblahblah", "TCP", 344, 677, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "sctpblah", "SCTP", 343, 676, 0)
 		}),
-		makeTestService("somewhere", "load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "somewhere", "load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.11"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -1368,7 +1370,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 				},
 			}
 		}),
-		makeTestService("somewhere", "only-local-load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "somewhere", "only-local-load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.12"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -1410,7 +1412,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 
 	// Remove some stuff
 	// oneService is a modification of services[0] with removed first port.
-	oneService := makeTestService("somewhere-else", "cluster-ip", func(svc *v1.Service) {
+	oneService := makeTestService("te", "somewhere-else", "cluster-ip", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "UDP", 1235, 5321, 0)
@@ -1451,16 +1453,16 @@ func TestBuildServiceMapServiceHeadless(t *testing.T) {
 	fp := NewFakeProxier(ipt, ipvs, ipset, nil, nil)
 
 	makeServiceMap(fp,
-		makeTestService("somewhere-else", "headless", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "headless", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
 		}),
-		makeTestService("somewhere-else", "headless-without-port", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "headless-without-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 		}),
-		makeTestService("somewhere-else", "headless-sctp", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "headless-sctp", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "sip", "SCTP", 1235, 0, 0)
@@ -1490,7 +1492,7 @@ func TestBuildServiceMapServiceTypeExternalName(t *testing.T) {
 	fp := NewFakeProxier(ipt, ipvs, ipset, nil, nil)
 
 	makeServiceMap(fp,
-		makeTestService("somewhere-else", "external-name", func(svc *v1.Service) {
+		makeTestService("te", "somewhere-else", "external-name", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeExternalName
 			svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
 			svc.Spec.ExternalName = "foo2.bar.com"
@@ -1517,13 +1519,13 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	ipset := ipsettest.NewFake(testIPSetVersion)
 	fp := NewFakeProxier(ipt, ipvs, ipset, nil, nil)
 
-	servicev1 := makeTestService("somewhere", "some-service", func(svc *v1.Service) {
+	servicev1 := makeTestService("te", "somewhere", "some-service", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "something", "UDP", 1234, 4321, 0)
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "somethingelse", "TCP", 1235, 5321, 0)
 	})
-	servicev2 := makeTestService("somewhere", "some-service", func(svc *v1.Service) {
+	servicev2 := makeTestService("te", "somewhere", "some-service", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeLoadBalancer
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -1611,7 +1613,7 @@ func TestSessionAffinity(t *testing.T) {
 	timeoutSeconds := v1.DefaultClientIPServiceAffinitySeconds
 
 	makeServiceMap(fp,
-		makeTestService(svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
+		makeTestService(svcPortName.Tenant, svcPortName.Namespace, svcPortName.Name, func(svc *v1.Service) {
 			svc.Spec.Type = "NodePort"
 			svc.Spec.ClusterIP = svcIP
 			svc.Spec.ExternalIPs = []string{svcExternalIPs}
@@ -1979,10 +1981,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[1]: no change, unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", ""): {
@@ -2000,10 +2002,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[2]: no change, named port, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2023,10 +2025,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[3]: no change, multiple subsets
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2050,10 +2052,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[4]: no change, multiple subsets, multiple ports, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2085,12 +2087,12 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[5]: no change, multiple endpoints, subsets, IPs, and ports
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2156,7 +2158,7 @@ func Test_updateEndpointsMap(t *testing.T) {
 			nil,
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{},
 		expectedResult: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
@@ -2174,7 +2176,7 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[7]: remove an Endpoints
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
 			nil,
@@ -2194,10 +2196,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[8]: add an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2224,10 +2226,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[9]: remove an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2259,10 +2261,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[10]: add a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsWithLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsWithLocal),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2287,10 +2289,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[11]: remove a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2314,10 +2316,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[12]: rename a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenamed),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenamed),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2340,10 +2342,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[13]: renumber a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenumbered),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenumbered),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2364,16 +2366,16 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[14]: complex add and remove
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexBefore1),
-			makeTestEndpoints("ns2", "ep2", complexBefore2),
+			makeTestEndpoints("te", "ns1", "ep1", complexBefore1),
+			makeTestEndpoints("te", "ns2", "ep2", complexBefore2),
 			nil,
-			makeTestEndpoints("ns4", "ep4", complexBefore4),
+			makeTestEndpoints("te", "ns4", "ep4", complexBefore4),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexAfter1),
+			makeTestEndpoints("te", "ns1", "ep1", complexAfter1),
 			nil,
-			makeTestEndpoints("ns3", "ep3", complexAfter3),
-			makeTestEndpoints("ns4", "ep4", complexAfter4),
+			makeTestEndpoints("te", "ns3", "ep3", complexAfter3),
+			makeTestEndpoints("te", "ns4", "ep4", complexAfter4),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -2439,10 +2441,10 @@ func Test_updateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[15]: change from 0 endpoint address to 1 unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", emptyEndpoint),
+			makeTestEndpoints("te", "ns1", "ep1", emptyEndpoint),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{},
 		expectedResult: map[proxy.ServicePortName][]*proxy.BaseEndpointInfo{
@@ -3079,18 +3081,18 @@ func TestMultiPortServiceBindAddr(t *testing.T) {
 	ipset := ipsettest.NewFake(testIPSetVersion)
 	fp := NewFakeProxier(ipt, ipvs, ipset, nil, nil)
 
-	service1 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	service1 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "TCP", 1234, 0, 0)
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "TCP", 1235, 0, 0)
 	})
-	service2 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	service2 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "TCP", 1234, 0, 0)
 	})
-	service3 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	service3 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "TCP", 1234, 0, 0)

@@ -47,11 +47,12 @@ func makeTestServiceInfo(clusterIP string, port int, protocol string, healthchec
 	return info
 }
 
-func makeTestService(namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
+func makeTestService(tenant, namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: map[string]string{},
 		},
 		Spec:   v1.ServiceSpec{},
@@ -108,7 +109,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless service",
-			service: makeTestService("ns2", "headless", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
@@ -117,7 +118,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless sctp service",
-			service: makeTestService("ns2", "headless", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "sip", "SCTP", 7777, 0, 0)
@@ -126,7 +127,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless service without port",
-			service: makeTestService("ns2", "headless-without-port", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless-without-port", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 			}),
@@ -134,7 +135,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "cluster ip service",
-			service: makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = "172.16.55.4"
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p1", "UDP", 1234, 4321, 0)
@@ -147,7 +148,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "nodeport service",
-			service: makeTestService("ns2", "node-port", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "node-port", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeNodePort
 				svc.Spec.ClusterIP = "172.16.55.10"
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 345, 678, 0)
@@ -160,7 +161,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "load balancer service",
-			service: makeTestService("ns1", "load-balancer", func(svc *v1.Service) {
+			service: makeTestService("te", "ns1", "load-balancer", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeLoadBalancer
 				svc.Spec.ClusterIP = "172.16.55.11"
 				svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -179,7 +180,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "load balancer service with only local traffic policy",
-			service: makeTestService("ns1", "only-local-load-balancer", func(svc *v1.Service) {
+			service: makeTestService("te", "ns1", "only-local-load-balancer", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeLoadBalancer
 				svc.Spec.ClusterIP = "172.16.55.12"
 				svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -200,7 +201,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "external name service",
-			service: makeTestService("ns2", "external-name", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "external-name", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeExternalName
 				svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
 				svc.Spec.ExternalName = "foo2.bar.com"
@@ -214,6 +215,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalidIPv6InIPV4Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP: testClusterIPv6,
@@ -234,6 +236,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalidIPv4InIPV6Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP: testClusterIPv4,
@@ -254,6 +257,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "validIPv4",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv4,
@@ -282,6 +286,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "validIPv6",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv6,
@@ -310,6 +315,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "filterIPv6InIPV4Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv4,
@@ -338,6 +344,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "filterIPv4InIPV6Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv6,
@@ -424,12 +431,12 @@ func TestUpdateServiceMapHeadless(t *testing.T) {
 
 	makeServiceMap(fp,
 		tpId,
-		makeTestService("ns2", "headless", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
 		}),
-		makeTestService("ns2", "headless-without-port", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "headless-without-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 		}),
@@ -456,7 +463,7 @@ func TestUpdateServiceTypeExternalName(t *testing.T) {
 
 	makeServiceMap(fp,
 		tpId,
-		makeTestService("ns2", "external-name", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "external-name", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeExternalName
 			svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
 			svc.Spec.ExternalName = "foo2.bar.com"
@@ -481,19 +488,19 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	fp := newFakeProxier()
 
 	services := []*v1.Service{
-		makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = "172.16.55.4"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 1234, 4321, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "UDP", 1235, 5321, 0)
 		}),
-		makeTestService("ns2", "node-port", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "node-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeNodePort
 			svc.Spec.ClusterIP = "172.16.55.10"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 345, 678, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "TCP", 344, 677, 0)
 		}),
-		makeTestService("ns1", "load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "ns1", "load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.11"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -505,7 +512,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 				},
 			}
 		}),
-		makeTestService("ns1", "only-local-load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "ns1", "only-local-load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.12"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -546,7 +553,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 
 	// Remove some stuff
 	// oneService is a modification of services[0] with removed first port.
-	oneService := makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+	oneService := makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "UDP", 1235, 5321, 0)
@@ -583,13 +590,13 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	fp := newFakeProxier()
 
-	servicev1 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	servicev1 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p1", "UDP", 1234, 4321, 0)
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "TCP", 1235, 5321, 0)
 	})
-	servicev2 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	servicev2 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeLoadBalancer
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.LoadBalancerIP = "5.6.7.8"

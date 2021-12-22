@@ -69,7 +69,7 @@ func TestGetLocalEndpointIPs(t *testing.T) {
 			},
 		},
 		expected: map[types.NamespacednameWithTenantSource]sets.String{
-			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.1"),
+			{Tenant: "te", Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.1"),
 		},
 	}, {
 		// Case[3]: named local and non-local ports for the same IP.
@@ -84,7 +84,7 @@ func TestGetLocalEndpointIPs(t *testing.T) {
 			},
 		},
 		expected: map[types.NamespacednameWithTenantSource]sets.String{
-			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.2"),
+			{Tenant: "te", Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.2"),
 		},
 	}, {
 		// Case[4]: named local and non-local ports for different IPs.
@@ -108,8 +108,8 @@ func TestGetLocalEndpointIPs(t *testing.T) {
 			},
 		},
 		expected: map[types.NamespacednameWithTenantSource]sets.String{
-			{Namespace: "ns2", Name: "ep2"}: sets.NewString("2.2.2.2", "2.2.2.22", "2.2.2.3"),
-			{Namespace: "ns4", Name: "ep4"}: sets.NewString("4.4.4.4", "4.4.4.6"),
+			{Tenant: "te", Namespace: "ns2", Name: "ep2"}: sets.NewString("2.2.2.2", "2.2.2.22", "2.2.2.3"),
+			{Tenant: "te", Namespace: "ns4", Name: "ep4"}: sets.NewString("4.4.4.4", "4.4.4.6"),
 		},
 	}}
 
@@ -123,11 +123,12 @@ func TestGetLocalEndpointIPs(t *testing.T) {
 	}
 }
 
-func makeTestEndpoints(namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
+func makeTestEndpoints(tenant, namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
 	ept := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: make(map[string]string),
 		},
 	}
@@ -150,12 +151,12 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 	}{
 		{
 			desc:         "nothing",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {}),
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {}),
 			expected:     map[ServicePortName][]*BaseEndpointInfo{},
 		},
 		{
 			desc: "no changes, unnamed port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -176,7 +177,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "no changes, named port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -197,7 +198,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "new port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -217,12 +218,12 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc:         "remove port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {}),
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {}),
 			expected:     map[ServicePortName][]*BaseEndpointInfo{},
 		},
 		{
 			desc: "new IP and port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -253,7 +254,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "remove IP and port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -274,7 +275,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "rename port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -295,7 +296,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "renumber port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -316,7 +317,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "should omit IPv6 address in IPv4 mode",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -346,7 +347,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "should omit IPv4 address in IPv6 mode",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -726,10 +727,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[1]: no change, unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", ""): {
@@ -747,10 +748,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[2]: no change, named port, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -770,10 +771,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[3]: no change, multiple subsets
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -797,10 +798,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[4]: no change, multiple subsets, multiple ports, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -832,12 +833,12 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[5]: no change, multiple endpoints, subsets, IPs, and ports
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -903,7 +904,7 @@ func TestUpdateEndpointsMap(t *testing.T) {
 			nil,
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
@@ -921,7 +922,7 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[7]: remove an Endpoints
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
 			nil,
@@ -941,10 +942,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[8]: add an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -971,10 +972,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[9]: remove an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1006,10 +1007,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[10]: add a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsWithLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsWithLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1034,10 +1035,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[11]: remove a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1061,10 +1062,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[12]: rename a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenamed),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenamed),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1087,10 +1088,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[13]: renumber a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenumbered),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenumbered),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1111,16 +1112,16 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[14]: complex add and remove
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexBefore1),
-			makeTestEndpoints("ns2", "ep2", complexBefore2),
+			makeTestEndpoints("te", "ns1", "ep1", complexBefore1),
+			makeTestEndpoints("te", "ns2", "ep2", complexBefore2),
 			nil,
-			makeTestEndpoints("ns4", "ep4", complexBefore4),
+			makeTestEndpoints("te", "ns4", "ep4", complexBefore4),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexAfter1),
+			makeTestEndpoints("te", "ns1", "ep1", complexAfter1),
 			nil,
-			makeTestEndpoints("ns3", "ep3", complexAfter3),
-			makeTestEndpoints("ns4", "ep4", complexAfter4),
+			makeTestEndpoints("te", "ns3", "ep3", complexAfter3),
+			makeTestEndpoints("te", "ns4", "ep4", complexAfter4),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
 			makeServicePortName("te", "ns1", "ep1", "p11"): {
@@ -1186,10 +1187,10 @@ func TestUpdateEndpointsMap(t *testing.T) {
 	}, {
 		// Case[15]: change from 0 endpoint address to 1 unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", emptyEndpoint),
+			makeTestEndpoints("te", "ns1", "ep1", emptyEndpoint),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
@@ -1280,8 +1281,8 @@ func TestLastChangeTriggerTime(t *testing.T) {
 	t2 := t1.Add(time.Second)
 	t3 := t2.Add(time.Second)
 
-	createEndpoints := func(namespace, name string, triggerTime time.Time) *v1.Endpoints {
-		e := makeTestEndpoints(namespace, name, func(ept *v1.Endpoints) {
+	createEndpoints := func(tenant, namespace, name string, triggerTime time.Time) *v1.Endpoints {
+		e := makeTestEndpoints(tenant, namespace, name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{IP: "1.1.1.1"}},
 				Ports:     []v1.EndpointPort{{Port: 11}},
@@ -1310,7 +1311,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "Single addEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t0)
+				e := createEndpoints("te", "ns", "ep1", t0)
 				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{t0},
@@ -1318,7 +1319,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "addEndpoints then updatedEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t0)
+				e := createEndpoints("te", "ns", "ep1", t0)
 				fp.addEndpoints(e, tpId)
 
 				e1 := modifyEndpoints(e, t1)
@@ -1329,10 +1330,10 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "Add two endpoints then modify one",
 			scenario: func(fp *FakeProxier) {
-				e1 := createEndpoints("ns", "ep1", t1)
+				e1 := createEndpoints("te", "ns", "ep1", t1)
 				fp.addEndpoints(e1, tpId)
 
-				e2 := createEndpoints("ns", "ep2", t2)
+				e2 := createEndpoints("te", "ns", "ep2", t2)
 				fp.addEndpoints(e2, tpId)
 
 				e11 := modifyEndpoints(e1, t3)
@@ -1343,7 +1344,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "Endpoints without annotation set",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
+				e := createEndpoints("te", "ns", "ep1", t1)
 				delete(e.Annotations, v1.EndpointsLastChangeTriggerTime)
 				fp.addEndpoints(e, tpId)
 			},
@@ -1352,7 +1353,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "addEndpoints then deleteEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
+				e := createEndpoints("te", "ns", "ep1", t1)
 				fp.addEndpoints(e, tpId)
 				fp.deleteEndpoints(e, tpId)
 			},
@@ -1361,7 +1362,7 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "add then delete then add again",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
+				e := createEndpoints("te", "ns", "ep1", t1)
 				fp.addEndpoints(e, tpId)
 				fp.deleteEndpoints(e, tpId)
 				e = modifyEndpoints(e, t2)
