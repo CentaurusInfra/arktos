@@ -48,14 +48,14 @@ func (*FakeProxier) Sync() {}
 func (*FakeProxier) SyncLoop() {
 	select {}
 }
-func (*FakeProxier) OnServiceAdd(service *v1.Service)                        {}
-func (*FakeProxier) OnServiceUpdate(oldService, service *v1.Service)         {}
-func (*FakeProxier) OnServiceDelete(service *v1.Service)                     {}
-func (*FakeProxier) OnServiceSynced()                                        {}
-func (*FakeProxier) OnEndpointsAdd(endpoints *v1.Endpoints)                  {}
-func (*FakeProxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {}
-func (*FakeProxier) OnEndpointsDelete(endpoints *v1.Endpoints)               {}
-func (*FakeProxier) OnEndpointsSynced()                                      {}
+func (*FakeProxier) OnServiceAdd(service *v1.Service, tenantPartitionId int)                        {}
+func (*FakeProxier) OnServiceUpdate(oldService, service *v1.Service, tenantPartitionId int)         {}
+func (*FakeProxier) OnServiceDelete(service *v1.Service, tenantPartitionId int)                     {}
+func (*FakeProxier) OnServiceSynced(tenantPartitionId int)                                          {}
+func (*FakeProxier) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int)                  {}
+func (*FakeProxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {}
+func (*FakeProxier) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int)               {}
+func (*FakeProxier) OnEndpointsSynced(tenantPartitionId int)                                        {}
 
 func NewHollowProxyOrDie(
 	nodeName string,

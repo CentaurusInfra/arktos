@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -251,14 +252,16 @@ func buildPortsToEndpointsMap(endpoints *v1.Endpoints) map[string][]hostPortPair
 	return portsToEndpoints
 }
 
-func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+			TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
+			Port: portname}
 		newEndpoints := flattenValidEndpoints(portsToEndpoints[portname])
 		state, exists := lb.services[svcPort]
 
@@ -278,7 +281,7 @@ func (lb *LoadBalancerRR) OnEndpointsAdd(endpoints *v1.Endpoints) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 	oldPortsToEndpoints := buildPortsToEndpointsMap(oldEndpoints)
 	registeredEndpoints := make(map[proxy.ServicePortName]bool)
@@ -287,7 +290,10 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{
+			NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+				TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
+			Port: portname}
 		newEndpoints := flattenValidEndpoints(portsToEndpoints[portname])
 		state, exists := lb.services[svcPort]
 
@@ -313,7 +319,9 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	}
 
 	for portname := range oldPortsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+			TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
+			Port: portname}
 		if _, exists := registeredEndpoints[svcPort]; !exists {
 			klog.V(2).Infof("LoadBalancerRR: Removing endpoints for %s", svcPort)
 			// Reset but don't delete.
@@ -325,14 +333,20 @@ func (lb *LoadBalancerRR) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoint
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
+func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
 	portsToEndpoints := buildPortsToEndpointsMap(endpoints)
 
 	lb.lock.Lock()
 	defer lb.lock.Unlock()
 
 	for portname := range portsToEndpoints {
-		svcPort := proxy.ServicePortName{NamespacedName: types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}, Port: portname}
+		svcPort := proxy.ServicePortName{
+			NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+				TenantPartitionId: tenantPartitionId,
+				Tenant:            endpoints.Tenant,
+				Namespace:         endpoints.Namespace,
+				Name:              endpoints.Name},
+			Port: portname}
 		klog.V(2).Infof("LoadBalancerRR: Removing endpoints for %s", svcPort)
 		// If the service is still around, reset but don't delete.
 		if state, ok := lb.services[svcPort]; ok {
@@ -343,7 +357,7 @@ func (lb *LoadBalancerRR) OnEndpointsDelete(endpoints *v1.Endpoints) {
 	}
 }
 
-func (lb *LoadBalancerRR) OnEndpointsSynced() {
+func (lb *LoadBalancerRR) OnEndpointsSynced(tenantPartitionId int) {
 }
 
 // Tests whether two slices are equivalent.  This sorts both slices in-place.

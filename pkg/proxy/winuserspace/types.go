@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,11 +26,11 @@ import (
 // ServicePortPortalName carries a namespace + name + portname + portalip.  This is the unique
 // identifier for a windows service port portal.
 type ServicePortPortalName struct {
-	types.NamespacedName
+	types.NamespacednameWithTenantSource
 	Port         string
 	PortalIPName string
 }
 
 func (spn ServicePortPortalName) String() string {
-	return fmt.Sprintf("%s:%s:%s", spn.NamespacedName.String(), spn.Port, spn.PortalIPName)
+	return fmt.Sprintf("%s:%s:%s", spn.NamespacednameWithTenantSource.String(), spn.Port, spn.PortalIPName)
 }
