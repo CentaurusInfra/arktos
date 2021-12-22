@@ -95,8 +95,8 @@ func (fake *fakeHTTPServer) Serve(listener net.Listener) error {
 	return nil // Cause the goroutine to return
 }
 
-func mknsn(ns, name string) types.NamespacedName {
-	return types.NamespacedName{
+func mknsn(ns, name string) types.NamespacednameWithTenantSource {
+	return types.NamespacednameWithTenantSource{
 		Namespace: ns,
 		Name:      name,
 	}
@@ -136,14 +136,14 @@ func TestServer(t *testing.T) {
 	}
 
 	// sync unknown endpoints, should be dropped
-	hcs.SyncEndpoints(map[types.NamespacedName]int{mknsn("a", "b"): 93})
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{mknsn("a", "b"): 93})
 	if len(hcs.services) != 0 {
 		t.Errorf("expected 0 services, got %d", len(hcs.services))
 	}
 
 	// sync a real service
 	nsn := mknsn("a", "b")
-	hcs.SyncServices(map[types.NamespacedName]uint16{nsn: 9376})
+	hcs.SyncServices(map[types.NamespacednameWithTenantSource]uint16{nsn: 9376})
 	if len(hcs.services) != 1 {
 		t.Errorf("expected 1 service, got %d", len(hcs.services))
 	}
@@ -160,7 +160,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn, http.StatusServiceUnavailable, 0, t)
 
 	// sync an endpoint
-	hcs.SyncEndpoints(map[types.NamespacedName]int{nsn: 18})
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{nsn: 18})
 	if len(hcs.services) != 1 {
 		t.Errorf("expected 1 service, got %d", len(hcs.services))
 	}
@@ -171,7 +171,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn, http.StatusOK, 18, t)
 
 	// sync zero endpoints
-	hcs.SyncEndpoints(map[types.NamespacedName]int{nsn: 0})
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{nsn: 0})
 	if len(hcs.services) != 1 {
 		t.Errorf("expected 1 service, got %d", len(hcs.services))
 	}
@@ -182,7 +182,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn, http.StatusServiceUnavailable, 0, t)
 
 	// put the endpoint back
-	hcs.SyncEndpoints(map[types.NamespacedName]int{nsn: 11})
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{nsn: 11})
 	if len(hcs.services) != 1 {
 		t.Errorf("expected 1 service, got %d", len(hcs.services))
 	}
@@ -201,7 +201,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn, http.StatusServiceUnavailable, 0, t)
 
 	// put the endpoint back
-	hcs.SyncEndpoints(map[types.NamespacedName]int{nsn: 18})
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{nsn: 18})
 	if len(hcs.services) != 1 {
 		t.Errorf("expected 1 service, got %d", len(hcs.services))
 	}
@@ -219,7 +219,7 @@ func TestServer(t *testing.T) {
 	nsn2 := mknsn("c", "d")
 	nsn3 := mknsn("e", "f")
 	nsn4 := mknsn("g", "h")
-	hcs.SyncServices(map[types.NamespacedName]uint16{
+	hcs.SyncServices(map[types.NamespacednameWithTenantSource]uint16{
 		nsn1: 9376,
 		nsn2: 12909,
 		nsn3: 11113,
@@ -245,7 +245,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn3, http.StatusServiceUnavailable, 0, t)
 
 	// sync endpoints
-	hcs.SyncEndpoints(map[types.NamespacedName]int{
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{
 		nsn1: 9,
 		nsn2: 3,
 		nsn3: 7,
@@ -268,7 +268,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn3, http.StatusOK, 7, t)
 
 	// sync new services
-	hcs.SyncServices(map[types.NamespacedName]uint16{
+	hcs.SyncServices(map[types.NamespacednameWithTenantSource]uint16{
 		//nsn1: 9376, // remove it
 		nsn2: 12909, // leave it
 		nsn3: 11114, // change it
@@ -292,7 +292,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn4, http.StatusServiceUnavailable, 0, t)
 
 	// sync endpoints
-	hcs.SyncEndpoints(map[types.NamespacedName]int{
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{
 		nsn1: 9,
 		nsn2: 3,
 		nsn3: 7,
@@ -316,7 +316,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn4, http.StatusOK, 6, t)
 
 	// sync endpoints, missing nsn2
-	hcs.SyncEndpoints(map[types.NamespacedName]int{
+	hcs.SyncEndpoints(map[types.NamespacednameWithTenantSource]int{
 		nsn3: 7,
 		nsn4: 6,
 	})
@@ -338,7 +338,7 @@ func TestServer(t *testing.T) {
 	testHandler(hcs, nsn4, http.StatusOK, 6, t)
 }
 
-func testHandler(hcs *server, nsn types.NamespacedName, status int, endpoints int, t *testing.T) {
+func testHandler(hcs *server, nsn types.NamespacednameWithTenantSource, status int, endpoints int, t *testing.T) {
 	handler := hcs.services[nsn].server.(*fakeHTTPServer).handler
 	req, err := http.NewRequest("GET", "/healthz", nil)
 	if err != nil {

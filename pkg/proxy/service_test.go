@@ -72,14 +72,14 @@ func addTestPort(array []v1.ServicePort, name string, protocol v1.Protocol, port
 	return append(array, svcPort)
 }
 
-func makeNSN(namespace, name string) types.NamespacedName {
-	return types.NamespacedName{Namespace: namespace, Name: name}
+func makeNSN(tenant, namespace, name string) types.NamespacednameWithTenantSource {
+	return types.NamespacednameWithTenantSource{TenantPartitionId: tpId, Tenant: tenant, Namespace: namespace, Name: name}
 }
 
-func makeServicePortName(ns, name, port string) ServicePortName {
+func makeServicePortName(te, ns, name, port string) ServicePortName {
 	return ServicePortName{
-		NamespacedName: makeNSN(ns, name),
-		Port:           port,
+		NamespacednameWithTenantSource: makeNSN(te, ns, name),
+		Port:                           port,
 	}
 }
 
@@ -141,8 +141,8 @@ func TestServiceToServiceMap(t *testing.T) {
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "UDP", 1235, 5321, 0)
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns2", "cluster-ip", "p1"): makeTestServiceInfo("172.16.55.4", 1234, "UDP", 0),
-				makeServicePortName("ns2", "cluster-ip", "p2"): makeTestServiceInfo("172.16.55.4", 1235, "UDP", 0),
+				makeServicePortName("te", "ns2", "cluster-ip", "p1"): makeTestServiceInfo("172.16.55.4", 1234, "UDP", 0),
+				makeServicePortName("te", "ns2", "cluster-ip", "p2"): makeTestServiceInfo("172.16.55.4", 1235, "UDP", 0),
 			},
 		},
 		{
@@ -154,8 +154,8 @@ func TestServiceToServiceMap(t *testing.T) {
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "TCP", 344, 677, 0)
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns2", "node-port", "port1"): makeTestServiceInfo("172.16.55.10", 345, "UDP", 0),
-				makeServicePortName("ns2", "node-port", "port2"): makeTestServiceInfo("172.16.55.10", 344, "TCP", 0),
+				makeServicePortName("te", "ns2", "node-port", "port1"): makeTestServiceInfo("172.16.55.10", 345, "UDP", 0),
+				makeServicePortName("te", "ns2", "node-port", "port2"): makeTestServiceInfo("172.16.55.10", 344, "TCP", 0),
 			},
 		},
 		{
@@ -173,8 +173,8 @@ func TestServiceToServiceMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns1", "load-balancer", "port3"): makeTestServiceInfo("172.16.55.11", 8675, "UDP", 0),
-				makeServicePortName("ns1", "load-balancer", "port4"): makeTestServiceInfo("172.16.55.11", 8676, "UDP", 0),
+				makeServicePortName("te", "ns1", "load-balancer", "port3"): makeTestServiceInfo("172.16.55.11", 8675, "UDP", 0),
+				makeServicePortName("te", "ns1", "load-balancer", "port4"): makeTestServiceInfo("172.16.55.11", 8676, "UDP", 0),
 			},
 		},
 		{
@@ -194,8 +194,8 @@ func TestServiceToServiceMap(t *testing.T) {
 				svc.Spec.HealthCheckNodePort = 345
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns1", "only-local-load-balancer", "portx"): makeTestServiceInfo("172.16.55.12", 8677, "UDP", 345),
-				makeServicePortName("ns1", "only-local-load-balancer", "porty"): makeTestServiceInfo("172.16.55.12", 8678, "UDP", 345),
+				makeServicePortName("te", "ns1", "only-local-load-balancer", "portx"): makeTestServiceInfo("172.16.55.12", 8677, "UDP", 345),
+				makeServicePortName("te", "ns1", "only-local-load-balancer", "porty"): makeTestServiceInfo("172.16.55.12", 8678, "UDP", 345),
 			},
 		},
 		{
@@ -269,7 +269,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "validIPv4", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "validIPv4", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv4}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv4}
 				}),
@@ -297,7 +297,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "validIPv6", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "validIPv6", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv6}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv6}
 				}),
@@ -325,7 +325,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "filterIPv6InIPV4Mode", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "filterIPv6InIPV4Mode", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv4}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv4}
 				}),
@@ -353,7 +353,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "filterIPv4InIPV6Mode", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "filterIPv4InIPV6Mode", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv6}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv6}
 				}),
@@ -533,7 +533,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	if len(result.HCServiceNodePorts) != 1 {
 		t.Errorf("expected 1 healthcheck port, got %v", result.HCServiceNodePorts)
 	} else {
-		nsn := makeNSN("ns1", "only-local-load-balancer")
+		nsn := makeNSN("te", "ns1", "only-local-load-balancer")
 		if port, found := result.HCServiceNodePorts[nsn]; !found || port != 345 {
 			t.Errorf("expected healthcheck port [%q]=345: got %v", nsn, result.HCServiceNodePorts)
 		}

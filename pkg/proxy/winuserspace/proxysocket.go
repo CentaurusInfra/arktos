@@ -125,7 +125,7 @@ func tryConnect(service ServicePortPortalName, srcAddr net.Addr, protocol string
 	sessionAffinityReset := false
 	for _, dialTimeout := range endpointDialTimeout {
 		servicePortName := proxy.ServicePortName{
-			NamespacedName: types.NamespacedName{
+			NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
 				Namespace: service.Namespace,
 				Name:      service.Name,
 			},

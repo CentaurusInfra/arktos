@@ -99,7 +99,7 @@ func TestIsProxyableHostname(t *testing.T) {
 func TestShouldSkipService(t *testing.T) {
 	testCases := []struct {
 		service    *v1.Service
-		svcName    types.NamespacedName
+		svcName    types.NamespacednameWithTenantSource
 		shouldSkip bool
 	}{
 		{
@@ -110,7 +110,7 @@ func TestShouldSkipService(t *testing.T) {
 					ClusterIP: v1.ClusterIPNone,
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: true,
 		},
 		{
@@ -121,7 +121,7 @@ func TestShouldSkipService(t *testing.T) {
 					ClusterIP: "",
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: true,
 		},
 		{
@@ -133,7 +133,7 @@ func TestShouldSkipService(t *testing.T) {
 					Type:      v1.ServiceTypeExternalName,
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: true,
 		},
 		{
@@ -145,7 +145,7 @@ func TestShouldSkipService(t *testing.T) {
 					Type:      v1.ServiceTypeClusterIP,
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: false,
 		},
 		{
@@ -157,7 +157,7 @@ func TestShouldSkipService(t *testing.T) {
 					Type:      v1.ServiceTypeNodePort,
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: false,
 		},
 		{
@@ -169,7 +169,7 @@ func TestShouldSkipService(t *testing.T) {
 					Type:      v1.ServiceTypeLoadBalancer,
 				},
 			},
-			svcName:    types.NamespacedName{Namespace: "foo", Name: "bar"},
+			svcName:    types.NamespacednameWithTenantSource{Namespace: "foo", Name: "bar"},
 			shouldSkip: false,
 		},
 	}
