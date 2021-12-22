@@ -1,5 +1,6 @@
 /*
 Copyright 2015 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -41,12 +42,12 @@ type ProxyProvider interface {
 // ServicePortName carries a namespace + name + portname.  This is the unique
 // identifier for a load-balanced service.
 type ServicePortName struct {
-	types.NamespacedName
+	types.NamespacednameWithTenantSource
 	Port string
 }
 
 func (spn ServicePortName) String() string {
-	return fmt.Sprintf("%s:%s", spn.NamespacedName.String(), spn.Port)
+	return fmt.Sprintf("%s_%d/%s/%s:%s", spn.Tenant, spn.TenantPartitionId, spn.Namespace, spn.Name, spn.Port)
 }
 
 // ServicePort is an interface which abstracts information about a service.

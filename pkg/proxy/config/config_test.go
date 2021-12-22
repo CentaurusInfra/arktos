@@ -1,5 +1,6 @@
 /*
 Copyright 2014 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,7 +49,7 @@ func (s sortedServices) Less(i, j int) bool {
 type ServiceHandlerMock struct {
 	lock sync.Mutex
 
-	state   map[types.NamespacedName]*v1.Service
+	state   map[types.NamespacednameWithTenantSource]*v1.Service
 	synced  bool
 	updated chan []*v1.Service
 	process func([]*v1.Service)
@@ -56,7 +57,7 @@ type ServiceHandlerMock struct {
 
 func NewServiceHandlerMock() *ServiceHandlerMock {
 	shm := &ServiceHandlerMock{
-		state:   make(map[types.NamespacedName]*v1.Service),
+		state:   make(map[types.NamespacednameWithTenantSource]*v1.Service),
 		updated: make(chan []*v1.Service, 5),
 	}
 	shm.process = func(services []*v1.Service) {
@@ -65,31 +66,31 @@ func NewServiceHandlerMock() *ServiceHandlerMock {
 	return shm
 }
 
-func (h *ServiceHandlerMock) OnServiceAdd(service *v1.Service) {
+func (h *ServiceHandlerMock) OnServiceAdd(service *v1.Service, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	h.state[namespacedName] = service
 	h.sendServices()
 }
 
-func (h *ServiceHandlerMock) OnServiceUpdate(oldService, service *v1.Service) {
+func (h *ServiceHandlerMock) OnServiceUpdate(oldService, service *v1.Service, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	h.state[namespacedName] = service
 	h.sendServices()
 }
 
-func (h *ServiceHandlerMock) OnServiceDelete(service *v1.Service) {
+func (h *ServiceHandlerMock) OnServiceDelete(service *v1.Service, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	delete(h.state, namespacedName)
 	h.sendServices()
 }
 
-func (h *ServiceHandlerMock) OnServiceSynced() {
+func (h *ServiceHandlerMock) OnServiceSynced(tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	h.synced = true
@@ -143,7 +144,7 @@ func (s sortedEndpoints) Less(i, j int) bool {
 type EndpointsHandlerMock struct {
 	lock sync.Mutex
 
-	state   map[types.NamespacedName]*v1.Endpoints
+	state   map[types.NamespacednameWithTenantSource]*v1.Endpoints
 	synced  bool
 	updated chan []*v1.Endpoints
 	process func([]*v1.Endpoints)
@@ -151,7 +152,7 @@ type EndpointsHandlerMock struct {
 
 func NewEndpointsHandlerMock() *EndpointsHandlerMock {
 	ehm := &EndpointsHandlerMock{
-		state:   make(map[types.NamespacedName]*v1.Endpoints),
+		state:   make(map[types.NamespacednameWithTenantSource]*v1.Endpoints),
 		updated: make(chan []*v1.Endpoints, 5),
 	}
 	ehm.process = func(endpoints []*v1.Endpoints) {
@@ -160,31 +161,31 @@ func NewEndpointsHandlerMock() *EndpointsHandlerMock {
 	return ehm
 }
 
-func (h *EndpointsHandlerMock) OnEndpointsAdd(endpoints *v1.Endpoints) {
+func (h *EndpointsHandlerMock) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
 	h.state[namespacedName] = endpoints
 	h.sendEndpoints()
 }
 
-func (h *EndpointsHandlerMock) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
+func (h *EndpointsHandlerMock) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
 	h.state[namespacedName] = endpoints
 	h.sendEndpoints()
 }
 
-func (h *EndpointsHandlerMock) OnEndpointsDelete(endpoints *v1.Endpoints) {
+func (h *EndpointsHandlerMock) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
-	namespacedName := types.NamespacedName{Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacednameWithTenantSource{TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
 	delete(h.state, namespacedName)
 	h.sendEndpoints()
 }
 
-func (h *EndpointsHandlerMock) OnEndpointsSynced() {
+func (h *EndpointsHandlerMock) OnEndpointsSynced(tenantPartitionId int) {
 	h.lock.Lock()
 	defer h.lock.Unlock()
 	h.synced = true
@@ -233,7 +234,7 @@ func TestNewServiceAddedAndNotified(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute)
+	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute, tpId)
 	handler := NewServiceHandlerMock()
 	config.RegisterEventHandler(handler)
 	go sharedInformers.Start(stopCh)
@@ -257,7 +258,7 @@ func TestServiceAddedRemovedSetAndNotified(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute)
+	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute, tpId)
 	handler := NewServiceHandlerMock()
 	config.RegisterEventHandler(handler)
 	go sharedInformers.Start(stopCh)
@@ -293,7 +294,7 @@ func TestNewServicesMultipleHandlersAddedAndNotified(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute)
+	config := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute, tpId)
 	handler := NewServiceHandlerMock()
 	handler2 := NewServiceHandlerMock()
 	config.RegisterEventHandler(handler)
@@ -327,7 +328,7 @@ func TestNewEndpointsMultipleHandlersAddedAndNotified(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	config := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute)
+	config := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute, tpId)
 	handler := NewEndpointsHandlerMock()
 	handler2 := NewEndpointsHandlerMock()
 	config.RegisterEventHandler(handler)
@@ -367,7 +368,7 @@ func TestNewEndpointsMultipleHandlersAddRemoveSetAndNotified(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	config := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute)
+	config := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute, tpId)
 	handler := NewEndpointsHandlerMock()
 	handler2 := NewEndpointsHandlerMock()
 	config.RegisterEventHandler(handler)
