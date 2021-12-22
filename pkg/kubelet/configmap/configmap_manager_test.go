@@ -48,7 +48,7 @@ func noObjectTTL() (time.Duration, bool) {
 }
 
 func getConfigMap(fakeClient clientset.Interface) manager.GetObjectFunc {
-	return func(tenant, namespace, name string, originID int, opts metav1.GetOptions) (runtime.Object, error) {
+	return func(tenant, namespace, name string, originClientID int, opts metav1.GetOptions) (runtime.Object, error) {
 		return fakeClient.CoreV1().ConfigMaps(namespace).Get(name, opts)
 	}
 }

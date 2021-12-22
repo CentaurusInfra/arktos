@@ -528,11 +528,7 @@ func (kl *Kubelet) getServiceEnvVarMap(podUID types.UID, tenant string, ns strin
 		// from the master service namespace, even if enableServiceLinks is false.
 		// We also add environment variables for other services in the same
 		// namespace, if enableServiceLinks is true.
-		targetedTenant := tenant
-		if !utilfeature.DefaultFeatureGate.Enabled(features.MandatoryArktosNetwork) {
-			targetedTenant = metav1.TenantSystem
-		}
-		if service.Tenant == targetedTenant && service.Namespace == kl.masterServiceNamespace && masterServices.Has(serviceName) {
+		if service.Tenant == tenant && service.Namespace == kl.masterServiceNamespace && masterServices.Has(serviceName) {
 			if _, exists := serviceMap[serviceName]; !exists {
 				serviceMap[serviceName] = service
 			}

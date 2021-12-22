@@ -63,7 +63,7 @@ func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref 
 	}
 
 	if len(ref.UID) == 0 {
-		klog.Warningf("unable to register tenant source for pod with empty UID: tenant='%s', source='%s'", ref.Tenant, source)
+		klog.Warningf("unable to register tenant source for pod with empty UID: tenant='%s', namespace='%s', name='%s', source='%s'", ref.Tenant, ref.Namespace, ref.Name, source)
 		return
 	}
 

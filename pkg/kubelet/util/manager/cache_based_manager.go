@@ -42,10 +42,10 @@ type GetObjectTTLFunc func() (time.Duration, bool)
 type GetObjectFunc func(string, string, string, int, metav1.GetOptions) (runtime.Object, error)
 
 type objectKey struct {
-	tenant    string
-	namespace string
-	name      string
-	originID  int
+	tenant         string
+	namespace      string
+	name           string
+	originClientID int
 }
 
 // objectStoreItems is a single item stored in objectStore.
@@ -94,8 +94,8 @@ func isObjectOlder(newObject, oldObject runtime.Object) bool {
 	return newVersion < oldVersion
 }
 
-func (s *objectStore) AddReference(tenant, namespace, name string, originID int) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (s *objectStore) AddReference(tenant, namespace, name string, originClientID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	// AddReference is called from RegisterPod, thus it needs to be efficient.
 	// Thus Add() is only increasing refCount and generation of a given object.
@@ -116,8 +116,8 @@ func (s *objectStore) AddReference(tenant, namespace, name string, originID int)
 	item.data = nil
 }
 
-func (s *objectStore) DeleteReference(tenant, namespace, name string, originID int) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (s *objectStore) DeleteReference(tenant, namespace, name string, originClientID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	s.lock.Lock()
 	defer s.lock.Unlock()
@@ -156,8 +156,8 @@ func (s *objectStore) isObjectFresh(data *objectData) bool {
 	return s.clock.Now().Before(data.lastUpdateTime.Add(objectTTL))
 }
 
-func (s *objectStore) Get(tenant, namespace, name string, originID int) (runtime.Object, error) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (s *objectStore) Get(tenant, namespace, name string, originClientID int) (runtime.Object, error) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	data := func() *objectData {
 		s.lock.Lock()
@@ -188,7 +188,7 @@ func (s *objectStore) Get(tenant, namespace, name string, originID int) (runtime
 			util.FromApiserverCache(&opts)
 		}
 
-		object, err := s.getObject(tenant, namespace, name, originID, opts)
+		object, err := s.getObject(tenant, namespace, name, originClientID, opts)
 		if err != nil && !apierrors.IsNotFound(err) && data.object == nil && data.err == nil {
 			// Couldn't fetch the latest object, but there is no cached data to return.
 			// Return the fetch result instead.
@@ -218,20 +218,20 @@ type cacheBasedManager struct {
 	registeredPods map[objectKey]*v1.Pod
 }
 
-func (c *cacheBasedManager) GetObject(tenant, namespace, name string, ownerPod types.UID) (runtime.Object, error) {
-	originID := kubeclientmanager.ClientManager.PickClient(ownerPod)
-	return c.objectStore.Get(tenant, namespace, name, originID)
+func (c *cacheBasedManager) GetObject(tenant, namespace, name string, ownerPodUID types.UID) (runtime.Object, error) {
+	originClientID := kubeclientmanager.ClientManager.PickClient(ownerPodUID)
+	return c.objectStore.Get(tenant, namespace, name, originClientID)
 }
 
 func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
-	originID := kubeclientmanager.ClientManager.PickClient(pod.UID)
+	originClientID := kubeclientmanager.ClientManager.PickClient(pod.UID)
 	names := c.getReferencedObjects(pod)
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	for name := range names {
-		c.objectStore.AddReference(pod.Tenant, pod.Namespace, name, originID)
+		c.objectStore.AddReference(pod.Tenant, pod.Namespace, name, originClientID)
 	}
-	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name, originID: originID}
+	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name, originClientID: originClientID}
 	prev := c.registeredPods[key]
 	c.registeredPods[key] = pod
 	if prev != nil {
@@ -241,21 +241,21 @@ func (c *cacheBasedManager) RegisterPod(pod *v1.Pod) {
 			// names and prev need to have their ref counts decremented. Any that
 			// are only in prev need to be completely removed. This unconditional
 			// call takes care of both cases.
-			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name, originID)
+			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name, originClientID)
 		}
 	}
 }
 
 func (c *cacheBasedManager) UnregisterPod(pod *v1.Pod) {
-	originID := kubeclientmanager.ClientManager.PickClient(pod.UID)
-	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name, originID: originID}
+	originClientID := kubeclientmanager.ClientManager.PickClient(pod.UID)
+	key := objectKey{tenant: pod.Tenant, namespace: pod.Namespace, name: pod.Name, originClientID: originClientID}
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	prev := c.registeredPods[key]
 	delete(c.registeredPods, key)
 	if prev != nil {
 		for name := range c.getReferencedObjects(prev) {
-			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name, originID)
+			c.objectStore.DeleteReference(prev.Tenant, prev.Namespace, name, originClientID)
 		}
 	}
 }

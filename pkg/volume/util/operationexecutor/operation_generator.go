@@ -857,11 +857,11 @@ func (og *operationGenerator) resizeFileSystem(volumeToMount VolumeToMount, rsOp
 	return true, nil
 }
 
-func (og *operationGenerator) getKubeClient(boundPod types.UID) clientset.Interface {
+func (og *operationGenerator) getKubeClient(boundPodUID types.UID) clientset.Interface {
 	if len(og.kubeTenantPartitionClients) == 1 {
 		return og.kubeTenantPartitionClients[0]
 	} else {
-		return kubeclientmanager.ClientManager.GetTPClient(og.kubeTenantPartitionClients, boundPod)
+		return kubeclientmanager.ClientManager.GetTPClient(og.kubeTenantPartitionClients, boundPodUID)
 	}
 }
 

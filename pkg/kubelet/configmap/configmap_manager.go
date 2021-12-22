@@ -63,8 +63,8 @@ func NewSimpleConfigMapManager(kubeClients []clientset.Interface) Manager {
 	return &simpleConfigMapManager{kubeClients: kubeClients}
 }
 
-func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPod)
+func (s *simpleConfigMapManager) GetConfigMap(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error) {
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPodUID)
 	return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
@@ -82,8 +82,8 @@ type configMapManager struct {
 	manager manager.Manager
 }
 
-func (c *configMapManager) GetConfigMap(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
-	object, err := c.manager.GetObject(tenant, namespace, name, ownerPod)
+func (c *configMapManager) GetConfigMap(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error) {
+	object, err := c.manager.GetObject(tenant, namespace, name, ownerPodUID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +123,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getConfigMap := func(tenant, namespace, name string, origin int, opts metav1.GetOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeClients[origin]
+	getConfigMap := func(tenant, namespace, name string, originClientID int, opts metav1.GetOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	configMapStore := manager.NewObjectStore(getConfigMap, clock.RealClock{}, getTTL, defaultTTL)
@@ -140,12 +140,12 @@ func NewCachingConfigMapManager(kubeClients []clientset.Interface, getTTL manage
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingConfigMapManager(kubeClients []clientset.Interface) Manager {
-	listConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeClients[originID]
+	listConfigMap := func(tenant, namespace string, originClientID int, opts metav1.ListOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchConfigMap := func(tenant, namespace string, originID int, opts metav1.ListOptions) (watch.Interface, error) {
-		tenantPartitionClient := kubeClients[originID]
+	watchConfigMap := func(tenant, namespace string, originClientID int, opts metav1.ListOptions) (watch.Interface, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newConfigMap := func() runtime.Object {

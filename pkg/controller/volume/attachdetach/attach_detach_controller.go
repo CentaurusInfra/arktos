@@ -773,13 +773,13 @@ func (adc *attachDetachController) GetNodeAllocatable() (v1.ResourceList, error)
 	return v1.ResourceList{}, nil
 }
 
-func (adc *attachDetachController) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+func (adc *attachDetachController) GetSecretFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error) {
 	return func(_, _, _ string, _ types.UID) (*v1.Secret, error) {
 		return nil, fmt.Errorf("GetSecret unsupported in attachDetachController")
 	}
 }
 
-func (adc *attachDetachController) GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+func (adc *attachDetachController) GetConfigMapFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error) {
 	return func(_, _, _ string, _ types.UID) (*v1.ConfigMap, error) {
 		return nil, fmt.Errorf("GetConfigMap unsupported in attachDetachController")
 	}

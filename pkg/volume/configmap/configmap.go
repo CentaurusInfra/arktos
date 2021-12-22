@@ -43,7 +43,7 @@ const (
 // configMapPlugin implements the VolumePlugin interface.
 type configMapPlugin struct {
 	host         volume.VolumeHost
-	getConfigMap func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
+	getConfigMap func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error)
 }
 
 var _ volume.VolumePlugin = &configMapPlugin{}
@@ -154,7 +154,7 @@ type configMapVolumeMounter struct {
 	source       v1.ConfigMapVolumeSource
 	pod          v1.Pod
 	opts         *volume.VolumeOptions
-	getConfigMap func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
+	getConfigMap func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error)
 }
 
 var _ volume.Mounter = &configMapVolumeMounter{}

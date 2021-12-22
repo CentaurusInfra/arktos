@@ -86,15 +86,15 @@ func (c *objectCache) newStore() cache.Store {
 	return cache.NewStore(cache.MetaNamespaceKeyFunc)
 }
 
-func (c *objectCache) newReflector(tenant, namespace, name string, originID int) *objectCacheItem {
+func (c *objectCache) newReflector(tenant, namespace, name string, originClientID int) *objectCacheItem {
 	fieldSelector := fields.Set{"metadata.name": name}.AsSelector().String()
 	listFunc := func(options metav1.ListOptions) (runtime.Object, error) {
 		options.FieldSelector = fieldSelector
-		return c.listObject(tenant, namespace, originID, options)
+		return c.listObject(tenant, namespace, originClientID, options)
 	}
 	watchFunc := func(options metav1.ListOptions) (watch.Interface, error) {
 		options.FieldSelector = fieldSelector
-		return c.watchObject(tenant, namespace, originID, options)
+		return c.watchObject(tenant, namespace, originClientID, options)
 	}
 	store := c.newStore()
 	reflector := cache.NewNamedReflector(
@@ -115,8 +115,8 @@ func (c *objectCache) newReflector(tenant, namespace, name string, originID int)
 	}
 }
 
-func (c *objectCache) AddReference(tenant, namespace, name string, originID int) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (c *objectCache) AddReference(tenant, namespace, name string, originClientID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	// AddReference is called from RegisterPod thus it needs to be efficient.
 	// Thus, it is only increasing refCount and in case of first registration
@@ -127,14 +127,14 @@ func (c *objectCache) AddReference(tenant, namespace, name string, originID int)
 	defer c.lock.Unlock()
 	item, exists := c.items[key]
 	if !exists {
-		item = c.newReflector(tenant, namespace, name, originID)
+		item = c.newReflector(tenant, namespace, name, originClientID)
 		c.items[key] = item
 	}
 	item.refCount++
 }
 
-func (c *objectCache) DeleteReference(tenant, namespace, name string, originID int) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (c *objectCache) DeleteReference(tenant, namespace, name string, originClientID int) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	c.lock.Lock()
 	defer c.lock.Unlock()
@@ -161,8 +161,8 @@ func (c *objectCache) key(tenant, namespace, name string) string {
 	return result
 }
 
-func (c *objectCache) Get(tenant, namespace, name string, originID int) (runtime.Object, error) {
-	key := objectKey{tenant: tenant, namespace: namespace, name: name, originID: originID}
+func (c *objectCache) Get(tenant, namespace, name string, originClientID int) (runtime.Object, error) {
+	key := objectKey{tenant: tenant, namespace: namespace, name: name, originClientID: originClientID}
 
 	c.lock.RLock()
 	item, exists := c.items[key]

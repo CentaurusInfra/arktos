@@ -39,7 +39,7 @@ import (
 // Manager interface provides methods for Kubelet to manage secrets.
 type Manager interface {
 	// Get secret by secret namespace and name.
-	GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
+	GetSecret(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.
@@ -63,8 +63,8 @@ func NewSimpleSecretManager(kubeClients []clientset.Interface) Manager {
 	return &simpleSecretManager{kubeClients: kubeClients}
 }
 
-func (s *simpleSecretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
-	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPod)
+func (s *simpleSecretManager) GetSecret(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error) {
+	tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(s.kubeClients, ownerPodUID)
 	return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 }
 
@@ -82,8 +82,8 @@ type secretManager struct {
 	manager manager.Manager
 }
 
-func (s *secretManager) GetSecret(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
-	object, err := s.manager.GetObject(tenant, namespace, name, ownerPod)
+func (s *secretManager) GetSecret(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error) {
+	object, err := s.manager.GetObject(tenant, namespace, name, ownerPodUID)
 	if err != nil {
 		return nil, err
 	}
@@ -123,8 +123,8 @@ const (
 //   not there, invalidated or too old, we fetch it from apiserver and refresh the
 //   value in cache; otherwise it is just fetched from cache
 func NewCachingSecretManager(kubeClients []clientset.Interface, getTTL manager.GetObjectTTLFunc) Manager {
-	getSecret := func(tenant, namespace, name string, originID int, opts metav1.GetOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeClients[originID]
+	getSecret := func(tenant, namespace, name string, originClientID int, opts metav1.GetOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 	secretStore := manager.NewObjectStore(getSecret, clock.RealClock{}, getTTL, defaultTTL)
@@ -140,12 +140,12 @@ func NewCachingSecretManager(kubeClients []clientset.Interface, getTTL manager.G
 //   referenced objects that aren't referenced from other registered pods
 // - every GetObject() returns a value from local cache propagated via watches
 func NewWatchingSecretManager(kubeClients []clientset.Interface) Manager {
-	listSecret := func(tenant, namespace string, originID int, opts metav1.ListOptions) (runtime.Object, error) {
-		tenantPartitionClient := kubeClients[originID]
+	listSecret := func(tenant, namespace string, originClientID int, opts metav1.ListOptions) (runtime.Object, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).List(opts)
 	}
-	watchSecret := func(tenant, namespace string, originID int, opts metav1.ListOptions) (watch.Interface, error) {
-		tenantPartitionClient := kubeClients[originID]
+	watchSecret := func(tenant, namespace string, originClientID int, opts metav1.ListOptions) (watch.Interface, error) {
+		tenantPartitionClient := kubeClients[originClientID]
 		return tenantPartitionClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Watch(opts)
 	}
 	newSecret := func() runtime.Object {

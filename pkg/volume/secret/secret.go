@@ -43,7 +43,7 @@ const (
 // secretPlugin implements the VolumePlugin interface.
 type secretPlugin struct {
 	host      volume.VolumeHost
-	getSecret func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
 }
 
 var _ volume.VolumePlugin = &secretPlugin{}
@@ -159,7 +159,7 @@ type secretVolumeMounter struct {
 	source    v1.SecretVolumeSource
 	pod       v1.Pod
 	opts      *volume.VolumeOptions
-	getSecret func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
 }
 
 var _ volume.Mounter = &secretVolumeMounter{}

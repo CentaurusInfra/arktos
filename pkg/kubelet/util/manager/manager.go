@@ -28,7 +28,7 @@ import (
 // extracting those from that cache if needed.
 type Manager interface {
 	// Get object by its tenant, namespace and name, plus its owner pod.
-	GetObject(tenant, namespace, name string, ownerPod types.UID) (runtime.Object, error)
+	GetObject(tenant, namespace, name string, ownerPodUID types.UID) (runtime.Object, error)
 
 	// WARNING: Register/UnregisterPod functions should be efficient,
 	// i.e. should not block on network operations.

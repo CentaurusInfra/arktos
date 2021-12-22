@@ -48,9 +48,9 @@ const (
 
 type projectedPlugin struct {
 	host                      volume.VolumeHost
-	getSecret                 func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error)
-	getConfigMap              func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error)
-	getServiceAccountToken    func(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getSecret                 func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
+	getConfigMap              func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error)
+	getServiceAccountToken    func(tenant, namespace, name string, ownerPodUID types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	deleteServiceAccountToken func(podUID types.UID)
 }
 

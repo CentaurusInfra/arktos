@@ -198,7 +198,7 @@ func (f *fakeVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 	return v1.ResourceList{}, nil
 }
 
-func (f *fakeVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+func (f *fakeVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error) {
 	return func(tenant, namespace, name string, _ types.UID) (*v1.Secret, error) {
 		return f.kubeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
@@ -208,7 +208,7 @@ func (f *fakeVolumeHost) GetExec(pluginName string) mount.Exec {
 	return f.exec
 }
 
-func (f *fakeVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+func (f *fakeVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error) {
 	return func(tenant, namespace, name string, _ types.UID) (*v1.ConfigMap, error) {
 		return f.kubeClient.CoreV1().ConfigMapsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}

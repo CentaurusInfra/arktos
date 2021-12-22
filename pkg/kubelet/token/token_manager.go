@@ -42,11 +42,11 @@ const (
 // NewManager returns a new token manager.
 func NewManager(clients []clientset.Interface) *Manager {
 	m := &Manager{
-		getToken: func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+		getToken: func(tenant, name, namespace string, ownerPodUID types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 			if len(clients) == 0 {
 				return nil, errors.New("cannot use TokenManager when kubelet is in standalone mode")
 			}
-			idx := kubeclientmanager.ClientManager.PickClient(ownerPod)
+			idx := kubeclientmanager.ClientManager.PickClient(ownerPodUID)
 			return clients[idx].CoreV1().ServiceAccountsWithMultiTenancy(namespace, tenant).CreateToken(name, tr)
 		},
 		cache: make(map[string]*authenticationv1.TokenRequest),
@@ -64,7 +64,7 @@ type Manager struct {
 	cache      map[string]*authenticationv1.TokenRequest
 
 	// mocked for testing
-	getToken func(tenant, name, namespace string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
+	getToken func(tenant, name, namespace string, ownerPodUID types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error)
 	clock    clock.Clock
 }
 
@@ -76,7 +76,7 @@ type Manager struct {
 // * If the token is refreshed successfully, save it in the cache and return the token.
 // * If refresh fails and the old token is still valid, log an error and return the old token.
 // * If refresh fails and the old token is no longer valid, return an error
-func (m *Manager) GetServiceAccountToken(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (m *Manager) GetServiceAccountToken(tenant, namespace, name string, ownerPodUID types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	key := keyFunc(name, namespace, tr)
 
 	ctr, ok := m.get(key)
@@ -85,7 +85,7 @@ func (m *Manager) GetServiceAccountToken(tenant, namespace, name string, ownerPo
 		return ctr, nil
 	}
 
-	tr, err := m.getToken(tenant, name, namespace, ownerPod, tr)
+	tr, err := m.getToken(tenant, name, namespace, ownerPodUID, tr)
 	if err != nil {
 		switch {
 		case !ok:

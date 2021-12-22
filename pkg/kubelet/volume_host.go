@@ -250,15 +250,15 @@ func (kvh *kubeletVolumeHost) GetNodeAllocatable() (v1.ResourceList, error) {
 	return node.Status.Allocatable, nil
 }
 
-func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.Secret, error) {
+func (kvh *kubeletVolumeHost) GetSecretFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error) {
 	return kvh.secretManager.GetSecret
 }
 
-func (kvh *kubeletVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string, ownerPod types.UID) (*v1.ConfigMap, error) {
+func (kvh *kubeletVolumeHost) GetConfigMapFunc() func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.ConfigMap, error) {
 	return kvh.configMapManager.GetConfigMap
 }
 
-func (kvh *kubeletVolumeHost) GetServiceAccountTokenFunc() func(tenant, namespace, name string, ownerPod types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
+func (kvh *kubeletVolumeHost) GetServiceAccountTokenFunc() func(tenant, namespace, name string, ownerPodUID types.UID, tr *authenticationv1.TokenRequest) (*authenticationv1.TokenRequest, error) {
 	return kvh.tokenManager.GetServiceAccountToken
 }
 
