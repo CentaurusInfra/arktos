@@ -34,7 +34,7 @@ This manager keeps a map between pod UID and its corresponding tenant partition 
 This map is to be used together with kubeTPClients in the Kubelet struct to obtain the correct kubeclient
 */
 type KubeClientManager struct {
-	puid2api       map[types.UID]int // pod UID -> tenant partition apiserver id
+	puid2api       map[types.UID]int // pod UID -> apiserver id
 	tenant2apiLock sync.RWMutex
 }
 
