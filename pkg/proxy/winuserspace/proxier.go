@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -179,9 +180,11 @@ func (proxier *Proxier) cleanupStaleStickySessions() {
 	servicePortNameMap := make(map[proxy.ServicePortName]bool)
 	for name := range proxier.serviceMap {
 		servicePortName := proxy.ServicePortName{
-			NamespacedName: types.NamespacedName{
-				Namespace: name.Namespace,
-				Name:      name.Name,
+			NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+				TenantPartitionId: name.TenantPartitionId,
+				Tenant:            name.Tenant,
+				Namespace:         name.Namespace,
+				Name:              name.Name,
 			},
 			Port: name.Port,
 		}
@@ -307,11 +310,12 @@ func getListenIPPortMap(service *v1.Service, listenPort int, nodePort int) map[s
 	return listenIPPortMap
 }
 
-func (proxier *Proxier) mergeService(service *v1.Service) map[ServicePortPortalName]bool {
+func (proxier *Proxier) mergeService(service *v1.Service, tenantPartitionId int) map[ServicePortPortalName]bool {
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if !helper.IsServiceIPSet(service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return nil
@@ -326,9 +330,9 @@ func (proxier *Proxier) mergeService(service *v1.Service) map[ServicePortPortalN
 
 		for listenIP, listenPort := range listenIPPortMap {
 			servicePortPortalName := ServicePortPortalName{
-				NamespacedName: svcName,
-				Port:           servicePort.Name,
-				PortalIPName:   listenIP,
+				NamespacednameWithTenantSource: svcName,
+				Port:                           servicePort.Name,
+				PortalIPName:                   listenIP,
 			}
 			existingPortPortals[servicePortPortalName] = true
 			info, exists := proxier.getServiceInfo(servicePortPortalName)
@@ -354,9 +358,11 @@ func (proxier *Proxier) mergeService(service *v1.Service) map[ServicePortPortalN
 		if len(listenIPPortMap) > 0 {
 			// only one loadbalancer per service port portal
 			servicePortName := proxy.ServicePortName{
-				NamespacedName: types.NamespacedName{
-					Namespace: service.Namespace,
-					Name:      service.Name,
+				NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+					TenantPartitionId: tenantPartitionId,
+					Tenant:            service.Tenant,
+					Namespace:         service.Namespace,
+					Name:              service.Name,
 				},
 				Port: servicePort.Name,
 			}
@@ -371,11 +377,12 @@ func (proxier *Proxier) mergeService(service *v1.Service) map[ServicePortPortalN
 	return existingPortPortals
 }
 
-func (proxier *Proxier) unmergeService(service *v1.Service, existingPortPortals map[ServicePortPortalName]bool) {
+func (proxier *Proxier) unmergeService(service *v1.Service, existingPortPortals map[ServicePortPortalName]bool, tenantPartitionId int) {
 	if service == nil {
 		return
 	}
-	svcName := types.NamespacedName{Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if !helper.IsServiceIPSet(service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return
@@ -384,9 +391,11 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPortPortals 
 	servicePortNameMap := make(map[proxy.ServicePortName]bool)
 	for name := range existingPortPortals {
 		servicePortName := proxy.ServicePortName{
-			NamespacedName: types.NamespacedName{
-				Namespace: name.Namespace,
-				Name:      name.Name,
+			NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+				TenantPartitionId: name.TenantPartitionId,
+				Tenant:            name.Tenant,
+				Namespace:         name.Namespace,
+				Name:              name.Name,
 			},
 			Port: name.Port,
 		}
@@ -395,15 +404,15 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPortPortals 
 
 	for i := range service.Spec.Ports {
 		servicePort := &service.Spec.Ports[i]
-		serviceName := proxy.ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
+		serviceName := proxy.ServicePortName{NamespacednameWithTenantSource: svcName, Port: servicePort.Name}
 		// create a slice of all the source IPs to use for service port portals
 		listenIPPortMap := getListenIPPortMap(service, int(servicePort.Port), int(servicePort.NodePort))
 
 		for listenIP := range listenIPPortMap {
 			servicePortPortalName := ServicePortPortalName{
-				NamespacedName: svcName,
-				Port:           servicePort.Name,
-				PortalIPName:   listenIP,
+				NamespacednameWithTenantSource: svcName,
+				Port:                           servicePort.Name,
+				PortalIPName:                   listenIP,
 			}
 			if existingPortPortals[servicePortPortalName] {
 				continue
@@ -428,36 +437,36 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPortPortals 
 	}
 }
 
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-	_ = proxier.mergeService(service)
+func (proxier *Proxier) OnServiceAdd(service *v1.Service, tenantPartitionId int) {
+	_ = proxier.mergeService(service, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-	existingPortPortals := proxier.mergeService(service)
-	proxier.unmergeService(oldService, existingPortPortals)
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service, tenantPartitionId int) {
+	existingPortPortals := proxier.mergeService(service, tenantPartitionId)
+	proxier.unmergeService(oldService, existingPortPortals, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-	proxier.unmergeService(service, map[ServicePortPortalName]bool{})
+func (proxier *Proxier) OnServiceDelete(service *v1.Service, tenantPartitionId int) {
+	proxier.unmergeService(service, map[ServicePortPortalName]bool{}, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnServiceSynced() {
+func (proxier *Proxier) OnServiceSynced(tenantPartitionId int) {
 }
 
-func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsAdd(endpoints)
+func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsAdd(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsDelete(endpoints)
+func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsDelete(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsSynced() {
-	proxier.loadBalancer.OnEndpointsSynced()
+func (proxier *Proxier) OnEndpointsSynced(tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsSynced(tenantPartitionId)
 }
 
 func sameConfig(info *serviceInfo, service *v1.Service, protocol v1.Protocol, listenPort int) bool {

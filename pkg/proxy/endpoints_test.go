@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,83 +31,85 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func (proxier *FakeProxier) addEndpoints(endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(nil, endpoints)
+const tpId = 0
+
+func (proxier *FakeProxier) addEndpoints(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(nil, endpoints, tenantPartitionId)
 }
 
-func (proxier *FakeProxier) updateEndpoints(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(oldEndpoints, endpoints)
+func (proxier *FakeProxier) updateEndpoints(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(oldEndpoints, endpoints, tenantPartitionId)
 }
 
-func (proxier *FakeProxier) deleteEndpoints(endpoints *v1.Endpoints) {
-	proxier.endpointsChanges.Update(endpoints, nil)
+func (proxier *FakeProxier) deleteEndpoints(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.endpointsChanges.Update(endpoints, nil, tenantPartitionId)
 }
 
 func TestGetLocalEndpointIPs(t *testing.T) {
 	testCases := []struct {
 		endpointsMap EndpointsMap
-		expected     map[types.NamespacedName]sets.String
+		expected     map[types.NamespacednameWithTenantSource]sets.String
 	}{{
 		// Case[0]: nothing
 		endpointsMap: EndpointsMap{},
-		expected:     map[types.NamespacedName]sets.String{},
+		expected:     map[types.NamespacednameWithTenantSource]sets.String{},
 	}, {
 		// Case[1]: unnamed port
 		endpointsMap: EndpointsMap{
-			makeServicePortName("ns1", "ep1", ""): []Endpoint{
+			makeServicePortName("te", "ns1", "ep1", ""): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
-		expected: map[types.NamespacedName]sets.String{},
+		expected: map[types.NamespacednameWithTenantSource]sets.String{},
 	}, {
 		// Case[2]: unnamed port local
 		endpointsMap: EndpointsMap{
-			makeServicePortName("ns1", "ep1", ""): []Endpoint{
+			makeServicePortName("te", "ns1", "ep1", ""): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
 		},
-		expected: map[types.NamespacedName]sets.String{
-			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.1"),
+		expected: map[types.NamespacednameWithTenantSource]sets.String{
+			{Tenant: "te", Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.1"),
 		},
 	}, {
 		// Case[3]: named local and non-local ports for the same IP.
 		endpointsMap: EndpointsMap{
-			makeServicePortName("ns1", "ep1", "p11"): []Endpoint{
+			makeServicePortName("te", "ns1", "ep1", "p11"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "1.1.1.1:11", IsLocal: false},
 				&BaseEndpointInfo{Endpoint: "1.1.1.2:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): []Endpoint{
+			makeServicePortName("te", "ns1", "ep1", "p12"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "1.1.1.1:12", IsLocal: false},
 				&BaseEndpointInfo{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
 		},
-		expected: map[types.NamespacedName]sets.String{
-			{Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.2"),
+		expected: map[types.NamespacednameWithTenantSource]sets.String{
+			{Tenant: "te", Namespace: "ns1", Name: "ep1"}: sets.NewString("1.1.1.2"),
 		},
 	}, {
 		// Case[4]: named local and non-local ports for different IPs.
 		endpointsMap: EndpointsMap{
-			makeServicePortName("ns1", "ep1", "p11"): []Endpoint{
+			makeServicePortName("te", "ns1", "ep1", "p11"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns2", "ep2", "p22"): []Endpoint{
+			makeServicePortName("te", "ns2", "ep2", "p22"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "2.2.2.2:22", IsLocal: true},
 				&BaseEndpointInfo{Endpoint: "2.2.2.22:22", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p23"): []Endpoint{
+			makeServicePortName("te", "ns2", "ep2", "p23"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "2.2.2.3:23", IsLocal: true},
 			},
-			makeServicePortName("ns4", "ep4", "p44"): []Endpoint{
+			makeServicePortName("te", "ns4", "ep4", "p44"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "4.4.4.4:44", IsLocal: true},
 				&BaseEndpointInfo{Endpoint: "4.4.4.5:44", IsLocal: false},
 			},
-			makeServicePortName("ns4", "ep4", "p45"): []Endpoint{
+			makeServicePortName("te", "ns4", "ep4", "p45"): []Endpoint{
 				&BaseEndpointInfo{Endpoint: "4.4.4.6:45", IsLocal: true},
 			},
 		},
-		expected: map[types.NamespacedName]sets.String{
-			{Namespace: "ns2", Name: "ep2"}: sets.NewString("2.2.2.2", "2.2.2.22", "2.2.2.3"),
-			{Namespace: "ns4", Name: "ep4"}: sets.NewString("4.4.4.4", "4.4.4.6"),
+		expected: map[types.NamespacednameWithTenantSource]sets.String{
+			{Tenant: "te", Namespace: "ns2", Name: "ep2"}: sets.NewString("2.2.2.2", "2.2.2.22", "2.2.2.3"),
+			{Tenant: "te", Namespace: "ns4", Name: "ep4"}: sets.NewString("4.4.4.4", "4.4.4.6"),
 		},
 	}}
 
@@ -120,11 +123,12 @@ func TestGetLocalEndpointIPs(t *testing.T) {
 	}
 }
 
-func makeTestEndpoints(namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
+func makeTestEndpoints(tenant, namespace, name string, eptFunc func(*v1.Endpoints)) *v1.Endpoints {
 	ept := &v1.Endpoints{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: make(map[string]string),
 		},
 	}
@@ -147,12 +151,12 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 	}{
 		{
 			desc:         "nothing",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {}),
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {}),
 			expected:     map[ServicePortName][]*BaseEndpointInfo{},
 		},
 		{
 			desc: "no changes, unnamed port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -166,14 +170,14 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", ""): {
+				makeServicePortName("te", "ns1", "ep1", ""): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc: "no changes, named port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -187,14 +191,14 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "port"): {
+				makeServicePortName("te", "ns1", "ep1", "port"): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc: "new port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -207,19 +211,19 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", ""): {
+				makeServicePortName("te", "ns1", "ep1", ""): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc:         "remove port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {}),
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {}),
 			expected:     map[ServicePortName][]*BaseEndpointInfo{},
 		},
 		{
 			desc: "new IP and port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -238,11 +242,11 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p1"): {
+				makeServicePortName("te", "ns1", "ep1", "p1"): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 					{Endpoint: "2.2.2.2:11", IsLocal: false},
 				},
-				makeServicePortName("ns1", "ep1", "p2"): {
+				makeServicePortName("te", "ns1", "ep1", "p2"): {
 					{Endpoint: "1.1.1.1:22", IsLocal: false},
 					{Endpoint: "2.2.2.2:22", IsLocal: false},
 				},
@@ -250,7 +254,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "remove IP and port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -264,14 +268,14 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p1"): {
+				makeServicePortName("te", "ns1", "ep1", "p1"): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc: "rename port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -285,14 +289,14 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p2"): {
+				makeServicePortName("te", "ns1", "ep1", "p2"): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc: "renumber port",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -306,14 +310,14 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p1"): {
+				makeServicePortName("te", "ns1", "ep1", "p1"): {
 					{Endpoint: "1.1.1.1:22", IsLocal: false},
 				},
 			},
 		},
 		{
 			desc: "should omit IPv6 address in IPv4 mode",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -332,10 +336,10 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p1"): {
+				makeServicePortName("te", "ns1", "ep1", "p1"): {
 					{Endpoint: "1.1.1.1:11", IsLocal: false},
 				},
-				makeServicePortName("ns1", "ep1", "p2"): {
+				makeServicePortName("te", "ns1", "ep1", "p2"): {
 					{Endpoint: "1.1.1.1:22", IsLocal: false},
 				},
 			},
@@ -343,7 +347,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 		},
 		{
 			desc: "should omit IPv4 address in IPv6 mode",
-			newEndpoints: makeTestEndpoints("ns1", "ep1", func(ept *v1.Endpoints) {
+			newEndpoints: makeTestEndpoints("te", "ns1", "ep1", func(ept *v1.Endpoints) {
 				ept.Subsets = []v1.EndpointSubset{
 					{
 						Addresses: []v1.EndpointAddress{{
@@ -362,10 +366,10 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName][]*BaseEndpointInfo{
-				makeServicePortName("ns1", "ep1", "p1"): {
+				makeServicePortName("te", "ns1", "ep1", "p1"): {
 					{Endpoint: "[2001:db8:85a3:0:0:8a2e:370:7334]:11", IsLocal: false},
 				},
-				makeServicePortName("ns1", "ep1", "p2"): {
+				makeServicePortName("te", "ns1", "ep1", "p2"): {
 					{Endpoint: "[2001:db8:85a3:0:0:8a2e:370:7334]:22", IsLocal: false},
 				},
 			},
@@ -376,7 +380,7 @@ func TestEndpointsToEndpointsMap(t *testing.T) {
 	for _, tc := range testCases {
 		epTracker.isIPv6Mode = tc.isIPv6Mode
 		// outputs
-		newEndpoints := epTracker.endpointsToEndpointsMap(tc.newEndpoints)
+		newEndpoints := epTracker.endpointsToEndpointsMap(tc.newEndpoints, tpId)
 
 		if len(newEndpoints) != len(tc.expected) {
 			t.Errorf("[%s] expected %d new, got %d: %v", tc.desc, len(tc.expected), len(newEndpoints), spew.Sdump(newEndpoints))
@@ -712,187 +716,187 @@ func TestUpdateEndpointsMap(t *testing.T) {
 		expectedResult            map[ServicePortName][]*BaseEndpointInfo
 		expectedStaleEndpoints    []ServiceEndpoint
 		expectedStaleServiceNames map[ServicePortName]bool
-		expectedHealthchecks      map[types.NamespacedName]int
+		expectedHealthchecks      map[types.NamespacednameWithTenantSource]int
 	}{{
 		// Case[0]: nothing
 		oldEndpoints:              map[ServicePortName][]*BaseEndpointInfo{},
 		expectedResult:            map[ServicePortName][]*BaseEndpointInfo{},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[1]: no change, unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", ""): {
+			makeServicePortName("te", "ns1", "ep1", ""): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", ""): {
+			makeServicePortName("te", "ns1", "ep1", ""): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[2]: no change, named port, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 1,
 		},
 	}, {
 		// Case[3]: no change, multiple subsets
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.2:12", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.2:12", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[4]: no change, multiple subsets, multiple ports, local
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsMultiplePortsLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsMultiplePortsLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p13"): {
+			makeServicePortName("te", "ns1", "ep1", "p13"): {
 				{Endpoint: "1.1.1.3:13", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p13"): {
+			makeServicePortName("te", "ns1", "ep1", "p13"): {
 				{Endpoint: "1.1.1.3:13", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 1,
 		},
 	}, {
 		// Case[5]: no change, multiple endpoints, subsets, IPs, and ports
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsIPsPorts1),
-			makeTestEndpoints("ns2", "ep2", multipleSubsetsIPsPorts2),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsIPsPorts1),
+			makeTestEndpoints("te", "ns2", "ep2", multipleSubsetsIPsPorts2),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 				{Endpoint: "1.1.1.2:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: false},
 				{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p13"): {
+			makeServicePortName("te", "ns1", "ep1", "p13"): {
 				{Endpoint: "1.1.1.3:13", IsLocal: false},
 				{Endpoint: "1.1.1.4:13", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p14"): {
+			makeServicePortName("te", "ns1", "ep1", "p14"): {
 				{Endpoint: "1.1.1.3:14", IsLocal: false},
 				{Endpoint: "1.1.1.4:14", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p21"): {
+			makeServicePortName("te", "ns2", "ep2", "p21"): {
 				{Endpoint: "2.2.2.1:21", IsLocal: false},
 				{Endpoint: "2.2.2.2:21", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p22"): {
+			makeServicePortName("te", "ns2", "ep2", "p22"): {
 				{Endpoint: "2.2.2.1:22", IsLocal: false},
 				{Endpoint: "2.2.2.2:22", IsLocal: true},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 				{Endpoint: "1.1.1.2:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: false},
 				{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p13"): {
+			makeServicePortName("te", "ns1", "ep1", "p13"): {
 				{Endpoint: "1.1.1.3:13", IsLocal: false},
 				{Endpoint: "1.1.1.4:13", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p14"): {
+			makeServicePortName("te", "ns1", "ep1", "p14"): {
 				{Endpoint: "1.1.1.3:14", IsLocal: false},
 				{Endpoint: "1.1.1.4:14", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p21"): {
+			makeServicePortName("te", "ns2", "ep2", "p21"): {
 				{Endpoint: "2.2.2.1:21", IsLocal: false},
 				{Endpoint: "2.2.2.2:21", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p22"): {
+			makeServicePortName("te", "ns2", "ep2", "p22"): {
 				{Endpoint: "2.2.2.1:22", IsLocal: false},
 				{Endpoint: "2.2.2.2:22", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints:    []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 2,
-			makeNSN("ns2", "ep2"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 2,
+			makeNSN("te", "ns2", "ep2"): 1,
 		},
 	}, {
 		// Case[6]: add an Endpoints
@@ -900,305 +904,305 @@ func TestUpdateEndpointsMap(t *testing.T) {
 			nil,
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", ""): {
+			makeServicePortName("te", "ns1", "ep1", ""): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", ""): true,
+			makeServicePortName("te", "ns1", "ep1", ""): true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 1,
 		},
 	}, {
 		// Case[7]: remove an Endpoints
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPortLocal),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPortLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
 			nil,
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", ""): {
+			makeServicePortName("te", "ns1", "ep1", ""): {
 				{Endpoint: "1.1.1.1:11", IsLocal: true},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "1.1.1.1:11",
-			ServicePortName: makeServicePortName("ns1", "ep1", ""),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", ""),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[8]: add an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 				{Endpoint: "1.1.1.2:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: false},
 				{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", "p12"): true,
+			makeServicePortName("te", "ns1", "ep1", "p12"): true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 1,
 		},
 	}, {
 		// Case[9]: remove an IP and port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortsLocalNoLocal),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortsLocalNoLocal),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 				{Endpoint: "1.1.1.2:11", IsLocal: true},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.1:12", IsLocal: false},
 				{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "1.1.1.2:11",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p11"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p11"),
 		}, {
 			Endpoint:        "1.1.1.1:12",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p12"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p12"),
 		}, {
 			Endpoint:        "1.1.1.2:12",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p12"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p12"),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[10]: add a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsetsWithLocal),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsetsWithLocal),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.2:12", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", "p12"): true,
+			makeServicePortName("te", "ns1", "ep1", "p12"): true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns1", "ep1"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns1", "ep1"): 1,
 		},
 	}, {
 		// Case[11]: remove a subset
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", multipleSubsets),
+			makeTestEndpoints("te", "ns1", "ep1", multipleSubsets),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.2:12", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "1.1.1.2:12",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p12"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p12"),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[12]: rename a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenamed),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenamed),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11-2"): {
+			makeServicePortName("te", "ns1", "ep1", "p11-2"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "1.1.1.1:11",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p11"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p11"),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", "p11-2"): true,
+			makeServicePortName("te", "ns1", "ep1", "p11-2"): true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{},
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[13]: renumber a port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPort),
+			makeTestEndpoints("te", "ns1", "ep1", namedPort),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", namedPortRenumbered),
+			makeTestEndpoints("te", "ns1", "ep1", namedPortRenumbered),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:22", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "1.1.1.1:11",
-			ServicePortName: makeServicePortName("ns1", "ep1", "p11"),
+			ServicePortName: makeServicePortName("te", "ns1", "ep1", "p11"),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{},
-		expectedHealthchecks:      map[types.NamespacedName]int{},
+		expectedHealthchecks:      map[types.NamespacednameWithTenantSource]int{},
 	}, {
 		// Case[14]: complex add and remove
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexBefore1),
-			makeTestEndpoints("ns2", "ep2", complexBefore2),
+			makeTestEndpoints("te", "ns1", "ep1", complexBefore1),
+			makeTestEndpoints("te", "ns2", "ep2", complexBefore2),
 			nil,
-			makeTestEndpoints("ns4", "ep4", complexBefore4),
+			makeTestEndpoints("te", "ns4", "ep4", complexBefore4),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", complexAfter1),
+			makeTestEndpoints("te", "ns1", "ep1", complexAfter1),
 			nil,
-			makeTestEndpoints("ns3", "ep3", complexAfter3),
-			makeTestEndpoints("ns4", "ep4", complexAfter4),
+			makeTestEndpoints("te", "ns3", "ep3", complexAfter3),
+			makeTestEndpoints("te", "ns4", "ep4", complexAfter4),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
-			makeServicePortName("ns2", "ep2", "p22"): {
+			makeServicePortName("te", "ns2", "ep2", "p22"): {
 				{Endpoint: "2.2.2.2:22", IsLocal: true},
 				{Endpoint: "2.2.2.22:22", IsLocal: true},
 			},
-			makeServicePortName("ns2", "ep2", "p23"): {
+			makeServicePortName("te", "ns2", "ep2", "p23"): {
 				{Endpoint: "2.2.2.3:23", IsLocal: true},
 			},
-			makeServicePortName("ns4", "ep4", "p44"): {
+			makeServicePortName("te", "ns4", "ep4", "p44"): {
 				{Endpoint: "4.4.4.4:44", IsLocal: true},
 				{Endpoint: "4.4.4.5:44", IsLocal: true},
 			},
-			makeServicePortName("ns4", "ep4", "p45"): {
+			makeServicePortName("te", "ns4", "ep4", "p45"): {
 				{Endpoint: "4.4.4.6:45", IsLocal: true},
 			},
 		},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", "p11"): {
+			makeServicePortName("te", "ns1", "ep1", "p11"): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 				{Endpoint: "1.1.1.11:11", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p12"): {
+			makeServicePortName("te", "ns1", "ep1", "p12"): {
 				{Endpoint: "1.1.1.2:12", IsLocal: false},
 			},
-			makeServicePortName("ns1", "ep1", "p122"): {
+			makeServicePortName("te", "ns1", "ep1", "p122"): {
 				{Endpoint: "1.1.1.2:122", IsLocal: false},
 			},
-			makeServicePortName("ns3", "ep3", "p33"): {
+			makeServicePortName("te", "ns3", "ep3", "p33"): {
 				{Endpoint: "3.3.3.3:33", IsLocal: false},
 			},
-			makeServicePortName("ns4", "ep4", "p44"): {
+			makeServicePortName("te", "ns4", "ep4", "p44"): {
 				{Endpoint: "4.4.4.4:44", IsLocal: true},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{{
 			Endpoint:        "2.2.2.2:22",
-			ServicePortName: makeServicePortName("ns2", "ep2", "p22"),
+			ServicePortName: makeServicePortName("te", "ns2", "ep2", "p22"),
 		}, {
 			Endpoint:        "2.2.2.22:22",
-			ServicePortName: makeServicePortName("ns2", "ep2", "p22"),
+			ServicePortName: makeServicePortName("te", "ns2", "ep2", "p22"),
 		}, {
 			Endpoint:        "2.2.2.3:23",
-			ServicePortName: makeServicePortName("ns2", "ep2", "p23"),
+			ServicePortName: makeServicePortName("te", "ns2", "ep2", "p23"),
 		}, {
 			Endpoint:        "4.4.4.5:44",
-			ServicePortName: makeServicePortName("ns4", "ep4", "p44"),
+			ServicePortName: makeServicePortName("te", "ns4", "ep4", "p44"),
 		}, {
 			Endpoint:        "4.4.4.6:45",
-			ServicePortName: makeServicePortName("ns4", "ep4", "p45"),
+			ServicePortName: makeServicePortName("te", "ns4", "ep4", "p45"),
 		}},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", "p12"):  true,
-			makeServicePortName("ns1", "ep1", "p122"): true,
-			makeServicePortName("ns3", "ep3", "p33"):  true,
+			makeServicePortName("te", "ns1", "ep1", "p12"):  true,
+			makeServicePortName("te", "ns1", "ep1", "p122"): true,
+			makeServicePortName("te", "ns3", "ep3", "p33"):  true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{
-			makeNSN("ns4", "ep4"): 1,
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{
+			makeNSN("te", "ns4", "ep4"): 1,
 		},
 	}, {
 		// Case[15]: change from 0 endpoint address to 1 unnamed port
 		previousEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", emptyEndpoint),
+			makeTestEndpoints("te", "ns1", "ep1", emptyEndpoint),
 		},
 		currentEndpoints: []*v1.Endpoints{
-			makeTestEndpoints("ns1", "ep1", unnamedPort),
+			makeTestEndpoints("te", "ns1", "ep1", unnamedPort),
 		},
 		oldEndpoints: map[ServicePortName][]*BaseEndpointInfo{},
 		expectedResult: map[ServicePortName][]*BaseEndpointInfo{
-			makeServicePortName("ns1", "ep1", ""): {
+			makeServicePortName("te", "ns1", "ep1", ""): {
 				{Endpoint: "1.1.1.1:11", IsLocal: false},
 			},
 		},
 		expectedStaleEndpoints: []ServiceEndpoint{},
 		expectedStaleServiceNames: map[ServicePortName]bool{
-			makeServicePortName("ns1", "ep1", ""): true,
+			makeServicePortName("te", "ns1", "ep1", ""): true,
 		},
-		expectedHealthchecks: map[types.NamespacedName]int{},
+		expectedHealthchecks: map[types.NamespacednameWithTenantSource]int{},
 	},
 	}
 
@@ -1210,7 +1214,7 @@ func TestUpdateEndpointsMap(t *testing.T) {
 		// the fp.oldEndpoints is as we expect.
 		for i := range tc.previousEndpoints {
 			if tc.previousEndpoints[i] != nil {
-				fp.addEndpoints(tc.previousEndpoints[i])
+				fp.addEndpoints(tc.previousEndpoints[i], tpId)
 			}
 		}
 		fp.endpointsMap.Update(fp.endpointsChanges)
@@ -1226,11 +1230,11 @@ func TestUpdateEndpointsMap(t *testing.T) {
 			prev, curr := tc.previousEndpoints[i], tc.currentEndpoints[i]
 			switch {
 			case prev == nil:
-				fp.addEndpoints(curr)
+				fp.addEndpoints(curr, tpId)
 			case curr == nil:
-				fp.deleteEndpoints(prev)
+				fp.deleteEndpoints(prev, tpId)
 			default:
-				fp.updateEndpoints(prev, curr)
+				fp.updateEndpoints(prev, curr, tpId)
 			}
 		}
 		result := fp.endpointsMap.Update(fp.endpointsChanges)
@@ -1277,8 +1281,8 @@ func TestLastChangeTriggerTime(t *testing.T) {
 	t2 := t1.Add(time.Second)
 	t3 := t2.Add(time.Second)
 
-	createEndpoints := func(namespace, name string, triggerTime time.Time) *v1.Endpoints {
-		e := makeTestEndpoints(namespace, name, func(ept *v1.Endpoints) {
+	createEndpoints := func(tenant, namespace, name string, triggerTime time.Time) *v1.Endpoints {
+		e := makeTestEndpoints(tenant, namespace, name, func(ept *v1.Endpoints) {
 			ept.Subsets = []v1.EndpointSubset{{
 				Addresses: []v1.EndpointAddress{{IP: "1.1.1.1"}},
 				Ports:     []v1.EndpointPort{{Port: 11}},
@@ -1307,62 +1311,62 @@ func TestLastChangeTriggerTime(t *testing.T) {
 		{
 			name: "Single addEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t0)
-				fp.addEndpoints(e)
+				e := createEndpoints("te", "ns", "ep1", t0)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{t0},
 		},
 		{
 			name: "addEndpoints then updatedEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t0)
-				fp.addEndpoints(e)
+				e := createEndpoints("te", "ns", "ep1", t0)
+				fp.addEndpoints(e, tpId)
 
 				e1 := modifyEndpoints(e, t1)
-				fp.updateEndpoints(e, e1)
+				fp.updateEndpoints(e, e1, tpId)
 			},
 			expected: []time.Time{t0, t1},
 		},
 		{
 			name: "Add two endpoints then modify one",
 			scenario: func(fp *FakeProxier) {
-				e1 := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e1)
+				e1 := createEndpoints("te", "ns", "ep1", t1)
+				fp.addEndpoints(e1, tpId)
 
-				e2 := createEndpoints("ns", "ep2", t2)
-				fp.addEndpoints(e2)
+				e2 := createEndpoints("te", "ns", "ep2", t2)
+				fp.addEndpoints(e2, tpId)
 
 				e11 := modifyEndpoints(e1, t3)
-				fp.updateEndpoints(e1, e11)
+				fp.updateEndpoints(e1, e11, tpId)
 			},
 			expected: []time.Time{t1, t2, t3},
 		},
 		{
 			name: "Endpoints without annotation set",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
+				e := createEndpoints("te", "ns", "ep1", t1)
 				delete(e.Annotations, v1.EndpointsLastChangeTriggerTime)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{},
 		},
 		{
 			name: "addEndpoints then deleteEndpoints",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e)
-				fp.deleteEndpoints(e)
+				e := createEndpoints("te", "ns", "ep1", t1)
+				fp.addEndpoints(e, tpId)
+				fp.deleteEndpoints(e, tpId)
 			},
 			expected: []time.Time{},
 		},
 		{
 			name: "add then delete then add again",
 			scenario: func(fp *FakeProxier) {
-				e := createEndpoints("ns", "ep1", t1)
-				fp.addEndpoints(e)
-				fp.deleteEndpoints(e)
+				e := createEndpoints("te", "ns", "ep1", t1)
+				fp.addEndpoints(e, tpId)
+				fp.deleteEndpoints(e, tpId)
 				e = modifyEndpoints(e, t2)
-				fp.addEndpoints(e)
+				fp.addEndpoints(e, tpId)
 			},
 			expected: []time.Time{t2},
 		},

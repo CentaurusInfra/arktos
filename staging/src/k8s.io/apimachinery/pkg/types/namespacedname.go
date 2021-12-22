@@ -43,3 +43,16 @@ const (
 func (n NamespacedName) String() string {
 	return fmt.Sprintf("%s%c%s%c%s", n.Tenant, Separator, n.Namespace, Separator, n.Name)
 }
+
+// NamespacednameWithTenantSource is used to identify a service and endpoint in scale out architecture
+type NamespacednameWithTenantSource struct {
+	TenantPartitionId int
+	Tenant            string
+	Namespace         string
+	Name              string
+}
+
+// String returns the general purpose string representation
+func (n NamespacednameWithTenantSource) String() string {
+	return fmt.Sprintf("%s_%d/%s/%s", n.Tenant, n.TenantPartitionId, n.Namespace, n.Name)
+}
