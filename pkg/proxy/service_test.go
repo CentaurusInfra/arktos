@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -46,11 +47,12 @@ func makeTestServiceInfo(clusterIP string, port int, protocol string, healthchec
 	return info
 }
 
-func makeTestService(namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
+func makeTestService(tenant, namespace, name string, svcFunc func(*v1.Service)) *v1.Service {
 	svc := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
+			Tenant:      tenant,
 			Annotations: map[string]string{},
 		},
 		Spec:   v1.ServiceSpec{},
@@ -71,14 +73,14 @@ func addTestPort(array []v1.ServicePort, name string, protocol v1.Protocol, port
 	return append(array, svcPort)
 }
 
-func makeNSN(namespace, name string) types.NamespacedName {
-	return types.NamespacedName{Namespace: namespace, Name: name}
+func makeNSN(tenant, namespace, name string) types.NamespacednameWithTenantSource {
+	return types.NamespacednameWithTenantSource{TenantPartitionId: tpId, Tenant: tenant, Namespace: namespace, Name: name}
 }
 
-func makeServicePortName(ns, name, port string) ServicePortName {
+func makeServicePortName(te, ns, name, port string) ServicePortName {
 	return ServicePortName{
-		NamespacedName: makeNSN(ns, name),
-		Port:           port,
+		NamespacednameWithTenantSource: makeNSN(te, ns, name),
+		Port:                           port,
 	}
 }
 
@@ -107,7 +109,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless service",
-			service: makeTestService("ns2", "headless", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
@@ -116,7 +118,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless sctp service",
-			service: makeTestService("ns2", "headless", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "sip", "SCTP", 7777, 0, 0)
@@ -125,7 +127,7 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "headless service without port",
-			service: makeTestService("ns2", "headless-without-port", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "headless-without-port", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = v1.ClusterIPNone
 			}),
@@ -133,33 +135,33 @@ func TestServiceToServiceMap(t *testing.T) {
 		},
 		{
 			desc: "cluster ip service",
-			service: makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeClusterIP
 				svc.Spec.ClusterIP = "172.16.55.4"
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p1", "UDP", 1234, 4321, 0)
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "UDP", 1235, 5321, 0)
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns2", "cluster-ip", "p1"): makeTestServiceInfo("172.16.55.4", 1234, "UDP", 0),
-				makeServicePortName("ns2", "cluster-ip", "p2"): makeTestServiceInfo("172.16.55.4", 1235, "UDP", 0),
+				makeServicePortName("te", "ns2", "cluster-ip", "p1"): makeTestServiceInfo("172.16.55.4", 1234, "UDP", 0),
+				makeServicePortName("te", "ns2", "cluster-ip", "p2"): makeTestServiceInfo("172.16.55.4", 1235, "UDP", 0),
 			},
 		},
 		{
 			desc: "nodeport service",
-			service: makeTestService("ns2", "node-port", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "node-port", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeNodePort
 				svc.Spec.ClusterIP = "172.16.55.10"
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 345, 678, 0)
 				svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "TCP", 344, 677, 0)
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns2", "node-port", "port1"): makeTestServiceInfo("172.16.55.10", 345, "UDP", 0),
-				makeServicePortName("ns2", "node-port", "port2"): makeTestServiceInfo("172.16.55.10", 344, "TCP", 0),
+				makeServicePortName("te", "ns2", "node-port", "port1"): makeTestServiceInfo("172.16.55.10", 345, "UDP", 0),
+				makeServicePortName("te", "ns2", "node-port", "port2"): makeTestServiceInfo("172.16.55.10", 344, "TCP", 0),
 			},
 		},
 		{
 			desc: "load balancer service",
-			service: makeTestService("ns1", "load-balancer", func(svc *v1.Service) {
+			service: makeTestService("te", "ns1", "load-balancer", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeLoadBalancer
 				svc.Spec.ClusterIP = "172.16.55.11"
 				svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -172,13 +174,13 @@ func TestServiceToServiceMap(t *testing.T) {
 				}
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns1", "load-balancer", "port3"): makeTestServiceInfo("172.16.55.11", 8675, "UDP", 0),
-				makeServicePortName("ns1", "load-balancer", "port4"): makeTestServiceInfo("172.16.55.11", 8676, "UDP", 0),
+				makeServicePortName("te", "ns1", "load-balancer", "port3"): makeTestServiceInfo("172.16.55.11", 8675, "UDP", 0),
+				makeServicePortName("te", "ns1", "load-balancer", "port4"): makeTestServiceInfo("172.16.55.11", 8676, "UDP", 0),
 			},
 		},
 		{
 			desc: "load balancer service with only local traffic policy",
-			service: makeTestService("ns1", "only-local-load-balancer", func(svc *v1.Service) {
+			service: makeTestService("te", "ns1", "only-local-load-balancer", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeLoadBalancer
 				svc.Spec.ClusterIP = "172.16.55.12"
 				svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -193,13 +195,13 @@ func TestServiceToServiceMap(t *testing.T) {
 				svc.Spec.HealthCheckNodePort = 345
 			}),
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("ns1", "only-local-load-balancer", "portx"): makeTestServiceInfo("172.16.55.12", 8677, "UDP", 345),
-				makeServicePortName("ns1", "only-local-load-balancer", "porty"): makeTestServiceInfo("172.16.55.12", 8678, "UDP", 345),
+				makeServicePortName("te", "ns1", "only-local-load-balancer", "portx"): makeTestServiceInfo("172.16.55.12", 8677, "UDP", 345),
+				makeServicePortName("te", "ns1", "only-local-load-balancer", "porty"): makeTestServiceInfo("172.16.55.12", 8678, "UDP", 345),
 			},
 		},
 		{
 			desc: "external name service",
-			service: makeTestService("ns2", "external-name", func(svc *v1.Service) {
+			service: makeTestService("te", "ns2", "external-name", func(svc *v1.Service) {
 				svc.Spec.Type = v1.ServiceTypeExternalName
 				svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
 				svc.Spec.ExternalName = "foo2.bar.com"
@@ -213,6 +215,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalidIPv6InIPV4Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP: testClusterIPv6,
@@ -233,6 +236,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "invalidIPv4InIPV6Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP: testClusterIPv4,
@@ -253,6 +257,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "validIPv4",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv4,
@@ -268,7 +273,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "validIPv4", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "validIPv4", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv4}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv4}
 				}),
@@ -281,6 +286,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "validIPv6",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv6,
@@ -296,7 +302,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "validIPv6", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "validIPv6", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv6}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv6}
 				}),
@@ -309,6 +315,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "filterIPv6InIPV4Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv4,
@@ -324,7 +331,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "filterIPv6InIPV4Mode", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "filterIPv6InIPV4Mode", "testPort"): makeTestServiceInfo(testClusterIPv4, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv4}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv4}
 				}),
@@ -337,6 +344,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "filterIPv4InIPV6Mode",
 					Namespace: "test",
+					Tenant:    "te",
 				},
 				Spec: v1.ServiceSpec{
 					ClusterIP:                testClusterIPv6,
@@ -352,7 +360,7 @@ func TestServiceToServiceMap(t *testing.T) {
 				},
 			},
 			expected: map[ServicePortName]*BaseServiceInfo{
-				makeServicePortName("test", "filterIPv4InIPV6Mode", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
+				makeServicePortName("te", "test", "filterIPv4InIPV6Mode", "testPort"): makeTestServiceInfo(testClusterIPv6, 12345, "TCP", 0, func(info *BaseServiceInfo) {
 					info.externalIPs = []string{testExternalIPv6}
 					info.loadBalancerSourceRanges = []string{testSourceRangeIPv6}
 				}),
@@ -364,7 +372,7 @@ func TestServiceToServiceMap(t *testing.T) {
 	for _, tc := range testCases {
 		svcTracker.isIPv6Mode = tc.isIPv6Mode
 		// outputs
-		newServices := svcTracker.serviceToServiceMap(tc.service)
+		newServices := svcTracker.serviceToServiceMap(tc.service, tpId)
 
 		if len(newServices) != len(tc.expected) {
 			t.Errorf("[%s] expected %d new, got %d: %v", tc.desc, len(tc.expected), len(newServices), spew.Sdump(newServices))
@@ -400,34 +408,35 @@ func newFakeProxier() *FakeProxier {
 	}
 }
 
-func makeServiceMap(fake *FakeProxier, allServices ...*v1.Service) {
+func makeServiceMap(fake *FakeProxier, tenantPartitionId int, allServices ...*v1.Service) {
 	for i := range allServices {
-		fake.addService(allServices[i])
+		fake.addService(allServices[i], tenantPartitionId)
 	}
 }
 
-func (fake *FakeProxier) addService(service *v1.Service) {
-	fake.serviceChanges.Update(nil, service)
+func (fake *FakeProxier) addService(service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(nil, service, tenantPartitionId)
 }
 
-func (fake *FakeProxier) updateService(oldService *v1.Service, service *v1.Service) {
-	fake.serviceChanges.Update(oldService, service)
+func (fake *FakeProxier) updateService(oldService *v1.Service, service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(oldService, service, tenantPartitionId)
 }
 
-func (fake *FakeProxier) deleteService(service *v1.Service) {
-	fake.serviceChanges.Update(service, nil)
+func (fake *FakeProxier) deleteService(service *v1.Service, tenantPartitionId int) {
+	fake.serviceChanges.Update(service, nil, tenantPartitionId)
 }
 
 func TestUpdateServiceMapHeadless(t *testing.T) {
 	fp := newFakeProxier()
 
 	makeServiceMap(fp,
-		makeTestService("ns2", "headless", func(svc *v1.Service) {
+		tpId,
+		makeTestService("te", "ns2", "headless", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "rpc", "UDP", 1234, 0, 0)
 		}),
-		makeTestService("ns2", "headless-without-port", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "headless-without-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = v1.ClusterIPNone
 		}),
@@ -453,7 +462,8 @@ func TestUpdateServiceTypeExternalName(t *testing.T) {
 	fp := newFakeProxier()
 
 	makeServiceMap(fp,
-		makeTestService("ns2", "external-name", func(svc *v1.Service) {
+		tpId,
+		makeTestService("te", "ns2", "external-name", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeExternalName
 			svc.Spec.ClusterIP = "172.16.55.4" // Should be ignored
 			svc.Spec.ExternalName = "foo2.bar.com"
@@ -478,19 +488,19 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	fp := newFakeProxier()
 
 	services := []*v1.Service{
-		makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeClusterIP
 			svc.Spec.ClusterIP = "172.16.55.4"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 1234, 4321, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "UDP", 1235, 5321, 0)
 		}),
-		makeTestService("ns2", "node-port", func(svc *v1.Service) {
+		makeTestService("te", "ns2", "node-port", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeNodePort
 			svc.Spec.ClusterIP = "172.16.55.10"
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port1", "UDP", 345, 678, 0)
 			svc.Spec.Ports = addTestPort(svc.Spec.Ports, "port2", "TCP", 344, 677, 0)
 		}),
-		makeTestService("ns1", "load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "ns1", "load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.11"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -502,7 +512,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 				},
 			}
 		}),
-		makeTestService("ns1", "only-local-load-balancer", func(svc *v1.Service) {
+		makeTestService("te", "ns1", "only-local-load-balancer", func(svc *v1.Service) {
 			svc.Spec.Type = v1.ServiceTypeLoadBalancer
 			svc.Spec.ClusterIP = "172.16.55.12"
 			svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -519,7 +529,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	}
 
 	for i := range services {
-		fp.addService(services[i])
+		fp.addService(services[i], tpId)
 	}
 	result := UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 8 {
@@ -530,7 +540,7 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 	if len(result.HCServiceNodePorts) != 1 {
 		t.Errorf("expected 1 healthcheck port, got %v", result.HCServiceNodePorts)
 	} else {
-		nsn := makeNSN("ns1", "only-local-load-balancer")
+		nsn := makeNSN("te", "ns1", "only-local-load-balancer")
 		if port, found := result.HCServiceNodePorts[nsn]; !found || port != 345 {
 			t.Errorf("expected healthcheck port [%q]=345: got %v", nsn, result.HCServiceNodePorts)
 		}
@@ -543,16 +553,16 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 
 	// Remove some stuff
 	// oneService is a modification of services[0] with removed first port.
-	oneService := makeTestService("ns2", "cluster-ip", func(svc *v1.Service) {
+	oneService := makeTestService("te", "ns2", "cluster-ip", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "UDP", 1235, 5321, 0)
 	})
 
-	fp.updateService(services[0], oneService)
-	fp.deleteService(services[1])
-	fp.deleteService(services[2])
-	fp.deleteService(services[3])
+	fp.updateService(services[0], oneService, tpId)
+	fp.deleteService(services[1], tpId)
+	fp.deleteService(services[2], tpId)
+	fp.deleteService(services[3], tpId)
 
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 1 {
@@ -580,13 +590,13 @@ func TestBuildServiceMapAddRemove(t *testing.T) {
 func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	fp := newFakeProxier()
 
-	servicev1 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	servicev1 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeClusterIP
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p1", "UDP", 1234, 4321, 0)
 		svc.Spec.Ports = addTestPort(svc.Spec.Ports, "p2", "TCP", 1235, 5321, 0)
 	})
-	servicev2 := makeTestService("ns1", "svc1", func(svc *v1.Service) {
+	servicev2 := makeTestService("te", "ns1", "svc1", func(svc *v1.Service) {
 		svc.Spec.Type = v1.ServiceTypeLoadBalancer
 		svc.Spec.ClusterIP = "172.16.55.4"
 		svc.Spec.LoadBalancerIP = "5.6.7.8"
@@ -601,7 +611,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 		svc.Spec.HealthCheckNodePort = 345
 	})
 
-	fp.addService(servicev1)
+	fp.addService(servicev1, tpId)
 
 	result := UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
@@ -616,7 +626,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// Change service to load-balancer
-	fp.updateService(servicev1, servicev2)
+	fp.updateService(servicev1, servicev2, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -630,7 +640,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 
 	// No change; make sure the service map stays the same and there are
 	// no health-check changes
-	fp.updateService(servicev2, servicev2)
+	fp.updateService(servicev2, servicev2, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)
@@ -643,7 +653,7 @@ func TestBuildServiceMapServiceUpdate(t *testing.T) {
 	}
 
 	// And back to ClusterIP
-	fp.updateService(servicev2, servicev1)
+	fp.updateService(servicev2, servicev1, tpId)
 	result = UpdateServiceMap(fp.serviceMap, fp.serviceChanges)
 	if len(fp.serviceMap) != 2 {
 		t.Errorf("expected service map length 2, got %v", fp.serviceMap)

@@ -89,7 +89,7 @@ type EndpointChangeTracker struct {
 	// hostname is the host where kube-proxy is running.
 	hostname string
 	// items maps a service to is endpointsChange.
-	items map[types.NamespacedName]*endpointsChange
+	items map[types.NamespacednameWithTenantSource]*endpointsChange
 	// makeEndpointInfo allows proxier to inject customized information when processing endpoint.
 	makeEndpointInfo makeEndpointFunc
 	// isIPv6Mode indicates if change tracker is under IPv6/IPv4 mode. Nil means not applicable.
@@ -97,18 +97,18 @@ type EndpointChangeTracker struct {
 	recorder   record.EventRecorder
 	// Map from the Endpoints namespaced-name to the times of the triggers that caused the endpoints
 	// object to change. Used to calculate the network-programming-latency.
-	lastChangeTriggerTimes map[types.NamespacedName][]time.Time
+	lastChangeTriggerTimes map[types.NamespacednameWithTenantSource][]time.Time
 }
 
 // NewEndpointChangeTracker initializes an EndpointsChangeMap
 func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc, isIPv6Mode *bool, recorder record.EventRecorder) *EndpointChangeTracker {
 	return &EndpointChangeTracker{
 		hostname:               hostname,
-		items:                  make(map[types.NamespacedName]*endpointsChange),
+		items:                  make(map[types.NamespacednameWithTenantSource]*endpointsChange),
 		makeEndpointInfo:       makeEndpointInfo,
 		isIPv6Mode:             isIPv6Mode,
 		recorder:               recorder,
-		lastChangeTriggerTimes: make(map[types.NamespacedName][]time.Time),
+		lastChangeTriggerTimes: make(map[types.NamespacednameWithTenantSource][]time.Time),
 	}
 }
 
@@ -120,7 +120,7 @@ func NewEndpointChangeTracker(hostname string, makeEndpointInfo makeEndpointFunc
 //   - pass <oldEndpoints, endpoints> as the <previous, current> pair.
 // Delete item
 //   - pass <endpoints, nil> as the <previous, current> pair.
-func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
+func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints, tenantPartitionId int) bool {
 	endpoints := current
 	if endpoints == nil {
 		endpoints = previous
@@ -130,7 +130,8 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 		return false
 	}
 	metrics.EndpointChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
+	namespacedName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name}
 
 	ect.lock.Lock()
 	defer ect.lock.Unlock()
@@ -138,14 +139,14 @@ func (ect *EndpointChangeTracker) Update(previous, current *v1.Endpoints) bool {
 	change, exists := ect.items[namespacedName]
 	if !exists {
 		change = &endpointsChange{}
-		change.previous = ect.endpointsToEndpointsMap(previous)
+		change.previous = ect.endpointsToEndpointsMap(previous, tenantPartitionId)
 		ect.items[namespacedName] = change
 	}
 	if t := getLastChangeTriggerTime(endpoints); !t.IsZero() {
 		ect.lastChangeTriggerTimes[namespacedName] =
 			append(ect.lastChangeTriggerTimes[namespacedName], t)
 	}
-	change.current = ect.endpointsToEndpointsMap(current)
+	change.current = ect.endpointsToEndpointsMap(current, tenantPartitionId)
 	// if change.previous equal to change.current, it means no change
 	if reflect.DeepEqual(change.previous, change.current) {
 		delete(ect.items, namespacedName)
@@ -192,7 +193,7 @@ type endpointsChange struct {
 // UpdateEndpointMapResult is the updated results after applying endpoints changes.
 type UpdateEndpointMapResult struct {
 	// HCEndpointsLocalIPSize maps an endpoints name to the length of its local IPs.
-	HCEndpointsLocalIPSize map[types.NamespacedName]int
+	HCEndpointsLocalIPSize map[types.NamespacednameWithTenantSource]int
 	// StaleEndpoints identifies if an endpoints service pair is stale.
 	StaleEndpoints []ServiceEndpoint
 	// StaleServiceNames identifies if a service is stale.
@@ -213,7 +214,7 @@ func (em EndpointsMap) Update(changes *EndpointChangeTracker) (result UpdateEndp
 
 	// TODO: If this will appear to be computationally expensive, consider
 	// computing this incrementally similarly to endpointsMap.
-	result.HCEndpointsLocalIPSize = make(map[types.NamespacedName]int)
+	result.HCEndpointsLocalIPSize = make(map[types.NamespacednameWithTenantSource]int)
 	localIPs := em.getLocalEndpointIPs()
 	for nsn, ips := range localIPs {
 		result.HCEndpointsLocalIPSize[nsn] = len(ips)
@@ -229,7 +230,7 @@ type EndpointsMap map[ServicePortName][]Endpoint
 // This function is used for incremental updated of endpointsMap.
 //
 // NOTE: endpoints object should NOT be modified.
-func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoints) EndpointsMap {
+func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoints, tenantPartitionId int) EndpointsMap {
 	if endpoints == nil {
 		return nil
 	}
@@ -246,8 +247,9 @@ func (ect *EndpointChangeTracker) endpointsToEndpointsMap(endpoints *v1.Endpoint
 				continue
 			}
 			svcPortName := ServicePortName{
-				NamespacedName: types.NamespacedName{Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
-				Port:           port.Name,
+				NamespacednameWithTenantSource: types.NamespacednameWithTenantSource{
+					TenantPartitionId: tenantPartitionId, Tenant: endpoints.Tenant, Namespace: endpoints.Namespace, Name: endpoints.Name},
+				Port: port.Name,
 			}
 			for i := range ss.Addresses {
 				addr := &ss.Addresses[i]
@@ -300,12 +302,12 @@ func (em EndpointsMap) apply(changes *EndpointChangeTracker, staleEndpoints *[]S
 		em.merge(change.current)
 		detectStaleConnections(change.previous, change.current, staleEndpoints, staleServiceNames)
 	}
-	changes.items = make(map[types.NamespacedName]*endpointsChange)
+	changes.items = make(map[types.NamespacednameWithTenantSource]*endpointsChange)
 	metrics.EndpointChangesPending.Set(0)
 	for _, lastChangeTriggerTime := range changes.lastChangeTriggerTimes {
 		*lastChangeTriggerTimes = append(*lastChangeTriggerTimes, lastChangeTriggerTime...)
 	}
-	changes.lastChangeTriggerTimes = make(map[types.NamespacedName][]time.Time)
+	changes.lastChangeTriggerTimes = make(map[types.NamespacednameWithTenantSource][]time.Time)
 }
 
 // Merge ensures that the current EndpointsMap contains all <service, endpoints> pairs from the EndpointsMap passed in.
@@ -323,12 +325,12 @@ func (em EndpointsMap) unmerge(other EndpointsMap) {
 }
 
 // GetLocalEndpointIPs returns endpoints IPs if given endpoint is local - local means the endpoint is running in same host as kube-proxy.
-func (em EndpointsMap) getLocalEndpointIPs() map[types.NamespacedName]sets.String {
-	localIPs := make(map[types.NamespacedName]sets.String)
+func (em EndpointsMap) getLocalEndpointIPs() map[types.NamespacednameWithTenantSource]sets.String {
+	localIPs := make(map[types.NamespacednameWithTenantSource]sets.String)
 	for svcPortName, epList := range em {
 		for _, ep := range epList {
 			if ep.GetIsLocal() {
-				nsn := svcPortName.NamespacedName
+				nsn := svcPortName.NamespacednameWithTenantSource
 				if localIPs[nsn] == nil {
 					localIPs[nsn] = sets.NewString()
 				}

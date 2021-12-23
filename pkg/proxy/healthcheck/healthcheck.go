@@ -1,5 +1,6 @@
 /*
 Copyright 2016 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -47,11 +48,11 @@ type Server interface {
 	// will be closed.  Services that are new will be opened.  Service that
 	// existed and are in the new set will be left alone.  The value of the map
 	// is the healthcheck-port to listen on.
-	SyncServices(newServices map[types.NamespacedName]uint16) error
+	SyncServices(newServices map[types.NamespacednameWithTenantSource]uint16) error
 	// Make the new set of endpoints be active.  Endpoints for services that do
 	// not exist will be dropped.  The value of the map is the number of
 	// endpoints the service has on this node.
-	SyncEndpoints(newEndpoints map[types.NamespacedName]int) error
+	SyncEndpoints(newEndpoints map[types.NamespacednameWithTenantSource]int) error
 }
 
 // Listener allows for testing of Server.  If the Listener argument
@@ -91,7 +92,7 @@ func NewServer(hostname string, recorder record.EventRecorder, listener Listener
 		recorder:    recorder,
 		listener:    listener,
 		httpFactory: httpServerFactory,
-		services:    map[types.NamespacedName]*hcInstance{},
+		services:    map[types.NamespacednameWithTenantSource]*hcInstance{},
 	}
 }
 
@@ -123,10 +124,10 @@ type server struct {
 	httpFactory HTTPServerFactory
 
 	lock     sync.RWMutex
-	services map[types.NamespacedName]*hcInstance
+	services map[types.NamespacednameWithTenantSource]*hcInstance
 }
 
-func (hcs *server) SyncServices(newServices map[types.NamespacedName]uint16) error {
+func (hcs *server) SyncServices(newServices map[types.NamespacednameWithTenantSource]uint16) error {
 	hcs.lock.Lock()
 	defer hcs.lock.Unlock()
 
@@ -171,7 +172,7 @@ func (hcs *server) SyncServices(newServices map[types.NamespacedName]uint16) err
 		}
 		hcs.services[nsn] = svc
 
-		go func(nsn types.NamespacedName, svc *hcInstance) {
+		go func(nsn types.NamespacednameWithTenantSource, svc *hcInstance) {
 			// Serve() will exit when the listener is closed.
 			klog.V(3).Infof("Starting goroutine for healthcheck %q on port %d", nsn.String(), svc.port)
 			if err := svc.server.Serve(svc.listener); err != nil {
@@ -192,7 +193,7 @@ type hcInstance struct {
 }
 
 type hcHandler struct {
-	name types.NamespacedName
+	name types.NamespacednameWithTenantSource
 	hcs  *server
 }
 
@@ -226,7 +227,7 @@ func (h hcHandler) ServeHTTP(resp http.ResponseWriter, req *http.Request) {
 		`, h.name.Namespace, h.name.Name, count)), "\n"))
 }
 
-func (hcs *server) SyncEndpoints(newEndpoints map[types.NamespacedName]int) error {
+func (hcs *server) SyncEndpoints(newEndpoints map[types.NamespacednameWithTenantSource]int) error {
 	hcs.lock.Lock()
 	defer hcs.lock.Unlock()
 

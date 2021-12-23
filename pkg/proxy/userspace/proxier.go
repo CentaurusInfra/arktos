@@ -133,8 +133,8 @@ type Proxier struct {
 	initialized     int32
 	// protects serviceChanges
 	serviceChangesLock sync.Mutex
-	serviceChanges     map[types.NamespacedName]*serviceChange // map of service changes
-	syncRunner         asyncRunnerInterface                    // governs calls to syncProxyRules
+	serviceChanges     map[types.NamespacednameWithTenantSource]*serviceChange // map of service changes
+	syncRunner         asyncRunnerInterface                                    // governs calls to syncProxyRules
 
 	stopChan chan struct{}
 }
@@ -233,7 +233,7 @@ func createProxier(loadBalancer LoadBalancer, listenIP net.IP, iptables iptables
 	proxier := &Proxier{
 		loadBalancer:    loadBalancer,
 		serviceMap:      make(map[proxy.ServicePortName]*ServiceInfo),
-		serviceChanges:  make(map[types.NamespacedName]*serviceChange),
+		serviceChanges:  make(map[types.NamespacednameWithTenantSource]*serviceChange),
 		portMap:         make(map[portMapKey]*portMapValue),
 		syncPeriod:      syncPeriod,
 		minSyncPeriod:   minSyncPeriod,
@@ -359,16 +359,16 @@ func (proxier *Proxier) syncProxyRules() {
 
 	proxier.serviceChangesLock.Lock()
 	changes := proxier.serviceChanges
-	proxier.serviceChanges = make(map[types.NamespacedName]*serviceChange)
+	proxier.serviceChanges = make(map[types.NamespacednameWithTenantSource]*serviceChange)
 	proxier.serviceChangesLock.Unlock()
 
 	proxier.mu.Lock()
 	defer proxier.mu.Unlock()
 
 	klog.V(2).Infof("userspace proxy: processing %d service events", len(changes))
-	for _, change := range changes {
-		existingPorts := proxier.mergeService(change.current)
-		proxier.unmergeService(change.previous, existingPorts)
+	for svcName, change := range changes {
+		existingPorts := proxier.mergeService(change.current, svcName.TenantPartitionId)
+		proxier.unmergeService(change.previous, existingPorts, svcName.TenantPartitionId)
 	}
 
 	proxier.ensurePortals()
@@ -472,11 +472,12 @@ func (proxier *Proxier) cleanupPortalAndProxy(serviceName proxy.ServicePortName,
 	return nil
 }
 
-func (proxier *Proxier) mergeService(service *v1.Service) sets.String {
+func (proxier *Proxier) mergeService(service *v1.Service, tenantPartitionId int) sets.String {
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return nil
@@ -484,7 +485,7 @@ func (proxier *Proxier) mergeService(service *v1.Service) sets.String {
 	existingPorts := sets.NewString()
 	for i := range service.Spec.Ports {
 		servicePort := &service.Spec.Ports[i]
-		serviceName := proxy.ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
+		serviceName := proxy.ServicePortName{NamespacednameWithTenantSource: svcName, Port: servicePort.Name}
 		existingPorts.Insert(servicePort.Name)
 		info, exists := proxier.serviceMap[serviceName]
 		// TODO: check health of the socket? What if ProxyLoop exited?
@@ -534,11 +535,12 @@ func (proxier *Proxier) mergeService(service *v1.Service) sets.String {
 	return existingPorts
 }
 
-func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.String) {
+func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.String, tenantPartitionId int) {
 	if service == nil {
 		return
 	}
-	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantPartitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)
 		return
@@ -549,7 +551,7 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 		if existingPorts.Has(servicePort.Name) {
 			continue
 		}
-		serviceName := proxy.ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
+		serviceName := proxy.ServicePortName{NamespacednameWithTenantSource: svcName, Port: servicePort.Name}
 
 		klog.V(1).Infof("Stopping service %q", serviceName)
 		info, exists := proxier.serviceMap[serviceName]
@@ -574,12 +576,14 @@ func (proxier *Proxier) unmergeService(service *v1.Service, existingPorts sets.S
 	}
 }
 
-func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail string) {
-	var svcName types.NamespacedName
+func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail string, tenantParitionId int) {
+	var svcName types.NamespacednameWithTenantSource
 	if current != nil {
-		svcName = types.NamespacedName{Tenant: current.Tenant, Namespace: current.Namespace, Name: current.Name}
+		svcName = types.NamespacednameWithTenantSource{
+			TenantPartitionId: tenantParitionId, Tenant: current.Tenant, Namespace: current.Namespace, Name: current.Name}
 	} else {
-		svcName = types.NamespacedName{Tenant: previous.Tenant, Namespace: previous.Namespace, Name: previous.Name}
+		svcName = types.NamespacednameWithTenantSource{
+			TenantPartitionId: tenantParitionId, Tenant: previous.Tenant, Namespace: previous.Namespace, Name: previous.Name}
 	}
 	klog.V(4).Infof("userspace proxy: %s for %s", detail, svcName)
 
@@ -608,19 +612,19 @@ func (proxier *Proxier) serviceChange(previous, current *v1.Service, detail stri
 	}
 }
 
-func (proxier *Proxier) OnServiceAdd(service *v1.Service) {
-	proxier.serviceChange(nil, service, "OnServiceAdd")
+func (proxier *Proxier) OnServiceAdd(service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(nil, service, "OnServiceAdd", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service) {
-	proxier.serviceChange(oldService, service, "OnServiceUpdate")
+func (proxier *Proxier) OnServiceUpdate(oldService, service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(oldService, service, "OnServiceUpdate", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceDelete(service *v1.Service) {
-	proxier.serviceChange(service, nil, "OnServiceDelete")
+func (proxier *Proxier) OnServiceDelete(service *v1.Service, tenantParitionId int) {
+	proxier.serviceChange(service, nil, "OnServiceDelete", tenantParitionId)
 }
 
-func (proxier *Proxier) OnServiceSynced() {
+func (proxier *Proxier) OnServiceSynced(tenantParitionId int) {
 	klog.V(2).Infof("userspace OnServiceSynced")
 
 	// Mark services as initialized and (if endpoints are already
@@ -636,21 +640,21 @@ func (proxier *Proxier) OnServiceSynced() {
 	go proxier.syncProxyRules()
 }
 
-func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsAdd(endpoints)
+func (proxier *Proxier) OnEndpointsAdd(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsAdd(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints)
+func (proxier *Proxier) OnEndpointsUpdate(oldEndpoints, endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsUpdate(oldEndpoints, endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints) {
-	proxier.loadBalancer.OnEndpointsDelete(endpoints)
+func (proxier *Proxier) OnEndpointsDelete(endpoints *v1.Endpoints, tenantPartitionId int) {
+	proxier.loadBalancer.OnEndpointsDelete(endpoints, tenantPartitionId)
 }
 
-func (proxier *Proxier) OnEndpointsSynced() {
+func (proxier *Proxier) OnEndpointsSynced(tenantPartitionId int) {
 	klog.V(2).Infof("userspace OnEndpointsSynced")
-	proxier.loadBalancer.OnEndpointsSynced()
+	proxier.loadBalancer.OnEndpointsSynced(tenantPartitionId)
 
 	// Mark endpoints as initialized and (if services are already
 	// initialized) the entire proxy as initialized
