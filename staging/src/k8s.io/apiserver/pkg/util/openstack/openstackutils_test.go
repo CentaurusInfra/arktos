@@ -36,8 +36,8 @@ func TestConvertToOpenstackRequest(t *testing.T) {
 			input: `{"server":{"name":"testvm","imageRef":"6db08272-a856-49da-8909-7c4c73ab0bac","flavorRef":"m1.tiny"}}`,
 			expectedOutput: OpenstackRequest{
 				Server: ServerType{Name: "testvm",
-					               ImageRef: "6db08272-a856-49da-8909-7c4c73ab0bac",
-				                   Flavor: "mi.tiny",
+					ImageRef: "6db08272-a856-49da-8909-7c4c73ab0bac",
+					Flavor:   "mi.tiny",
 				},
 			},
 			expectedError: nil,
@@ -57,7 +57,7 @@ func TestConvertToOpenstackRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if bytes.Compare( actualBytes, expectedBytes) !=0 {
+		if bytes.Compare(actualBytes, expectedBytes) != 0 {
 			t.Fatal(err)
 		}
 	}
