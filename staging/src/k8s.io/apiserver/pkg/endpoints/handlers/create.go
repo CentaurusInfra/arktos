@@ -106,7 +106,14 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 				scope.err(err, w, req)
 				return
 			}
-			req.Body = ioutil.NopCloser(bytes.NewBuffer(openstack.ConvertToOpenstackRequest(body)))
+
+			obj, err := openstack.ConvertToOpenstackRequest(body)
+			if err != nil {
+				scope.err(err, w, req)
+				return
+			}
+
+			req.Body = ioutil.NopCloser(bytes.NewBuffer(obj))
 		}
 
 		body, err := limitedReadBody(req, scope.MaxRequestBodyBytes)
