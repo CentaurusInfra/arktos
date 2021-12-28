@@ -52,6 +52,7 @@ import (
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/persistentvolume/resize"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageclass/setdefault"
 	"k8s.io/kubernetes/plugin/pkg/admission/storage/storageobjectinuseprotection"
+	"k8s.io/kubernetes/plugin/pkg/admission/systemdaemonset"
 	tenantexists "k8s.io/kubernetes/plugin/pkg/admission/tenant/exists"
 
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -100,6 +101,7 @@ var AllOrderedPlugins = []string{
 	resourcequota.PluginName,                // ResourceQuota
 	deploymentNetwork.PluginName,            // DeploymentNetwork
 	deny.PluginName,                         // AlwaysDeny
+	systemdaemonset.PluginName,              // SystemDaemonSet
 }
 
 // RegisterAllAdmissionPlugins registers all admission plugins and
@@ -136,6 +138,7 @@ func RegisterAllAdmissionPlugins(plugins *admission.Plugins) {
 	storageobjectinuseprotection.Register(plugins)
 	defaultpodnetworkreadiness.Register(plugins)
 	deploymentNetwork.Register(plugins)
+	systemdaemonset.Register(plugins)
 }
 
 // DefaultOffAdmissionPlugins get admission plugins off by default for kube-apiserver.
@@ -153,6 +156,7 @@ func DefaultOffAdmissionPlugins() sets.String {
 		resourcequota.PluginName,                //ResourceQuota
 		storageobjectinuseprotection.PluginName, //StorageObjectInUseProtection
 		deploymentNetwork.PluginName,            //DeploymentNetwork
+		systemdaemonset.PluginName,              // SystemDaemonSet
 	)
 
 	if utilfeature.DefaultFeatureGate.Enabled(features.PodPriority) {
@@ -162,6 +166,5 @@ func DefaultOffAdmissionPlugins() sets.String {
 	if utilfeature.DefaultFeatureGate.Enabled(features.TaintNodesByCondition) {
 		defaultOnPlugins.Insert(nodetaint.PluginName) //TaintNodesByCondition
 	}
-
 	return sets.NewString(AllOrderedPlugins...).Difference(defaultOnPlugins)
 }
