@@ -43,6 +43,9 @@ const (
 
 	// tenantKey is the context key for the request tenant.
 	tenantKey
+
+	// pathKey is the context key for the requestURL
+	pathKey
 )
 
 // NewContext instantiates a base context object for request flows.
@@ -81,6 +84,22 @@ func TenantFrom(ctx context.Context) (string, bool) {
 func TenantValue(ctx context.Context) string {
 	tenant, _ := TenantFrom(ctx)
 	return tenant
+}
+
+func WithPath(parent context.Context, path string) context.Context {
+	return WithValue(parent, pathKey, path)
+}
+
+// PathFrom returns the value of the path key on the ctx
+func PathFrom(ctx context.Context) (string, bool) {
+	path, ok := ctx.Value(pathKey).(string)
+	return path, ok
+}
+
+// PathValue returns the value of the path key on the ctx, or the empty string if none
+func PathValue(ctx context.Context) string {
+	path, _ := PathFrom(ctx)
+	return path
 }
 
 // WithNamespace returns a copy of parent in which the namespace value is set
