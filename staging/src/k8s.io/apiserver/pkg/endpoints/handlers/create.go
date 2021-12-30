@@ -101,19 +101,27 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		decoder := scope.Serializer.DecoderToVersion(s.Serializer, scope.HubGroupVersion)
 
 		if openstack.IsOpenstackRequest(req) {
-			klog.V(4).Infof("convert the request body to arktos vm pod")
+			klog.V(4).Infof("convert the request body to Arktos request")
 			body, err := ioutil.ReadAll(req.Body)
 			if err != nil {
 				scope.err(err, w, req)
 				return
 			}
 
-			obj, err := openstack.ConvertToOpenstackRequest(body)
+			var obj []byte
+
+			if openstack.IsActionRequest(req.URL.Path) {
+				obj, err = openstack.ConvertActionFromOpenstackRequest(body)
+			} else {
+				obj, err = openstack.ConvertToOpenstackRequest(body)
+			}
+
 			if err != nil {
 				scope.err(err, w, req)
 				return
 			}
 
+			klog.V(6).Infof("Converted object: %v", string(obj))
 			req.Body = ioutil.NopCloser(bytes.NewBuffer(obj))
 		}
 

@@ -20,15 +20,26 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"regexp"
+	"strings"
+	"time"
 
-	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
+const (
+	REBOOT   = "reboot"
+	SNAPSHOT = "snapshot"
+	RESTORE  = "restore"
+)
+
 var POD_JSON_STRING_TEMPLATE string
+var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
 func init() {
 	t, err := ioutil.ReadFile("/openstackRequestTemplate.json")
@@ -72,6 +83,7 @@ type ServerType struct {
 	Metadata        MetadataType
 	User_data       string
 }
+
 // VM creation request in Openstack
 type OpenstackRequest struct {
 	Server ServerType
@@ -92,6 +104,57 @@ func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
 	return o
 }
 
+type ArktosRebootParams struct {
+	DelayInSeconds int `json:"delayInSeconds"`
+}
+
+type ArktosReboot struct {
+	ApiVersion   string             `json:"apiVersion"`
+	Kind         string             `json:"kind"`
+	Operation    string             `json:"operation"`
+	RebootParams ArktosRebootParams `json:"rebootParams"`
+}
+
+type ArktosSnapshotParams struct {
+	SnapshotName string `json:"snapshotName"`
+}
+type ArktosSnapshot struct {
+	ApiVersion     string               `json:"apiVersion"`
+	Kind           string               `json:"kind"`
+	Operation      string               `json:"operation"`
+	SnapshotParams ArktosSnapshotParams `json:"snapshotParams"`
+}
+
+type OpenstackSnapshot struct {
+	Display_name        string
+	Display_description string
+	Volume_id           string
+	Force               bool
+}
+
+type OpenstackSnapshotRequest struct {
+	Snapshot OpenstackSnapshot
+}
+
+// snapshot creation response in Openstack
+type OpenstackSnapshotResponse struct {
+	Id                 string
+	CreatedAt          string
+	DisplayName        string
+	DisplayDescription string
+	VolumeId           string
+	Size               int
+	Status             string
+}
+
+func (o *OpenstackSnapshotResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackSnapshotResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
 // Convert Openstack request to kubernetes pod request body
 // Revisit this for dynamically generate the json request
 // TODO: fix hard coded flavor and imageRefs with config maps
@@ -107,14 +170,64 @@ func ConvertToOpenstackRequest(body []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	klog.Infof("debug: request struct: %v", obj)
-
 	cpu, mem := GetRequestedResource(obj.Server.Flavor)
 	imageUrl := GetVmImageUrl(obj.Server.ImageRef)
 
 	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, imageUrl, obj.Server.Name, cpu, mem, cpu, mem)
-	klog.Infof("debug: pod json: %s", podJson)
+	klog.V(6).Infof("pod json: %s", podJson)
 	return []byte(podJson), nil
+}
+
+// Convert the action request to Arktos action request body
+func ConvertActionFromOpenstackRequest(body []byte) ([]byte, error) {
+	op := getActionOperation(body)
+	klog.V(6).Infof("Convert %s Action", op)
+
+	switch op {
+	case REBOOT:
+		obj := ArktosReboot{"v1", "CustomAction", op, ArktosRebootParams{10}}
+		return json.Marshal(obj)
+	case SNAPSHOT:
+		o := OpenstackSnapshotRequest{}
+		err := json.Unmarshal(body, &o)
+		if err != nil {
+			return nil, fmt.Errorf("invalid snapshot request. error %v", err)
+		}
+		obj := ArktosSnapshot{"v1", "CustomAction", op, ArktosSnapshotParams{o.Snapshot.Display_name}}
+		return json.Marshal(obj)
+	default:
+		return nil, fmt.Errorf("unsupported action: %s", op)
+	}
+}
+
+func getActionOperation(body []byte) string {
+	for _, action := range supportedActions {
+		pattern := fmt.Sprintf(`"%s" *:`, action)
+		match, _ := regexp.Match(pattern, body)
+		if match {
+			return action
+		}
+	}
+
+	return "unknownAction"
+}
+
+func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
+	o := obj.(*v1.Status)
+	klog.V(6).Infof("Convert Arktos object: %v", o)
+
+	// for action types reboot, start, stop, simply return empty response since Openstack
+	if strings.Contains(o.Message, REBOOT) {
+		return nil
+	}
+
+	//TODO: post 130, improve the Arktos Action framework to align with Openstack snapshot
+	if strings.Contains(o.Message, SNAPSHOT) {
+		s := OpenstackSnapshotResponse{Id: o.Details.Name, CreatedAt: time.Now().String()}
+		return &s
+	}
+
+	return o
 }
 
 // Convert kubernetes pod response to Openstack response body
@@ -153,4 +266,10 @@ func GetTenantFromRequest(r *http.Request) string {
 // TODO: Get the namespace, maps to the Openstack projct, from the Openstack token
 func GetNamespaceFromRequest(r *http.Request) string {
 	return "kube-system"
+}
+
+// the suffix of URL path is the action of the VM
+// Arktos only supports reboot, stp[, start, snapshot, restore for the current release
+func IsActionRequest(path string) bool {
+	return strings.HasSuffix(path, "action")
 }
