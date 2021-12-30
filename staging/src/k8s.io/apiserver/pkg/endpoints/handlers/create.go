@@ -84,6 +84,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 		ctx := req.Context()
 		ctx = request.WithNamespace(ctx, namespace)
 		ctx = request.WithTenant(ctx, tenant)
+		ctx = request.WithPath(ctx, req.URL.Path)
 		outputMediaType, _, err := negotiation.NegotiateOutputMediaType(req, scope.Serializer, scope)
 		if err != nil {
 			scope.err(err, w, req)
