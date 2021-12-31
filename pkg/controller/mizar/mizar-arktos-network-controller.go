@@ -45,8 +45,8 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/client-go/util/homedir"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -202,13 +202,13 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		subnet := vpc + subnetSuffix
 
 		const homeSubPath = "/go/src/arktos/hack/runtime/"
-                templateDir := "/tmp/runtime/"
+		templateDir := "/tmp/runtime/"
 
-                if home := homedir.HomeDir(); home != "" {
-                        templateDir = home + homeSubPath
-                }
-                vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
-                subnetDefaultTemplatePath  := templateDir + "default_mizar_network_subnet_template.json"
+		if home := homedir.HomeDir(); home != "" {
+			templateDir = home + homeSubPath
+		}
+		vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
+		subnetDefaultTemplatePath := templateDir + "default_mizar_network_subnet_template.json"
 
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
 
@@ -283,7 +283,7 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 	}
 	klog.V(5).Infof("Mizar-Arktos-Network-controller - get Name : (%s) and GVK: (%s)", unstructuredObj.GetName(), gvk.String())
 
-	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource 
+	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
 	klog.Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
