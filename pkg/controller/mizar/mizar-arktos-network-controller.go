@@ -348,6 +348,8 @@ func convertToYamlManifestFromDefaultJsonTemplate(defaultTemplatePath, vpcOrSubn
 		return nil, err
 	}
 
+	// Convert json data into yaml format which is easily used 
+	// to decode into unstructured object and get GVK (Group Version Kind)
 	yamlData, err := sigsyaml.JSONToYAML(bytesJson.Bytes())
 	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller - JSON to YAML in error: (%v)", err)
