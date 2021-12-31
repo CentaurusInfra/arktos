@@ -15,8 +15,8 @@ package mizar
 
 import (
 	"fmt"
-	"time"
 	"strings"
+	"time"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -203,7 +203,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 	}
 
-	//The annotations of vpc and subnet should not be added into pods of 
+	//The annotations of vpc and subnet should not be added into pods of
 	//mizar-daemon and mizar-operator under tenant "system" and pods in namespace "kube-system"
 	//if eventType == EventType_Update && tenant == "system" && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
 	if eventType == EventType_Update && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {

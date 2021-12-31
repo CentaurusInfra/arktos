@@ -24,9 +24,9 @@ import (
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
-	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/dynamic"
+	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
@@ -187,8 +187,8 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(netKubeconfigs)
 	if err != nil {
 		klog.Errorf("app mizarcontrollers when start Arktos Network Controller - create discovery Client in error: (%v)", err)
-                return nil, false, err
-        }
+		return nil, false, err
+	}
 
 	go func() {
 		networkController := controllers.NewMizarArktosNetworkController(

@@ -17,15 +17,18 @@ limitations under the License.
 package mizar
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
-	"time"
-	"text/template"
-	"bytes"
 	"io/ioutil"
+	"text/template"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
@@ -33,22 +36,19 @@ import (
 	arktoscheme "k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme"
 	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
 	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
+	"k8s.io/client-go/discovery"
+	"k8s.io/client-go/discovery/cached/memory"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
+	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
-	"k8s.io/apimachinery/pkg/api/meta"
-	"k8s.io/client-go/dynamic"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	sigsyaml "sigs.k8s.io/yaml"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/discovery/cached/memory"
-	"k8s.io/client-go/restmapper"
 )
 
 const (
@@ -58,7 +58,7 @@ const (
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
 type MizarArktosNetworkController struct {
 	// Used to create CRDs - VPC or Subnet of tenant
-	dynamicClient	dynamic.Interface
+	dynamicClient dynamic.Interface
 
 	// Used to create mapping to find out GVR via GVK before creating CRDs - VPC or Subnet
 	discoveryClient discovery.DiscoveryInterface
@@ -204,22 +204,22 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
 
 		// Temporarily use hard code to define paths upon team's recommendation
-		// To do: in future use path ./hack/runtime as tenant controller uses 
-		// ./hack/runtime/default_mizar_network.json 
+		// To do: in future use path ./hack/runtime as tenant controller uses
+		// ./hack/runtime/default_mizar_network.json
 		const vpcDefaultTemplatePath = "/tmp/runtime/default_mizar_network_vpc_template.json"
 		const subnetDefaultTemplatePath = "/tmp/runtime/default_mizar_network_subnet_template.json"
 
 		vpcManifestData, err := convertToYamlManifestFromDefaultJsonTemplate(vpcDefaultTemplatePath, vpc, network.Tenant)
 		if err != nil {
-                        klog.Errorf("Mizar-Arktos-Network-controller - VPC JSON to YAML in error: (%v)", err)
-                        return err
-                }
+			klog.Errorf("Mizar-Arktos-Network-controller - VPC JSON to YAML in error: (%v)", err)
+			return err
+		}
 
 		err = createVpcOrSubnet([]byte(vpcManifestData), network.Tenant, vpc, c.discoveryClient, c.dynamicClient)
 		if err != nil {
-                        klog.Errorf("Mizar-Arktos-Network-controller: create actual VPC object in error after getting GVR (%v).", err)
-                        return err
-                }
+			klog.Errorf("Mizar-Arktos-Network-controller: create actual VPC object in error after getting GVR (%v).", err)
+			return err
+		}
 		klog.V(3).Infof("Mizar-Arktos-Network-controller - create VPC: (%s) successfully", vpc)
 
 		subnetManifestData, err := convertToYamlManifestFromDefaultJsonTemplate(subnetDefaultTemplatePath, subnet, network.Tenant)
@@ -228,10 +228,10 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 			return err
 		}
 		err = createVpcOrSubnet([]byte(subnetManifestData), network.Tenant, subnet, c.discoveryClient, c.dynamicClient)
-                if err != nil {
-                        klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object in error after getting GVR (%v).", err)
-                        return err
-                }
+		if err != nil {
+			klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object in error after getting GVR (%v).", err)
+			return err
+		}
 		klog.V(3).Infof("Mizar-Arktos-Network-controller - create subnet: (%s) successfully", subnet)
 	}
 
@@ -272,7 +272,7 @@ func createVpcOrSubnet(data []byte, tenant, vpcOrSubnetName string, discoveryCli
 
 	// Get GVK(Group Version Kind)
 	_, gvk, err := decUnstructured.Decode(data, nil, unstructuredObj)
-	if (err != nil) {
+	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller: getting GVR in error (%v).", err)
 		return err
 	}
@@ -310,12 +310,12 @@ func createVpcOrSubnet(data []byte, tenant, vpcOrSubnetName string, discoveryCli
 	// Create CRD resource - vpc or subnet
 	actualObject, err := dynamicClientResource.Create(unstructuredObj, metav1.CreateOptions{})
 
-	if (err == nil) {
+	if err == nil {
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's name : (%s)", actualObject.GetName())
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's GVK : (%v)", actualObject.GroupVersionKind())
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's objectKind : (%v)", actualObject.GetObjectKind())
 	} else {
-		klog.Errorf("Mizar-Arktos-Network-controller - create actual object's name: (%s) in error (%v).", unstructuredObj.GetName(),err)
+		klog.Errorf("Mizar-Arktos-Network-controller - create actual object's name: (%s) in error (%v).", unstructuredObj.GetName(), err)
 	}
 
 	return err
@@ -358,11 +358,11 @@ func convertToYamlManifestFromDefaultJsonTemplate(defaultTemplatePath, vpcOrSubn
 }
 
 func readTemplateFile(path string) (string, error) {
-        bytes, err := ioutil.ReadFile(path)
-        if err != nil {
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller - Read Template File (%s) in error :(%v)", path, err)
-                return "", err
-        }
+		return "", err
+	}
 
-        return string(bytes), nil
+	return string(bytes), nil
 }
