@@ -48,7 +48,6 @@ import (
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
-	sigsyaml "sigs.k8s.io/yaml"
 )
 
 const (
@@ -209,7 +208,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		const vpcDefaultTemplatePath = "/tmp/runtime/default_mizar_network_vpc_template.json"
 		const subnetDefaultTemplatePath = "/tmp/runtime/default_mizar_network_subnet_template.json"
 
-		vpcManifestData, err := convertToYamlManifestFromDefaultJsonTemplate(vpcDefaultTemplatePath, vpc, network.Tenant)
+		vpcManifestData, err := GetCRDVpcOrSubnetSpec(vpcDefaultTemplatePath, vpc, network.Tenant)
 		if err != nil {
 			klog.Errorf("Mizar-Arktos-Network-controller - VPC JSON to YAML in error: (%v)", err)
 			return err
@@ -222,7 +221,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		}
 		klog.V(3).Infof("Mizar-Arktos-Network-controller - create VPC: (%s) successfully", vpc)
 
-		subnetManifestData, err := convertToYamlManifestFromDefaultJsonTemplate(subnetDefaultTemplatePath, subnet, network.Tenant)
+		subnetManifestData, err := GetCRDVpcOrSubnetSpec(subnetDefaultTemplatePath, subnet, network.Tenant)
 		if err != nil {
 			klog.Errorf("Mizar-Arktos-Network-controller - Subnet JSON to YAML in error: %v\n", err)
 			return err
@@ -321,7 +320,7 @@ func createVpcOrSubnet(data []byte, tenant, vpcOrSubnetName string, discoveryCli
 	return err
 }
 
-func convertToYamlManifestFromDefaultJsonTemplate(defaultTemplatePath, vpcOrSubnetName, tenant string) ([]byte, error) {
+func GetCRDVpcOrSubnetSpec(defaultTemplatePath, vpcOrSubnetName, tenant string) ([]byte, error) {
 	// For updating the data in default vpc/subnet template
 	var availableData = map[string]string{
 		"Tenant": tenant,
@@ -348,15 +347,7 @@ func convertToYamlManifestFromDefaultJsonTemplate(defaultTemplatePath, vpcOrSubn
 		return nil, err
 	}
 
-	// Convert json data into yaml format which is easily used
-	// to decode into unstructured object and get GVK (Group Version Kind)
-	yamlData, err := sigsyaml.JSONToYAML(bytesJson.Bytes())
-	if err != nil {
-		klog.Errorf("Mizar-Arktos-Network-controller - JSON to YAML in error: (%v)", err)
-		return nil, err
-	}
-
-	return yamlData, nil
+	return bytesJson.Bytes(), nil
 }
 
 func readTemplateFile(path string) (string, error) {
