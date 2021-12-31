@@ -25,6 +25,8 @@ import (
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	clientset "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/discovery"
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
 )
@@ -178,8 +180,20 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
 	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
 
+	// Used to create CRDs - VPC or Subnet of tenant
+	dynamicClient := dynamic.NewForConfigOrDie(netKubeconfigs)
+
+	// Used to create mapping to find out GVR via GVK
+	discoveryClient, err := discovery.NewDiscoveryClientForConfig(netKubeconfigs)
+	if err != nil {
+		klog.Errorf("app mizarcontrollers when start Arktos Network Controller - create discovery Client in error: (%v)", err)
+                return nil, false, err
+        }
+
 	go func() {
 		networkController := controllers.NewMizarArktosNetworkController(
+			dynamicClient,
+			discoveryClient,
 			networkClient,
 			svcKubeClient,
 			informerFactory.Arktos().V1().Networks(),
