@@ -1,0 +1,14 @@
+{
+   "apiVersion": "mizar.com/v1",
+   "kind": "Subnet",
+   "metadata": {
+      "name": "{{.Tenant}}-default-network-subnet"
+   },
+   "spec": {
+      "ip": "21.0.21.0",
+      "prefix": "24",
+      "bouncers": 3,
+      "vpc": "{{.Tenant}}-default-network",
+      "status": "Init"
+   }
+}

@@ -46,6 +46,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
+	"k8s.io/client-go/util/homedir"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
 )
@@ -200,38 +201,28 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		vpc := network.Spec.VPCID
 		subnet := vpc + subnetSuffix
 
+		const homeSubPath = "/go/src/arktos/hack/runtime/"
+                templateDir := "/tmp/runtime/"
+
+                if home := homedir.HomeDir(); home != "" {
+                        templateDir = home + homeSubPath
+                }
+                vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
+                subnetDefaultTemplatePath  := templateDir + "default_mizar_network_subnet_template.json"
+
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
 
-		// Temporarily use hard code to define paths upon team's recommendation
-		// To do: in future use path ./hack/runtime as tenant controller uses
-		// ./hack/runtime/default_mizar_network.json
-		const vpcDefaultTemplatePath = "/tmp/runtime/default_mizar_network_vpc_template.json"
-		const subnetDefaultTemplatePath = "/tmp/runtime/default_mizar_network_subnet_template.json"
-
-		vpcManifestData, err := GetCRDVpcOrSubnetSpec(vpcDefaultTemplatePath, vpc, network.Tenant)
+		err := createVpcOrSubnetCRD(network.Tenant, vpc, vpcDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 		if err != nil {
-			klog.Errorf("Mizar-Arktos-Network-controller - VPC JSON to YAML in error: (%v)", err)
+			klog.Errorf("Mizar-Arktos-Network-controller: create actual VPC object (%s) in error (%v).", vpc, err)
 			return err
 		}
 
-		err = createVpcOrSubnet([]byte(vpcManifestData), network.Tenant, vpc, c.discoveryClient, c.dynamicClient)
+		err = createVpcOrSubnetCRD(network.Tenant, subnet, subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 		if err != nil {
-			klog.Errorf("Mizar-Arktos-Network-controller: create actual VPC object in error after getting GVR (%v).", err)
+			klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object (%s) in error (%v).", subnet, err)
 			return err
 		}
-		klog.V(3).Infof("Mizar-Arktos-Network-controller - create VPC: (%s) successfully", vpc)
-
-		subnetManifestData, err := GetCRDVpcOrSubnetSpec(subnetDefaultTemplatePath, subnet, network.Tenant)
-		if err != nil {
-			klog.Errorf("Mizar-Arktos-Network-controller - Subnet JSON to YAML in error: %v\n", err)
-			return err
-		}
-		err = createVpcOrSubnet([]byte(subnetManifestData), network.Tenant, subnet, c.discoveryClient, c.dynamicClient)
-		if err != nil {
-			klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object in error after getting GVR (%v).", err)
-			return err
-		}
-		klog.V(3).Infof("Mizar-Arktos-Network-controller - create subnet: (%s) successfully", subnet)
 	}
 
 	if network.Spec.Type != mizarNetworkType || network.Status.Phase == v1.NetworkReady {
@@ -265,24 +256,39 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 	return nil
 }
 
-func createVpcOrSubnet(data []byte, tenant, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+	manifestData, err := GetCRDVpcOrSubnetSpec(defaultTemplatePath, vpcOrSubnetName, tenant)
+	if err != nil {
+		klog.Errorf("Mizar-Arktos-Network-controller - at (%s) get JSON spec for CRD (%s) in error: (%v)", defaultTemplatePath, vpcOrSubnetName, err)
+	}
+
+	err = createVpcOrSubnetObject([]byte(manifestData), tenant, vpcOrSubnetName, discoveryClient, dynamicClient)
+	if err != nil {
+		return err
+	}
+	klog.V(3).Infof("Mizar-Arktos-Network-controller - create CRD: (%s) successfully", vpcOrSubnetName)
+
+	return nil
+}
+
+func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
 	unstructuredObj := &unstructured.Unstructured{}
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
 	// Get GVK(Group Version Kind)
 	_, gvk, err := decUnstructured.Decode(data, nil, unstructuredObj)
 	if err != nil {
-		klog.Errorf("Mizar-Arktos-Network-controller: getting GVR in error (%v).", err)
+		klog.Errorf("Mizar-Arktos-Network-controller: getting GVK in error (%v).", err)
 		return err
 	}
 	klog.V(5).Infof("Mizar-Arktos-Network-controller - get Name : (%s) and GVK: (%s)", unstructuredObj.GetName(), gvk.String())
 
-	// Get GVR (Group Version Resource) from mapping
+	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource 
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-	klog.Infof("Mizar-Arktos-Network-controller - Name: %s - gvk group kind : (%v) - gvk version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
+	klog.Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 
-	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - gvk group kind : (%s) - gvk version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
+	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%s) - GVK version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
 	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller: get mapping between GVK and GVR in error (%v).", err)
 		return err
@@ -334,11 +340,7 @@ func GetCRDVpcOrSubnetSpec(defaultTemplatePath, vpcOrSubnetName, tenant string) 
 	}
 
 	// Create Template with template file
-	t, err := template.New(vpcOrSubnetName).Parse(jsonTmpl)
-	if err != nil {
-		klog.Errorf("Mizar-Arktos-Network-controller - parse default vpc/subnet template in error: (%v)", err)
-		return nil, err
-	}
+	t := template.Must(template.New(vpcOrSubnetName).Parse(jsonTmpl))
 
 	// Create json file in bytes format
 	var bytesJson bytes.Buffer
