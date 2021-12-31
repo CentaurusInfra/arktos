@@ -438,12 +438,12 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		PodCgroupRoot:            kubeDeps.ContainerManager.GetPodCgroupRoot(),
 	}
 
-	serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 	var serviceListers []corelisters.ServiceLister
 	if hasValidTPClients(kubeDeps.KubeTPClients) {
 		serviceListers = make([]corelisters.ServiceLister, len(kubeDeps.KubeTPClients))
 
 		for i := range serviceListers {
+			serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 			serviceLW := cache.NewListWatchFromClient(kubeDeps.KubeTPClients[i].CoreV1(), "services", metav1.NamespaceAll, fields.Everything())
 			r := cache.NewReflector(serviceLW, &v1.Service{}, serviceIndexer, 0)
 			go r.Run(wait.NeverStop)
@@ -451,6 +451,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 			serviceListers[i] = corelisters.NewServiceLister(serviceIndexer)
 		}
 	} else {
+		serviceIndexer := cache.NewIndexer(cache.MetaNamespaceKeyFunc, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc})
 		klog.Errorf("No Valid TP Clients: %v", err)
 		serviceListers = make([]corelisters.ServiceLister, 1)
 		serviceListers[0] = corelisters.NewServiceLister(serviceIndexer)
