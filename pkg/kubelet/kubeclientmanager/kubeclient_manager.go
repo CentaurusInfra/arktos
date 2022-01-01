@@ -34,8 +34,8 @@ This manager keeps a map between pod UID and its corresponding tenant partition 
 This map is to be used together with kubeTPClients in the Kubelet struct to obtain the correct kubeclient
 */
 type KubeClientManager struct {
-	puid2api       map[types.UID]int // pod UID -> apiserver id
-	tenant2apiLock sync.RWMutex
+	puid2api     map[types.UID]int // pod UID -> apiserver id
+	puid2apiLock sync.RWMutex
 }
 
 var ClientManager *KubeClientManager
@@ -67,8 +67,8 @@ func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref 
 		return
 	}
 
-	manager.tenant2apiLock.Lock()
-	defer manager.tenant2apiLock.Unlock()
+	manager.puid2apiLock.Lock()
+	defer manager.puid2apiLock.Unlock()
 
 	if source == kubetypes.ApiserverSource {
 		klog.V(6).Infof("source is '%s', will only use kube client #0", kubetypes.ApiserverSource)
@@ -94,8 +94,8 @@ func (manager *KubeClientManager) UnregisterTenantSourceServer(ref *v1.Pod) {
 		return
 	}
 
-	manager.tenant2apiLock.Lock()
-	defer manager.tenant2apiLock.Unlock()
+	manager.puid2apiLock.Lock()
+	defer manager.puid2apiLock.Unlock()
 
 	delete(manager.puid2api, ref.UID)
 }
@@ -112,8 +112,8 @@ func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface,
 }
 
 func (manager *KubeClientManager) PickClient(podUID types.UID) int {
-	manager.tenant2apiLock.RLock()
-	defer manager.tenant2apiLock.RUnlock()
+	manager.puid2apiLock.RLock()
+	defer manager.puid2apiLock.RUnlock()
 	pick, ok := manager.puid2api[podUID]
 	if !ok {
 		klog.Warningf("no registered client for pod UID %s, defaulted to client #0", podUID)
