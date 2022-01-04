@@ -22,7 +22,6 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -125,33 +124,26 @@ type ArktosSnapshot struct {
 	SnapshotParams ArktosSnapshotParams `json:"snapshotParams"`
 }
 
-type OpenstackSnapshot struct {
-	Display_name        string
-	Display_description string
-	Volume_id           string
-	Force               bool
+// Openstack createImage actions match to the Arktos snapshot action
+type OpenstackCreateImage struct {
+	Name        string
+	Metadata    MetadataType
 }
 
-type OpenstackSnapshotRequest struct {
-	Snapshot OpenstackSnapshot
+type OpenstackCreateImageRequest struct {
+	Snapshot OpenstackCreateImage
 }
 
 // snapshot creation response in Openstack
-type OpenstackSnapshotResponse struct {
-	Id                 string
-	CreatedAt          string
-	DisplayName        string
-	DisplayDescription string
-	VolumeId           string
-	Size               int
-	Status             string
+type OpenstackCreateImageResponse struct {
+	ImageId string
 }
 
-func (o *OpenstackSnapshotResponse) GetObjectKind() schema.ObjectKind {
+func (o *OpenstackCreateImageResponse) GetObjectKind() schema.ObjectKind {
 	return schema.OpenstackObjectKind
 }
 
-func (o *OpenstackSnapshotResponse) DeepCopyObject() runtime.Object {
+func (o *OpenstackCreateImageResponse) DeepCopyObject() runtime.Object {
 	return o
 }
 
@@ -188,12 +180,12 @@ func ConvertActionFromOpenstackRequest(body []byte) ([]byte, error) {
 		obj := ArktosReboot{"v1", "CustomAction", op, ArktosRebootParams{10}}
 		return json.Marshal(obj)
 	case SNAPSHOT:
-		o := OpenstackSnapshotRequest{}
+		o := OpenstackCreateImageRequest{}
 		err := json.Unmarshal(body, &o)
 		if err != nil {
 			return nil, fmt.Errorf("invalid snapshot request. error %v", err)
 		}
-		obj := ArktosSnapshot{"v1", "CustomAction", op, ArktosSnapshotParams{o.Snapshot.Display_name}}
+		obj := ArktosSnapshot{"v1", "CustomAction", op, ArktosSnapshotParams{o.Snapshot.Name}}
 		return json.Marshal(obj)
 	default:
 		return nil, fmt.Errorf("unsupported action: %s", op)
@@ -221,9 +213,8 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 		return nil
 	}
 
-	//TODO: post 130, improve the Arktos Action framework to align with Openstack snapshot
 	if strings.Contains(o.Message, SNAPSHOT) {
-		s := OpenstackSnapshotResponse{Id: o.Details.Name, CreatedAt: time.Now().String()}
+		s := OpenstackCreateImageResponse{ImageId: o.Details.Name}
 		return &s
 	}
 
@@ -273,3 +264,4 @@ func GetNamespaceFromRequest(r *http.Request) string {
 func IsActionRequest(path string) bool {
 	return strings.HasSuffix(path, "action")
 }
+
