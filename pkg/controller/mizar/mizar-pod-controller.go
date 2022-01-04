@@ -15,6 +15,7 @@ package mizar
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -22,6 +23,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
+	arktosextv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
+	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
+	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -39,7 +43,13 @@ const (
 
 // MizarPodController points to current controller
 type MizarPodController struct {
-	// A store of objects, populated by the shared informer passed to MizarPodController
+	// Allow to update pod object's annotation to API server
+	kubeClient clientset.Interface
+
+	// A store of network objects, populated by the shared informer passed to MizarPodController
+	netLister arktosv1.NetworkLister
+
+	// A store of pod objects, populated by the shared informer passed to MizarPodController
 	lister corelisters.PodLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
@@ -57,12 +67,14 @@ type MizarPodController struct {
 }
 
 // NewMizarPodController creates and configures a new controller instance
-func NewMizarPodController(podInformer coreinformers.PodInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarPodController {
+func NewMizarPodController(podInformer coreinformers.PodInformer, kubeClient clientset.Interface, arktosNetworkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarPodController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarPodController{
+		kubeClient:   kubeClient,
+		netLister:    arktosNetworkInformer.Lister(),
 		lister:       podInformer.Lister(),
 		listerSynced: podInformer.Informer().HasSynced,
 		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
@@ -188,6 +200,86 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			}
 		} else {
 			return err
+		}
+	}
+
+	//The annotations of vpc and subnet should not be added into pods of
+	//mizar-daemon and mizar-operator under tenant "system" and pods in namespace "kube-system"
+	//if eventType == EventType_Update && tenant == "system" && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
+	if eventType == EventType_Update && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
+		const defaultNetworkName = "default"
+
+		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
+
+		if err != nil {
+			klog.Warningf("mizar-pod-controller: Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
+			return err
+		}
+		klog.Infof("Mizar-Pod-controller: get network: %#v.", network)
+
+		if network.Spec.Type != mizarNetworkType || network.Status.Phase != arktosextv1.NetworkReady {
+			klog.Warningf("mizar-pod-controller: The arktos network %s is not mizar type or is not Ready.", network.Name)
+			return nil
+		}
+		klog.V(4).Infof("Mizar-Pod-controller: get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
+
+		vpc := network.Spec.VPCID
+		if len(vpc) == 0 {
+			const vpcSuffix = "-default-network"
+			vpc = tenant + vpcSuffix
+		}
+
+		const subnetSuffix = "-subnet"
+		subnet := vpc + subnetSuffix
+
+		const mizarAnnotationsVpcKey = "mizar.com/vpc"
+		const mizarAnnotationsSubnetKey = "mizar.com/subnet"
+		needUpdate := false
+
+		if len(obj.Annotations) == 0 {
+			obj.Annotations = map[string]string{
+				mizarAnnotationsVpcKey:    vpc,
+				mizarAnnotationsSubnetKey: subnet,
+			}
+
+			klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar is blank and vpc and subnet are being set!")
+			needUpdate = true
+		} else {
+			vpcName, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
+			subnetName, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
+
+			if !vpcNameOk && !subnetNameOk || vpcNameOk && vpcName != vpc && subnetNameOk && subnetName != subnet {
+				obj.Annotations[mizarAnnotationsVpcKey] = vpc
+				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
+				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar vpc and subnet are being set!")
+
+				needUpdate = true
+			} else if !vpcNameOk || vpcNameOk && vpcName != vpc {
+				obj.Annotations[mizarAnnotationsVpcKey] = vpc
+				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar vpc is being set!")
+
+				needUpdate = true
+			} else if !subnetNameOk || subnetNameOk && subnetName != subnet {
+				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
+				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar subnet is being set!")
+
+				needUpdate = true
+			} else {
+				klog.V(4).Infof("Mizar-Pod-controller: No action is needed - The annotation for mizar vpc and subnet is already set well!")
+			}
+
+		}
+		klog.V(4).Infof("Mizar-Pod-controller: obj[%s] : %s", mizarAnnotationsVpcKey, obj.Annotations[mizarAnnotationsVpcKey])
+		klog.V(4).Infof("Mizar-Pod-controller: obj[%s] : %s", mizarAnnotationsSubnetKey, obj.Annotations[mizarAnnotationsSubnetKey])
+
+		if needUpdate {
+			_, err := c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
+			if err != nil {
+				klog.Errorf("mizar-pod-controller: update pod's annotation to API server in error (%v).", err)
+				return err
+			}
+			klog.Infof("mizar-pod-controller: update pod's annotation to API server successfully")
+
 		}
 	}
 

@@ -1,0 +1,13 @@
+{
+   "apiVersion": "mizar.com/v1",
+   "kind": "Vpc",
+   "metadata": {
+      "name": "{{.Tenant}}-default-network"
+   },
+   "spec": {
+      "ip": "21.0.0.0",
+      "prefix": "16",
+      "dividers": 3,
+      "status": "Init"
+   }
+}
