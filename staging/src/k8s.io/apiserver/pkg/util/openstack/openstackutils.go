@@ -107,6 +107,8 @@ type ArktosRebootParams struct {
 	DelayInSeconds int `json:"delayInSeconds"`
 }
 
+// Reboot action support
+//
 type ArktosReboot struct {
 	ApiVersion   string             `json:"apiVersion"`
 	Kind         string             `json:"kind"`
@@ -114,6 +116,9 @@ type ArktosReboot struct {
 	RebootParams ArktosRebootParams `json:"rebootParams"`
 }
 
+
+// Snapshot action support
+//
 type ArktosSnapshotParams struct {
 	SnapshotName string `json:"snapshotName"`
 }
@@ -124,7 +129,7 @@ type ArktosSnapshot struct {
 	SnapshotParams ArktosSnapshotParams `json:"snapshotParams"`
 }
 
-// Openstack createImage actions match to the Arktos snapshot action
+// Openstack createImage action match to the Arktos snapshot action
 type OpenstackCreateImage struct {
 	Name        string
 	Metadata    MetadataType
@@ -144,6 +149,46 @@ func (o *OpenstackCreateImageResponse) GetObjectKind() schema.ObjectKind {
 }
 
 func (o *OpenstackCreateImageResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+
+// Restore action support
+//
+type ArktosRestoreParams struct {
+	SnapshotID string `json:"snapshotID"`
+}
+type ArktosRestore struct {
+	ApiVersion     string               `json:"apiVersion"`
+	Kind           string               `json:"kind"`
+	Operation      string               `json:"operation"`
+	RestoreParams ArktosRestoreParams `json:"restoreParams"`
+}
+
+// Openstack rebuild action match to the Arktos restore action
+// Openstack rebuild struct has much optional field which are not applicable to Arktos restore action
+// slim down to key info
+type OpenstackRebuild struct {
+    ImageRef string
+    Metadata MetadataType
+}
+
+type OpenstackRebuildRequest struct {
+	Restore OpenstackRebuild
+}
+
+// snapshot creation response in Openstack
+type OpenstackRebuildResponse struct {
+	ServerId string
+	ImageId  string
+	CreatedAt string
+}
+
+func (o *OpenstackRebuildResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackRebuildResponse) DeepCopyObject() runtime.Object {
 	return o
 }
 
@@ -187,6 +232,14 @@ func ConvertActionFromOpenstackRequest(body []byte) ([]byte, error) {
 		}
 		obj := ArktosSnapshot{"v1", "CustomAction", op, ArktosSnapshotParams{o.Snapshot.Name}}
 		return json.Marshal(obj)
+	case RESTORE:
+		o := OpenstackRebuildRequest{}
+		err := json.Unmarshal(body, &o)
+		if err != nil {
+			return nil, fmt.Errorf("invalid restore request. error %v", err)
+		}
+		obj := ArktosRestore{"v1", "CustomAction", op, ArktosRestoreParams{o.Restore.ImageRef}}
+		return json.Marshal(obj)
 	default:
 		return nil, fmt.Errorf("unsupported action: %s", op)
 	}
@@ -215,6 +268,11 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 
 	if strings.Contains(o.Message, SNAPSHOT) {
 		s := OpenstackCreateImageResponse{ImageId: o.Details.Name}
+		return &s
+	}
+
+	if strings.Contains(o.Message, RESTORE) {
+		s := OpenstackRebuildResponse{ImageId: o.Details.Name}
 		return &s
 	}
 
