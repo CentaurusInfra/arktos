@@ -317,7 +317,7 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 	if err == nil {
 		actionObj := runtimeObj.(*api.Action)
 		// TODO: post 130 release
-		//       current design for supportting openstack is to limit the changes at the REST layer, i.e. the handlers, request and response
+		//       current design for supporting openstack is to limit the changes at the REST layer, i.e. the handlers, request and response
 		//       if changing the storage layer is inevitable, consider to build the openstack action struct here directly.
 		name := actionObj.Name
 		if customAction.Operation == "snapshot" {
