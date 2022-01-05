@@ -316,6 +316,16 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 	runtimeObj, err := r.ActionStore.Create(ctx, actionSpec, nil, &metav1.CreateOptions{})
 	if err == nil {
 		actionObj := runtimeObj.(*api.Action)
+		// TODO: post 130 release
+		//       current design for supportting openstack is to limit the changes at the REST layer, i.e. the handlers, request and response
+		//       if changing the storage layer is inevitable, consider to build the openstack action struct here directly.
+		name := actionObj.Name
+		if customAction.Operation == "snapshot" {
+			name = customAction.SnapshotParams.SnapshotName
+		} else if customAction.Operation == "restore" {
+			name = customAction.RestoreParams.SnapshotID
+		}
+
 		out = &metav1.Status{
 			TypeMeta: metav1.TypeMeta{
 				APIVersion: "v1",
@@ -328,7 +338,7 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 			Status:  metav1.StatusSuccess,
 			Message: fmt.Sprintf("Created action '%s' for Pod '%s'", customAction.Operation, pod.Name),
 			Details: &metav1.StatusDetails{
-				Name: actionObj.Name,
+				Name: name,
 				UID:  actionObj.UID,
 			},
 		}
