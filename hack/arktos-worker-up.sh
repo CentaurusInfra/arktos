@@ -103,10 +103,27 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 
 else
 
-echo "IS_SCALE_OUT true"
-# generate kubeconfig fpr tenant partition
-write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_TENANT_SERVER}" "${API_PORT}" "tenant-server-kubelet0" "" "http"
-${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/tenant-server-kubelet0.kubeconfig"
+  echo "IS_SCALE_OUT true"
+  if  [[ -z "${API_TENANT_SERVER}" ]]; then
+    echo ERROR: Please set API_TENANT_SERVER. For example: API_TENANT_SERVER=192.168.0.2 or API_TENANT_SERVER=192.168.0.2,192.168.0.5
+    exit 1
+  else
+    KUBELET_TENANT_SERVER_KUBECONFIG_FLAG="--tenant-server-kubeconfig="
+    kubeconfig_filename="tenant-server-kubelet"
+
+    API_TENANT_SERVERS=(${API_TENANT_SERVER//,/ })
+    serverCount=${#API_TENANT_SERVERS[@]}
+    for (( pos=0; pos<${serverCount}; pos++ ));
+    do
+      # generate kubeconfig fpr tenant partitions
+      write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_TENANT_SERVERS[${pos}]}" "${API_PORT}" ${kubeconfig_filename} "" "http"
+      ${CONTROLPLANE_SUDO} mv "${CERT_DIR}/${kubeconfig_filename}.kubeconfig" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+      ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig"
+
+      KUBELET_TENANT_SERVER_KUBECONFIG_FLAG="${KUBELET_TENANT_SERVER_KUBECONFIG_FLAG}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
+    done
+    KUBELET_TENANT_SERVER_KUBECONFIG_FLAG=${KUBELET_TENANT_SERVER_KUBECONFIG_FLAG::-1}
+  fi
 
 sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --v="${LOG_LEVEL}" \
@@ -114,7 +131,7 @@ sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
 --hostname-override=${HOSTNAME_OVERRIDE} \
 --address='0.0.0.0' \
 --kubeconfig="${CERT_DIR}/kubelet.kubeconfig" \
---tenant-server-kubeconfig="${CERT_DIR}/tenant-server-kubelet0.kubeconfig" \
+${KUBELET_TENANT_SERVER_KUBECONFIG_FLAG} \
 --authorization-mode=Webhook \
 --authentication-token-webhook \
 --client-ca-file=${KUBELET_CLIENTCA} \
