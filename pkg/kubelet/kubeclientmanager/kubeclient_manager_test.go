@@ -37,7 +37,7 @@ func TestNewKubeClientManagerRunOnce(t *testing.T) {
 	}
 }
 
-func TestRegisterTenantSourceServer(t *testing.T) {
+func TestRegisterPodSourceServer(t *testing.T) {
 	testcases := []struct {
 		pod         *v1.Pod
 		source      string
@@ -124,7 +124,7 @@ func TestRegisterTenantSourceServer(t *testing.T) {
 
 	for i, test := range testcases {
 		newKubeClientManagerFunc()()
-		ClientManager.RegisterTenantSourceServer(test.source, test.pod)
+		ClientManager.RegisterPodSourceServer(test.source, test.pod)
 		if !reflect.DeepEqual(test.expectedMap, ClientManager.puid2api) {
 			t.Errorf("case %d failed: expected %v, got %v", i, test.expectedMap, ClientManager.puid2api)
 		}

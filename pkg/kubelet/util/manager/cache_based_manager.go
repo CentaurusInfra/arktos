@@ -38,8 +38,8 @@ import (
 // GetObjectTTLFunc defines a function to get value of TTL.
 type GetObjectTTLFunc func() (time.Duration, bool)
 
-// GetObjectFunc defines a function to get object with a given tenant, namespace and name.
-type GetObjectFunc func(string, string, string, int, metav1.GetOptions) (runtime.Object, error)
+// GetObjectFunc defines a function to get object with a given tenant, namespace and name, plus source id.
+type GetObjectFunc func(tenant, namespace, name string, originClientID int, opts metav1.GetOptions) (runtime.Object, error)
 
 type objectKey struct {
 	tenant         string

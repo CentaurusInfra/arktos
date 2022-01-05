@@ -2332,7 +2332,7 @@ func (kl *Kubelet) HandlePodRemoves(pods []*v1.Pod) {
 			klog.V(2).Infof("Failed to delete pod %q, err: %v", format.Pod(pod), err)
 		}
 		kl.probeManager.RemovePod(pod)
-		kubeclientmanager.ClientManager.UnregisterTenantSourceServer(pod)
+		kubeclientmanager.ClientManager.UnregisterPodSourceServer(pod)
 	}
 }
 

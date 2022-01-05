@@ -56,14 +56,14 @@ func newKubeClientManagerFunc() func() {
 	}
 }
 
-func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref *v1.Pod) {
+func (manager *KubeClientManager) RegisterPodSourceServer(source string, ref *v1.Pod) {
 	if len(ref.Tenant) == 0 || !strings.HasPrefix(source, kubetypes.ApiserverSource) {
-		klog.Warningf("unable to register tenant source : tenant='%s', source='%s'", ref.Tenant, source)
+		klog.Warningf("unable to register source: pod uid='%s', tenant='%s', source='%s', ", ref.UID, ref.Tenant, source)
 		return
 	}
 
 	if len(ref.UID) == 0 {
-		klog.Warningf("unable to register tenant source for pod with empty UID: tenant='%s', namespace='%s', name='%s', source='%s'", ref.Tenant, ref.Namespace, ref.Name, source)
+		klog.Warningf("unable to register source for pod with empty UID: tenant='%s', namespace='%s', name='%s', source='%s'", ref.Tenant, ref.Namespace, ref.Name, source)
 		return
 	}
 
@@ -85,12 +85,19 @@ func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref 
 	if _, ok := manager.puid2api[ref.UID]; !ok {
 		manager.puid2api[ref.UID] = clientId
 		klog.V(6).Infof("added %d to the map, map has %+v", clientId, manager.puid2api)
+	} else {
+		// todo: consider more stringent error handling
+		if clientId == manager.puid2api[ref.UID] {
+			klog.Warningf("pod uid=%s already registered in source map", ref.UID)
+		} else {
+			klog.Errorf("pod uid=%s source tracking conflicts: in source map %d, to set %d", ref.UID, manager.puid2api[ref.UID], clientId)
+		}
 	}
 }
 
-func (manager *KubeClientManager) UnregisterTenantSourceServer(ref *v1.Pod) {
+func (manager *KubeClientManager) UnregisterPodSourceServer(ref *v1.Pod) {
 	if len(ref.UID) == 0 {
-		klog.Warningf("unable to unregister tenant source for pod with empty UID: tenant='%s'", ref.Tenant)
+		klog.Warningf("unable to unregister source for pod with empty UID: tenant='%s'", ref.Tenant)
 		return
 	}
 

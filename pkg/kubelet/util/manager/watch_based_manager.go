@@ -42,8 +42,8 @@ import (
 	"k8s.io/apimachinery/pkg/watch"
 )
 
-type listObjectFunc func(string, string, int, metav1.ListOptions) (runtime.Object, error)
-type watchObjectFunc func(string, string, int, metav1.ListOptions) (watch.Interface, error)
+type listObjectFunc func(tenant string, namespace string, originClientID int, options metav1.ListOptions) (runtime.Object, error)
+type watchObjectFunc func(tenant string, namespace string, originClientID int, options metav1.ListOptions) (watch.Interface, error)
 type newObjectFunc func() runtime.Object
 
 // objectCacheItem is a single item stored in objectCache.

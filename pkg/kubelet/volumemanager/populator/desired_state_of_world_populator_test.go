@@ -84,7 +84,7 @@ func TestFindAndAddNewPods_FindAndRemoveDeletedPods(t *testing.T) {
 	pod := createPodWithVolume("dswp-test-pod", "dswp-test-volume-name", "file-bound", containers)
 
 	kubeclientmanager.NewKubeClientManager()
-	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
+	kubeclientmanager.ClientManager.RegisterPodSourceServer(kubetypes.ApiserverSource, pod)
 
 	fakePodManager.AddPod(pod)
 

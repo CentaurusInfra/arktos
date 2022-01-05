@@ -116,7 +116,6 @@ func (c *Configurer) getClusterDNS(pod *v1.Pod) ([]net.IP, error) {
 	if len(c.serviceListers) > 1 {
 		klog.V(4).Infof("Need locate which serviceLister is correct one in multi-servceListers")
 		// To get correct index of serviceLister based on Pod's tenant information
-		// todo: remove param of tenant after pod specific origin tracking impl
 		index = c.clientManager.PickClient(pod.UID)
 	} else {
 		// Only has one serviceLister

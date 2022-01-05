@@ -64,7 +64,7 @@ func TestGetMountedVolumesForPodAndGetVolumesInUse(t *testing.T) {
 	node, pod, pv, claim := createObjects()
 
 	kubeclientmanager.NewKubeClientManager()
-	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
+	kubeclientmanager.ClientManager.RegisterPodSourceServer(kubetypes.ApiserverSource, pod)
 
 	kubeClient := fake.NewSimpleClientset(node, pod, pv, claim)
 
