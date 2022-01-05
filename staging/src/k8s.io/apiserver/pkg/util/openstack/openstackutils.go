@@ -116,7 +116,6 @@ type ArktosReboot struct {
 	RebootParams ArktosRebootParams `json:"rebootParams"`
 }
 
-
 // Snapshot action support
 //
 type ArktosSnapshotParams struct {
@@ -131,8 +130,8 @@ type ArktosSnapshot struct {
 
 // Openstack createImage action match to the Arktos snapshot action
 type OpenstackCreateImage struct {
-	Name        string
-	Metadata    MetadataType
+	Name     string
+	Metadata MetadataType
 }
 
 type OpenstackCreateImageRequest struct {
@@ -152,16 +151,15 @@ func (o *OpenstackCreateImageResponse) DeepCopyObject() runtime.Object {
 	return o
 }
 
-
 // Restore action support
 //
 type ArktosRestoreParams struct {
 	SnapshotID string `json:"snapshotID"`
 }
 type ArktosRestore struct {
-	ApiVersion     string               `json:"apiVersion"`
-	Kind           string               `json:"kind"`
-	Operation      string               `json:"operation"`
+	ApiVersion    string              `json:"apiVersion"`
+	Kind          string              `json:"kind"`
+	Operation     string              `json:"operation"`
 	RestoreParams ArktosRestoreParams `json:"restoreParams"`
 }
 
@@ -169,8 +167,8 @@ type ArktosRestore struct {
 // Openstack rebuild struct has much optional field which are not applicable to Arktos restore action
 // slim down to key info
 type OpenstackRebuild struct {
-    ImageRef string
-    Metadata MetadataType
+	ImageRef string
+	Metadata MetadataType
 }
 
 type OpenstackRebuildRequest struct {
@@ -179,8 +177,8 @@ type OpenstackRebuildRequest struct {
 
 // snapshot creation response in Openstack
 type OpenstackRebuildResponse struct {
-	ServerId string
-	ImageId  string
+	ServerId  string
+	ImageId   string
 	CreatedAt string
 }
 
@@ -322,4 +320,3 @@ func GetNamespaceFromRequest(r *http.Request) string {
 func IsActionRequest(path string) bool {
 	return strings.HasSuffix(path, "action")
 }
-
