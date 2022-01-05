@@ -668,6 +668,53 @@ items:
     - update
     - watch
   - apiGroups:
+    - mizar.com
+    resources:
+    - vpcs
+    - subnets
+    verbs:
+    - get
+    - list
+    - update
+    - watch
+    - create
+    - patch
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - patch
+    - update
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:controller:mizar-pod-controller
+  rules:
+  - apiGroups:
+    - arktos.futurewei.com
+    resources:
+    - networks
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    verbs:
+    - get
+    - list
+    - update
+    - patch
+  - apiGroups:
     - ""
     resources:
     - events
