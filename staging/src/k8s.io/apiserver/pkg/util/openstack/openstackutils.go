@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"regexp"
 	"strings"
+	"time"
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -175,7 +176,7 @@ type OpenstackRebuildRequest struct {
 	Restore OpenstackRebuild
 }
 
-// snapshot creation response in Openstack
+// rebuild response in Openstack
 type OpenstackRebuildResponse struct {
 	ServerId  string
 	ImageId   string
@@ -270,7 +271,7 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 	}
 
 	if strings.Contains(o.Message, RESTORE) {
-		s := OpenstackRebuildResponse{ImageId: o.Details.Name}
+		s := OpenstackRebuildResponse{ImageId: o.Details.Name, CreatedAt: time.Now().String()}
 		return &s
 	}
 

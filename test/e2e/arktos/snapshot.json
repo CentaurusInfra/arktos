@@ -1,8 +1,0 @@
-{
-    "snapshot" : {
-        "name" : "foo-image",
-        "metadata": {
-            "meta_var": "meta_val"
-        }
-    }
-}
