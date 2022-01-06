@@ -140,7 +140,7 @@ func transformResponseObject(ctx context.Context, scope *RequestScope, trace *ut
 
 	// transform to Openstack response structure
 	if openstack.IsOpenstackRequest(req) {
-		klog.V(6).Infof("Transform to openstack response object. object: %s", obj)
+		klog.V(6).Infof("Transform to openstack response object. object: %v", obj)
 		if openstack.IsActionRequest(req.URL.Path) {
 			obj = openstack.ConvertActionToOpenstackResponse(obj)
 		} else {
