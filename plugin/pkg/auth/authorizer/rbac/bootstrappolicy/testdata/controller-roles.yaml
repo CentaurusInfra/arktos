@@ -671,6 +671,12 @@ items:
     - mizar.com
     resources:
     - vpcs
+    verbs:
+    - create
+    - update
+  - apiGroups:
+    - mizar.com
+    resources:
     - subnets
     verbs:
     - create
