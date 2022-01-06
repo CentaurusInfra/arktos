@@ -43,10 +43,10 @@ func init() {
 	initImagesCache()
 
 	fl := ListFalvors()
-	klog.Infof("debug: flavors: %v", fl)
+	klog.(V6).Infof("built-in flavors: %v", fl)
 
 	il := ListImages()
-	klog.Infof("debug: images: %v", il)
+	klog.(V6).Infof("built-in images: %v", il)
 }
 
 type Network struct {
