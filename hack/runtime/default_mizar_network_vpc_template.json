@@ -7,7 +7,7 @@
    "spec": {
       "ip": "21.0.0.0",
       "prefix": "16",
-      "dividers": 3,
+      "dividers": 1,
       "status": "Init"
    }
 }
