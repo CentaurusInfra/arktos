@@ -340,8 +340,7 @@ func GetCRDVpcOrSubnetSpec(defaultTemplatePath, vpcOrSubnetName, tenant string) 
 	}
 
 	// Create Template with template file
-	//t := template.Must(template.New(vpcOrSubnetName).Parse(jsonTmpl))
-	t, err := template.New(vpcOrSubnetName).Parse(tmpl)
+	t, err := template.New(vpcOrSubnetName).Parse(jsonTmpl)
 	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller - Create Template with template file in error: (%v)", err)
 		return nil, err
