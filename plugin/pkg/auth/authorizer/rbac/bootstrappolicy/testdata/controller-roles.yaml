@@ -698,10 +698,7 @@ items:
     resources:
     - pods
     verbs:
-    - get
-    - list
     - update
-    - patch
   - apiGroups:
     - ""
     resources:

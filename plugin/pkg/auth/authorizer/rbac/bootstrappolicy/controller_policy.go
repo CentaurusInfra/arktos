@@ -430,8 +430,8 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 		Rules: []rbacv1.PolicyRule{
 			// mizar pod controller needs to watch network objects of arktos.futurewei.com
 			rbacv1helpers.NewRule("get", "list", "watch").Groups("arktos.futurewei.com").Resources("networks").RuleOrDie(),
-			// mizar pod controller needs to watch and update pod objects to API server
-			rbacv1helpers.NewRule("get", "list", "update", "patch").Groups(legacyGroup).Resources("pods").RuleOrDie(),
+			// mizar pod controller needs to update pod objects to API server
+			rbacv1helpers.NewRule("update").Groups(legacyGroup).Resources("pods").RuleOrDie(),
 			eventsRule(),
 		},
 	})
