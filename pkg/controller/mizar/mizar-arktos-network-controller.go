@@ -285,7 +285,7 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 
 	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-	klog.Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
+	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 
 	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%s) - GVK version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
@@ -340,7 +340,12 @@ func GetCRDVpcOrSubnetSpec(defaultTemplatePath, vpcOrSubnetName, tenant string) 
 	}
 
 	// Create Template with template file
-	t := template.Must(template.New(vpcOrSubnetName).Parse(jsonTmpl))
+	//t := template.Must(template.New(vpcOrSubnetName).Parse(jsonTmpl))
+	t, err := template.New(vpcOrSubnetName).Parse(tmpl)
+	if err != nil {
+		klog.Errorf("Mizar-Arktos-Network-controller - Create Template with template file in error: (%v)", err)
+		return nil, err
+	}
 
 	// Create json file in bytes format
 	var bytesJson bytes.Buffer
