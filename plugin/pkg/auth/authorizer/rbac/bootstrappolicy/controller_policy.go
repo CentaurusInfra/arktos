@@ -421,7 +421,7 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 			rbacv1helpers.NewRule("get", "list", "watch", "update").Groups("arktos.futurewei.com").Resources("networks").RuleOrDie(),
 			// mizar arktos network controller needs to create CRD objects - vpc and subnet of mizar.com
 			rbacv1helpers.NewRule("create", "update").Groups("mizar.com").Resources("vpcs").RuleOrDie(),
-			//rbacv1helpers.NewRule("create", "update").Groups("mizar.com").Resources("subnets").RuleOrDie(),
+			rbacv1helpers.NewRule("create", "update").Groups("mizar.com").Resources("subnets").RuleOrDie(),
 			eventsRule(),
 		},
 	})

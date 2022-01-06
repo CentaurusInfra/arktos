@@ -675,6 +675,13 @@ items:
     - create
     - update
   - apiGroups:
+    - mizar.com
+    resources:
+    - subnets
+    verbs:
+    - create
+    - update
+  - apiGroups:
     - ""
     resources:
     - events
