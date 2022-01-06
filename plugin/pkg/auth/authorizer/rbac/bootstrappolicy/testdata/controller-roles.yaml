@@ -668,6 +668,13 @@ items:
     - update
     - watch
   - apiGroups:
+    - mizar.com
+    resources:
+    - vpcs
+    verbs:
+    - create
+    - update
+  - apiGroups:
     - ""
     resources:
     - events
