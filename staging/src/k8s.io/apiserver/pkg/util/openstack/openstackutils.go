@@ -21,9 +21,9 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
@@ -38,12 +38,21 @@ func init() {
 	}
 
 	POD_JSON_STRING_TEMPLATE = string(t)
+
+	initFlavorsCache()
+	initImagesCache()
+
+	fl := ListFalvors()
+	klog.Infof("debug: flavors: %v", fl)
+
+	il := ListImages()
+	klog.Infof("debug: images: %v", il)
 }
 
 type Network struct {
-	Uuid     string
-	Port     string
-	Fixed_ip string
+	Uuid     string `json:"uuid"`
+	Port     string `json:"port"`
+	Fixed_ip string `json:"fixed_ip"`
 }
 
 type MetadataType struct {
@@ -61,20 +70,21 @@ type LinkType struct {
 }
 
 type ServerType struct {
-	Name            string
-	ImageRef        string
-	Flavor          string
-	Min_count       string
-	Max_count       string
-	Networks        []Network
-	Security_groups []SecurityGroup
-	Key_name        string
-	Metadata        MetadataType
-	User_data       string
+	Name            string    `json:"name"`
+	ImageRef        string `json:"imageRef"`
+	Flavor          string `json:"flavorRef"`
+	Min_count       int `json:"min_count"`
+	Max_count       int `json:"max_count"`
+	Networks        []Network `json:"networks"`
+	Security_groups []SecurityGroup `json:"security_groups"`
+	Key_name        string `json:"key_name"`
+	Metadata        MetadataType `json:"metadata"`
+	User_data       string `json:"user_data"`
 }
+
 // VM creation request in Openstack
 type OpenstackRequest struct {
-	Server ServerType
+	Server ServerType `json:"server"`
 }
 
 // VM creation response in Openstack
@@ -109,10 +119,17 @@ func ConvertToOpenstackRequest(body []byte) ([]byte, error) {
 
 	klog.Infof("debug: request struct: %v", obj)
 
-	cpu, mem := GetRequestedResource(obj.Server.Flavor)
-	imageUrl := GetVmImageUrl(obj.Server.ImageRef)
+	flavor, err := GetFalvor(obj.Server.Flavor)
+	if err != nil {
+		return nil, err
+	}
 
-	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, imageUrl, obj.Server.Name, cpu, mem, cpu, mem)
+	image, err := GetImage(obj.Server.ImageRef)
+	if err != nil {
+		return nil, err
+	}
+
+	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	klog.Infof("debug: pod json: %s", podJson)
 	return []byte(podJson), nil
 }
@@ -131,18 +148,6 @@ func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 
 func IsOpenstackRequest(req *http.Request) bool {
 	return req.Header.Get("openstack") == "true"
-}
-
-// TODO: add config map to cache a few OS images to simulate Openstack image resitry
-func GetVmImageUrl(imageRef string) string {
-	return "download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img"
-}
-
-// get the requested resource, CPU, RAM, from the Openstack flavor of VM
-// TODO: add config map for most used Openstack flavors
-//       consider to use resource structure instead of returning individual resources
-func GetRequestedResource(flavor string) (int, int) {
-	return 1, 2
 }
 
 // TODO: Get the tenant for the request from the request Token
