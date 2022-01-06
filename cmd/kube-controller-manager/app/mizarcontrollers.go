@@ -186,7 +186,7 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	// Used to create mapping to find out GVR via GVK
 	discoveryClient, err := discovery.NewDiscoveryClientForConfig(netKubeconfigs)
 	if err != nil {
-		klog.Errorf("app mizarcontrollers when start Arktos Network Controller - create discovery Client in error: (%v)", err)
+		klog.Errorf("when app/mizarcontrollers attempt to tart Arktos Network Controller - create discovery Client in error: (%v)", err)
 		return nil, false, err
 	}
 
