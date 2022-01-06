@@ -140,14 +140,22 @@ func transformResponseObject(ctx context.Context, scope *RequestScope, trace *ut
 
 	// transform to Openstack response structure
 	if openstack.IsOpenstackRequest(req) {
-		obj = convertObjectToOpenstackResponse(obj)
+		klog.V(6).Infof("Transform to openstack response object. object: %v", obj)
+		if openstack.IsActionRequest(req.URL.Path) {
+			obj = openstack.ConvertActionToOpenstackResponse(obj)
+		} else {
+			obj = openstack.ConvertToOpenstackResponse(obj)
+		}
+
+		// Openstack action for reboot, start and stop
+		if obj == nil {
+			w.WriteHeader(statusCode)
+			w.Write(nil)
+			return
+		}
+
 	}
 	responsewriters.WriteObjectNegotiated(serializer, scope, kind.GroupVersion(), w, req, statusCode, obj)
-}
-
-func convertObjectToOpenstackResponse(obj runtime.Object) runtime.Object {
-	klog.V(6).Infof("Transform to openstack response object. object: %s", obj)
-	return openstack.ConvertToOpenstackResponse(obj)
 }
 
 // errNotAcceptable indicates Accept negotiation has failed

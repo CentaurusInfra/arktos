@@ -49,7 +49,9 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 
 	redirectUrl := fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
 
-	if req.Method == "GET" || req.Method == "DELETE" {
+	if openstack.IsActionRequest(req.URL.Path) {
+		redirectUrl += "/" + getVmFromPath(req.URL.Path) + "/action"
+	} else if req.Method == "GET" || req.Method == "DELETE" {
 		//Get the VM ID for redirect
 		redirectUrl += "/" + getVmFromPath(req.URL.Path)
 	}

@@ -1,0 +1,8 @@
+{
+    "snapshot" : {
+        "name" : "foobar",
+        "metadata": {
+            "meta_var": "meta_val"
+        }
+    }
+}
