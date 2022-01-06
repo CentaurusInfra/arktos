@@ -19,6 +19,7 @@ package openstack
 import "fmt"
 
 var flavors = map[string]FlavorType{}
+var flavorList = []*FlavorType{}
 
 // slim down version of the openstack flavor data structure
 type FlavorType struct {
@@ -30,6 +31,7 @@ type FlavorType struct {
 	EphemeralGb int
 }
 
+// for 130 release, only READ operation with static list of flavors
 func initFlavorsCache() {
 	flavors = make(map[string]FlavorType)
 	flavors["m1.tiny"] = FlavorType{1, "m1.tiny", 512, 1, 0, 0}
@@ -37,6 +39,12 @@ func initFlavorsCache() {
 	flavors["m1.medium"] = FlavorType{3, "m1.medium", 4096, 2, 0, 0}
 	flavors["m1.large"] = FlavorType{4, "m1.large", 8192, 4, 0, 0}
 	flavors["m1.xlarge"] = FlavorType{5, "m1.xlarge", 16384, 8, 0, 0}
+
+	flavorList = make([]*FlavorType, len(flavors))
+	i := 0
+	for _, v := range flavors {
+		flavorList[i] = &v
+	}
 }
 
 func GetFalvor(name string) (*FlavorType, error) {
@@ -48,11 +56,6 @@ func GetFalvor(name string) (*FlavorType, error) {
 }
 
 func ListFalvors() []*FlavorType {
-	flavorList := make([]*FlavorType, len(flavors))
-	i := 0
-	for _, v := range flavors {
-		flavorList[i] = &v
-	}
-
 	return flavorList
 }
+

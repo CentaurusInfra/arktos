@@ -19,6 +19,7 @@ package openstack
 import "fmt"
 
 var images = map[string]ImageType{}
+var imageList = []*ImageType{}
 
 // Arktos doesn't have its own image registry
 // this is simulate the read-only image service to get test images for VM
@@ -29,10 +30,17 @@ type ImageType struct {
 	ImageRef string
 }
 
+// for 130 release, only READ operation with static list of images
 func initImagesCache() {
 	images = make(map[string]ImageType)
 	images["ubuntu-xenial"] = ImageType{1, "ubuntu-xenial", "cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"}
 	images["cirros-0.5.1"] = ImageType{2, "cirros-0.5.1", "download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img"}
+
+	imageList = make([]*ImageType, len(flavors))
+	i := 0
+	for _, v := range images {
+		imageList[i] = &v
+	}
 }
 
 func GetImage(name string) (*ImageType, error) {
@@ -44,11 +52,6 @@ func GetImage(name string) (*ImageType, error) {
 }
 
 func ListImages() []*ImageType {
-	imageList := make([]*ImageType, len(flavors))
-	i := 0
-	for _, v := range images {
-		imageList[i] = &v
-	}
-
 	return imageList
 }
+
