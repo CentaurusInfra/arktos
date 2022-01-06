@@ -656,6 +656,73 @@ items:
     creationTimestamp: null
     labels:
       kubernetes.io/bootstrapping: rbac-defaults
+    name: system:controller:mizar-arktos-network-controller
+  rules:
+  - apiGroups:
+    - arktos.futurewei.com
+    resources:
+    - networks
+    verbs:
+    - get
+    - list
+    - update
+    - watch
+  - apiGroups:
+    - mizar.com
+    resources:
+    - vpcs
+    - subnets
+    verbs:
+    - create
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - patch
+    - update
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
+    name: system:controller:mizar-pod-controller
+  rules:
+  - apiGroups:
+    - arktos.futurewei.com
+    resources:
+    - networks
+    verbs:
+    - get
+    - list
+    - watch
+  - apiGroups:
+    - ""
+    resources:
+    - pods
+    verbs:
+    - update
+  - apiGroups:
+    - ""
+    resources:
+    - events
+    verbs:
+    - create
+    - patch
+    - update
+- apiVersion: rbac.authorization.k8s.io/v1
+  kind: ClusterRole
+  metadata:
+    annotations:
+      rbac.authorization.kubernetes.io/autoupdate: "true"
+    creationTimestamp: null
+    labels:
+      kubernetes.io/bootstrapping: rbac-defaults
     name: system:controller:mizar-service-controller
   rules:
   - apiGroups:
