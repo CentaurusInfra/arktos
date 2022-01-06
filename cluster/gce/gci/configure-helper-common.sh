@@ -124,6 +124,9 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    mkdir -p /var/lib/kube-proxy
+  fi
 }
 
 # Gets the total number of $(1) and $(2) type disks specified
@@ -3227,6 +3230,7 @@ function start-mizar-scaleup {
     sleep 5
   done
   echo "Installing Mizar for scale-up architecture..."
+  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
   wait-until-mizar-ready
 }

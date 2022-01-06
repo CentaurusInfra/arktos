@@ -93,6 +93,9 @@ function main() {
     create-master-etcd-apiserver-auth
     override-pv-recycler
     gke-master-start
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      create-kubeproxy-user-kubeconfig
+    fi
   else
     create-node-pki
     if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
@@ -132,6 +135,9 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      start-kube-proxy
+    fi
 
     if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" != "rp" ]]; then
       start-kube-scheduler

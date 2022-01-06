@@ -625,6 +625,9 @@ function load-docker-images {
     try-load-docker-image "${img_dir}/kube-controller-manager.tar"
     try-load-docker-image "${img_dir}/kube-scheduler.tar"
     try-load-docker-image "${img_dir}/workload-controller-manager.tar"
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      try-load-docker-image "${img_dir}/kube-proxy.tar"
+    fi
   else
     try-load-docker-image "${img_dir}/kube-proxy.tar"
   fi
@@ -663,6 +666,9 @@ function install-kube-binary-config {
       cp "${src_dir}/kube-scheduler.tar" "${dst_dir}"
       cp "${src_dir}/workload-controller-manager.tar" "${dst_dir}"
       cp -r "${KUBE_HOME}/kubernetes/addons" "${dst_dir}"
+      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+        cp "${src_dir}/kube-proxy.tar" "${dst_dir}"
+      fi
     fi
     load-docker-images
     mv "${src_dir}/kubelet" "${KUBE_BIN}"
@@ -920,10 +926,13 @@ download-kube-env
 source "${KUBE_HOME}/kube-env"
 
 # This hack is only needed because arktos does not support ubuntu 20.04 with latest kernels
-# When arktos adds support, remove this because mizar works with 20.04 that has 5.11.0 kernel
-# Currently, mizar is only deployed with ubuntu so we can skip that check for this hack.
+# When arktos adds support for 20.04 that has 5.11.0 kernel, we don't need to update kernel.
 if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-  ensure-mizar-kernel-and-ifname
+  OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
+  OS_VER=$(cat /etc/os-release | grep ^VERSION= | cut -d= -f2)
+  if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
+    ensure-mizar-kernel-and-ifname
+  fi
 fi
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
