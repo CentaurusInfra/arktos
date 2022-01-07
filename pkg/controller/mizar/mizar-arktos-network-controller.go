@@ -21,6 +21,8 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strings"
 	"text/template"
 	"time"
 
@@ -45,7 +47,7 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
-	"k8s.io/client-go/util/homedir"
+	//"k8s.io/client-go/util/homedir"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/klog"
 	"k8s.io/kubernetes/pkg/controller"
@@ -201,18 +203,28 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		vpc := network.Spec.VPCID
 		subnet := vpc + subnetSuffix
 
-		const homeSubPath = "/go/src/arktos/hack/runtime/"
-		templateDir := "/tmp/runtime/"
-
-		if home := homedir.HomeDir(); home != "" {
-			templateDir = home + homeSubPath
+		currentDir, err := os.Getwd()
+		if err != nil {
+			klog.Errorf("Mizar-Arktos-Network-controller: Get current directory (%s) in error (%v).", currentDir, err)
+			return err
 		}
+
+		const arktosName = "arktos"
+		if !strings.HasSuffix(currentDir, arktosName) {
+			klog.Errorf("Mizar-Arktos-Network-controller: Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
+			return err
+		}
+
+		const homeSubPath = "/hack/runtime/"
+		templateDir := currentDir + homeSubPath
+
 		vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
 		subnetDefaultTemplatePath := templateDir + "default_mizar_network_subnet_template.json"
 
+		klog.V(5).Infof("Mizar-Arktos-Network-controller - vpcPath: (%s) + subnetPath: (%s)", vpcDefaultTemplatePath, subnetDefaultTemplatePath)
 		klog.V(5).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
 
-		err := createVpcOrSubnetCRD(network.Tenant, vpc, vpcDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
+		err = createVpcOrSubnetCRD(network.Tenant, vpc, vpcDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 		if err != nil {
 			klog.Errorf("Mizar-Arktos-Network-controller: create actual VPC object (%s) in error (%v).", vpc, err)
 			return err
