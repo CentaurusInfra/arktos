@@ -38,7 +38,12 @@ import (
 )
 
 const (
-	controllerForMizarPod = "mizar_pod"
+	controllerForMizarPod     = "mizar_pod"
+	defaultNetworkName        = "default"
+	vpcSuffix                 = "-default-network"
+	subnetSuffix              = "-subnet"
+	mizarAnnotationsVpcKey    = "mizar.com/vpc"
+	mizarAnnotationsSubnetKey = "mizar.com/subnet"
 )
 
 // MizarPodController points to current controller
@@ -206,8 +211,6 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	//The annotations of vpc and subnet should not be added into pods of
 	//mizar-daemon and mizar-operator under tenant "system" and pods in namespace "kube-system"
 	if eventType == EventType_Update && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
-		const defaultNetworkName = "default"
-
 		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
 		if err != nil {
@@ -224,15 +227,11 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 		vpc := network.Spec.VPCID
 		if len(vpc) == 0 {
-			const vpcSuffix = "-default-network"
 			vpc = tenant + vpcSuffix
 		}
 
-		const subnetSuffix = "-subnet"
 		subnet := vpc + subnetSuffix
 
-		const mizarAnnotationsVpcKey = "mizar.com/vpc"
-		const mizarAnnotationsSubnetKey = "mizar.com/subnet"
 		needUpdate := false
 
 		if len(obj.Annotations) == 0 {

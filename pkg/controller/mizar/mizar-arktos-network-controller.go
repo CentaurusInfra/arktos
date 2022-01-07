@@ -55,7 +55,6 @@ import (
 
 const (
 	mizarNetworkType = "mizar"
-	subnetSuffix     = "-subnet"
 	arktosName       = "arktos"
 	homeSubPath      = "/hack/runtime/"
 )
