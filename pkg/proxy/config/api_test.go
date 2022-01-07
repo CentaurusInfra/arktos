@@ -32,6 +32,8 @@ import (
 	ktesting "k8s.io/client-go/testing"
 )
 
+const tpId = 0
+
 func TestNewServicesSourceApi_UpdatesAndMultipleServices(t *testing.T) {
 	service1v1 := &v1.Service{
 		ObjectMeta: metav1.ObjectMeta{Tenant: metav1.TenantSystem, Namespace: "testnamespace", Name: "s1"},
@@ -55,7 +57,7 @@ func TestNewServicesSourceApi_UpdatesAndMultipleServices(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	serviceConfig := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute)
+	serviceConfig := NewServiceConfig(sharedInformers.Core().V1().Services(), time.Minute, tpId)
 	serviceConfig.RegisterEventHandler(handler)
 	go sharedInformers.Start(stopCh)
 	go serviceConfig.Run(stopCh)
@@ -123,7 +125,7 @@ func TestNewEndpointsSourceApi_UpdatesAndMultipleEndpoints(t *testing.T) {
 
 	sharedInformers := informers.NewSharedInformerFactory(client, time.Minute)
 
-	endpointsConfig := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute)
+	endpointsConfig := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), time.Minute, tpId)
 	endpointsConfig.RegisterEventHandler(handler)
 	go sharedInformers.Start(stopCh)
 	go endpointsConfig.Run(stopCh)
@@ -151,7 +153,7 @@ func TestNewEndpointsSourceApi_UpdatesAndMultipleEndpoints(t *testing.T) {
 
 func newSvcHandler(t *testing.T, svcs []*v1.Service, done func()) ServiceHandler {
 	shm := &ServiceHandlerMock{
-		state: make(map[types.NamespacedName]*v1.Service),
+		state: make(map[types.NamespacednameWithTenantSource]*v1.Service),
 	}
 	shm.process = func(services []*v1.Service) {
 		defer done()
@@ -164,7 +166,7 @@ func newSvcHandler(t *testing.T, svcs []*v1.Service, done func()) ServiceHandler
 
 func newEpsHandler(t *testing.T, eps []*v1.Endpoints, done func()) EndpointsHandler {
 	ehm := &EndpointsHandlerMock{
-		state: make(map[types.NamespacedName]*v1.Endpoints),
+		state: make(map[types.NamespacednameWithTenantSource]*v1.Endpoints),
 	}
 	ehm.process = func(endpoints []*v1.Endpoints) {
 		defer done()
@@ -199,8 +201,8 @@ func TestInitialSync(t *testing.T) {
 	client := fake.NewSimpleClientset(svc1, svc2, eps2, eps1)
 	sharedInformers := informers.NewSharedInformerFactory(client, 0)
 
-	svcConfig := NewServiceConfig(sharedInformers.Core().V1().Services(), 0)
-	epsConfig := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), 0)
+	svcConfig := NewServiceConfig(sharedInformers.Core().V1().Services(), 0, tpId)
+	epsConfig := NewEndpointsConfig(sharedInformers.Core().V1().Endpoints(), 0, tpId)
 	svcHandler := newSvcHandler(t, []*v1.Service{svc2, svc1}, wg.Done)
 	svcConfig.RegisterEventHandler(svcHandler)
 	epsHandler := newEpsHandler(t, []*v1.Endpoints{eps2, eps1}, wg.Done)

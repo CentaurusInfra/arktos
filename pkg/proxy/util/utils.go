@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -117,7 +118,7 @@ func IsLocalIP(ip string) (bool, error) {
 }
 
 // ShouldSkipService checks if a given service should skip proxying
-func ShouldSkipService(svcName types.NamespacedName, service *v1.Service) bool {
+func ShouldSkipService(svcName types.NamespacednameWithTenantSource, service *v1.Service) bool {
 	// if ClusterIP is "None" or empty, skip proxying
 	if !helper.IsServiceIPSet(service) {
 		klog.V(3).Infof("Skipping service %s due to clusterIP = %q", svcName, service.Spec.ClusterIP)

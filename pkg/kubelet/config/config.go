@@ -262,8 +262,8 @@ func (s *podStorage) merge(source string, change interface{}) (adds, updates, de
 				ref.Annotations = make(map[string]string)
 			}
 
-			// Bookkeeping mapping between tenant and its origin apiserver
-			kubeclientmanager.ClientManager.RegisterTenantSourceServer(source, ref)
+			// Bookkeeping mapping between pod and its origin apiserver
+			kubeclientmanager.ClientManager.RegisterPodSourceServer(source, ref)
 
 			ref.Annotations[kubetypes.ConfigSourceAnnotationKey] = source
 			if existing, found := oldPods[ref.UID]; found {

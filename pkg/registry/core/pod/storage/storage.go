@@ -22,14 +22,13 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"regexp"
+	"strings"
 	"time"
-
-	"k8s.io/klog"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apiserver/pkg/registry/generic"
 	genericregistry "k8s.io/apiserver/pkg/registry/generic/registry"
 	"k8s.io/apiserver/pkg/registry/rest"
@@ -37,6 +36,7 @@ import (
 	storeerr "k8s.io/apiserver/pkg/storage/errors"
 	"k8s.io/apiserver/pkg/util/dryrun"
 	policyclient "k8s.io/client-go/kubernetes/typed/policy/v1beta1"
+	"k8s.io/klog"
 	podutil "k8s.io/kubernetes/pkg/api/pod"
 	api "k8s.io/kubernetes/pkg/apis/core"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -235,6 +235,10 @@ func (r *ActionREST) NamespaceScoped() bool {
 	return r.store.NamespaceScoped()
 }
 
+func (r *ActionREST) TenantScoped() bool {
+	return r.store.TenantScoped()
+}
+
 // New creates a new CustomAction resource
 func (r *ActionREST) New() runtime.Object {
 	return &api.CustomAction{}
@@ -283,20 +287,22 @@ func (r *ActionREST) Create(ctx context.Context, obj runtime.Object, createValid
 
 	klog.V(4).Infof("ActionREST Create customAction object:\n-------------\n%+v\n------------\n", customAction)
 
-	//TODO: Get rid of this hack, figure out how to get RequestInfo and Name as a struct from context
-	ctxtStr := fmt.Sprintf("%+v", ctx)
-	re := regexp.MustCompile("RequestInfo\\{(.*?)\\}")
-	match := re.FindStringSubmatch(ctxtStr)
-	if match == nil {
-		return nil, errors.NewBadRequest("RequestInfo not found in context")
-	}
-	rePod := regexp.MustCompile(`Name:"(.*?)"`)
-	matchPod := rePod.FindStringSubmatch(match[1])
-	if matchPod == nil {
-		return nil, errors.NewBadRequest("Pod name not found in context")
+	path := request.PathValue(ctx)
+	if path == "" {
+		return nil, fmt.Errorf("invalid URL path: URL path is empty")
 	}
 
-	podObj, getErr := r.store.Get(ctx, matchPod[1], &metav1.GetOptions{})
+	// path format to the action subresource: api/v1/tenants/{tenant}/namespaces/{namespace}/pods/{podName}/action
+	eles := strings.Split(path, "/pods/")
+	if len(eles) != 2 {
+		return nil, fmt.Errorf("invalid URL path format")
+	}
+	podName := strings.Split(eles[1], "/")[0]
+	if podName == "" {
+		return nil, fmt.Errorf("invalid pod name for specified action")
+	}
+
+	podObj, getErr := r.store.Get(ctx, podName, &metav1.GetOptions{})
 	if podObj == nil {
 		return nil, getErr
 	}

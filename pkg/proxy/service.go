@@ -174,7 +174,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 	return info
 }
 
-type makeServicePortFunc func(*v1.ServicePort, *v1.Service, *BaseServiceInfo) ServicePort
+type makeServicePortFunc func(*v1.ServicePort, *v1.Service, *BaseServiceInfo, int) ServicePort
 
 // serviceChange contains all changes to services that happened since proxy rules were synced.  For a single object,
 // changes are accumulated, i.e. previous is state from before applying the changes,
@@ -190,7 +190,7 @@ type ServiceChangeTracker struct {
 	// lock protects items.
 	lock sync.Mutex
 	// items maps a service to its serviceChange.
-	items map[types.NamespacedName]*serviceChange
+	items map[types.NamespacednameWithTenantSource]*serviceChange
 	// makeServiceInfo allows proxier to inject customized information when processing service.
 	makeServiceInfo makeServicePortFunc
 	// isIPv6Mode indicates if change tracker is under IPv6/IPv4 mode. Nil means not applicable.
@@ -201,7 +201,7 @@ type ServiceChangeTracker struct {
 // NewServiceChangeTracker initializes a ServiceChangeTracker
 func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, isIPv6Mode *bool, recorder record.EventRecorder) *ServiceChangeTracker {
 	return &ServiceChangeTracker{
-		items:           make(map[types.NamespacedName]*serviceChange),
+		items:           make(map[types.NamespacednameWithTenantSource]*serviceChange),
 		makeServiceInfo: makeServiceInfo,
 		isIPv6Mode:      isIPv6Mode,
 		recorder:        recorder,
@@ -216,7 +216,7 @@ func NewServiceChangeTracker(makeServiceInfo makeServicePortFunc, isIPv6Mode *bo
 //   - pass <oldService, service> as the <previous, current> pair.
 // Delete item
 //   - pass <service, nil> as the <previous, current> pair.
-func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
+func (sct *ServiceChangeTracker) Update(previous, current *v1.Service, tenantParitionId int) bool {
 	svc := current
 	if svc == nil {
 		svc = previous
@@ -226,7 +226,8 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
 		return false
 	}
 	metrics.ServiceChangesTotal.Inc()
-	namespacedName := types.NamespacedName{Tenant: svc.Tenant, Namespace: svc.Namespace, Name: svc.Name}
+	namespacedName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantParitionId, Tenant: svc.Tenant, Namespace: svc.Namespace, Name: svc.Name}
 
 	sct.lock.Lock()
 	defer sct.lock.Unlock()
@@ -234,10 +235,10 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
 	change, exists := sct.items[namespacedName]
 	if !exists {
 		change = &serviceChange{}
-		change.previous = sct.serviceToServiceMap(previous)
+		change.previous = sct.serviceToServiceMap(previous, tenantParitionId)
 		sct.items[namespacedName] = change
 	}
-	change.current = sct.serviceToServiceMap(current)
+	change.current = sct.serviceToServiceMap(current, tenantParitionId)
 	// if change.previous equal to change.current, it means no change
 	if reflect.DeepEqual(change.previous, change.current) {
 		delete(sct.items, namespacedName)
@@ -250,7 +251,7 @@ func (sct *ServiceChangeTracker) Update(previous, current *v1.Service) bool {
 type UpdateServiceMapResult struct {
 	// HCServiceNodePorts is a map of Service names to node port numbers which indicate the health of that Service on this Node.
 	// The value(uint16) of HCServices map is the service health check node port.
-	HCServiceNodePorts map[types.NamespacedName]uint16
+	HCServiceNodePorts map[types.NamespacednameWithTenantSource]uint16
 	// UDPStaleClusterIP holds stale (no longer assigned to a Service) Service IPs that had UDP ports.
 	// Callers can use this to abort timeout-waits or clear connection-tracking information.
 	UDPStaleClusterIP sets.String
@@ -263,10 +264,10 @@ func UpdateServiceMap(serviceMap ServiceMap, changes *ServiceChangeTracker) (res
 
 	// TODO: If this will appear to be computationally expensive, consider
 	// computing this incrementally similarly to serviceMap.
-	result.HCServiceNodePorts = make(map[types.NamespacedName]uint16)
+	result.HCServiceNodePorts = make(map[types.NamespacednameWithTenantSource]uint16)
 	for svcPortName, info := range serviceMap {
 		if info.HealthCheckNodePort() != 0 {
-			result.HCServiceNodePorts[svcPortName.NamespacedName] = uint16(info.HealthCheckNodePort())
+			result.HCServiceNodePorts[svcPortName.NamespacednameWithTenantSource] = uint16(info.HealthCheckNodePort())
 		}
 	}
 
@@ -279,11 +280,12 @@ type ServiceMap map[ServicePortName]ServicePort
 // serviceToServiceMap translates a single Service object to a ServiceMap.
 //
 // NOTE: service object should NOT be modified.
-func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service) ServiceMap {
+func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service, tenantParitionId int) ServiceMap {
 	if service == nil {
 		return nil
 	}
-	svcName := types.NamespacedName{Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
+	svcName := types.NamespacednameWithTenantSource{
+		TenantPartitionId: tenantParitionId, Tenant: service.Tenant, Namespace: service.Namespace, Name: service.Name}
 	if utilproxy.ShouldSkipService(svcName, service) {
 		return nil
 	}
@@ -300,10 +302,10 @@ func (sct *ServiceChangeTracker) serviceToServiceMap(service *v1.Service) Servic
 	serviceMap := make(ServiceMap)
 	for i := range service.Spec.Ports {
 		servicePort := &service.Spec.Ports[i]
-		svcPortName := ServicePortName{NamespacedName: svcName, Port: servicePort.Name}
+		svcPortName := ServicePortName{NamespacednameWithTenantSource: svcName, Port: servicePort.Name}
 		baseSvcInfo := sct.newBaseServiceInfo(servicePort, service)
 		if sct.makeServiceInfo != nil {
-			serviceMap[svcPortName] = sct.makeServiceInfo(servicePort, service, baseSvcInfo)
+			serviceMap[svcPortName] = sct.makeServiceInfo(servicePort, service, baseSvcInfo, tenantParitionId)
 		} else {
 			serviceMap[svcPortName] = baseSvcInfo
 		}
@@ -324,7 +326,7 @@ func (sm *ServiceMap) apply(changes *ServiceChangeTracker, UDPStaleClusterIP set
 		sm.unmerge(change.previous, UDPStaleClusterIP)
 	}
 	// clear changes after applying them to ServiceMap.
-	changes.items = make(map[types.NamespacedName]*serviceChange)
+	changes.items = make(map[types.NamespacednameWithTenantSource]*serviceChange)
 	metrics.ServiceChangesPending.Set(0)
 	return
 }

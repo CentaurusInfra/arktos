@@ -21,7 +21,7 @@ Different Daemonsets (of system tenant only) can reside on different Tenant Part
 
 At the specific tenant partition, DaemonSet controller populates daemon Pods for the specific DaemonSet, using the global view of Nodes; its scheduler schedules each daemon Pod to the proper Node subsequently.
 
-On the node, kubelet gets notification of daemon Pod's creation, then prepares environment for the Pod (specifically including identifying some services and their IP addresses), finally starts the pod in the prepared environment. The environment preparation includes fetching the specified API resources (like secret, configmap) as defined in Pod spec and provisioning in form of files/data in node's filesystem. In order to ensure API resources are fetched from the proper tenant partition, kubelet shall maintain the mapping of daemon Pod to tenant partition origin; whenever the needed resource of the daemon Pod is fetched, kubelet shall lookup the mapping and use that of the proper tenant partition.
+On the node, kubelet gets notification of daemon Pod's creation, then prepares environment for the Pod (specifically including identifying some services and their IP addresses), finally starts the pod in the prepared environment. The environment preparation includes fetching the specified API resources (like secret, configmap, service account token) as defined in Pod spec and provisioning in form of files/data in node's filesystem. In order to ensure API resources are fetched from the proper tenant partition, kubelet shall maintain the mapping of daemon Pod to tenant partition origin; whenever the needed resource of the daemon Pod is fetched, kubelet shall lookup the mapping and use that of the proper tenant partition.
 
 Though it is out of scope of DaemonSet design, the TP-origin of regular Pod warrants a brief discussion here. For system tenanted Pods - be daemon Pod or not - it shall keep track their origins when kubelet receives them, as there may be multiple TPs able to service system tenanted resources; for regular non-system tenant Pods, it is fine to derive its TP origin based on tenant name. The general design for system tenanted resource, which is beyond the scope of current DaemonSet design, will study this topic in more depth.
 
@@ -82,7 +82,7 @@ Below is the diagram of DaemonSet admission:
 
 
 #### Kubelet
-Kubelet shall be able to identify the API resources (configmap, secret, service; however PVC is not in scape yet) from the same tenant partition as the daemon Pod to be started, in environment preparing process.
+Kubelet shall be able to identify the API resources (configmap, secret, service account token and service; however PVC is not in scape yet) from the same tenant partition as the daemon Pod to be started, in environment preparing process.
 
 Below is the diagram of kubelet environment preparing process:
 <p align="center"> <img src="images/daemonset_OPD/daemonset-support-DS-creating-podStarting-envPreparing.jpg"> </p>
@@ -90,10 +90,11 @@ Below is the diagram of kubelet environment preparing process:
 There are following significant required functionalities for kubelet, at high level:
 1. Keeping track of daemon Pod's TP origin.
    <p/>One trivial way is maintaining a map in memory for daemon Pod by UUID to TP origin.
-   <p/>For regular tenanted Pods, either identifying TP by key of tenant name (the current implementation) or leveraging the origin tracking (new introduction of pod-UUID to TP) is fine. It is suggested to start with that regular tenanted Pods still use the simple TP-by-tenant-name mechanism. It can be revisited in later the general system tenanted resource management design.
+   <p/>Pods, be of system tenant or others, identifies the original TP by the origin tracking (new introduction of pod-UUID to TP).
 2. Retrieving supporting resources by TP origin.
    <p/>Secret and configmap resources each is managed via a local cached store being replenished by external API servers (TP's). Current store implementation simply identify TP by key of tenant name of the resource. To accomodate the DaemonSet design, the cache store should accept requests to get resource with specified TP origin; it should be able to keep system-tenanted secret or configmap without losing their TP origins; also it should use the resource-specific TP origin to replenish the staled resource instead of the simple tenant-name derived one.
    <p/>The specific detail the changes of the above-mentioned stores should be carefully considered before the kubelet module implementation.
+   <p/>Service account token resources will be managed by the token manager, which will take multiple TP clients and be able to identify the one suited for SA token retrieval for the specific pod.
 3. Keeping track of TP origin of service in Service lister, using services from proper TP when identifying services of the Pod.
 
 #### Kube-proxy
