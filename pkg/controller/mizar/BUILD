@@ -51,7 +51,6 @@ go_library(
         "//staging/src/k8s.io/client-go/restmapper:go_default_library",
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
         "//staging/src/k8s.io/client-go/tools/record:go_default_library",
-        "//staging/src/k8s.io/client-go/util/homedir:go_default_library",
         "//staging/src/k8s.io/client-go/util/workqueue:go_default_library",
         "//vendor/github.com/gogo/protobuf/proto:go_default_library",
         "//vendor/google.golang.org/grpc:go_default_library",
