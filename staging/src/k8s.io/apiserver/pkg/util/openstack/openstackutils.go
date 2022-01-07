@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -80,16 +81,16 @@ type LinkType struct {
 }
 
 type ServerType struct {
-	Name            string    `json:"name"`
-	ImageRef        string `json:"imageRef"`
-	Flavor          string `json:"flavorRef"`
-	Min_count       int `json:"min_count"`
-	Max_count       int `json:"max_count"`
-	Networks        []Network `json:"networks"`
+	Name            string          `json:"name"`
+	ImageRef        string          `json:"imageRef"`
+	Flavor          string          `json:"flavorRef"`
+	Min_count       int             `json:"min_count"`
+	Max_count       int             `json:"max_count"`
+	Networks        []Network       `json:"networks"`
 	Security_groups []SecurityGroup `json:"security_groups"`
-	Key_name        string `json:"key_name"`
-	Metadata        MetadataType `json:"metadata"`
-	User_data       string `json:"user_data"`
+	Key_name        string          `json:"key_name"`
+	Metadata        MetadataType    `json:"metadata"`
+	User_data       string          `json:"user_data"`
 }
 
 // VM creation request in Openstack
