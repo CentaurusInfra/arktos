@@ -807,7 +807,7 @@ func NewMainKubelet(kubeCfg *kubeletconfiginternal.KubeletConfiguration,
 		containerRefManager,
 		kubeDeps.Recorder)
 
-	tokenManager := token.NewManager(kubeDeps.KubeTPClients[0])
+	tokenManager := token.NewManager(kubeDeps.KubeTPClients)
 
 	// NewInitializedVolumePluginMgr intializes some storageErrors on the Kubelet runtimeState (in csi_plugin.go init)
 	// which affects node ready status. This function must be called before Kubelet is initialized so that the Node
@@ -1838,7 +1838,7 @@ func (kl *Kubelet) handlePodResourcesResize(pod *v1.Pod) {
 	kl.podResizeMutex.Lock()
 	defer kl.podResizeMutex.Unlock()
 	if fit, patchBytes := kl.canResizePod(pod); fit {
-		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.Tenant)
+		tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, pod.UID)
 		_, patchError := tenantPartitionClient.CoreV1().PodsWithMultiTenancy(pod.Namespace, pod.Tenant).Patch(pod.Name, types.StrategicMergePatchType, patchBytes)
 		if patchError != nil {
 			klog.Errorf("Failed to patch ResourcesAllocated values for pod %s: %+v\n", pod.Name, patchError)
@@ -2222,9 +2222,11 @@ func (kl *Kubelet) HandlePodActions(update kubetypes.PodUpdate) {
 				PodName:  action.Spec.PodName,
 				Error:    errStr,
 			}
-			tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, action.Tenant)
-			if _, err := tenantPartitionClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
-				klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
+			for _, targetPod := range update.Pods {
+				tenantPartitionClient := kubeclientmanager.ClientManager.GetTPClient(kl.kubeTPClients, targetPod.UID)
+				if _, err := tenantPartitionClient.CoreV1().ActionsWithMultiTenancy(action.Namespace, action.Tenant).UpdateStatus(action); err != nil {
+					klog.Errorf("Update Action status for %s failed. Error: %+v", action.Name, err)
+				}
 			}
 			continue
 		}
@@ -2330,6 +2332,7 @@ func (kl *Kubelet) HandlePodRemoves(pods []*v1.Pod) {
 			klog.V(2).Infof("Failed to delete pod %q, err: %v", format.Pod(pod), err)
 		}
 		kl.probeManager.RemovePod(pod)
+		kubeclientmanager.ClientManager.UnregisterPodSourceServer(pod)
 	}
 }
 

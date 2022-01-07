@@ -26,23 +26,22 @@ import (
 	"time"
 
 	v1 "k8s.io/api/core/v1"
-
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/sets"
-
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
+	"k8s.io/kubernetes/pkg/kubelet/kubeclientmanager"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func checkObject(t *testing.T, store *objectStore, tenant, ns, name string, shouldExist bool) {
-	_, err := store.Get(tenant, ns, name)
+	_, err := store.Get(tenant, ns, name, 0)
 	if shouldExist && err != nil {
 		t.Errorf("unexpected actions: %#v", err)
 	}
@@ -56,7 +55,7 @@ func noObjectTTL() (time.Duration, bool) {
 }
 
 func getSecret(fakeClient clientset.Interface) GetObjectFunc {
-	return func(tenant, namespace, name string, opts metav1.GetOptions) (runtime.Object, error) {
+	return func(tenant, namespace, name string, originClientID int, opts metav1.GetOptions) (runtime.Object, error) {
 		return fakeClient.CoreV1().SecretsWithMultiTenancy(namespace, tenant).Get(name, opts)
 	}
 }
@@ -95,23 +94,23 @@ func TestSecretStoreWithMultiTenancy(t *testing.T) {
 func testSecretStore(t *testing.T, tenant string) {
 	fakeClient := &fake.Clientset{}
 	store := newSecretStore(fakeClient, clock.RealClock{}, noObjectTTL, 0)
-	store.AddReference(tenant, "ns1", "name1")
-	store.AddReference(tenant, "ns2", "name2")
-	store.AddReference(tenant, "ns1", "name1")
-	store.AddReference(tenant, "ns1", "name1")
-	store.DeleteReference(tenant, "ns1", "name1")
-	store.DeleteReference(tenant, "ns2", "name2")
-	store.AddReference(tenant, "ns3", "name3")
+	store.AddReference(tenant, "ns1", "name1", 0)
+	store.AddReference(tenant, "ns2", "name2", 0)
+	store.AddReference(tenant, "ns1", "name1", 0)
+	store.AddReference(tenant, "ns1", "name1", 0)
+	store.DeleteReference(tenant, "ns1", "name1", 0)
+	store.DeleteReference(tenant, "ns2", "name2", 0)
+	store.AddReference(tenant, "ns3", "name3", 0)
 
 	// Adds don't issue Get requests.
 	actions := fakeClient.Actions()
 	assert.Equal(t, 0, len(actions), "unexpected actions: %#v", actions)
 	// Should issue Get request
-	store.Get(tenant, "ns1", "name1")
+	store.Get(tenant, "ns1", "name1", 0)
 	// Shouldn't issue Get request, as secret is not registered
-	store.Get(tenant, "ns2", "name2")
+	store.Get(tenant, "ns2", "name2", 0)
 	// Should issue Get request
-	store.Get(tenant, "ns3", "name3")
+	store.Get(tenant, "ns3", "name3", 0)
 
 	actions = fakeClient.Actions()
 	assert.Equal(t, 2, len(actions), "unexpected actions: %#v", actions)
@@ -137,13 +136,13 @@ func TestSecretStoreDeletingSecretWithMultiTenancy(t *testing.T) {
 func testSecretStoreDeletingSecret(t *testing.T, tenant string) {
 	fakeClient := &fake.Clientset{}
 	store := newSecretStore(fakeClient, clock.RealClock{}, noObjectTTL, 0)
-	store.AddReference(tenant, "ns", "name")
+	store.AddReference(tenant, "ns", "name", 0)
 
 	result := &v1.Secret{ObjectMeta: metav1.ObjectMeta{Tenant: tenant, Namespace: "ns", Name: "name", ResourceVersion: "10"}}
 	fakeClient.AddReactor("get", "secrets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, result, nil
 	})
-	secret, err := store.Get(tenant, "ns", "name")
+	secret, err := store.Get(tenant, "ns", "name", 0)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -154,7 +153,7 @@ func testSecretStoreDeletingSecret(t *testing.T, tenant string) {
 	fakeClient.PrependReactor("get", "secrets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, &v1.Secret{}, apierrors.NewNotFound(v1.Resource("secret"), "name")
 	})
-	secret, err = store.Get(tenant, "ns", "name")
+	secret, err = store.Get(tenant, "ns", "name", 0)
 	if err == nil || !apierrors.IsNotFound(err) {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -177,7 +176,7 @@ func testSecretStoreGetAlwaysRefresh(t *testing.T, tenant string) {
 	store := newSecretStore(fakeClient, fakeClock, noObjectTTL, 0)
 
 	for i := 0; i < 10; i++ {
-		store.AddReference(tenant, fmt.Sprintf("ns-%d", i), fmt.Sprintf("name-%d", i))
+		store.AddReference(tenant, fmt.Sprintf("ns-%d", i), fmt.Sprintf("name-%d", i), 0)
 	}
 	fakeClient.ClearActions()
 
@@ -185,7 +184,7 @@ func testSecretStoreGetAlwaysRefresh(t *testing.T, tenant string) {
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
 		go func(i int) {
-			store.Get(tenant, fmt.Sprintf("ns-%d", i%10), fmt.Sprintf("name-%d", i%10))
+			store.Get(tenant, fmt.Sprintf("ns-%d", i%10), fmt.Sprintf("name-%d", i%10), 0)
 			wg.Done()
 		}(i)
 	}
@@ -212,7 +211,7 @@ func testSecretStoreGetNeverRefresh(t *testing.T, tenant string) {
 	store := newSecretStore(fakeClient, fakeClock, noObjectTTL, time.Minute)
 
 	for i := 0; i < 10; i++ {
-		store.AddReference(tenant, fmt.Sprintf("ns-%d", i), fmt.Sprintf("name-%d", i))
+		store.AddReference(tenant, fmt.Sprintf("ns-%d", i), fmt.Sprintf("name-%d", i), 0)
 	}
 	fakeClient.ClearActions()
 
@@ -220,7 +219,7 @@ func testSecretStoreGetNeverRefresh(t *testing.T, tenant string) {
 	wg.Add(100)
 	for i := 0; i < 100; i++ {
 		go func(i int) {
-			store.Get(tenant, fmt.Sprintf("ns-%d", i%10), fmt.Sprintf("name-%d", i%10))
+			store.Get(tenant, fmt.Sprintf("ns-%d", i%10), fmt.Sprintf("name-%d", i%10), 0)
 			wg.Done()
 		}(i)
 	}
@@ -249,31 +248,31 @@ func testCustomTTL(t *testing.T, tenant string) {
 	fakeClock := clock.NewFakeClock(time.Time{})
 	store := newSecretStore(fakeClient, fakeClock, customTTL, time.Minute)
 
-	store.AddReference(tenant, "ns", "name")
-	store.Get(tenant, "ns", "name")
+	store.AddReference(tenant, "ns", "name", 0)
+	store.Get(tenant, "ns", "name", 0)
 	fakeClient.ClearActions()
 
 	// Set 0-ttl and see if that works.
 	ttl = time.Duration(0)
 	ttlExists = true
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions := fakeClient.Actions()
 	assert.Equal(t, 1, len(actions), "unexpected actions: %#v", actions)
 	fakeClient.ClearActions()
 
 	// Set 5-minute ttl and see if this works.
 	ttl = time.Duration(5) * time.Minute
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 0, len(actions), "unexpected actions: %#v", actions)
 	// Still no effect after 4 minutes.
 	fakeClock.Step(4 * time.Minute)
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 0, len(actions), "unexpected actions: %#v", actions)
 	// Now it should have an effect.
 	fakeClock.Step(time.Minute)
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 1, len(actions), "unexpected actions: %#v", actions)
 	fakeClient.ClearActions()
@@ -281,12 +280,12 @@ func testCustomTTL(t *testing.T, tenant string) {
 	// Now remove the custom ttl and see if that works.
 	ttlExists = false
 	fakeClock.Step(55 * time.Second)
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 0, len(actions), "unexpected actions: %#v", actions)
 	// Pass the minute and it should be triggered now.
 	fakeClock.Step(5 * time.Second)
-	store.Get(tenant, "ns", "name")
+	store.Get(tenant, "ns", "name", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 1, len(actions), "unexpected actions: %#v", actions)
 }
@@ -425,6 +424,7 @@ func TestCacheInvalidationWithMultiTenancy(t *testing.T) {
 }
 
 func testCacheInvalidation(t *testing.T, tenant string) {
+	kubeclientmanager.NewKubeClientManager()
 	fakeClient := &fake.Clientset{}
 	fakeClock := clock.NewFakeClock(time.Now())
 	store := newSecretStore(fakeClient, fakeClock, noObjectTTL, time.Minute)
@@ -440,9 +440,9 @@ func testCacheInvalidation(t *testing.T, tenant string) {
 	}
 	manager.RegisterPod(podWithSecrets(tenant, "ns1", "name1", s1))
 	// Fetch both secrets - this should triggger get operations.
-	store.Get(tenant, "ns1", "s1")
-	store.Get(tenant, "ns1", "s10")
-	store.Get(tenant, "ns1", "s2")
+	store.Get(tenant, "ns1", "s1", 0)
+	store.Get(tenant, "ns1", "s10", 0)
+	store.Get(tenant, "ns1", "s2", 0)
 	actions := fakeClient.Actions()
 	assert.Equal(t, 3, len(actions), "unexpected actions: %#v", actions)
 	fakeClient.ClearActions()
@@ -458,10 +458,10 @@ func testCacheInvalidation(t *testing.T, tenant string) {
 	}
 	manager.RegisterPod(podWithSecrets(tenant, "ns1", "name1", s2))
 	// All secrets should be invalidated - this should trigger get operations.
-	store.Get(tenant, "ns1", "s1")
-	store.Get(tenant, "ns1", "s2")
-	store.Get(tenant, "ns1", "s20")
-	store.Get(tenant, "ns1", "s3")
+	store.Get(tenant, "ns1", "s1", 0)
+	store.Get(tenant, "ns1", "s2", 0)
+	store.Get(tenant, "ns1", "s20", 0)
+	store.Get(tenant, "ns1", "s3", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 4, len(actions), "unexpected actions: %#v", actions)
 	fakeClient.ClearActions()
@@ -469,11 +469,11 @@ func testCacheInvalidation(t *testing.T, tenant string) {
 	// Create a new pod that is refencing the first three secrets - those should
 	// be invalidated.
 	manager.RegisterPod(podWithSecrets(tenant, "ns1", "name2", s1))
-	store.Get(tenant, "ns1", "s1")
-	store.Get(tenant, "ns1", "s10")
-	store.Get(tenant, "ns1", "s2")
-	store.Get(tenant, "ns1", "s20")
-	store.Get(tenant, "ns1", "s3")
+	store.Get(tenant, "ns1", "s1", 0)
+	store.Get(tenant, "ns1", "s10", 0)
+	store.Get(tenant, "ns1", "s2", 0)
+	store.Get(tenant, "ns1", "s20", 0)
+	store.Get(tenant, "ns1", "s3", 0)
 	actions = fakeClient.Actions()
 	assert.Equal(t, 3, len(actions), "unexpected actions: %#v", actions)
 	fakeClient.ClearActions()
@@ -500,7 +500,7 @@ func testRegisterIdempotence(t *testing.T, tenant string) {
 	refs := func(tenant, ns, name string) int {
 		store.lock.Lock()
 		defer store.lock.Unlock()
-		item, ok := store.items[objectKey{tenant, ns, name}]
+		item, ok := store.items[objectKey{tenant, ns, name, 0}]
 		if !ok {
 			return 0
 		}
@@ -595,7 +595,7 @@ func testCacheRefcounts(t *testing.T, tenant string) {
 	refs := func(tenant, ns, name string) int {
 		store.lock.Lock()
 		defer store.lock.Unlock()
-		item, ok := store.items[objectKey{tenant, ns, name}]
+		item, ok := store.items[objectKey{tenant, ns, name, 0}]
 		if !ok {
 			return 0
 		}

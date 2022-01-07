@@ -19,6 +19,7 @@ package secret
 
 import (
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 )
 
 // fakeManager implements Manager interface for testing purposes.
@@ -31,7 +32,7 @@ func NewFakeManager() Manager {
 	return &fakeManager{}
 }
 
-func (s *fakeManager) GetSecret(tenant, namespace, name string) (*v1.Secret, error) {
+func (s *fakeManager) GetSecret(tenant, namespace, name string, _ types.UID) (*v1.Secret, error) {
 	return nil, nil
 }
 

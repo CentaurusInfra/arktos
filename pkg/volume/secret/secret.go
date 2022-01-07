@@ -43,7 +43,7 @@ const (
 // secretPlugin implements the VolumePlugin interface.
 type secretPlugin struct {
 	host      volume.VolumeHost
-	getSecret func(tenant, namespace, name string) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
 }
 
 var _ volume.VolumePlugin = &secretPlugin{}
@@ -159,7 +159,7 @@ type secretVolumeMounter struct {
 	source    v1.SecretVolumeSource
 	pod       v1.Pod
 	opts      *volume.VolumeOptions
-	getSecret func(tenant, namespace, name string) (*v1.Secret, error)
+	getSecret func(tenant, namespace, name string, ownerPodUID types.UID) (*v1.Secret, error)
 }
 
 var _ volume.Mounter = &secretVolumeMounter{}
@@ -193,7 +193,7 @@ func (b *secretVolumeMounter) SetUpAt(dir string, mounterArgs volume.MounterArgs
 	}
 
 	optional := b.source.Optional != nil && *b.source.Optional
-	secret, err := b.getSecret(b.pod.Tenant, b.pod.Namespace, b.source.SecretName)
+	secret, err := b.getSecret(b.pod.Tenant, b.pod.Namespace, b.source.SecretName, b.pod.UID)
 	if err != nil {
 		if !(errors.IsNotFound(err) && optional) {
 			klog.Errorf("Couldn't get secret %v/%v/%v: %v", b.pod.Tenant, b.pod.Namespace, b.source.SecretName, err)
