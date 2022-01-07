@@ -55,6 +55,9 @@ import (
 
 const (
 	mizarNetworkType = "mizar"
+	subnetSuffix     = "-subnet"
+	arktosName       = "arktos"
+	homeSubPath      = "/hack/runtime/"
 )
 
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
@@ -199,7 +202,6 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 	key := eventKeyWithType.Key
 
 	if network.Spec.Type == mizarNetworkType && network.Status.Phase == v1.NetworkReady {
-		const subnetSuffix = "-subnet"
 		vpc := network.Spec.VPCID
 		subnet := vpc + subnetSuffix
 
@@ -209,13 +211,11 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 			return err
 		}
 
-		const arktosName = "arktos"
 		if !strings.HasSuffix(currentDir, arktosName) {
 			klog.Errorf("Mizar-Arktos-Network-controller: Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
 			return err
 		}
 
-		const homeSubPath = "/hack/runtime/"
 		templateDir := currentDir + homeSubPath
 
 		vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
