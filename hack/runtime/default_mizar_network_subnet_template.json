@@ -7,7 +7,7 @@
    "spec": {
       "ip": "21.0.21.0",
       "prefix": "24",
-      "bouncers": 3,
+      "bouncers": 1,
       "vpc": "{{.Tenant}}-default-network",
       "status": "Init"
    }
