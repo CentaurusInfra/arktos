@@ -19,11 +19,11 @@
       "resources":{
         "limits":{
           "cpu":"%d",
-          "memory":"%dGi"
+          "memory":"%dMi"
         },
         "requests":{
           "cpu":"%d",
-          "memory":"%dGi"
+          "memory":"%dMi"
         }
       }
     }
