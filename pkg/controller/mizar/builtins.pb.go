@@ -123,7 +123,7 @@ type BuiltinsPodMessage struct {
 	ArktosNetwork        string               `protobuf:"bytes,6,opt,name=arktos_network,json=arktosNetwork,proto3" json:"arktos_network,omitempty"`
 	Phase                string               `protobuf:"bytes,7,opt,name=phase,proto3" json:"phase,omitempty"`
 	Interfaces           []*InterfacesMessage `protobuf:"bytes,8,rep,name=interfaces,proto3" json:"interfaces,omitempty"`
-//	Annotations          map[string]string    `protobuf:"bytes,9,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	Annotations          map[string]string    `protobuf:"bytes,9,rep,name=annotations,proto3" json:"annotations,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -209,12 +209,12 @@ func (m *BuiltinsPodMessage) GetInterfaces() []*InterfacesMessage {
 	return nil
 }
 
-//func (m *BuiltinsPodMessage) GetAnnotations() map[string]string {
-//	if m != nil {
-//		return m.Annotations
-//	}
-//	return nil
-//}
+func (m *BuiltinsPodMessage) GetAnnotations() map[string]string {
+	if m != nil {
+		return m.Annotations
+	}
+	return nil
+}
 
 type BuiltinsServiceMessage struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
