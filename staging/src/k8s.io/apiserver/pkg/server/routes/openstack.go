@@ -58,7 +58,7 @@ func (o Openstack) genericFunc(target string, resp http.ResponseWriter, req *htt
 	klog.V(4).Infof("URL path: %s", path)
 
 	if req.Method != "GET" {
-		resp.WriteHeader(405) // method not allowed for the current release
+		resp.WriteHeader(http.StatusMethodNotAllowed) // only GET method for this release
 		return
 	}
 
@@ -95,7 +95,7 @@ func (o Openstack) genericFunc(target string, resp http.ResponseWriter, req *htt
 		f, err = getter(name)
 		if err != nil {
 			klog.Errorf("Invalid %s %s", target, name)
-			resp.WriteHeader(500)
+			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
 		body, err = json.Marshal(f)
@@ -103,10 +103,10 @@ func (o Openstack) genericFunc(target string, resp http.ResponseWriter, req *htt
 
 	if err != nil {
 		klog.Errorf("failed encoding %s, error %v", target, err)
-		resp.WriteHeader(500)
+		resp.WriteHeader(http.StatusInternalServerError)
 		return
 	}
-	resp.WriteHeader(200)
+	resp.WriteHeader(http.StatusOK)
 	resp.Write(body)
 }
 
