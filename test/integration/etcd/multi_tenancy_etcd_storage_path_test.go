@@ -53,6 +53,11 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 	}
 
 	etcdStorageData := GetEtcdStorageDataWithMultiTenancy()
+	// daemonset is not allowed in user tenant; exclude from test expectations
+	// todo: separate test data for system tenant case and for user tenant case
+	delete(etcdStorageData, gvr("extensions", "v1beta1", "daemonsets"))
+	delete(etcdStorageData, gvr("apps", "v1", "daemonsets"))
+	delete(etcdStorageData, gvr("apps", "v1beta2", "daemonsets"))
 
 	kindSeen := sets.NewString()
 	pathSeen := map[string][]schema.GroupVersionResource{}
@@ -69,6 +74,10 @@ func TestEtcdStoragePathWithMultiTenancy(t *testing.T) {
 			if kindWhiteList.Has(kind) {
 				kindSeen.Insert(kind)
 				t.Skip("whitelisted")
+			}
+
+			if kind == "DaemonSet" {
+				t.Skip("daemonset in user tenant is known not allowed")
 			}
 
 			etcdSeen[gvResource] = empty{}
