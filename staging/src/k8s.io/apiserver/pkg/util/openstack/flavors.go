@@ -43,7 +43,9 @@ func initFlavorsCache() {
 	flavorList = make([]*FlavorType, len(flavors))
 	i := 0
 	for _, v := range flavors {
-		flavorList[i] = &v
+		temp := v
+		flavorList[i] = &temp
+		i++
 	}
 }
 
