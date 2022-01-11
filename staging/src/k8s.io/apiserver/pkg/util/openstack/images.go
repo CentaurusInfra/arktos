@@ -36,10 +36,12 @@ func initImagesCache() {
 	images["ubuntu-xenial"] = ImageType{1, "ubuntu-xenial", "cloud-images.ubuntu.com/xenial/current/xenial-server-cloudimg-amd64-disk1.img"}
 	images["cirros-0.5.1"] = ImageType{2, "cirros-0.5.1", "download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img"}
 
-	imageList = make([]*ImageType, len(flavors))
+	imageList = make([]*ImageType, len(images))
 	i := 0
 	for _, v := range images {
-		imageList[i] = &v
+		temp := v
+		imageList[i] = &temp
+		i++
 	}
 }
 
