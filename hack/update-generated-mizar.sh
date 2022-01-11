@@ -20,6 +20,7 @@ set -o pipefail
 
 KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../" && pwd -P)"
 MIZAR="${KUBE_ROOT}/pkg/controller/mizar/"
+SERVICE_NAME="builtins"
 
 source "${KUBE_ROOT}/hack/lib/protoc-mizar.sh"
-kube::protoc::generate_proto "${MIZAR}"
+kube::protoc::generate_proto "${MIZAR}" "${SERVICE_NAME}"
