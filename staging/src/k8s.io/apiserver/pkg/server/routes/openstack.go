@@ -46,14 +46,14 @@ func getElementFromPath(path string) string {
 }
 
 func (o Openstack) imageHandler(resp http.ResponseWriter, req *http.Request) {
-	o.genericFunc(TARGET_IMAGES, resp, req)
+	o.genericOpenStackRequestHandler(TARGET_IMAGES, resp, req)
 }
 
 func (o Openstack) flavorHandler(resp http.ResponseWriter, req *http.Request) {
-	o.genericFunc(TARGET_FLAVORS, resp, req)
+	o.genericOpenStackRequestHandler(TARGET_FLAVORS, resp, req)
 }
 
-func (o Openstack) genericFunc(target string, resp http.ResponseWriter, req *http.Request) {
+func (o Openstack) genericOpenStackRequestHandler(target string, resp http.ResponseWriter, req *http.Request) {
 	path := req.URL.Path
 	klog.V(4).Infof("URL path: %s", path)
 
@@ -94,7 +94,7 @@ func (o Openstack) genericFunc(target string, resp http.ResponseWriter, req *htt
 		name := getElementFromPath(path)
 		f, err = getter(name)
 		if err != nil {
-			klog.Errorf("Invalid %s %s", target, name)
+			klog.Infof("Element %s-%s not found", target, name)
 			resp.WriteHeader(http.StatusNotFound)
 			return
 		}
