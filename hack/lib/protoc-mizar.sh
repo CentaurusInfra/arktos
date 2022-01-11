@@ -35,8 +35,9 @@ function kube::protoc::generate_proto() {
   kube::protoc::check_protoc
 
   local package=${1}
-  kube::protoc::protoc "${package}"
-  kube::protoc::format "${package}"
+  local service=${2}
+  kube::protoc::protoc "${package}" "${service}"
+  kube::protoc::format "${package}" "${service}"
 }
 
 # Checks that the current protoc version is at least version 3.0.0-beta1
@@ -57,25 +58,27 @@ function kube::protoc::check_protoc() {
 # $1: Full path to the directory where the builtins.proto file is
 function kube::protoc::protoc() {
   local package=${1}
+  local service=${2}
   gogopath=$(dirname "$(kube::util::find-binary "protoc-gen-gogo")")
 
   PATH="${gogopath}:${PATH}" protoc \
     --proto_path="${package}" \
     --proto_path="${KUBE_ROOT}/vendor" \
-    --gogo_out=plugins=grpc:"${package}" "${package}/builtins.proto"
+    --gogo_out=plugins=grpc:"${package}" "${package}/${service}.proto"
 }
 
 # Formats $1/builtins.pb.go, adds the boilerplate comments and run gofmt on it
 # $1: Full path to the directory where the builtins.proto file is
 function kube::protoc::format() {
   local package=${1}
+  local service=${2}
 
   # Update boilerplate for the generated file.
-  cat hack/boilerplate/boilerplate.generatego.txt "${package}/builtins.pb.go" > tmpfile && mv tmpfile "${package}/builtins.pb.go"
+  cat hack/boilerplate/boilerplate.generatego.txt "${package}/${service}.pb.go" > tmpfile && mv tmpfile "${package}/${service}.pb.go"
 
   # Run gofmt to clean up the generated code.
   kube::golang::verify_go_version
-  gofmt -l -s -w "${package}/builtins.pb.go"
+  gofmt -l -s -w "${package}/${service}.pb.go"
 }
 
 # Compares the contents of $1 and $2
