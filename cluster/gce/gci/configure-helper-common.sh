@@ -2347,7 +2347,7 @@ function start-kube-controller-manager {
     RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset,csrsigning,csrapproving,csrcleaner"
   fi
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
