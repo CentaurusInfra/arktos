@@ -210,7 +210,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 	//The annotations of vpc and subnet should not be added into pods of
 	//mizar-daemon and mizar-operator under tenant "system" and pods in namespace "kube-system"
-	if eventType == EventType_Update && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
+	if (eventType == EventType_Update || eventType == EventType_Create) && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
 		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
 		if err != nil {
