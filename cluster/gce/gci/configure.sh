@@ -381,8 +381,13 @@ function install-cni-network {
   mkdir -p /etc/cni/net.d
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
     mizar)
-    setup-mizar-cni-conf
-    install-mizar-cni-bin
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      setup-mizar-cni-conf
+      install-mizar-cni-bin
+    else
+      download-mizar-cni-yaml
+      install-mizar-cni-bin #TODO: Remove this hack that works around arktos CNI dir hardcoding
+    fi
     ;;
     flannel)
     setup-flannel-cni-conf
@@ -411,13 +416,14 @@ function install-mizar-cni-bin {
     wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
   fi
   chmod +x ${KUBE_BIN}/mizarcni
-  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
-    mkdir -p ${KUBE_HOME}/mizar
-    if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
-      wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
-    else
-      wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
-    fi
+}
+
+function download-mizar-cni-yaml {
+  mkdir -p ${KUBE_HOME}/mizar
+  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+    wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  else
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
   fi
 }
 
