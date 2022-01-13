@@ -46,6 +46,9 @@ const (
 
 	// pathKey is the context key for the requestURL
 	pathKey
+
+	// openStackBatch is the context key for openstack batch request
+	openstackBatch
 )
 
 // NewContext instantiates a base context object for request flows.
@@ -147,4 +150,20 @@ func WithAuditEvent(parent context.Context, ev *audit.Event) context.Context {
 func AuditEventFrom(ctx context.Context) *audit.Event {
 	ev, _ := ctx.Value(auditKey).(*audit.Event)
 	return ev
+}
+
+func WithOpenstackBatch(parent context.Context, isOpenstackBatch bool) context.Context {
+	return WithValue(parent, openstackBatch, isOpenstackBatch)
+}
+
+// PathFrom returns the value of the path key on the ctx
+func OpenstackBatchFrom(ctx context.Context) (bool, bool) {
+	isOpenstackBatch, ok := ctx.Value(openstackBatch).(bool)
+	return isOpenstackBatch, ok
+}
+
+// PathValue returns the value of the path key on the ctx, or the empty string if none
+func OpenstackBatchValue(ctx context.Context) bool {
+	isOpenstackBatch, _ := OpenstackBatchFrom(ctx)
+	return isOpenstackBatch
 }

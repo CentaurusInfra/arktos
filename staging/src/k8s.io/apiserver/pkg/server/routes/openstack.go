@@ -19,7 +19,9 @@ package routes
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/util/json"
@@ -29,10 +31,11 @@ import (
 )
 
 const (
-	POD_URL_TEMPLATE       = "/api/v1/tenants/%s/namespaces/%s/pods"
-	OPENSTACK_SERVERS_PATH = "/servers"
-	OPENSTACK_FLAVORS_PATH = "/flavors"
-	OPENSTACK_IMAGES_PATH  = "/images"
+	REPLICASETS_URL_TEMPLATE = "/apis/apps/v1/tenants/%s/namespaces/%s/replicasets"
+	POD_URL_TEMPLATE         = "/api/v1/tenants/%s/namespaces/%s/pods"
+	OPENSTACK_SERVERS_PATH   = "/servers"
+	OPENSTACK_FLAVORS_PATH   = "/flavors"
+	OPENSTACK_IMAGES_PATH    = "/images"
 
 	TARGET_FLAVORS = "flavors"
 	TARGET_IMAGES  = "images"
@@ -43,6 +46,55 @@ type Openstack struct{}
 // the url path is /servers/{vmId}
 func getElementFromPath(path string) string {
 	return strings.Split(path, "/")[2]
+}
+
+func isGetDetail(path string) bool {
+	pattern := "/servers/[a-z]+"
+	match, _ := regexp.MatchString(pattern, path)
+
+	return match
+}
+
+func peekBatchRequest(req *http.Request) (bool, error) {
+	obj := openstack.OpenstackServerRequest{}
+
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		klog.Errorf("error read request body. error %v", err)
+		return false, err
+	}
+
+	err = json.Unmarshal(body, &obj)
+
+	if err != nil {
+		klog.Errorf("error unmarshal request. error %v", err)
+		return false, err
+	}
+
+	return openstack.IsBatchCreationRequest(obj), nil
+}
+
+// For now, supported filter is the reservation_id when VMs were created in batch
+func peekListFilters(req *http.Request) (string, error) {
+	obj := openstack.OpenstackServerListRequest{}
+	body, err := ioutil.ReadAll(req.Body)
+	if err != nil {
+		klog.Errorf("error read request body. error %v", err)
+		return "", err
+	}
+
+	if body == nil || len(body) == 0 {
+		return "", nil
+	}
+
+	err = json.Unmarshal(body, &obj)
+
+	if err != nil {
+		klog.Errorf("error unmarshal request. error %v", err)
+		return "", err
+	}
+
+	return obj.Reservation_Id, nil
 }
 
 func (o Openstack) imageHandler(resp http.ResponseWriter, req *http.Request) {
@@ -110,21 +162,73 @@ func (o Openstack) genericOpenStackRequestHandler(target string, resp http.Respo
 	resp.Write(body)
 }
 
+func (o Openstack) actionHandler(resp http.ResponseWriter, req *http.Request, redirectUrlPath string) {
+	klog.V(3).Infof("Redirect request to %s", redirectUrlPath)
+	http.Redirect(resp, req, redirectUrlPath, http.StatusTemporaryRedirect)
+}
+
 // TODO: redirect could introduce perf impact to the server, so setup the routes for Openstack requests
 //       in the API installation flow at the api server init state will be a better solution
+// GET a server : GET - /servers/serverName
+// LIST severs:   GET - /servers
+// LIST servers:  GET - /servers, with label selector in query
+// CREATE a server: POST - /servers
+// CREATE batch servers: POST  - /servers
+// DELETE a server : DELETE - /servers/serverName
+// note that NO batch delete, in openstack
+// TODO: for post 130, we should support cases to delete all in batch if this is a valid use case
+
+// actions:
+// CREATE an action: POST - /servers/serverName/action
+//
 func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 	klog.V(4).Infof("handle /servers. URL path: %s", req.URL.Path)
 
 	tenant := openstack.GetTenantFromRequest(req)
 	namespace := openstack.GetNamespaceFromRequest(req)
 
-	redirectUrl := fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
+	redirectUrl := ""
 
 	if openstack.IsActionRequest(req.URL.Path) {
+		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
 		redirectUrl += "/" + getElementFromPath(req.URL.Path) + "/action"
-	} else if req.Method == "GET" || req.Method == "DELETE" {
-		//Get the VM ID for redirect
+		o.actionHandler(resp, req, redirectUrl)
+		return
+	}
+
+	switch req.Method {
+	case http.MethodGet:
+		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
+		if isGetDetail(req.URL.Path) {
+			redirectUrl += "/" + getElementFromPath(req.URL.Path)
+		}
+
+		rev_id, err := peekListFilters(req)
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if rev_id != "" {
+			redirectUrl += fmt.Sprintf("?labelSelector=ln=%s", rev_id)
+		}
+
+	case http.MethodDelete:
+		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
 		redirectUrl += "/" + getElementFromPath(req.URL.Path)
+	case http.MethodPost:
+		batchRequest, err := peekBatchRequest(req)
+		if err != nil {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if batchRequest {
+			redirectUrl = fmt.Sprintf(REPLICASETS_URL_TEMPLATE, tenant, namespace)
+		} else {
+			redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
+		}
+	default:
+		resp.WriteHeader(http.StatusMethodNotAllowed)
+		return
 	}
 
 	klog.V(3).Infof("Redirect request to %s", redirectUrl)

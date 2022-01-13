@@ -108,17 +108,20 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 			}
 
 			var obj []byte
+			batchRequest := false
 
 			if openstack.IsActionRequest(req.URL.Path) {
 				obj, err = openstack.ConvertActionFromOpenstackRequest(body)
 			} else {
-				obj, err = openstack.ConvertToOpenstackRequest(body)
+				batchRequest, obj, err = openstack.ConvertServerFromOpenstackRequest(body)
 			}
 
 			if err != nil {
 				scope.err(err, w, req)
 				return
 			}
+
+			ctx = request.WithOpenstackBatch(ctx, batchRequest)
 
 			klog.V(6).Infof("Converted object: %v", string(obj))
 			req.Body = ioutil.NopCloser(bytes.NewBuffer(obj))
