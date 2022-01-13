@@ -143,7 +143,7 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
-    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" != "rp" ]]; then
+    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
       start-cluster-networking   ####start cluster networking if not using default kubenet
     fi
 
