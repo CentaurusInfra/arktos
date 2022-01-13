@@ -15,7 +15,6 @@ package mizar
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
@@ -208,9 +207,10 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 	}
 
-	//The annotations of vpc and subnet should not be added into pods of
-	//mizar-daemon and mizar-operator under tenant "system" and pods in namespace "kube-system"
-	if eventType == EventType_Update && namespace != "kube-system" && !strings.HasPrefix(obj.Name, "mizar-daemon") && !strings.HasPrefix(obj.Name, "mizar-operator") {
+	//The annotations of vpc and subnet should not be added into pods
+	//which use host networking
+	if eventType == EventType_Update && obj.Status.HostIP != obj.Status.PodIP {
+		klog.V(4).Infof("Mizar-Pod-controller: get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
 		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
 		if err != nil {
