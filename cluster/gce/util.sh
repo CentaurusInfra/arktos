@@ -3375,7 +3375,7 @@ function restart_tp_scheduler_and_controller {
     gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
 
     echo "DBG: restart controller manager on TP master: ${tp_vm}"
-    cmd="sudo pkill -f kube-controller-manager"
+    cmd="sudo cp /home/kubernetes/kube-manifests/kubernetes/gci-trusty/kube-controller-manager.manifest_2 /etc/kubernetes/manifests/kube-controller-manager.manifest"
     gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
   done
 }

@@ -2343,15 +2343,6 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
-  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
-    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset,csrsigning,csrapproving,csrcleaner"
-  fi
-  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
-  fi
-  if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
-    params+=" --controllers=${RUN_CONTROLLERS}"
-  fi
 
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
@@ -2360,6 +2351,21 @@ function start-kube-controller-manager {
 
   if [[ -n "${KUBE_CONTROLLER_EXTRA_ARGS:-}" ]]; then
     params+=" $KUBE_CONTROLLER_EXTRA_ARGS"
+  fi
+
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
+    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset,csrsigning,csrapproving,csrcleaner"
+    params+=" --controllers=${RUN_CONTROLLERS}"
+  elif [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    # during kube-up scale-out cluster booting up, there are 2 lifetimes of KCM at TP:
+    # the first incarnation is to bootstrap with smaller capacity so that subsequent RP able to start;
+    # the second one is to restart with full features, particularly includes daemonset, deployment, replicaset
+    RUN_CONTROLLERS_1="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset,-deployment,-replicaset"
+    RUN_CONTROLLERS_2="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl"
+    params_1="${params} --controllers=${RUN_CONTROLLERS_1}"
+    params_2="${params} --controllers=${RUN_CONTROLLERS_2}"
+  elif [[ -n "${RUN_CONTROLLERS:-}" ]]; then
+    params+=" --controllers=${RUN_CONTROLLERS}"
   fi
 
   local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/kube-controller-manager.docker_tag)
@@ -2372,7 +2378,6 @@ function start-kube-controller-manager {
   # Evaluate variables.
   sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${DOCKER_REGISTRY}@g" "${src_file}"
   sed -i -e "s@{{pillar\['kube-controller-manager_docker_tag'\]}}@${kube_rc_docker_tag}@g" "${src_file}"
-  sed -i -e "s@{{params}}@${params}@g" "${src_file}"
   sed -i -e "s@{{container_env}}@${container_env}@g" ${src_file}
   sed -i -e "s@{{cloud_config_mount}}@${CLOUD_CONFIG_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{cloud_config_volume}}@${CLOUD_CONFIG_VOLUME}@g" "${src_file}"
@@ -2384,7 +2389,17 @@ function start-kube-controller-manager {
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
 
-  cp "${src_file}" /etc/kubernetes/manifests
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    echo "[CHW] next incarntion file would be ${src_file}_2"
+    echo "[CHW] init incarntion file would be ${src_file}"
+    cp "${src_file}" "${src_file}_2"
+    sed -i -e "s@{{params}}@${params_2}@g" "${src_file}_2"
+    sed -i -e "s@{{params}}@${params_1}@g" "${src_file}"
+    cp "${src_file}" /etc/kubernetes/manifests/kube-controller-manager.manifest
+  else
+    sed -i -e "s@{{params}}@${params}@g" "${src_file}"
+    cp "${src_file}" /etc/kubernetes/manifests
+  fi
 }
 
 # Starts workload controller manager.
