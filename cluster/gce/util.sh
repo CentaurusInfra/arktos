@@ -876,6 +876,10 @@ function construct-linux-kubelet-flags {
       flags+=" --kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
       flags+=" --register-schedulable=false"
     fi
+    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
+      echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+      flags+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
+    fi
   else # For nodes
     flags+=" ${NODE_KUBELET_TEST_ARGS:-}"
     flags+=" --bootstrap-kubeconfig=/var/lib/kubelet/bootstrap-kubeconfig"
