@@ -209,7 +209,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 	//The annotations of vpc and subnet should not be added into pods
 	//which use host networking
-	if eventType == EventType_Update && !obj.Spec.HostNetwork {
+	if eventType == EventType_Create && !obj.Spec.HostNetwork {
 		klog.V(4).Infof("Mizar-Pod-controller: get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
 		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
