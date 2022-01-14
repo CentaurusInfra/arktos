@@ -275,7 +275,7 @@ func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, d
 		klog.Errorf("Mizar-Arktos-Network-controller - at (%s) get JSON spec for CRD (%s) in error: (%v)", defaultTemplatePath, vpcOrSubnetName, err)
 	}
 
-	err = createVpcOrSubnetObject([]byte(manifestData), tenant, vpcOrSubnetName, discoveryClient, dynamicClient)
+	err = createVpcOrSubnetObject([]byte(manifestData), vpcOrSubnetName, discoveryClient, dynamicClient)
 	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller - create CRD (%s) in error: (%v)", vpcOrSubnetName, err)
 		return err
@@ -285,7 +285,7 @@ func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, d
 	return nil
 }
 
-func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+func createVpcOrSubnetObject(data []byte, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
 	unstructuredObj := &unstructured.Unstructured{}
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
@@ -318,8 +318,8 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 			unstructuredObj.SetNamespace("default")
 		}
 		namespace := unstructuredObj.GetNamespace()
-		klog.V(4).Infof("Mizar-Arktos-Network-controller - mapping resource: (%v) - set tenant: (%s) - namespace : (%s)", mapping.Resource, tenant, namespace)
-		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant)
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - mapping resource: (%v) - set tenant: (%s) - namespace : (%s)", mapping.Resource, "system", namespace)
+		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, "system")
 
 	} else {
 		// for cluster-wide resources
