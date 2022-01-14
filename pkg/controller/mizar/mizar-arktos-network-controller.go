@@ -234,7 +234,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 			klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object (%s) in error (%v).", subnet, err)
 			return err
 		}
-		 
+
 		klog.V(4).Infof("Mizar-Arktos-Network-controller - complete to create VPC: (%s) and Subnet: (%s) successfully", vpc, subnet)
 	}
 
