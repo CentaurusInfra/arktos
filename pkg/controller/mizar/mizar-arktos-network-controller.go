@@ -220,8 +220,8 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		vpcDefaultTemplatePath := templateDir + "default_mizar_network_vpc_template.json"
 		subnetDefaultTemplatePath := templateDir + "default_mizar_network_subnet_template.json"
 
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - vpcPath: (%s) + subnetPath: (%s)", vpcDefaultTemplatePath, subnetDefaultTemplatePath)
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - vpcPath: (%s) + subnetPath: (%s)", vpcDefaultTemplatePath, subnetDefaultTemplatePath)
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - start to create VPC: (%s) and Subnet: (%s)", vpc, subnet)
 
 		err = createVpcOrSubnetCRD(network.Tenant, vpc, vpcDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 		if err != nil {
@@ -234,6 +234,8 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 			klog.Errorf("Mizar-Arktos-Network-controller: create actual Subnet object (%s) in error (%v).", subnet, err)
 			return err
 		}
+
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - complete to create VPC: (%s) and Subnet: (%s) successfully", vpc, subnet)
 	}
 
 	if network.Spec.Type != mizarNetworkType || network.Status.Phase == v1.NetworkReady {
@@ -273,8 +275,9 @@ func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, d
 		klog.Errorf("Mizar-Arktos-Network-controller - at (%s) get JSON spec for CRD (%s) in error: (%v)", defaultTemplatePath, vpcOrSubnetName, err)
 	}
 
-	err = createVpcOrSubnetObject([]byte(manifestData), tenant, vpcOrSubnetName, discoveryClient, dynamicClient)
+	err = createVpcOrSubnetObject([]byte(manifestData), vpcOrSubnetName, discoveryClient, dynamicClient)
 	if err != nil {
+		klog.Errorf("Mizar-Arktos-Network-controller - create CRD (%s) in error: (%v)", vpcOrSubnetName, err)
 		return err
 	}
 	klog.V(3).Infof("Mizar-Arktos-Network-controller - create CRD: (%s) successfully", vpcOrSubnetName)
@@ -282,7 +285,7 @@ func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, d
 	return nil
 }
 
-func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+func createVpcOrSubnetObject(data []byte, vpcOrSubnetName string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
 	unstructuredObj := &unstructured.Unstructured{}
 	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 
@@ -292,20 +295,20 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 		klog.Errorf("Mizar-Arktos-Network-controller: getting GVK in error (%v).", err)
 		return err
 	}
-	klog.V(5).Infof("Mizar-Arktos-Network-controller - get Name : (%s) and GVK: (%s)", unstructuredObj.GetName(), gvk.String())
+	klog.V(4).Infof("Mizar-Arktos-Network-controller - get Name : (%s) and GVK: (%s)", unstructuredObj.GetName(), gvk.String())
 
 	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
+	klog.V(4).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 
-	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%s) - GVK version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
+	klog.V(4).Infof("Mizar-Arktos-Network-controller - Name: %s - GVK group kind : (%s) - GVK version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
 	if err != nil {
 		klog.Errorf("Mizar-Arktos-Network-controller: get mapping between GVK and GVR in error (%v).", err)
 		return err
 	}
 
-	klog.V(5).Infof("Mizar-Arktos-Network-controller - Name: %s - get mapping scope name: (%s) - meta RESTScopeNameNamespace: (%s)", unstructuredObj.GetName(), mapping.Scope.Name(), meta.RESTScopeNameNamespace)
+	klog.V(4).Infof("Mizar-Arktos-Network-controller - Name: %s - get mapping scope name: (%s) - meta RESTScopeNameNamespace: (%s)", unstructuredObj.GetName(), mapping.Scope.Name(), meta.RESTScopeNameNamespace)
 
 	// Create dynamic client resource
 	var dynamicClientResource dynamic.ResourceInterface
@@ -315,8 +318,8 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 			unstructuredObj.SetNamespace("default")
 		}
 		namespace := unstructuredObj.GetNamespace()
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - mapping resource: (%v) - set tenant: (%s) - namespace : (%s)", mapping.Resource, tenant, namespace)
-		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, tenant)
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - mapping resource: (%v) - set tenant: (%s) - namespace : (%s)", mapping.Resource, "system", namespace)
+		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, "system")
 
 	} else {
 		// for cluster-wide resources
@@ -327,9 +330,9 @@ func createVpcOrSubnetObject(data []byte, tenant, vpcOrSubnetName string, discov
 	actualObject, err := dynamicClientResource.Create(unstructuredObj, metav1.CreateOptions{})
 
 	if err == nil {
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's name : (%s)", actualObject.GetName())
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's GVK : (%v)", actualObject.GroupVersionKind())
-		klog.V(5).Infof("Mizar-Arktos-Network-controller - get actual object's objectKind : (%v)", actualObject.GetObjectKind())
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - get actual object's name : (%s)", actualObject.GetName())
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - get actual object's GVK : (%v)", actualObject.GroupVersionKind())
+		klog.V(4).Infof("Mizar-Arktos-Network-controller - get actual object's objectKind : (%v)", actualObject.GetObjectKind())
 	} else {
 		klog.Errorf("Mizar-Arktos-Network-controller - create actual object's name: (%s) in error (%v).", unstructuredObj.GetName(), err)
 	}
