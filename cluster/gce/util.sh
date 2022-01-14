@@ -2681,6 +2681,11 @@ function kube-up() {
         create-node-port
       done
       restart_tp_scheduler_and_controller
+
+      echo "DBG: defining CRD networks.arktos.futurewei.com at all TPs"
+      for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
+        "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="cluster/kubeconfig.tp-${num}" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
+      done
     else
       export ARKTOS_SCALEOUT_SERVER_TYPE=""
       create-master
