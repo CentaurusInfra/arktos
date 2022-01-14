@@ -147,7 +147,6 @@ if [[ "${CONTAINER_RUNTIME}" == "docker" ]]; then
 elif [[ "${CONTAINER_RUNTIME}" == "containerd" ]]; then
   export CONTAINER_RUNTIME_ENDPOINT=${KUBE_CONTAINER_RUNTIME_ENDPOINT:-unix:///run/containerd/containerd.sock}
   export CONTAINER_RUNTIME_NAME=${KUBE_CONTAINER_RUNTIME_NAME:-containerd}
-  #export LOG_DUMP_SYSTEMD_SERVICES=${LOG_DUMP_SYSTEMD_SERVICES:-containerd}
   export LOAD_IMAGE_COMMAND=${KUBE_LOAD_IMAGE_COMMAND:-ctr -n=k8s.io images import}
   KUBELET_TEST_ARGS="${KUBELET_TEST_ARGS} --runtime-cgroups=/system.slice/containerd.service"
 fi
