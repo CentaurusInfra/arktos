@@ -229,59 +229,59 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		if len(vpc) == 0 {
 			vpc = tenant + vpcSuffix
 		}
-
 		subnet := vpc + subnetSuffix
 
 		needUpdate := false
-
 		if len(obj.Annotations) == 0 {
 			obj.Annotations = map[string]string{
 				mizarAnnotationsVpcKey:    vpc,
 				mizarAnnotationsSubnetKey: subnet,
 			}
+			klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar is blank and vpc and subnet are being set when (%v)!", eventType)
 
-			klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar is blank and vpc and subnet are being set!")
 			needUpdate = true
 		} else {
 			vpcName, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
 			subnetName, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
 
-			if !vpcNameOk && !subnetNameOk || vpcNameOk && vpcName != vpc && subnetNameOk && subnetName != subnet {
+			klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - vpc name (%s)/ correct vpc name(%s) - subnet name (%s)/correct subnet name(%s) when (%v)", obj.Name, vpcName, vpc, subnetName, subnet, eventType)
+
+			if !vpcNameOk && !subnetNameOk || (!subnetNameOk && vpcName != vpc) || (!vpcNameOk && subnetName != subnet) || (vpcName != vpc && subnetName != subnet) {
 				obj.Annotations[mizarAnnotationsVpcKey] = vpc
 				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
-				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar vpc and subnet are being set!")
+				klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - The annotation for mizar vpc and subnet are being set when (%v)!", obj.Name, eventType)
 
 				needUpdate = true
-			} else if !vpcNameOk || vpcNameOk && vpcName != vpc {
+			} else if !vpcNameOk || vpcName != vpc {
 				obj.Annotations[mizarAnnotationsVpcKey] = vpc
-				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar vpc is being set!")
+				klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - The annotation for mizar vpc is being set when (%v)!", obj.Name, eventType)
 
 				needUpdate = true
-			} else if !subnetNameOk || subnetNameOk && subnetName != subnet {
+			} else if !subnetNameOk || subnetName != subnet {
 				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
-				klog.V(4).Infof("Mizar-Pod-controller: The annotation for mizar subnet is being set!")
+				klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - The annotation for mizar subnet is being set when (%v)!", obj.Name, eventType)
 
 				needUpdate = true
 			} else {
-				klog.V(4).Infof("Mizar-Pod-controller: No action is needed - The annotation for mizar vpc and subnet is already set well!")
+				klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - No action is needed - The annotation for mizar vpc and subnet is already set well when (%v)!", obj.Name, eventType)
 			}
 
 		}
-		klog.V(4).Infof("Mizar-Pod-controller: obj[%s] : %s", mizarAnnotationsVpcKey, obj.Annotations[mizarAnnotationsVpcKey])
-		klog.V(4).Infof("Mizar-Pod-controller: obj[%s] : %s", mizarAnnotationsSubnetKey, obj.Annotations[mizarAnnotationsSubnetKey])
+		klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - obj[%s] : %s when (%v)", obj.Name, mizarAnnotationsVpcKey, obj.Annotations[mizarAnnotationsVpcKey], eventType)
+		klog.V(4).Infof("Mizar-Pod-controller: Pod name (%s) - obj[%s] : %s when (%v)", obj.Name, mizarAnnotationsSubnetKey, obj.Annotations[mizarAnnotationsSubnetKey], eventType)
 
 		if needUpdate {
 			_, err := c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 			if err != nil {
-				klog.Errorf("mizar-pod-controller: update pod's annotation to API server in error (%v).", err)
+				klog.Errorf("mizar-pod-controller: Pod name (%s) - update pod's annotation to API server in error (%v) when (%v).", obj.Name, err, eventType)
 				return err
 			}
-			klog.Infof("mizar-pod-controller: update pod's annotation to API server successfully")
+			klog.Infof("mizar-pod-controller: Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
 
 		}
 	}
 
-	klog.V(4).Infof("Handling %v %s/%s/%s for event %v", controllerForMizarPod, tenant, namespace, name, eventType)
+	klog.V(4).Infof("mizar-pod-controller: Handling %v %s/%s/%s for event %v", controllerForMizarPod, tenant, namespace, name, eventType)
 
 	switch eventType {
 	case EventType_Create:
