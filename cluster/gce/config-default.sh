@@ -96,6 +96,7 @@ NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet d
 if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
   NETWORK_PROVIDER_VERSION="dev"
   NETWORK_POLICY_PROVIDER="mizar"
+  CNI_BIN_DIR="/opt/cni/bin"
   # Mizar currently needs ubuntu due to python dependencies
   KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
   KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
@@ -381,6 +382,7 @@ NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS="${NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS:-}"
 
 CNI_VERSION="${CNI_VERSION:-}"
 CNI_SHA1="${CNI_SHA1:-}"
+CNI_BIN_DIR="${CNI_BIN_DIR:-/home/kubernetes/bin}"
 
 # Optional: Create autoscaler for cluster's nodes.
 ENABLE_CLUSTER_AUTOSCALER="${KUBE_ENABLE_CLUSTER_AUTOSCALER:-false}"

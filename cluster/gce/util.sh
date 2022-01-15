@@ -906,7 +906,7 @@ function construct-linux-kubelet-flags {
     flags+=" --register-schedulable=false"
   fi
   if [[ -n "${NETWORK_PROVIDER:-}" || -n "${NETWORK_POLICY_PROVIDER:-}" ]]; then
-    flags+=" --cni-bin-dir=/home/kubernetes/bin"
+    flags+=" --cni-bin-dir=${CNI_BIN_DIR}"
     if [[ "${NETWORK_POLICY_PROVIDER:-}" == "calico" || "${ENABLE_NETD:-}" == "true" ]]; then
       # Calico uses CNI always.
       # Note that network policy won't work for master node.
@@ -1296,6 +1296,7 @@ NODE_PROBLEM_DETECTOR_RELEASE_PATH: $(yaml-quote ${NODE_PROBLEM_DETECTOR_RELEASE
 NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS: $(yaml-quote ${NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS:-})
 CNI_VERSION: $(yaml-quote ${CNI_VERSION:-})
 CNI_SHA1: $(yaml-quote ${CNI_SHA1:-})
+CNI_BIN_DIR: $(yaml-quote ${CNI_BIN_DIR:-/home/kubernetes/bin})
 ENABLE_NODE_LOGGING: $(yaml-quote ${ENABLE_NODE_LOGGING:-false})
 LOGGING_DESTINATION: $(yaml-quote ${LOGGING_DESTINATION:-})
 ELASTICSEARCH_LOGGING_REPLICAS: $(yaml-quote ${ELASTICSEARCH_LOGGING_REPLICAS:-})

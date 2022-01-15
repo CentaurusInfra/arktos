@@ -167,6 +167,13 @@ function main() {
       fi
     fi
   fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
+    until [ -f "/opt/cni/bin/mizarcni" ]; do
+      sleep 5
+    done
+    cp -f "/opt/cni/bin/mizarcni" "/home/kubernetes/bin/"
+  fi
   reset-motd
   prepare-mounter-rootfs
   if [[ "${KUBE_GCI_VERSION}" == "cos"* ]]; then
