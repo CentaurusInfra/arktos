@@ -154,6 +154,8 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		Labels:        labels,
 		ArktosNetwork: network,
 		Phase:         string(pod.Status.Phase),
+		Vpc:           string(pod.Annotations[mizarAnnotationsVpcKey]),
+		Subnet:        string(pod.Annotations[mizarAnnotationsSubnetKey]),
 	}
 }
 
