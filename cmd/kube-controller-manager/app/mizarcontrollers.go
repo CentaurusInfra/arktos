@@ -23,7 +23,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
+	//"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
@@ -118,7 +118,7 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string, grpcAdapto
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	go func() {
 		podController := controllers.NewMizarPodController(
@@ -155,7 +155,7 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string, grpcAd
 
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
@@ -186,7 +186,7 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	// Used to create CRDs - VPC or Subnet of tenant
 	dynamicClient := dynamic.NewForConfigOrDie(netKubeconfigs)
