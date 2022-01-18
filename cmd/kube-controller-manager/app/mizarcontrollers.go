@@ -153,6 +153,8 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string, grpcAd
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
+	//TO DO: all mizar controllers here should share one informerFactory
+	//       other than every mizar controller starts one informerFactory
 	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
 
 	go controllers.NewMizarServiceController(
