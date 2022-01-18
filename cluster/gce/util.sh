@@ -2684,7 +2684,9 @@ function kube-up() {
       done
       restart_tp_scheduler_and_controller
 
-      if [[ "${PROVISION_MODE:-}" == "kube-up" ]]; then
+      # start-kubemark.sh sets KUBEMARK_PREFIX default to 'kubemark'
+      # we use this env var to tell whether it is for kube-up or kubemark cluster
+      if [[ "${KUBEMARK_PREFIX:-}" == "" ]]; then
         echo "DBG: defining CRD networks.arktos.futurewei.com at all TPs, in kube-up process"
         for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
           "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="cluster/kubeconfig.tp-${num}" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"

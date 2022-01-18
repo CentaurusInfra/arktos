@@ -25,8 +25,6 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
-export PROVISION_MODE="kube-up"
-
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 
 if [ -f "${KUBE_ROOT}/cluster/env.sh" ]; then
