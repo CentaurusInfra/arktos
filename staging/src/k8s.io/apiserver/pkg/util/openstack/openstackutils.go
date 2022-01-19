@@ -17,7 +17,6 @@ limitations under the License.
 package openstack
 
 import (
-	"context"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -26,13 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/kubernetes/pkg/apis/apps"
-	"k8s.io/apiserver/pkg/endpoints/request"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -108,10 +106,10 @@ type ServerType struct {
 // Return_Reservation_Id indicates response behavior, true to return the reservationID ( replicset name in Arktos )
 // So that the client can list the servers associated with this replicaset
 type OpenstackServerRequest struct {
-	Server ServerType `json:"server"`
-	Min_count       int             `json:"min_count"`
-	Max_count       int             `json:"max_count"`
-	Return_Reservation_Id  bool          `json:"return_reservation_id"`
+	Server                ServerType `json:"server"`
+	Min_count             int        `json:"min_count"`
+	Max_count             int        `json:"max_count"`
+	Return_Reservation_Id bool       `json:"return_reservation_id"`
 }
 
 // VM creation response in Openstack
@@ -130,8 +128,9 @@ func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
 }
 
 type OpenstackServerListRequest struct {
-	Reservation_Id              string `json:"reservation_id"`
+	Reservation_Id string `json:"reservation_id"`
 }
+
 // VM list response
 type OpenstackServerListResponse struct {
 	Servers []OpenstackResponse
@@ -147,7 +146,7 @@ func (o *OpenstackServerListResponse) DeepCopyObject() runtime.Object {
 
 // VM Batch creation response in Openstack
 type OpenstackBatchResponse struct {
-	Reservation_Id              string `json:"reservation_id"`
+	Reservation_Id string `json:"reservation_id"`
 }
 
 func (o *OpenstackBatchResponse) GetObjectKind() schema.ObjectKind {
@@ -248,38 +247,36 @@ func (o *OpenstackRebuildResponse) DeepCopyObject() runtime.Object {
 // Convert Openstack request to kubernetes pod request body
 // Revisit this for dynamically generate the json request
 // TODO: post the initial support, consider push down this logic to the create handler to support other media types than Json
-func ConvertServerFromOpenstackRequest(body []byte) (bool, []byte, error) {
+func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 
-	batchRequest := false
 	obj := OpenstackServerRequest{}
 
 	err := json.Unmarshal(body, &obj)
 
 	if err != nil {
 		klog.Errorf("error unmarshal request. error %v", err)
-		return batchRequest, nil, err
+		return nil, err
 	}
 
 	flavor, err := GetFalvor(obj.Server.Flavor)
 	if err != nil {
-		return batchRequest, nil, err
+		return nil, err
 	}
 
 	image, err := GetImage(obj.Server.ImageRef)
 	if err != nil {
-		return batchRequest, nil, err
+		return nil, err
 	}
 
 	var ret string
 
 	if IsBatchCreationRequest(obj) {
-		batchRequest = true
 		replicas := obj.Min_count
 		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	} else {
 		ret = fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	}
-	return batchRequest, []byte(ret), nil
+	return []byte(ret), nil
 }
 
 // Convert the action request to Arktos action request body
@@ -347,19 +344,16 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 }
 
 // Convert kubernetes pod response to Openstack response body
-func ConvertToOpenstackResponse(ctx context.Context, obj runtime.Object) runtime.Object {
-	if request.OpenstackBatchValue(ctx) {
-	    rs := obj.(*apps.ReplicaSet)
-	    osObj := &OpenstackBatchResponse{}
-	    osObj.Reservation_Id = rs.Name
-	    return osObj
-	}
-
+func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 	typeStr := reflect.TypeOf(obj).String()
-
 	klog.Infof("debug: return type: %s", typeStr)
 
 	switch typeStr {
+	case "*apps.ReplicaSet":
+		rs := obj.(*apps.ReplicaSet)
+		osObj := &OpenstackBatchResponse{}
+		osObj.Reservation_Id = rs.Name
+		return osObj
 	case "*core.PodList":
 		pl := obj.(*core.PodList)
 		osObj := &OpenstackServerListResponse{}

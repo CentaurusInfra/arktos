@@ -144,7 +144,7 @@ func transformResponseObject(ctx context.Context, scope *RequestScope, trace *ut
 		if openstack.IsActionRequest(req.URL.Path) {
 			obj = openstack.ConvertActionToOpenstackResponse(obj)
 		} else {
-			obj = openstack.ConvertToOpenstackResponse(ctx, obj)
+			obj = openstack.ConvertToOpenstackResponse(obj)
 		}
 
 		// Openstack action for reboot, start and stop
