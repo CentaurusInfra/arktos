@@ -55,7 +55,7 @@ func isGetDetail(path string) bool {
 	return match
 }
 
-func peekBatchRequest(req *http.Request) (bool, error) {
+func isBatchCreationRequest(req *http.Request) (bool, error) {
 	obj := openstack.OpenstackServerRequest{}
 
 	body, err := ioutil.ReadAll(req.Body)
@@ -75,7 +75,7 @@ func peekBatchRequest(req *http.Request) (bool, error) {
 }
 
 // For now, supported filter is the reservation_id when VMs were created in batch
-func peekListFilters(req *http.Request) (string, error) {
+func getReservationIdFromListRequest(req *http.Request) (string, error) {
 	obj := openstack.OpenstackServerListRequest{}
 	body, err := ioutil.ReadAll(req.Body)
 	if err != nil {
@@ -203,7 +203,7 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 			redirectUrl += "/" + getElementFromPath(req.URL.Path)
 		}
 
-		rev_id, err := peekListFilters(req)
+		rev_id, err := getReservationIdFromListRequest(req)
 		if err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			return
@@ -216,12 +216,12 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
 		redirectUrl += "/" + getElementFromPath(req.URL.Path)
 	case http.MethodPost:
-		batchRequest, err := peekBatchRequest(req)
+		isBatchRequest, err := isBatchCreationRequest(req)
 		if err != nil {
 			resp.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if batchRequest {
+		if isBatchRequest {
 			redirectUrl = fmt.Sprintf(REPLICASETS_URL_TEMPLATE, tenant, namespace)
 		} else {
 			redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
