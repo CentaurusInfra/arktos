@@ -124,6 +124,9 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    mkdir -p /var/lib/kube-proxy
+  fi
 }
 
 # Gets the total number of $(1) and $(2) type disks specified
@@ -3207,16 +3210,34 @@ spec:
 EOF
 }
 
+function wait-for-node-registered {
+  until kubectl get nodes | grep `hostname`; do
+    sleep 5
+  done
+}
+
+function wait-until-mizar-ready {
+  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  until kubectl get vpcs | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get dividers | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get bouncers | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get subnets | grep Provisioned; do
+    sleep 5
+  done
+}
+
 function start-mizar-scaleout {
     echo "Installing Mizar for scale-out architecture..."
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
     create-mizar-daemon-manifest
   fi
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    create-mizar-operator-manifest
-  fi
-  #TODO BUGBUG - REMOVE THIS BELOW, RP mizar-operator is only for testing
-  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     create-mizar-operator-manifest
   fi
 }
@@ -3227,16 +3248,14 @@ function start-mizar-scaleup {
     sleep 5
   done
   echo "Installing Mizar for scale-up architecture..."
+  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
   wait-until-mizar-ready
 }
 
-function wait-until-mizar-ready {
-  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
-  #TODO: Wait for all CRDs provisioned
-}
-
 function start-mizar {
+  wait-for-node-registered
+  kubectl label node `hostname` node-role.kubernetes.io/master=""
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     start-mizar-scaleout
   else
