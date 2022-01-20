@@ -62,7 +62,7 @@ const (
 	subnetTemplateJson = "/default_mizar_network_subnet_template.json"
 )
 
-var vpcDefaultTemplatePath, subnetDefaultTemplatePath = getTemplateFilePathName()
+var vpcdefaulttemplatepath, subnetdefaulttemplatepath = gettemplatefilepathname()
 
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
 type MizarArktosNetworkController struct {
@@ -215,12 +215,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		// Create default VPC and Subnet after system tenant's arktos network is created successfully
 		if network.Spec.Type == mizarNetworkType && network.Status.Phase == v1.NetworkReady {
 			klog.V(4).Infof("For system tenant: start to create VPC(%s) and Subnet(%s)", vpc, subnet)
-			if vpcDefaultTemplatePath == "" || subnetDefaultTemplatePath == "" {
-				klog.Errorf("VPC default template path or Subnet default template path is blank")
-				return errors.New("Ensure you are in Arktos home directory to start Arktos ......")
-			}
-
-			err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
+			err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcdefaulttemplatepath, subnetdefaulttemplatepath, c.discoveryClient, c.dynamicClient)
 			if err != nil {
 				klog.Errorf("For system tenant (%s): create actual VPC object or Subnet object in error (%v).", err)
 				return err
@@ -257,13 +252,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 
 	// Create default VPC and Subnet after non-system tenant's arktos network is created successfully
 	klog.V(4).Infof("For non-system tenant (%s): start to create VPC(%s) and Subnet(%s)", network.Tenant, vpc, subnet)
-
-	if vpcDefaultTemplatePath == "" || subnetDefaultTemplatePath == "" {
-		klog.Errorf("VPC default template path or Subnet default template path is blank")
-		return errors.New("Ensure you are in Arktos home directory to start Arktos ......")
-	}
-
-	err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
+	err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcdefaulttemplatepath, subnetdefaulttemplatepath, c.discoveryClient, c.dynamicClient)
 	if err != nil {
 		klog.Errorf("For non-system tenant (%s): create actual VPC object or Subnet object in error (%v).", err)
 		return err
@@ -273,16 +262,16 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 	return nil
 }
 
-func createVpcAndSubnetCRD(tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDefaultTemplatePath string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+func createVpcAndSubnetCRD(tenant, vpc, subnet, vpcdefaulttemplatepath, subnetdefaulttemplatepath string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
 	// Create VPC CRD
-	err := createVpcOrSubnetCRD(tenant, vpc, vpcDefaultTemplatePath, discoveryClient, dynamicClient)
+	err := createVpcOrSubnetCRD(tenant, vpc, vpcdefaulttemplatepath, discoveryClient, dynamicClient)
 	if err != nil {
 		klog.Errorf("Create actual VPC object (%s) in error (%v).", vpc, err)
 		return err
 	}
 
 	// Create Subnet CRD
-	err = createVpcOrSubnetCRD(tenant, subnet, subnetDefaultTemplatePath, discoveryClient, dynamicClient)
+	err = createVpcOrSubnetCRD(tenant, subnet, subnetdefaulttemplatepath, discoveryClient, dynamicClient)
 	if err != nil {
 		klog.Errorf("Create actual Subnet object (%s) in error (%v).", subnet, err)
 		return err
@@ -398,20 +387,19 @@ func readTemplateFile(path string) (string, error) {
 	return string(bytes), nil
 }
 
-// Initialized once for vpcDefaultTemplatePath and subnetDefaultTemplatePath
-func getTemplateFilePathName() (string, string) {
+// Initialized once for vpcdefaulttemplatepath and subnetdefaulttemplatepath
+func gettemplatefilepathname() (string, string) {
 	currentDir, err := os.Getwd()
 	if err != nil {
 		panic(fmt.Sprintf("Get current directory (%s) in error (%v).", currentDir, err))
 	}
 
-	if !strings.HasSuffix(currentDir, arktosName) {
-		klog.Errorf("Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
-		return "", ""
+	if !strings.Contains(currentDir, arktosName) {
+		panic(fmt.Sprintf("Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err))
 	}
 
-	vpcDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, vpcTemplateJson)
-	subnetDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, subnetTemplateJson)
+	vpcdefaulttemplatepath := filepath.Join(currentDir, homeSubPath, vpcTemplateJson)
+	subnetdefaulttemplatepath := filepath.Join(currentDir, homeSubPath, subnetTemplateJson)
 
-	return vpcDefaultTemplatePath, subnetDefaultTemplatePath
+	return vpcdefaulttemplatepath, subnetdefaulttemplatepath
 }
