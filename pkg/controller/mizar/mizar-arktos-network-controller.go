@@ -347,7 +347,11 @@ func createUnstructuredObject(data []byte, vpcOrSubnetName string, discoveryClie
 	// Create CRD resource - vpc or subnet
 	actualObject, err := dynamicClientResource.Create(unstructuredObj, metav1.CreateOptions{})
 
-	if err != nil {
+	if err == nil {
+		klog.V(4).Infof("Get actual object's name : (%s)", actualObject.GetName())
+		klog.V(4).Infof("Get actual object's GVK : (%v)", actualObject.GroupVersionKind())
+		klog.V(4).Infof("Get actual object's objectKind : (%v)", actualObject.GetObjectKind())
+	} else {
 		klog.Errorf("Create actual object's name: (%s) in error (%v).", unstructuredObj.GetName(), err)
 	}
 
