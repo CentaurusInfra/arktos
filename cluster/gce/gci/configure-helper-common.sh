@@ -124,6 +124,9 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    mkdir -p /var/lib/kube-proxy
+  fi
 }
 
 # Gets the total number of $(1) and $(2) type disks specified
@@ -3139,22 +3142,46 @@ function start-cluster-networking {
   esac
 }
 
+function wait-for-node-registered {
+  until kubectl get nodes | grep `hostname`; do
+    sleep 5
+  done
+}
+
+function wait-until-mizar-ready {
+  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  until kubectl get vpcs | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get dividers | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get bouncers | grep Provisioned; do
+    sleep 5
+  done
+  until kubectl get subnets | grep Provisioned; do
+    sleep 5
+  done
+}
+
 function start-mizar-scaleup {
   #Wait for apiserver to setup default namespace
   until kubectl get ns | grep default; do
     sleep 5
   done
   echo "Installing Mizar for scale-up architecture..."
+  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
   wait-until-mizar-ready
 }
 
-function wait-until-mizar-ready {
-  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
-  #TODO: Wait for all CRDs provisioned
-}
-
 function start-mizar {
+  wait-for-node-registered
+  #Wait for apiserver to setup default namespace
+  until kubectl get ns | grep default; do
+    sleep 5
+  done
+  kubectl label node `hostname` node-role.kubernetes.io/master=""
   #For scaleout cluster, mizar will started after all tp and rp ready
   if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
     start-mizar-scaleup
