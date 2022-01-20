@@ -20,10 +20,6 @@ package app
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
-	"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
@@ -43,11 +39,6 @@ const (
 	mizarServiceControllerWorkerCount       = 4
 	mizarNetworkPolicyControllerWorkerCount = 4
 	mizarNamespaceControllerWorkerCount     = 4
-
-	arktosName         = "arktos"
-	homeSubPath        = "/hack/runtime/"
-	vpcTemplateJson    = "/default_mizar_network_vpc_template.json"
-	subnetTemplateJson = "/default_mizar_network_subnet_template.json"
 )
 
 func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, error) {
@@ -118,7 +109,7 @@ func startMizarPodController(ctx *ControllerContext, grpcHost string, grpcAdapto
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	go func() {
 		podController := controllers.NewMizarPodController(
@@ -155,7 +146,7 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string, grpcAd
 
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
@@ -186,7 +177,7 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
 	//TO DO: all mizar controllers here should share one informerFactory
 	//       other than every mizar controller starts one informerFactory
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0*time.Minute)
+	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	// Used to create CRDs - VPC or Subnet of tenant
 	dynamicClient := dynamic.NewForConfigOrDie(netKubeconfigs)
@@ -198,27 +189,8 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 		return nil, false, err
 	}
 
-	// initialized once for vpcDefaultTemplatePath and subnetDefaultTemplatePath
-	currentDir, err := os.Getwd()
-	if err != nil {
-		klog.Errorf("Get current directory (%s) in error (%v).", currentDir, err)
-		return nil, false, err
-	}
-
-	if !strings.HasSuffix(currentDir, arktosName) {
-		klog.Errorf("Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
-		return nil, false, err
-	}
-
-	vpcDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, vpcTemplateJson)
-	subnetDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, subnetTemplateJson)
-
-	klog.V(4).Infof("vpcPath: (%s) + subnetPath: (%s)", vpcDefaultTemplatePath, subnetDefaultTemplatePath)
-
 	go func() {
 		networkController := controllers.NewMizarArktosNetworkController(
-			vpcDefaultTemplatePath,
-			subnetDefaultTemplatePath,
 			dynamicClient,
 			discoveryClient,
 			networkClient,

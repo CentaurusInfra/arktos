@@ -21,6 +21,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"text/template"
 	"time"
 
@@ -52,13 +55,17 @@ import (
 
 const (
 	mizarNetworkType = "mizar"
+
+	arktosName         = "arktos"
+	homeSubPath        = "/hack/runtime/"
+	vpcTemplateJson    = "/default_mizar_network_vpc_template.json"
+	subnetTemplateJson = "/default_mizar_network_subnet_template.json"
 )
+
+var vpcDefaultTemplatePath, subnetDefaultTemplatePath = getTemplateFilePathName()
 
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
 type MizarArktosNetworkController struct {
-	vpcDefaultTemplatePath    string
-	subnetDefaultTemplatePath string
-
 	// Used to create CRDs - VPC or Subnet of tenant
 	dynamicClient dynamic.Interface
 
@@ -76,24 +83,22 @@ type MizarArktosNetworkController struct {
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(vpcDefaultTemplatePath, subnetDefaultTemplatePath string, dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarArktosNetworkController{
-		vpcDefaultTemplatePath:    vpcDefaultTemplatePath,
-		subnetDefaultTemplatePath: subnetDefaultTemplatePath,
-		dynamicClient:             dynamicClient,
-		discoveryClient:           discoveryClient,
-		netClientset:              netClientset,
-		netLister:                 networkInformer.Lister(),
-		netListerSynced:           networkInformer.Informer().HasSynced,
-		queue:                     workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
-		grpcHost:                  grpcHost,
-		grpcAdaptor:               grpcAdaptor,
+		dynamicClient:   dynamicClient,
+		discoveryClient: discoveryClient,
+		netClientset:    netClientset,
+		netLister:       networkInformer.Lister(),
+		netListerSynced: networkInformer.Informer().HasSynced,
+		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		recorder:        eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
+		grpcHost:        grpcHost,
+		grpcAdaptor:     grpcAdaptor,
 	}
 
 	networkInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -182,7 +187,7 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKeyWithType KeyWithEvent
 		return err
 	}
 
-	klog.Infof("Get network: %#v.", net)
+	klog.Infof("Mizar-Arktos-Network-controller - get network: %#v.", net)
 
 	switch event {
 	case EventType_Create:
@@ -210,7 +215,12 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 		// Create default VPC and Subnet after system tenant's arktos network is created successfully
 		if network.Spec.Type == mizarNetworkType && network.Status.Phase == v1.NetworkReady {
 			klog.V(4).Infof("For system tenant: start to create VPC(%s) and Subnet(%s)", vpc, subnet)
-			err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, c.vpcDefaultTemplatePath, c.subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
+			if vpcDefaultTemplatePath == "" || subnetDefaultTemplatePath == "" {
+				klog.Errorf("VPC default template path or Subnet default template path is blank")
+				return errors.New("Ensure you are in Arktos home directory to start Arktos ......")
+			}
+
+			err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 			if err != nil {
 				klog.Errorf("For system tenant (%s): create actual VPC object or Subnet object in error (%v).", err)
 				return err
@@ -247,7 +257,13 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 
 	// Create default VPC and Subnet after non-system tenant's arktos network is created successfully
 	klog.V(4).Infof("For non-system tenant (%s): start to create VPC(%s) and Subnet(%s)", network.Tenant, vpc, subnet)
-	err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, c.vpcDefaultTemplatePath, c.subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
+
+	if vpcDefaultTemplatePath == "" || subnetDefaultTemplatePath == "" {
+		klog.Errorf("VPC default template path or Subnet default template path is blank")
+		return errors.New("Ensure you are in Arktos home directory to start Arktos ......")
+	}
+
+	err := createVpcAndSubnetCRD(network.Tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDefaultTemplatePath, c.discoveryClient, c.dynamicClient)
 	if err != nil {
 		klog.Errorf("For non-system tenant (%s): create actual VPC object or Subnet object in error (%v).", err)
 		return err
@@ -264,7 +280,6 @@ func createVpcAndSubnetCRD(tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDe
 		klog.Errorf("Create actual VPC object (%s) in error (%v).", vpc, err)
 		return err
 	}
-	klog.V(4).Infof("Complete to create VPC: (%s) successfully", vpc)
 
 	// Create Subnet CRD
 	err = createVpcOrSubnetCRD(tenant, subnet, subnetDefaultTemplatePath, discoveryClient, dynamicClient)
@@ -272,7 +287,6 @@ func createVpcAndSubnetCRD(tenant, vpc, subnet, vpcDefaultTemplatePath, subnetDe
 		klog.Errorf("Create actual Subnet object (%s) in error (%v).", subnet, err)
 		return err
 	}
-	klog.V(4).Infof("Complete to create VPC: (%s) and Subnet: (%s) successfully", vpc, subnet)
 
 	return nil
 }
@@ -291,7 +305,6 @@ func createVpcOrSubnetCRD(tenant, vpcOrSubnetName, defaultTemplatePath string, d
 		klog.Errorf("Create CRD object (%s) in error: (%v)", vpcOrSubnetName, err)
 		return err
 	}
-	klog.V(3).Infof("Create CRD object: (%s) successfully", vpcOrSubnetName)
 
 	return nil
 }
@@ -306,20 +319,15 @@ func createUnstructuredObject(data []byte, vpcOrSubnetName string, discoveryClie
 		klog.Errorf("Getting GVK in error (%v).", err)
 		return err
 	}
-	klog.V(4).Infof("Get Name : (%s) and GVK: (%s)", unstructuredObj.GetName(), gvk.String())
 
 	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource
 	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-	klog.V(4).Infof("Name: %s - GVK group kind : (%v) - GVK version: (%v)", unstructuredObj.GetName(), gvk.GroupKind(), gvk.Version)
 	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
 
-	klog.V(4).Infof("Name: %s - GVK group kind : (%s) - GVK version: (%s)", unstructuredObj.GetName(), unstructuredObj.GetKind(), unstructuredObj.GetAPIVersion())
 	if err != nil {
 		klog.Errorf("Get mapping between GVK and GVR in error (%v).", err)
 		return err
 	}
-
-	klog.V(4).Infof("Name: %s - get mapping scope name: (%s) - meta RESTScopeNameNamespace: (%s)", unstructuredObj.GetName(), mapping.Scope.Name(), meta.RESTScopeNameNamespace)
 
 	// Create dynamic client resource
 	var dynamicClientResource dynamic.ResourceInterface
@@ -329,7 +337,6 @@ func createUnstructuredObject(data []byte, vpcOrSubnetName string, discoveryClie
 			unstructuredObj.SetNamespace("default")
 		}
 		namespace := unstructuredObj.GetNamespace()
-		klog.V(4).Infof("Mapping resource: (%v) - set tenant: (%s) - namespace : (%s)", mapping.Resource, "system", namespace)
 		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, "system")
 
 	} else {
@@ -340,11 +347,7 @@ func createUnstructuredObject(data []byte, vpcOrSubnetName string, discoveryClie
 	// Create CRD resource - vpc or subnet
 	actualObject, err := dynamicClientResource.Create(unstructuredObj, metav1.CreateOptions{})
 
-	if err == nil {
-		klog.V(4).Infof("Get actual object's name : (%s)", actualObject.GetName())
-		klog.V(4).Infof("Get actual object's GVK : (%v)", actualObject.GroupVersionKind())
-		klog.V(4).Infof("Get actual object's objectKind : (%v)", actualObject.GetObjectKind())
-	} else {
+	if err != nil {
 		klog.Errorf("Create actual object's name: (%s) in error (%v).", unstructuredObj.GetName(), err)
 	}
 
@@ -389,4 +392,22 @@ func readTemplateFile(path string) (string, error) {
 	}
 
 	return string(bytes), nil
+}
+
+// Initialized once for vpcDefaultTemplatePath and subnetDefaultTemplatePath
+func getTemplateFilePathName() (string, string) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		panic(fmt.Sprintf("Get current directory (%s) in error (%v).", currentDir, err))
+	}
+
+	if !strings.HasSuffix(currentDir, arktosName) {
+		klog.Errorf("Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
+		return "", ""
+	}
+
+	vpcDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, vpcTemplateJson)
+	subnetDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, subnetTemplateJson)
+
+	return vpcDefaultTemplatePath, subnetDefaultTemplatePath
 }

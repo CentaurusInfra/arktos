@@ -210,75 +210,31 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	//The annotations of vpc and subnet should not be added into pods
 	//which use host networking
 	if eventType == EventType_Create && !obj.Spec.HostNetwork {
-		klog.V(4).Infof("Get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
 		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
 		if err != nil {
 			klog.Warningf("Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
 			return err
 		}
-		klog.Infof("Get network: %#v.", network)
 
 		if network.Spec.Type != mizarNetworkType || network.Status.Phase != arktosextv1.NetworkReady {
 			klog.Warningf("The arktos network %s is not mizar type or is not Ready.", network.Name)
 			return nil
 		}
-		klog.V(4).Infof("Get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
 
 		vpc := network.Spec.VPCID
 		if len(vpc) == 0 {
-			//vpc = tenant + vpcSuffix
 			vpc = fmt.Sprintf("%s%s", tenant, vpcSuffix)
 		}
-		//subnet := vpc + subnetSuffix
 		subnet := fmt.Sprintf("%s%s", vpc, subnetSuffix)
 
-		needUpdate := false
-		if len(obj.Annotations) == 0 {
-			obj.Annotations = map[string]string{
-				mizarAnnotationsVpcKey:    vpc,
-				mizarAnnotationsSubnetKey: subnet,
-			}
-			klog.V(4).Infof("The annotation for mizar is blank and vpc and subnet are being set when (%v)!", eventType)
-
-			needUpdate = true
-		} else {
-			vpcName, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
-			subnetName, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
-
-			klog.V(4).Infof("Pod name (%s) - vpc name (%s)/ correct vpc name(%s) - subnet name (%s)/correct subnet name(%s) when (%v)", obj.Name, vpcName, vpc, subnetName, subnet, eventType)
-
-			if !vpcNameOk && !subnetNameOk || (!subnetNameOk && vpcName != vpc) || (!vpcNameOk && subnetName != subnet) || (vpcName != vpc && subnetName != subnet) {
-				obj.Annotations[mizarAnnotationsVpcKey] = vpc
-				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
-				klog.V(4).Infof("Pod name (%s) - The annotation for mizar vpc and subnet are being set when (%v)!", obj.Name, eventType)
-
-				needUpdate = true
-			} else if !vpcNameOk || vpcName != vpc {
-				obj.Annotations[mizarAnnotationsVpcKey] = vpc
-				klog.V(4).Infof("Pod name (%s) - The annotation for mizar vpc is being set when (%v)!", obj.Name, eventType)
-
-				needUpdate = true
-			} else if !subnetNameOk || subnetName != subnet {
-				obj.Annotations[mizarAnnotationsSubnetKey] = subnet
-				klog.V(4).Infof("Pod name (%s) - The annotation for mizar subnet is being set when (%v)!", obj.Name, eventType)
-
-				needUpdate = true
-			} else {
-				klog.V(4).Infof("Pod name (%s) - No action is needed - The annotation for mizar vpc and subnet is already set well when (%v)!", obj.Name, eventType)
-			}
-
-		}
-		klog.V(4).Infof("Pod name (%s) - obj[%s] : %s when (%v)", obj.Name, mizarAnnotationsVpcKey, obj.Annotations[mizarAnnotationsVpcKey], eventType)
-		klog.V(4).Infof("Pod name (%s) - obj[%s] : %s when (%v)", obj.Name, mizarAnnotationsSubnetKey, obj.Annotations[mizarAnnotationsSubnetKey], eventType)
-
+		needUpdate, obj := annotatePod(obj, vpc, subnet)
 		if needUpdate {
 			_, err := c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 			if err != nil {
 				klog.Errorf("Pod name (%s) - update pod's annotation to API server in error (%v) when (%v).", obj.Name, err, eventType)
 				return err
 			}
-			klog.Infof("Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
 
 		}
 	}
@@ -297,6 +253,36 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	}
 
 	return nil
+}
+
+func annotatePod(obj *v1.Pod, vpc, subnet string) (bool, *v1.Pod) {
+	needUpdate := false
+	if len(obj.Annotations) == 0 {
+		obj.Annotations = map[string]string{
+			mizarAnnotationsVpcKey:    vpc,
+			mizarAnnotationsSubnetKey: subnet,
+		}
+		needUpdate = true
+	} else {
+		vpcName, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
+		subnetName, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
+
+		if (!vpcNameOk && !subnetNameOk) || (!subnetNameOk && vpcName != vpc) ||
+			(!vpcNameOk && subnetName != subnet) || (vpcName != vpc && subnetName != subnet) {
+			obj.Annotations[mizarAnnotationsVpcKey] = vpc
+			obj.Annotations[mizarAnnotationsSubnetKey] = subnet
+			needUpdate = true
+		} else if !vpcNameOk || vpcName != vpc {
+			obj.Annotations[mizarAnnotationsVpcKey] = vpc
+			needUpdate = true
+		} else if !subnetNameOk || subnetName != subnet {
+			obj.Annotations[mizarAnnotationsSubnetKey] = subnet
+			needUpdate = true
+		}
+	}
+
+	return needUpdate, obj
+
 }
 
 func processPodGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, keyWithEventType KeyWithEventType) {
