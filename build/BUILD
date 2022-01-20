@@ -46,6 +46,10 @@ DOCKERIZED_BINARIES = {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/workload-controller-manager:kube-controller-manager",
     },
+    "arktos-network-controller": {
+        "base": "@debian-base-{ARCH}//image",
+        "target": "//cmd/arktos-network-controller:arktos-network-controller",
+    },
     "kube-scheduler": {
         "base": "@debian-base-{ARCH}//image",
         "target": "//cmd/kube-scheduler:kube-scheduler",
