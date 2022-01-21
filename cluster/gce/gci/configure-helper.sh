@@ -152,6 +152,7 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
+    apply-network-crd 
     if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
       if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
         start-arktos-network-controller

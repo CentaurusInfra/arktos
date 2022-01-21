@@ -468,6 +468,7 @@ function kube::release::package_kube_manifests_tarball() {
   fi
   cp "${KUBE_ROOT}/cluster/gce/gci/health-monitor.sh" "${dst_dir}/health-monitor.sh"
   cp "${KUBE_ROOT}/cluster/gce/gci/configure-helper-common.sh" "${dst_dir}/configure-helper-common.sh"
+  cp "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml" "${dst_dir}/crd-network.yaml"
   local objects
   objects=$(cd "${KUBE_ROOT}/cluster/addons" && find . \( -name \*.yaml -or -name \*.yaml.in -or -name \*.json \) | grep -v demo)
   tar c -C "${KUBE_ROOT}/cluster/addons" ${objects} | tar x -C "${dst_dir}"

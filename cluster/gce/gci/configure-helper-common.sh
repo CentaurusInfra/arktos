@@ -2453,6 +2453,17 @@ function start-workload-controller-manager {
   cp "${src_file}" /etc/kubernetes/manifests
 }
 
+function apply-network-crd {
+  local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
+  local -r dst_dir="/etc/srv/kubernetes/arktos-network-controller"
+
+  mkdir -p ${dst_dir} 
+  cp "${src_dir}/crd-network.yaml" ${dst_dir}
+
+  # apply network crd before start network-controller
+  kubectl apply -f "${dst_dir}/crd-network.yaml"
+}
+
 # Starts arktos-network controller.
 # It prepares the log file, loads the docker image, calculates variables, sets them
 # in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
@@ -2464,7 +2475,6 @@ function start-workload-controller-manager {
 #   DOCKER_REGISTRY
 function start-arktos-network-controller {
   local SALT=${1:-}
-  mkdir -p /etc/srv/kubernetes/arktos-network-controller
   echo "Start arktos-network-controller"
   prepare-log-file /var/log/arktos-network-controller.log
 
