@@ -3,8 +3,6 @@
       "name":"testvm",
       "imageRef":"cirros-0.5.1",
       "flavorRef":"m1.tiny",
-      "min_count":1,
-      "max_count":1,
       "networks":[
          {
             "uuid":"2608d099-c5cb-45c9-a85e-c7daba9f95bf"
