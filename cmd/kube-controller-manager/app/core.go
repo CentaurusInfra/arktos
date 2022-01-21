@@ -401,7 +401,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		}), all), err
 	}
 
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+	networkinformerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
 
 	tenantController := tenantcontroller.NewTenantController(tenantKubeClient,
 		ctx.InformerFactory.Core().V1().Tenants(),
@@ -410,7 +410,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.InformerFactory.Rbac().V1().ClusterRoleBindings(),
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
-		informerFactory.Arktos().V1().Networks(),
+		networkinformerFactory.Arktos().V1().Networks(),
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
 		metadataClient,
 		discoverTenantedResourcesFn,

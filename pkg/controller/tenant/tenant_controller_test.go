@@ -117,7 +117,6 @@ func TestTenantCreation(t *testing.T) {
 		clusterRoleBindingInformer := sharedInformers.Rbac().V1().ClusterRoleBindings()
 		networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{})
 		networkInformers := externalversions.NewSharedInformerFactory(networkClient, 0)
-		//networkInformers := informers.
 		fakeDiscoverFn := func() ([]*metav1.APIResourceList, error) {
 			return []*metav1.APIResourceList{}, nil
 		}
