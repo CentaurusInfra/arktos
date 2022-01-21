@@ -102,7 +102,7 @@ type ServerType struct {
 }
 
 // VM creation request in Openstack
-// non-zero Min or max count indicates batch creation, even if it is one
+// non-zero possitive Min or max count indicates batch creation, even if it is one
 // Return_Reservation_Id indicates response behavior, true to return the reservationID ( replicset name in Arktos )
 // So that the client can list the servers associated with this replicaset
 type OpenstackServerRequest struct {
@@ -346,7 +346,6 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 // Convert kubernetes pod response to Openstack response body
 func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 	typeStr := reflect.TypeOf(obj).String()
-	klog.Infof("debug: return type: %s", typeStr)
 
 	switch typeStr {
 	case "*apps.ReplicaSet":
@@ -402,6 +401,11 @@ func IsActionRequest(path string) bool {
 	return strings.HasSuffix(path, "action")
 }
 
+// Internally the OpenStackServerRequest struct is shared with both batch request and non-batch request.
+// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users 
+// so the min-count is 0 as default int value
+//
+// Any non-zero possitive numbers which are set by the user request body and will be considerred as a batch request
 func IsBatchCreationRequest(r OpenstackServerRequest) bool {
 	return r.Min_count > 0
 }
