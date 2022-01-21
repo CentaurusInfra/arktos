@@ -36,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	"k8s.io/client-go/discovery"
 	cacheddiscovery "k8s.io/client-go/discovery/cached/memory"
 	clientset "k8s.io/client-go/kubernetes"
@@ -400,6 +401,8 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		}), all), err
 	}
 
+	networkinformerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+
 	tenantController := tenantcontroller.NewTenantController(tenantKubeClient,
 		ctx.InformerFactory.Core().V1().Tenants(),
 		ctx.InformerFactory.Core().V1().Namespaces(),
@@ -407,6 +410,7 @@ func startTenantController(ctx ControllerContext) (http.Handler, bool, error) {
 		ctx.InformerFactory.Rbac().V1().ClusterRoleBindings(),
 		ctx.ComponentConfig.TenantController.TenantSyncPeriod.Duration,
 		networkClient,
+		networkinformerFactory.Arktos().V1().Networks(),
 		ctx.ComponentConfig.TenantController.DefaultNetworkTemplatePath,
 		metadataClient,
 		discoverTenantedResourcesFn,
