@@ -415,6 +415,9 @@ function install-mizar-cni-bin {
     wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
   fi
   chmod +x ${KUBE_BIN}/mizarcni
+  #BUGBUG: This is a hack around arktos runtime hardcoding of CNI bin dir
+  mkdir -p /opt/cni/bin
+  cp -f ${KUBE_BIN}/mizarcni /opt/cni/bin/
 }
 
 function download-mizar-cni-yaml {
@@ -932,13 +935,16 @@ validate-python
 download-kube-env
 source "${KUBE_HOME}/kube-env"
 
-# This hack is only needed because arktos does not support ubuntu 20.04 with latest kernels
 # When arktos adds support for 20.04 that has 5.11.0 kernel, we don't need to update kernel.
 if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
   OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
   OS_VER=$(cat /etc/os-release | grep ^VERSION= | cut -d= -f2)
   if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
     ensure-mizar-kernel-and-ifname
+  fi
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    sudo apt-get update -y
+    sudo apt-get install haproxy -y
   fi
 fi
 

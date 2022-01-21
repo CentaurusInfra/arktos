@@ -93,7 +93,7 @@ function main() {
     create-master-etcd-apiserver-auth
     override-pv-recycler
     gke-master-start
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
       create-kubeproxy-user-kubeconfig
     fi
   else
@@ -135,7 +135,7 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
       start-kube-proxy
     fi
 
