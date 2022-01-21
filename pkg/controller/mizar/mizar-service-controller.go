@@ -192,7 +192,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 		}
 	}
 
-	klog.Infof("Mizar-Service-controller - get service: %#v.", svc)
+	klog.V(4).Infof("Mizar-Service-controller - get service: %#v.", svc)
 
 	switch event {
 	case EventType_Create:

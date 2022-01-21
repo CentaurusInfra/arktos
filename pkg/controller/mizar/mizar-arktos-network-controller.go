@@ -182,7 +182,7 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKeyWithType KeyWithEvent
 		return err
 	}
 
-	klog.Infof("Get network: %#v.", net)
+	klog.V(4).Infof("Get network: %#v.", net)
 
 	switch event {
 	case EventType_Create:

@@ -182,7 +182,7 @@ func (c *MizarPodController) processNextWorkItem() bool {
 func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	klog.Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
+	klog.V(4).Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
 
 	startTime := time.Now()
 	defer func() {
@@ -219,7 +219,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			klog.Warningf("Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
 			return err
 		}
-		klog.Infof("Get network: %#v.", network)
+		klog.V(4).Infof("Get network: %#v.", network)
 
 		if network.Spec.Type != mizarNetworkType || network.Status.Phase != arktosextv1.NetworkReady {
 			klog.Warningf("The arktos network %s is not mizar type or is not Ready.", network.Name)
@@ -280,7 +280,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 				klog.Errorf("Pod name (%s) - update pod's annotation to API server in error (%v) when (%v).", obj.Name, err, eventType)
 				return err
 			}
-			klog.Infof("Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
+			klog.V(2).Infof("Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
 
 		}
 	}
