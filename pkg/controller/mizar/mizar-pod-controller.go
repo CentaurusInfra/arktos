@@ -109,7 +109,7 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Starting %v controller", controllerForMizarPod)
 	defer klog.Infof("Shutting down %v controller", controllerForMizarPod)
 
-	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced,c.networkListerSynced) {
+	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced, c.networkListerSynced) {
 		return
 	}
 
@@ -221,8 +221,14 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 		klog.V(4).Infof("Get network: %#v.", network)
 
-		if network.Spec.Type != mizarNetworkType || network.Status.Phase != arktosextv1.NetworkReady {
-			klog.Warningf("The arktos network %s is not mizar type or is not Ready.", network.Name)
+		if network.Spec.Type != mizarNetworkType {
+			return nil
+		}
+
+		if network.Status.Phase != arktosextv1.NetworkReady {
+			klog.Warningf("The arktos network %s is not Ready.", network.Name)
+			// put key back into queue
+			c.createObj(obj)
 			return nil
 		}
 		klog.V(4).Infof("Get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
