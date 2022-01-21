@@ -65,14 +65,14 @@ type MizarArktosNetworkController struct {
 	// Used to create mapping to find out GVR via GVK before creating CRDs - VPC or Subnet
 	discoveryClient discovery.DiscoveryInterface
 
-	netClientset    *arktos.Clientset
-	netLister       arktosv1.NetworkLister
-	netListerSynced cache.InformerSynced
-	syncHandler     func(eventKeyWithType KeyWithEventType) error
-	queue           workqueue.RateLimitingInterface
-	recorder        record.EventRecorder
-	grpcHost        string
-	grpcAdaptor     IGrpcAdaptor
+	netClientset        *arktos.Clientset
+	networkLister       arktosv1.NetworkLister
+	networkListerSynced cache.InformerSynced
+	syncHandler         func(eventKeyWithType KeyWithEventType) error
+	queue               workqueue.RateLimitingInterface
+	recorder            record.EventRecorder
+	grpcHost            string
+	grpcAdaptor         IGrpcAdaptor
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
@@ -88,8 +88,8 @@ func NewMizarArktosNetworkController(vpcDefaultTemplatePath, subnetDefaultTempla
 		dynamicClient:             dynamicClient,
 		discoveryClient:           discoveryClient,
 		netClientset:              netClientset,
-		netLister:                 networkInformer.Lister(),
-		netListerSynced:           networkInformer.Informer().HasSynced,
+		networkLister:             networkInformer.Lister(),
+		networkListerSynced:       networkInformer.Informer().HasSynced,
 		queue:                     workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:                  eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
 		grpcHost:                  grpcHost,
@@ -100,8 +100,8 @@ func NewMizarArktosNetworkController(vpcDefaultTemplatePath, subnetDefaultTempla
 		AddFunc: c.createNetwork,
 	})
 
-	c.netLister = networkInformer.Lister()
-	c.netListerSynced = networkInformer.Informer().HasSynced
+	c.networkLister = networkInformer.Lister()
+	c.networkListerSynced = networkInformer.Informer().HasSynced
 	c.syncHandler = c.syncNetwork
 
 	return c
@@ -113,7 +113,7 @@ func (c *MizarArktosNetworkController) Run(workers int, stopCh <-chan struct{}) 
 	defer c.queue.ShutDown()
 	klog.Info("Starting Mizar arktos network controller")
 	klog.V(5).Info("waiting for informer caches to sync")
-	if !cache.WaitForCacheSync(stopCh, c.netListerSynced) {
+	if !cache.WaitForCacheSync(stopCh, c.networkListerSynced) {
 		klog.Error("failed to wait for cache to sync")
 		return
 	}
@@ -177,7 +177,7 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKeyWithType KeyWithEvent
 		return err
 	}
 
-	net, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(name)
+	net, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(name)
 	if err != nil {
 		return err
 	}

@@ -51,7 +51,8 @@ type MizarPodController struct {
 	kubeClient clientset.Interface
 
 	// A store of network objects, populated by the shared informer passed to MizarPodController
-	netLister arktosv1.NetworkLister
+	networkLister       arktosv1.NetworkLister
+	networkListerSynced cache.InformerSynced
 
 	// A store of pod objects, populated by the shared informer passed to MizarPodController
 	lister corelisters.PodLister
@@ -77,13 +78,14 @@ func NewMizarPodController(podInformer coreinformers.PodInformer, kubeClient cli
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarPodController{
-		kubeClient:   kubeClient,
-		netLister:    arktosNetworkInformer.Lister(),
-		lister:       podInformer.Lister(),
-		listerSynced: podInformer.Informer().HasSynced,
-		queue:        workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
-		grpcHost:     grpcHost,
-		grpcAdaptor:  grpcAdaptor,
+		kubeClient:          kubeClient,
+		networkLister:       arktosNetworkInformer.Lister(),
+		networkListerSynced: arktosNetworkInformer.Informer().HasSynced,
+		lister:              podInformer.Lister(),
+		listerSynced:        podInformer.Informer().HasSynced,
+		queue:               workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarPod),
+		grpcHost:            grpcHost,
+		grpcAdaptor:         grpcAdaptor,
 	}
 
 	podInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -211,7 +213,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	//which use host networking
 	if eventType == EventType_Create && !obj.Spec.HostNetwork {
 		klog.V(4).Infof("Get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
-		network, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
+		network, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
 		if err != nil {
 			klog.Warningf("Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
