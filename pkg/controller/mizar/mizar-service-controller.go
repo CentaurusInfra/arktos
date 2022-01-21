@@ -100,7 +100,7 @@ func (c *MizarServiceController) Run(workers int, stopCh <-chan struct{}) {
 	defer c.queue.ShutDown()
 	klog.Infoln("Starting mizar service controller")
 	klog.Infoln("Waiting cache to be synced.")
-	if ok := cache.WaitForCacheSync(stopCh, c.serviceListerSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.serviceListerSynced, c.networkListerSynced); !ok {
 		klog.Fatalln("Timeout expired during waiting for caches to sync.")
 	}
 

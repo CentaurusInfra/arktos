@@ -109,7 +109,7 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Starting %v controller", controllerForMizarPod)
 	defer klog.Infof("Shutting down %v controller", controllerForMizarPod)
 
-	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced) {
+	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced,c.networkListerSynced) {
 		return
 	}
 
