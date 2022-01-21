@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -29,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/klog"
+	"k8s.io/kubernetes/pkg/apis/apps"
 	"k8s.io/kubernetes/pkg/apis/core"
 )
 
@@ -38,7 +40,7 @@ const (
 	RESTORE  = "restore"
 )
 
-var POD_JSON_STRING_TEMPLATE string
+var POD_JSON_STRING_TEMPLATE, REPLICATES_JSON_STRING_TEMPLATE string
 var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
 func init() {
@@ -49,6 +51,14 @@ func init() {
 	}
 
 	POD_JSON_STRING_TEMPLATE = string(t)
+
+	t, err = ioutil.ReadFile("/openstackBatchRequestTemplate.json")
+	if err != nil {
+		klog.Errorf("error reading batch request template file. error : %v", err)
+		return
+	}
+
+	REPLICATES_JSON_STRING_TEMPLATE = string(t)
 
 	initFlavorsCache()
 	initImagesCache()
@@ -84,8 +94,6 @@ type ServerType struct {
 	Name            string          `json:"name"`
 	ImageRef        string          `json:"imageRef"`
 	Flavor          string          `json:"flavorRef"`
-	Min_count       int             `json:"min_count"`
-	Max_count       int             `json:"max_count"`
 	Networks        []Network       `json:"networks"`
 	Security_groups []SecurityGroup `json:"security_groups"`
 	Key_name        string          `json:"key_name"`
@@ -94,8 +102,14 @@ type ServerType struct {
 }
 
 // VM creation request in Openstack
-type OpenstackRequest struct {
-	Server ServerType `json:"server"`
+// non-zero possitive Min or max count indicates batch creation, even if it is one
+// Return_Reservation_Id indicates response behavior, true to return the reservationID ( replicset name in Arktos )
+// So that the client can list the servers associated with this replicaset
+type OpenstackServerRequest struct {
+	Server                ServerType `json:"server"`
+	Min_count             int        `json:"min_count"`
+	Max_count             int        `json:"max_count"`
+	Return_Reservation_Id bool       `json:"return_reservation_id"`
 }
 
 // VM creation response in Openstack
@@ -110,6 +124,36 @@ func (o *OpenstackResponse) GetObjectKind() schema.ObjectKind {
 }
 
 func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+type OpenstackServerListRequest struct {
+	Reservation_Id string `json:"reservation_id"`
+}
+
+// VM list response
+type OpenstackServerListResponse struct {
+	Servers []OpenstackResponse
+}
+
+func (o *OpenstackServerListResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackServerListResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+// VM Batch creation response in Openstack
+type OpenstackBatchResponse struct {
+	Reservation_Id string `json:"reservation_id"`
+}
+
+func (o *OpenstackBatchResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackBatchResponse) DeepCopyObject() runtime.Object {
 	return o
 }
 
@@ -203,9 +247,9 @@ func (o *OpenstackRebuildResponse) DeepCopyObject() runtime.Object {
 // Convert Openstack request to kubernetes pod request body
 // Revisit this for dynamically generate the json request
 // TODO: post the initial support, consider push down this logic to the create handler to support other media types than Json
-func ConvertToOpenstackRequest(body []byte) ([]byte, error) {
+func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 
-	obj := OpenstackRequest{}
+	obj := OpenstackServerRequest{}
 
 	err := json.Unmarshal(body, &obj)
 
@@ -224,8 +268,15 @@ func ConvertToOpenstackRequest(body []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	podJson := fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
-	return []byte(podJson), nil
+	var ret string
+
+	if IsBatchCreationRequest(obj) {
+		replicas := obj.Min_count
+		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+	} else {
+		ret = fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+	}
+	return []byte(ret), nil
 }
 
 // Convert the action request to Arktos action request body
@@ -294,14 +345,40 @@ func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
 
 // Convert kubernetes pod response to Openstack response body
 func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
-	pod := obj.(*core.Pod)
-	osObj := &OpenstackResponse{}
-	osObj.Id = pod.Name
+	typeStr := reflect.TypeOf(obj).String()
 
-	osObj.Links = []LinkType{{pod.GetSelfLink(), ""}}
-	//osObj.SecurityGroups = nil
+	switch typeStr {
+	case "*apps.ReplicaSet":
+		rs := obj.(*apps.ReplicaSet)
+		osObj := &OpenstackBatchResponse{}
+		osObj.Reservation_Id = rs.Name
+		return osObj
+	case "*core.PodList":
+		pl := obj.(*core.PodList)
+		osObj := &OpenstackServerListResponse{}
+		osObj.Servers = make([]OpenstackResponse, len(pl.Items))
+		for i, pod := range pl.Items {
+			osObj.Servers[i].Id = pod.Name
+			osObj.Servers[i].Links = []LinkType{{pod.GetSelfLink(), ""}}
+			i++
+		}
 
-	return osObj
+		return osObj
+
+	case "*core.Pod":
+		pod := obj.(*core.Pod)
+		osObj := &OpenstackResponse{}
+		osObj.Id = pod.Name
+
+		osObj.Links = []LinkType{{pod.GetSelfLink(), ""}}
+		//osObj.SecurityGroups = nil
+
+		return osObj
+	default:
+		klog.Errorf("Unsupported response type: %s", typeStr)
+		return nil
+	}
+
 }
 
 func IsOpenstackRequest(req *http.Request) bool {
@@ -322,4 +399,13 @@ func GetNamespaceFromRequest(r *http.Request) string {
 // Arktos only supports reboot, stp[, start, snapshot, restore for the current release
 func IsActionRequest(path string) bool {
 	return strings.HasSuffix(path, "action")
+}
+
+// Internally the OpenStackServerRequest struct is shared with both batch request and non-batch request.
+// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users 
+// so the min-count is 0 as default int value
+//
+// Any non-zero possitive numbers which are set by the user request body and will be considerred as a batch request
+func IsBatchCreationRequest(r OpenstackServerRequest) bool {
+	return r.Min_count > 0
 }

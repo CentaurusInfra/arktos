@@ -1,0 +1,15 @@
+{
+  "server":{
+    "name":"testvm",
+    "imageRef":"cirros-0.5.1",
+    "flavorRef":"m1.tiny",
+    "networks":[
+      {
+        "uuid":"2608d099-c5cb-45c9-a85e-c7daba9f95bf"
+      }
+    ]
+  },
+  "min_count":3,
+  "max_count":3,
+  "return_reservation_id":true
+}

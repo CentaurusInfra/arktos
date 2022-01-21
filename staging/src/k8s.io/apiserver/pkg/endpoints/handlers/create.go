@@ -112,7 +112,7 @@ func createHandler(r rest.NamedCreater, scope *RequestScope, admit admission.Int
 			if openstack.IsActionRequest(req.URL.Path) {
 				obj, err = openstack.ConvertActionFromOpenstackRequest(body)
 			} else {
-				obj, err = openstack.ConvertToOpenstackRequest(body)
+				obj, err = openstack.ConvertServerFromOpenstackRequest(body)
 			}
 
 			if err != nil {

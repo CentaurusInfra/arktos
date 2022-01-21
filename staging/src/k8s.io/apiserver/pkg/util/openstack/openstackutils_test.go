@@ -27,14 +27,14 @@ func TestConvertToOpenstackRequest(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          string
-		expectedOutput OpenstackRequest
+		expectedOutput OpenstackServerRequest
 
 		expectedError error
 	}{
 		{
 			name:  "all valid, basic test",
 			input: `{"server":{"name":"testvm","imageRef":"6db08272-a856-49da-8909-7c4c73ab0bac","flavorRef":"m1.tiny"}}`,
-			expectedOutput: OpenstackRequest{
+			expectedOutput: OpenstackServerRequest{
 				Server: ServerType{Name: "testvm",
 					ImageRef: "6db08272-a856-49da-8909-7c4c73ab0bac",
 					Flavor:   "mi.tiny",
@@ -45,7 +45,7 @@ func TestConvertToOpenstackRequest(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actualBytes, err := ConvertToOpenstackRequest([]byte(test.input))
+		actualBytes, err := ConvertServerFromOpenstackRequest([]byte(test.input))
 
 		if err != test.expectedError {
 			t.Fatal(err)
