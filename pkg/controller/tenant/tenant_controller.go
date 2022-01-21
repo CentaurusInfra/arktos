@@ -239,22 +239,22 @@ func (tc *TenantController) syncTenant(tenantName string) (err error) {
 	}
 
 	// handling the addition of a tenant
-	if err, done := tc.createNamespaces(tenantName); !done {
+	if err, done := tc.syncNamespaces(tenantName); !done {
 		return err
 	}
 
-	if err, done := tc.createInitialRoleAndBinding(tenantName); !done {
+	if err, done := tc.syncInitialRoleAndBinding(tenantName); !done {
 		return err
 	}
 
-	if err, done := tc.createDefaultNetworkObject(tenantName); !done {
+	if err, done := tc.syncDefaultNetworkObject(tenantName); !done {
 		return err
 	}
 
 	return nil
 }
 
-func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error, bool) {
+func (tc *TenantController) syncDefaultNetworkObject(tenantName string) (error, bool) {
 	failures := []error{}
 
 	// create default network object, if applicable
@@ -277,12 +277,12 @@ func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error
 	return flattenedError(failures, tenantName)
 }
 
-func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
+func (tc *TenantController) syncNamespaces(tenant string) (error, bool) {
 	failures := []error{}
 	for _, nsName := range tenantDefaultNamespaces {
 		switch _, err := tc.namespaceLister.NamespacesWithMultiTenancy(tenant).Get(nsName); {
 		case err == nil:
-			klog.V(8).Infof("namespace %s already exists. skipped creating it", nsName)
+			klog.V(4).Infof("namespace %s already exists. skipped creating it", nsName)
 			continue
 		case errors.IsNotFound(err):
 		case err != nil:
@@ -299,14 +299,14 @@ func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
 	return flattenedError(failures, tenant)
 }
 
-func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
+func (tc *TenantController) syncInitialRoleAndBinding(tenant string) (error, bool) {
 
 	var failures []error
 
 	shouldSkip := false
 	switch _, err := tc.clusterRoleLister.ClusterRolesWithMultiTenancy(tenant).Get(InitialClusterRoleName); {
 	case err == nil:
-		klog.V(8).Infof("cluster role %s already exists. skipped creating it", InitialClusterRoleName)
+		klog.V(4).Infof("cluster role %s already exists. skipped creating it", InitialClusterRoleName)
 		shouldSkip = true
 	case errors.IsNotFound(err):
 	case err != nil:
@@ -331,7 +331,7 @@ func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, b
 	shouldSkip = false
 	switch _, err := tc.clusterRoleBindingLister.ClusterRoleBindingsWithMultiTenancy(tenant).Get(InitialClusterRoleBindingName); {
 	case err == nil:
-		klog.V(8).Infof("cluster role binding %s already exists. skipped creating it", InitialClusterRoleBindingName)
+		klog.V(4).Infof("cluster role binding %s already exists. skipped creating it", InitialClusterRoleBindingName)
 		shouldSkip = true
 	case errors.IsNotFound(err):
 	case err != nil:
