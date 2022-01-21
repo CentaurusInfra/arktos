@@ -28,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	fakearktosv1 "k8s.io/arktos-ext/pkg/generated/clientset/versioned/fake"
+	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
@@ -109,17 +110,19 @@ func TestTenantCreation(t *testing.T) {
 
 	for k, tc := range testcases {
 		client := fake.NewSimpleClientset(testcases[k].Tenant)
-		informers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), controller.NoResyncPeriodFunc())
-		tnInformer := informers.Core().V1().Tenants()
-		namespaceInformer := informers.Core().V1().Namespaces()
-		clusterRoleInformer := informers.Rbac().V1().ClusterRoles()
-		clusterRoleBindingInformer := informers.Rbac().V1().ClusterRoleBindings()
+		sharedInformers := informers.NewSharedInformerFactory(fake.NewSimpleClientset(), controller.NoResyncPeriodFunc())
+		tnInformer := sharedInformers.Core().V1().Tenants()
+		namespaceInformer := sharedInformers.Core().V1().Namespaces()
+		clusterRoleInformer := sharedInformers.Rbac().V1().ClusterRoles()
+		clusterRoleBindingInformer := sharedInformers.Rbac().V1().ClusterRoleBindings()
 		networkClient := fakearktosv1.NewSimpleClientset(&arktosv1.Network{})
+		networkInformers := externalversions.NewSharedInformerFactory(networkClient, 0)
 		fakeDiscoverFn := func() ([]*metav1.APIResourceList, error) {
 			return []*metav1.APIResourceList{}, nil
 		}
 
-		controller := NewTenantController(client, tnInformer, namespaceInformer, clusterRoleInformer, clusterRoleBindingInformer, 10*time.Minute, networkClient, tc.NetworkTemplatePath, nil, fakeDiscoverFn, v1.FinalizerArktos)
+		controller := NewTenantController(client, tnInformer, namespaceInformer, clusterRoleInformer, clusterRoleBindingInformer, 10*time.Minute,
+			networkClient, networkInformers.Arktos().V1().Networks(), tc.NetworkTemplatePath, nil, fakeDiscoverFn, v1.FinalizerArktos)
 		controller.tenantListerSynced = alwaysReady
 
 		syncCalls := make(chan struct{})

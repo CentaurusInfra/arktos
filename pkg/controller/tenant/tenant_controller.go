@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/util/json"
+	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
 	"k8s.io/client-go/metadata"
 	"text/template"
 	"time"
@@ -35,6 +36,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktosv1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	arktoslister "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	rbacinformers "k8s.io/client-go/informers/rbac/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -77,6 +79,10 @@ type TenantController struct {
 	// sync handler for injection
 	syncHandler func(key string) error
 
+	// list network definitions in arktos
+	networkLister       arktoslister.NetworkLister
+	networkListerSynced cache.InformerSynced
+
 	// client for network CR api calls
 	networkClient arktos.Interface
 	// default network spec template file path
@@ -95,6 +101,7 @@ func NewTenantController(kubeClient clientset.Interface,
 	clusterRoleBindingInformer rbacinformers.ClusterRoleBindingInformer,
 	resyncPeriod time.Duration, // split this controller into tenant creation and deletion controllers if resyncPeriod causes performance degradation
 	networkClient arktos.Interface,
+	networkInformer arktosinformer.NetworkInformer,
 	defaultNetworkTemplatePath string,
 	metadataClient metadata.Interface,
 	discoverResourcesFn func() ([]*metav1.APIResourceList, error),
@@ -104,6 +111,8 @@ func NewTenantController(kubeClient clientset.Interface,
 	tenantController := &TenantController{
 		kubeClient:                 kubeClient,
 		networkClient:              networkClient,
+		networkLister:              networkInformer.Lister(),
+		networkListerSynced:        networkInformer.Informer().HasSynced,
 		queue:                      workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "tenant"),
 		defaultNetworkTemplatePath: defaultNetworkTemplatePath,
 		tenantedResourcesDeleter:   deletion.NewTenantedResourcesDeleter(kubeClient, metadataClient, discoverResourcesFn, finalizerToken),
@@ -239,22 +248,22 @@ func (tc *TenantController) syncTenant(tenantName string) (err error) {
 	}
 
 	// handling the addition of a tenant
-	if err, done := tc.createNamespaces(tenantName); !done {
+	if err, done := tc.syncNamespaces(tenantName); !done {
 		return err
 	}
 
-	if err, done := tc.createInitialRoleAndBinding(tenantName); !done {
+	if err, done := tc.syncInitialRoleAndBinding(tenantName); !done {
 		return err
 	}
 
-	if err, done := tc.createDefaultNetworkObject(tenantName); !done {
+	if err, done := tc.syncDefaultNetworkObject(tenantName); !done {
 		return err
 	}
 
 	return nil
 }
 
-func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error, bool) {
+func (tc *TenantController) syncDefaultNetworkObject(tenantName string) (error, bool) {
 	failures := []error{}
 
 	// create default network object, if applicable
@@ -264,12 +273,18 @@ func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error
 	} else if len(tc.defaultNetworkTemplatePath) == 0 {
 		klog.Infof("No default network template path; skipped the creation of default network in tenant %q", tenantName)
 	} else {
-		klog.Infof("creating the default network in tenant %q", tenantName)
 		defaultNetwork := arktosv1.Network{}
-		if err := tc.getDefaultNetwork(tenantName, &defaultNetwork); err != nil {
+		if err := tc.constructDefaultNetwork(tenantName, &defaultNetwork); err != nil {
 			failures = append(failures, err)
 		} else {
-			if _, err = tc.networkClient.ArktosV1().NetworksWithMultiTenancy(tenantName).Create(&defaultNetwork); err != nil && !errors.IsAlreadyExists(err) {
+			switch _, err = tc.networkLister.NetworksWithMultiTenancy(tenantName).Get(defaultNetwork.Name); {
+			case err == nil:
+				klog.V(4).Infof("Default network %s already exists for tenant %s. skipped creating it", defaultNetwork.Name, tenantName)
+			case errors.IsNotFound(err):
+				if _, err = tc.networkClient.ArktosV1().NetworksWithMultiTenancy(tenantName).Create(&defaultNetwork); err != nil && !errors.IsAlreadyExists(err) {
+					failures = append(failures, err)
+				}
+			case err != nil:
 				failures = append(failures, err)
 			}
 		}
@@ -277,12 +292,12 @@ func (tc *TenantController) createDefaultNetworkObject(tenantName string) (error
 	return flattenedError(failures, tenantName)
 }
 
-func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
+func (tc *TenantController) syncNamespaces(tenant string) (error, bool) {
 	failures := []error{}
 	for _, nsName := range tenantDefaultNamespaces {
 		switch _, err := tc.namespaceLister.NamespacesWithMultiTenancy(tenant).Get(nsName); {
 		case err == nil:
-			klog.V(8).Infof("namespace %s already exists. skipped creating it", nsName)
+			klog.V(4).Infof("namespace %s already exists. skipped creating it", nsName)
 			continue
 		case errors.IsNotFound(err):
 		case err != nil:
@@ -299,14 +314,14 @@ func (tc *TenantController) createNamespaces(tenant string) (error, bool) {
 	return flattenedError(failures, tenant)
 }
 
-func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, bool) {
+func (tc *TenantController) syncInitialRoleAndBinding(tenant string) (error, bool) {
 
 	var failures []error
 
 	shouldSkip := false
 	switch _, err := tc.clusterRoleLister.ClusterRolesWithMultiTenancy(tenant).Get(InitialClusterRoleName); {
 	case err == nil:
-		klog.V(8).Infof("cluster role %s already exists. skipped creating it", InitialClusterRoleName)
+		klog.V(4).Infof("cluster role %s already exists. skipped creating it", InitialClusterRoleName)
 		shouldSkip = true
 	case errors.IsNotFound(err):
 	case err != nil:
@@ -331,7 +346,7 @@ func (tc *TenantController) createInitialRoleAndBinding(tenant string) (error, b
 	shouldSkip = false
 	switch _, err := tc.clusterRoleBindingLister.ClusterRoleBindingsWithMultiTenancy(tenant).Get(InitialClusterRoleBindingName); {
 	case err == nil:
-		klog.V(8).Infof("cluster role binding %s already exists. skipped creating it", InitialClusterRoleBindingName)
+		klog.V(4).Infof("cluster role binding %s already exists. skipped creating it", InitialClusterRoleBindingName)
 		shouldSkip = true
 	case errors.IsNotFound(err):
 	case err != nil:
@@ -371,7 +386,7 @@ func initialClusterRoleRules() []rbacv1.PolicyRule {
 		},
 	}
 }
-func (tc *TenantController) getDefaultNetwork(tenant string, net *arktosv1.Network) error {
+func (tc *TenantController) constructDefaultNetwork(tenant string, net *arktosv1.Network) error {
 	// todo: validate content of template file
 	tmpl, err := tc.templateGetter(tc.defaultNetworkTemplatePath)
 	if err != nil {
