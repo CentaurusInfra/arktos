@@ -273,7 +273,6 @@ func (tc *TenantController) syncDefaultNetworkObject(tenantName string) (error, 
 	} else if len(tc.defaultNetworkTemplatePath) == 0 {
 		klog.Infof("No default network template path; skipped the creation of default network in tenant %q", tenantName)
 	} else {
-		klog.Infof("creating the default network in tenant %q", tenantName)
 		defaultNetwork := arktosv1.Network{}
 		if err := tc.constructDefaultNetwork(tenantName, &defaultNetwork); err != nil {
 			failures = append(failures, err)
