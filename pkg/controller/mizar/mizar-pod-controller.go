@@ -109,7 +109,7 @@ func (c *MizarPodController) Run(workers int, stopCh <-chan struct{}) {
 	klog.Infof("Starting %v controller", controllerForMizarPod)
 	defer klog.Infof("Shutting down %v controller", controllerForMizarPod)
 
-	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced) {
+	if !controller.WaitForCacheSync(controllerForMizarPod, stopCh, c.listerSynced, c.networkListerSynced) {
 		return
 	}
 
@@ -182,7 +182,7 @@ func (c *MizarPodController) processNextWorkItem() bool {
 func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 	key := keyWithEventType.Key
 	eventType := keyWithEventType.EventType
-	klog.Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
+	klog.V(4).Infof("Entering handling for %v. key %s, eventType %s", controllerForMizarPod, key, eventType)
 
 	startTime := time.Now()
 	defer func() {
@@ -219,10 +219,19 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			klog.Warningf("Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
 			return err
 		}
-		klog.Infof("Get network: %#v.", network)
+		klog.V(4).Infof("Get network: %#v.", network)
 
-		if network.Spec.Type != mizarNetworkType || network.Status.Phase != arktosextv1.NetworkReady {
-			klog.Warningf("The arktos network %s is not mizar type or is not Ready.", network.Name)
+		if network.Spec.Type != mizarNetworkType {
+			return nil
+		}
+
+		if network.Status.Phase != arktosextv1.NetworkReady {
+			klog.Warningf("The arktos network %s is not Ready.", network.Name)
+			// put key back into queue
+			go func() {
+				time.Sleep(100 * time.Millisecond)	// avoid busy waiting
+				c.createObj(obj)
+			}()
 			return nil
 		}
 		klog.V(4).Infof("Get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
@@ -280,7 +289,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 				klog.Errorf("Pod name (%s) - update pod's annotation to API server in error (%v) when (%v).", obj.Name, err, eventType)
 				return err
 			}
-			klog.Infof("Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
+			klog.V(2).Infof("Pod name (%s) - update pod's annotation to API server successfully when (%v).", obj.Name, eventType)
 
 		}
 	}
