@@ -215,7 +215,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 	//The annotations of vpc and subnet should not be added into pods
 	//which use host networking
-	if eventType == EventType_Create {
+	if eventType == EventType_Create || eventType == EventType_Update {
 		klog.V(4).Infof("Get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
 		network, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
 
@@ -234,7 +234,11 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			// put key back into queue
 			go func() {
 				time.Sleep(100 * time.Millisecond)	// avoid busy waiting
-				c.createObj(obj)
+				if eventType == EventType_Create {
+					c.createObj(obj)
+				} else { // Update
+					c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: obj.ResourceVersion})
+				}
 			}()
 			return nil
 		}
