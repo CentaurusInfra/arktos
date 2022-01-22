@@ -274,6 +274,8 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 		replicas := obj.Min_count
 		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	} else {
+
+
 		ret = fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	}
 	return []byte(ret), nil
