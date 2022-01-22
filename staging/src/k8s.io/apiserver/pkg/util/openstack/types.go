@@ -55,16 +55,16 @@ import (
     }
   }
 }
- */
+*/
 
- type vmRequestBody struct {
- 	apiVersion string  `default:"v1"`
- 	kind string `default:"Pod"`
- 	metadata metav1.ObjectMeta
- 	spec v1.PodSpec
- }
+type vmRequestBody struct {
+	apiVersion string `default:"v1"`
+	kind       string `default:"Pod"`
+	metadata   metav1.ObjectMeta
+	spec       v1.PodSpec
+}
 
-func getRequestBody() (string, error){
+func getRequestBody() (string, error) {
 	t := vmRequestBody{}
 
 	b, err := json.Marshal(t)

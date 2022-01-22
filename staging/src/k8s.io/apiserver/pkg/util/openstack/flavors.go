@@ -60,4 +60,3 @@ func GetFalvor(name string) (*FlavorType, error) {
 func ListFalvors() []*FlavorType {
 	return flavorList
 }
-

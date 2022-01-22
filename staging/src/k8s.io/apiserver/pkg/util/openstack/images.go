@@ -56,4 +56,3 @@ func GetImage(name string) (*ImageType, error) {
 func ListImages() []*ImageType {
 	return imageList
 }
-
