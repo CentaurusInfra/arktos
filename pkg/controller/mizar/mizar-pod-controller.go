@@ -228,7 +228,10 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		if network.Status.Phase != arktosextv1.NetworkReady {
 			klog.Warningf("The arktos network %s is not Ready.", network.Name)
 			// put key back into queue
-			c.createObj(obj)
+			go func() {
+				time.Sleep(100 * time.Millisecond)	// avoid busy waiting
+				c.createObj(obj)
+			}()
 			return nil
 		}
 		klog.V(4).Infof("Get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
