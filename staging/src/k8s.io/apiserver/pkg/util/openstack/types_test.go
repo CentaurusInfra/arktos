@@ -23,17 +23,17 @@ import (
 
 func TestGetRequestBody(t *testing.T) {
 	tests := []struct {
-		name           string
-		input          string
+		name               string
+		input              string
 		expectedJsonString string
 
 		expectedError error
 	}{
 		{
-			name:  "default test",
-			input: "",
+			name:               "default test",
+			input:              "",
 			expectedJsonString: "",
-			expectedError: nil,
+			expectedError:      nil,
 		},
 	}
 

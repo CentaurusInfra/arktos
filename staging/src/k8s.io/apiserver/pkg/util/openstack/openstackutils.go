@@ -274,12 +274,11 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 		replicas := obj.Min_count
 		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
 	} else {
-
-
 		ret, err = getRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 		if err != nil {
 			return nil, err
 		}
+
 	}
 	return []byte(ret), nil
 }
@@ -407,7 +406,7 @@ func IsActionRequest(path string) bool {
 }
 
 // Internally the OpenStackServerRequest struct is shared with both batch request and non-batch request.
-// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users 
+// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users
 // so the min-count is 0 as default int value
 //
 // Any non-zero possitive numbers which are set by the user request body and will be considerred as a batch request

@@ -26,7 +26,6 @@ import (
 	"k8s.io/klog"
 )
 
-
 type vmRequestBody struct {
  	apiVersion string  `default:"v1"`
  	kind string `default:"Pod"`
