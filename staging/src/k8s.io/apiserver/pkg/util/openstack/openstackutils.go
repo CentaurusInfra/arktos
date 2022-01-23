@@ -276,7 +276,10 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 	} else {
 
 
-		ret = fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = getRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return []byte(ret), nil
 }

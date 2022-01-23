@@ -17,62 +17,62 @@ limitations under the License.
 package openstack
 
 import (
+    "strconv"
+
 	"k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
+	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/klog"
 )
 
-/*
 
-{
-  "apiVersion":"v1",
-  "kind":"Pod",
-  "metadata":{
-    "annotations":{
-      "VirtletCPUModel":"host-model"
-    },
-    "name":"%s",
-    "namespace":"kube-system",
-    "tenant":"system"
-  },
-  "spec":{
-    "virtualMachine":{
-      "image":"%s",
-      "imagePullPolicy":"IfNotPresent",
-      "keyPairName":"foobar",
-      "name":"%s",
-      "publicKey":"ssh-rsa AAA",
-      "resources":{
-        "limits":{
-          "cpu":"%d",
-          "memory":"%dMi"
-        },
-        "requests":{
-          "cpu":"%d",
-          "memory":"%dMi"
-        }
-      }
-    }
-  }
-}
- */
-
- type vmRequestBody struct {
+type vmRequestBody struct {
  	apiVersion string  `default:"v1"`
  	kind string `default:"Pod"`
  	metadata metav1.ObjectMeta
  	spec v1.PodSpec
  }
 
-func getRequestBody() (string, error){
+func getRequestBody(serverName, imageRef string, vcpu, memInMi int) (string, error){
 	t := vmRequestBody{}
+	t.metadata = metav1.ObjectMeta{
+		Name: serverName,
+		Namespace: "kube-system",
+		Tenant: "system",
+		Annotations: map[string]string{"VirtletCPUModel":"host-model"},
+		}
+
+	t.spec = v1.PodSpec{
+		VirtualMachine: &v1.VirtualMachine{
+			Image: imageRef,
+			KeyPairName: "foobar",
+			Name: serverName,
+			PublicKey: "ssh-rsa AAA",
+			Resources: v1.ResourceRequirements{
+				Limits: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
+					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi)+"Mi"),
+				},
+				Requests: v1.ResourceList{
+					v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
+					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi)+"Mi"),
+				},
+			},
+
+			},
+	}
+
+	klog.Infof("debug: requestBody: %v", t)
 
 	b, err := json.Marshal(t)
 
 	if err != nil {
+		klog.Infof("debug: failed Marshaling request body. error: %v", err)
 		return "", err
 	}
 
+	klog.Infof("debug: request body: %s", string(b))
 	return string(b), nil
 
 }
