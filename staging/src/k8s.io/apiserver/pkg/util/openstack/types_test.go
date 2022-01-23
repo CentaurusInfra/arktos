@@ -21,24 +21,65 @@ import (
 	"testing"
 )
 
+type input struct {
+	serverName string
+	imageRef string
+	vcpu int
+	memInMi int
+}
+
+var expectedJson1 = `
+{
+   "apiVersion":"v1",
+   "kind":"Pod",
+   "MetaData":{
+      "name":"testvm",
+      "tenant":"system",
+      "namespace":"kube-system",
+      "creationTimestamp":null,
+      "annotations":{
+         "VirtletCPUModel":"host-model"
+      }
+   },
+   "spec":{
+      "virtualMachine":{
+         "name":"testvm",
+         "image":"m1.tiny",
+         "resources":{
+            "limits":{
+               "cpu":"1",
+               "memory":"512Mi"
+            },
+            "requests":{
+               "cpu":"1",
+               "memory":"512Mi"
+            }
+         },
+         "keyPairName":"foobar",
+         "publicKey":"ssh-rsa AAA"
+      }
+   }
+}`
+
 func TestGetRequestBody(t *testing.T) {
+
 	tests := []struct {
 		name               string
-		input              string
+		input              input
 		expectedJsonString string
 
 		expectedError error
 	}{
 		{
-			name:               "default test",
-			input:              "",
-			expectedJsonString: "",
+			name:               "basic valid test",
+			input:              input{serverName: "testvm", imageRef:"m1.tiny", vcpu:1, memInMi:512},
+			expectedJsonString: expectedJson1,
 			expectedError:      nil,
 		},
 	}
 
 	for _, test := range tests {
-		actualJsonString, err := getRequestBody()
+		actualJsonString, err := getRequestBody(test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
 
 		if err != test.expectedError {
 			t.Fatal(err)

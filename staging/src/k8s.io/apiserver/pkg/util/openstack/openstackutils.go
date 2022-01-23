@@ -18,7 +18,6 @@ package openstack
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -40,18 +39,9 @@ const (
 	RESTORE  = "restore"
 )
 
-var REPLICATES_JSON_STRING_TEMPLATE string
 var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
 func init() {
-	t, err := ioutil.ReadFile("/openstackBatchRequestTemplate.json")
-	if err != nil {
-		klog.Errorf("error reading batch request template file. error : %v", err)
-		return
-	}
-
-	REPLICATES_JSON_STRING_TEMPLATE = string(t)
-
 	initFlavorsCache()
 	initImagesCache()
 
@@ -264,14 +254,14 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 
 	if IsBatchCreationRequest(obj) {
 		replicas := obj.Min_count
-		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = getReplicasetRequestBody(replicas, obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	} else {
 		ret, err = getRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
-		if err != nil {
-			return nil, err
-		}
-
 	}
+	if err != nil {
+		return nil, err
+	}
+
 	return []byte(ret), nil
 }
 
