@@ -40,19 +40,11 @@ const (
 	RESTORE  = "restore"
 )
 
-var POD_JSON_STRING_TEMPLATE, REPLICATES_JSON_STRING_TEMPLATE string
+var REPLICATES_JSON_STRING_TEMPLATE string
 var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
 func init() {
-	t, err := ioutil.ReadFile("/openstackRequestTemplate.json")
-	if err != nil {
-		klog.Errorf("error reading template file. error : %v", err)
-		return
-	}
-
-	POD_JSON_STRING_TEMPLATE = string(t)
-
-	t, err = ioutil.ReadFile("/openstackBatchRequestTemplate.json")
+	t, err := ioutil.ReadFile("/openstackBatchRequestTemplate.json")
 	if err != nil {
 		klog.Errorf("error reading batch request template file. error : %v", err)
 		return

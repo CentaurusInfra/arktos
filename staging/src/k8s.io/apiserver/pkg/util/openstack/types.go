@@ -17,49 +17,50 @@ limitations under the License.
 package openstack
 
 import (
-    "strconv"
+	"strconv"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
-	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog"
 )
 
 type vmRequestBody struct {
- 	apiVersion string  `default:"v1"`
- 	kind string `default:"Pod"`
- 	metadata metav1.ObjectMeta
- 	spec v1.PodSpec
- }
+	ApiVersion string            `json:"apiVersion"`
+	Kind       string            `json:"kind"`
+	MetaData   metav1.ObjectMeta `json:"metadata"`
+	Spec       v1.PodSpec        `json:"spec"`
+}
 
-func getRequestBody(serverName, imageRef string, vcpu, memInMi int) (string, error){
+func getRequestBody(serverName, imageRef string, vcpu, memInMi int) (string, error) {
 	t := vmRequestBody{}
-	t.metadata = metav1.ObjectMeta{
-		Name: serverName,
-		Namespace: "kube-system",
-		Tenant: "system",
-		Annotations: map[string]string{"VirtletCPUModel":"host-model"},
-		}
+	t.ApiVersion = "v1"
+	t.Kind = "Pod"
+	t.MetaData = metav1.ObjectMeta{
+		Name:        serverName,
+		Namespace:   "kube-system",
+		Tenant:      "system",
+		Annotations: map[string]string{"VirtletCPUModel": "host-model"},
+	}
 
-	t.spec = v1.PodSpec{
+	t.Spec = v1.PodSpec{
 		VirtualMachine: &v1.VirtualMachine{
-			Image: imageRef,
+			Image:       imageRef,
 			KeyPairName: "foobar",
-			Name: serverName,
-			PublicKey: "ssh-rsa AAA",
+			Name:        serverName,
+			PublicKey:   "ssh-rsa AAA",
 			Resources: v1.ResourceRequirements{
 				Limits: v1.ResourceList{
 					v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
-					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi)+"Mi"),
+					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi) + "Mi"),
 				},
 				Requests: v1.ResourceList{
 					v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
-					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi)+"Mi"),
+					v1.ResourceMemory: resource.MustParse(strconv.Itoa(memInMi) + "Mi"),
 				},
 			},
-
-			},
+		},
 	}
 
 	klog.Infof("debug: requestBody: %v", t)
