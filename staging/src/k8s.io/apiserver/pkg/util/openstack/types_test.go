@@ -23,9 +23,9 @@ import (
 
 type input struct {
 	serverName string
-	imageRef string
-	vcpu int
-	memInMi int
+	imageRef   string
+	vcpu       int
+	memInMi    int
 }
 
 var expectedJson1 = `
@@ -72,7 +72,7 @@ func TestGetRequestBody(t *testing.T) {
 	}{
 		{
 			name:               "basic valid test",
-			input:              input{serverName: "testvm", imageRef:"m1.tiny", vcpu:1, memInMi:512},
+			input:              input{serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
 			expectedJsonString: expectedJson1,
 			expectedError:      nil,
 		},

@@ -27,10 +27,11 @@ import (
 )
 
 const (
-	LABEL_SELECTOR_NAME="ln"
-	DEFAULT_NAMESPACE="kube-system"
-	DEFAULT_TENANT="system"
+	LABEL_SELECTOR_NAME = "ln"
+	DEFAULT_NAMESPACE   = "kube-system"
+	DEFAULT_TENANT      = "system"
 )
+
 type batchRequestBody struct {
 	ApiVersion string             `json:"apiVersion"`
 	Kind       string             `json:"kind"`
@@ -109,11 +110,11 @@ func constructVmPodRequestBody(serverName, imageRef string, vcpu, memInMi int) (
 
 func constructVMSpec(serverName, imageRef string, vcpu, memInMi int) *v1.VirtualMachine {
 	return &v1.VirtualMachine{
-		Image:       imageRef,
+		Image:           imageRef,
 		ImagePullPolicy: v1.PullIfNotPresent,
-		KeyPairName: "foobar",
-		Name:        serverName,
-		PublicKey:   "ssh-rsa AAA",
+		KeyPairName:     "foobar",
+		Name:            serverName,
+		PublicKey:       "ssh-rsa AAA",
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
