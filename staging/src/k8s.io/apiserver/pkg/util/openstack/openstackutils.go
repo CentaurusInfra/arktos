@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -310,7 +310,7 @@ func getActionOperation(body []byte) string {
 }
 
 func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
-	o := obj.(*v1.Status)
+	o := obj.(*metav1.Status)
 	klog.V(6).Infof("Convert Arktos object: %v", o)
 
 	// for action types reboot, start, stop, simply return empty response since Openstack
@@ -375,12 +375,12 @@ func IsOpenstackRequest(req *http.Request) bool {
 
 // TODO: Get the tenant for the request from the request Token
 func GetTenantFromRequest(r *http.Request) string {
-	return v1.TenantSystem
+	return metav1.TenantSystem
 }
 
 // TODO: Get the namespace, maps to the Openstack projct, from the Openstack token
 func GetNamespaceFromRequest(r *http.Request) string {
-	return v1.NamespaceSystem
+	return metav1.NamespaceSystem
 }
 
 // the suffix of URL path is the action of the VM
