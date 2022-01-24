@@ -28,8 +28,6 @@ import (
 
 const (
 	LABEL_SELECTOR_NAME = "ln"
-	DEFAULT_NAMESPACE   = "kube-system"
-	DEFAULT_TENANT      = "system"
 )
 
 var cpuModelAnnotation = map[string]string{"VirtletCPUModel": "host-model"}
@@ -47,8 +45,8 @@ func constructReplicasetRequestBody(replicas int, serverName, imageRef string, v
 	t.Kind = "ReplicaSet"
 	t.MetaData = metav1.ObjectMeta{
 		Name:      serverName,
-		Namespace: DEFAULT_NAMESPACE,
-		Tenant:    DEFAULT_TENANT,
+		Namespace: metav1.NamespaceSystem,
+		Tenant:    metav1.TenantSystem,
 	}
 
 	i := int32(replicas)
@@ -91,8 +89,8 @@ func constructVmPodRequestBody(serverName, imageRef string, vcpu, memInMi int) (
 	t.Kind = "Pod"
 	t.MetaData = metav1.ObjectMeta{
 		Name:        serverName,
-		Namespace:   DEFAULT_NAMESPACE,
-		Tenant:      DEFAULT_TENANT,
+		Namespace:   metav1.NamespaceSystem,
+		Tenant:      metav1.TenantSystem,
 		Annotations: cpuModelAnnotation,
 	}
 

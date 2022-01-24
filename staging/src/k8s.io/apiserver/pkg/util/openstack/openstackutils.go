@@ -375,12 +375,12 @@ func IsOpenstackRequest(req *http.Request) bool {
 
 // TODO: Get the tenant for the request from the request Token
 func GetTenantFromRequest(r *http.Request) string {
-	return DEFAULT_TENANT
+	return v1.TenantSystem
 }
 
 // TODO: Get the namespace, maps to the Openstack projct, from the Openstack token
 func GetNamespaceFromRequest(r *http.Request) string {
-	return DEFAULT_NAMESPACE
+	return v1.NamespaceSystem
 }
 
 // the suffix of URL path is the action of the VM
