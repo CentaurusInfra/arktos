@@ -25,13 +25,6 @@ go_library(
     ],
 )
 
-exports_files(
-    srcs = [
-        "openstackRequestTemplate.json",
-    ],
-    visibility = ["//visibility:public"],
-)
-
 filegroup(
     name = "package-srcs",
     srcs = glob(["**"]),
