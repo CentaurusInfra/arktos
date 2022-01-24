@@ -1266,6 +1266,16 @@ function start-kubelet {
 
   local -r kubelet_env_file="/etc/default/kubelet"
   local kubelet_opts="${KUBELET_ARGS} ${KUBELET_CONFIG_FILE_ARG:-}"
+
+  #extra applicable resolv-conf
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    # ubuntu 18.04/20.04
+    kubelet_opts="${kubelet_opts} --resolv-conf=/run/systemd/resolve/resolv.conf"
+  elif [ -f "/run/resolvconf/resolv.conf" ]; then
+    # ubuntu 16.04
+    kubelet_opts="${kubelet_opts} --resolv-conf=/run/resolvconf/resolv.conf"
+  fi
+
   echo "KUBELET_OPTS=\"${kubelet_opts}\"" > "${kubelet_env_file}"
   echo "KUBE_COVERAGE_FILE=\"/var/log/kubelet.cov\"" >> "${kubelet_env_file}"
 
