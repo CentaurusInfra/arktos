@@ -57,9 +57,12 @@ EOF
 mkdir -p "${CERT_DIR}" &>/dev/null || sudo mkdir -p "${CERT_DIR}"
 CONTROLPLANE_SUDO=$(test -w "${CERT_DIR}" || echo "sudo -E")
 
-# Generate kubeconfig
+# Generate kubeconfig for kubelet
 write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_HOST}" "${API_PORT}" kubelet "" "http"
 ${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/kubelet.kubeconfig"
+# Generate kubeconfig for kube-proxy
+write_client_kubeconfig "${CONTROLPLANE_SUDO}" "${CERT_DIR}" "" "${API_HOST}" "${API_PORT}" kube-proxy "" "http"
+${CONTROLPLANE_SUDO} chown "$(whoami)" "${CERT_DIR}/kube-proxy.kubeconfig"
 
 KUBELET_CLIENTCA=${KUBELET_CLIENTCA:-"${CERT_DIR}/client-ca.crt"}
 ${CONTROLPLANE_SUDO} chown "$(whoami)" "${KUBELET_CLIENTCA}"
@@ -74,7 +77,9 @@ if [[ ! -s "${KUBELET_CLIENTCA}" ]]; then
     die "arktos worker node failed to start."
 fi
 
-make all WHAT=cmd/hyperkube
+make all WHAT="cmd/hyperkube cmd/kubelet cmd/kube-proxy"
+
+PROXY_TP_KUBECONFIGS=""
 
 if [[ "${IS_SCALE_OUT}" != "true" ]]; then
 echo "IS_SCALE_OUT false"
@@ -123,6 +128,7 @@ else
       KUBELET_TENANT_SERVER_KUBECONFIG_FLAG="${KUBELET_TENANT_SERVER_KUBECONFIG_FLAG}${CERT_DIR}/${kubeconfig_filename}${pos}.kubeconfig,"
     done
     KUBELET_TENANT_SERVER_KUBECONFIG_FLAG=${KUBELET_TENANT_SERVER_KUBECONFIG_FLAG::-1}
+    PROXY_TP_KUBECONFIGS={$KUBELET_TENANT_SERVER_KUBECONFIG_FLAG}
   fi
 
 sudo ./_output/local/bin/linux/amd64/hyperkube kubelet \
@@ -152,3 +158,30 @@ fi
 
 echo "kubelet has been started. please check /tmp/kubelet.worker.log for its running log."
 
+# Start proxy
+cat <<EOF > /tmp/kube-proxy.yaml
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+clientConnection:
+  kubeconfig: ${CERT_DIR}/kube-proxy.kubeconfig
+tenantPartitionKubeConfig: ${PROXY_TP_KUBECONFIGS}
+hostnameOverride: ${HOSTNAME_OVERRIDE}
+mode: ${KUBE_PROXY_MODE}
+EOF
+
+if [[ -n ${FEATURE_GATES} ]]; then
+  echo "featureGates:"
+  # Convert from foo=true,bar=false to
+  #   foo: true
+  #   bar: false
+  for gate in $(echo "${FEATURE_GATES}" | tr ',' ' '); do
+    echo "${gate}" | sed -e 's/\(.*\)=\(.*\)/  \1: \2/'
+  done
+fi >>/tmp/kube-proxy.yaml
+
+sudo ./_output/local/bin/linux/amd64/hyperkube kube-proxy \
+  --v="${LOG_LEVEL}" \
+  --config=/tmp/kube-proxy.yaml \
+  --master="http://${API_HOST}:${API_PORT}" > "${LOG_DIR}/kube-proxy.log" 2>&1 &
+
+echo "kube proxy has been started. please check /tmp/kube-proxy.log for its running log."
