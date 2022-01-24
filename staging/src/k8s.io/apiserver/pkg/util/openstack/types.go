@@ -32,6 +32,8 @@ const (
 	DEFAULT_TENANT      = "system"
 )
 
+var cpuModelAnnotation = map[string]string{"VirtletCPUModel": "host-model"}
+
 type batchRequestBody struct {
 	ApiVersion string             `json:"apiVersion"`
 	Kind       string             `json:"kind"`
@@ -57,7 +59,7 @@ func constructReplicasetRequestBody(replicas int, serverName, imageRef string, v
 		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
-				Annotations: map[string]string{"VirtletCPUModel": "host-model"},
+				Annotations: cpuModelAnnotation,
 				Labels:      map[string]string{LABEL_SELECTOR_NAME: serverName},
 			},
 			Spec: v1.PodSpec{
@@ -91,7 +93,7 @@ func constructVmPodRequestBody(serverName, imageRef string, vcpu, memInMi int) (
 		Name:        serverName,
 		Namespace:   DEFAULT_NAMESPACE,
 		Tenant:      DEFAULT_TENANT,
-		Annotations: map[string]string{"VirtletCPUModel": "host-model"},
+		Annotations: cpuModelAnnotation,
 	}
 
 	t.Spec = v1.PodSpec{
