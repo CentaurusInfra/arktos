@@ -41,6 +41,7 @@ const (
 
 var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
+// init function initialize the VM flavor and image cache
 func init() {
 	initFlavorsCache()
 	initImagesCache()
@@ -250,19 +251,20 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var ret string
+	var ret []byte
 
 	if IsBatchCreationRequest(obj) {
 		replicas := obj.Min_count
-		ret, err = getReplicasetRequestBody(replicas, obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructReplicasetRequestBody(replicas, obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	} else {
-		ret, err = getRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructVmPodRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	}
 	if err != nil {
+		klog.Errorf("failed to construct request body. error: %v", err)
 		return nil, err
 	}
 
-	return []byte(ret), nil
+	return ret, nil
 }
 
 // Convert the action request to Arktos action request body
@@ -373,12 +375,12 @@ func IsOpenstackRequest(req *http.Request) bool {
 
 // TODO: Get the tenant for the request from the request Token
 func GetTenantFromRequest(r *http.Request) string {
-	return "system"
+	return DEFAULT_TENANT
 }
 
 // TODO: Get the namespace, maps to the Openstack projct, from the Openstack token
 func GetNamespaceFromRequest(r *http.Request) string {
-	return "kube-system"
+	return DEFAULT_NAMESPACE
 }
 
 // the suffix of URL path is the action of the VM

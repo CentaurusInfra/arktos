@@ -61,8 +61,8 @@ var expectedJson1 = `
    }
 }`
 
+//TODO: fix UT
 func TestGetRequestBody(t *testing.T) {
-
 	tests := []struct {
 		name               string
 		input              input
@@ -79,13 +79,13 @@ func TestGetRequestBody(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		actualJsonString, err := getRequestBody(test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
+		b, err := constructVmPodRequestBody(test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
 
 		if err != test.expectedError {
 			t.Fatal(err)
 		}
 
-		if strings.Compare(actualJsonString, test.expectedJsonString) != 0 {
+		if strings.Compare(string(b), test.expectedJsonString) != 0 {
 			t.Fatal(err)
 		}
 	}
