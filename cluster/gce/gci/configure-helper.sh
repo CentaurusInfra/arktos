@@ -51,6 +51,7 @@ function main() {
   KUBE_HOME="/home/kubernetes"
   CONTAINERIZED_MOUNTER_HOME="${KUBE_HOME}/containerized_mounter"
   PV_RECYCLER_OVERRIDE_TEMPLATE="${KUBE_HOME}/kube-manifests/kubernetes/pv-recycler-template.yaml"
+  DEFAULT_NETWORK_TEMPLATE="${KUBE_HOME}/kube-manifests/kubernetes/default-network.tmpl"
 
   if [[ ! -e "${KUBE_HOME}/kube-env" ]]; then
     echo "The ${KUBE_HOME}/kube-env file does not exist!! Terminate cluster initialization."
@@ -92,10 +93,8 @@ function main() {
     create-master-etcd-auth
     create-master-etcd-apiserver-auth
     override-pv-recycler
+    create-default-network-template-volume-mount
     gke-master-start
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
-      create-kubeproxy-user-kubeconfig
-    fi
   else
     create-node-pki
     if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
@@ -135,9 +134,6 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
-      start-kube-proxy
-    fi
 
     if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" != "rp" ]]; then
       start-kube-scheduler
@@ -149,8 +145,12 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
-    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
       start-cluster-networking   ####start cluster networking if not using default kubenet
+    else
+      if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+        start-cluster-networking   ####start cluster networking if not using default kubenet
+      fi
     fi
 
   else
@@ -166,13 +166,6 @@ function main() {
         create-mizar-daemon-manifest
       fi
     fi
-  fi
-  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-    #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
-    until [ -f "/opt/cni/bin/mizarcni" ]; do
-      sleep 5
-    done
-    cp -f "/opt/cni/bin/mizarcni" "/home/kubernetes/bin/"
   fi
   reset-motd
   prepare-mounter-rootfs

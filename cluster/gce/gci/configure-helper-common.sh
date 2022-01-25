@@ -124,9 +124,6 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
-  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
-    mkdir -p /var/lib/kube-proxy
-  fi
 }
 
 # Gets the total number of $(1) and $(2) type disks specified
@@ -1805,6 +1802,9 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
+  if [[ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]]; then
+    params+=" --disable-admission-plugins=${DISABLE_ADMISSION_PLUGINS}"
+  fi
 
   if [[ -n "${NUM_NODES:-}" ]]; then
     local max_request_inflight="-1"
@@ -2346,6 +2346,7 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
+
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,nodeipam,ttl,csrsigning,csrapproving,csrcleaner"
   fi
@@ -2354,6 +2355,10 @@ function start-kube-controller-manager {
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
+  fi
+
+  if [[ -n "${DEFAULT_NETWORK_TEMPLATE:-}" -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+    params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
   fi
 
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
@@ -2383,6 +2388,8 @@ function start-kube-controller-manager {
   sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{default_network_template_path_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{default_network_template_path_volume}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
@@ -3210,34 +3217,16 @@ spec:
 EOF
 }
 
-function wait-for-node-registered {
-  until kubectl get nodes | grep `hostname`; do
-    sleep 5
-  done
-}
-
-function wait-until-mizar-ready {
-  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
-  until kubectl get vpcs | grep Provisioned; do
-    sleep 5
-  done
-  until kubectl get dividers | grep Provisioned; do
-    sleep 5
-  done
-  until kubectl get bouncers | grep Provisioned; do
-    sleep 5
-  done
-  until kubectl get subnets | grep Provisioned; do
-    sleep 5
-  done
-}
-
 function start-mizar-scaleout {
     echo "Installing Mizar for scale-out architecture..."
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
     create-mizar-daemon-manifest
   fi
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    create-mizar-operator-manifest
+  fi
+  #TODO BUGBUG - REMOVE THIS BELOW, RP mizar-operator is only for testing
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     create-mizar-operator-manifest
   fi
 }
@@ -3248,14 +3237,16 @@ function start-mizar-scaleup {
     sleep 5
   done
   echo "Installing Mizar for scale-up architecture..."
-  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
   wait-until-mizar-ready
 }
 
+function wait-until-mizar-ready {
+  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  #TODO: Wait for all CRDs provisioned
+}
+
 function start-mizar {
-  wait-for-node-registered
-  kubectl label node `hostname` node-role.kubernetes.io/master=""
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     start-mizar-scaleout
   else
@@ -3377,6 +3368,18 @@ spec:
     - name: vol
       mountPath: /scrub
 EOF
+}
+
+function create-default-network-template-volume-mount {
+  if [[ -z "${DEFAULT_NETWORK_TEMPLATE:-}" ]]; then
+    echo "DEFAULT_NETWORK_TEMPLATE is not set"
+    exit 1
+  fi
+
+  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"default_network_template_path_mount\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"FileOrCreate\"}},"
+  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"default_network_template_path_mount\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": true},"
+
+  cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
 }
 
 function wait-till-apiserver-ready() {

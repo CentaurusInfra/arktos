@@ -238,6 +238,23 @@ function download-controller-config {
   )
 }
 
+function download-network-template {
+  local -r dest="$1"
+  echo "Downloading network template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_network_template="/tmp/network.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_network_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/networktemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_network_template} ${dest}
+    fi
+  )
+}
+
 function download-proxy-config {
   local -r dest="$1"
   echo "Downloading proxy config file, if it exists"
@@ -381,12 +398,8 @@ function install-cni-network {
   mkdir -p /etc/cni/net.d
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
     mizar)
-    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-      setup-mizar-cni-conf
-      install-mizar-cni-bin
-    else
-      download-mizar-cni-yaml
-    fi
+    setup-mizar-cni-conf
+    install-mizar-cni-bin
     ;;
     flannel)
     setup-flannel-cni-conf
@@ -415,14 +428,13 @@ function install-mizar-cni-bin {
     wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
   fi
   chmod +x ${KUBE_BIN}/mizarcni
-}
-
-function download-mizar-cni-yaml {
-  mkdir -p ${KUBE_HOME}/mizar
-  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
-    wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
-  else
-    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    mkdir -p ${KUBE_HOME}/mizar
+    if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+      wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+    else
+      wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+    fi
   fi
 }
 
@@ -500,10 +512,8 @@ function install-cni-binaries {
   download-or-bust "${cni_sha1}" "https://storage.googleapis.com/kubernetes-release/network-plugins/${cni_tar}"
   local -r cni_dir="${KUBE_HOME}/cni"
   mkdir -p "${cni_dir}/bin"
-  mkdir -p "${CNI_BIN_DIR}"
   tar xzf "${KUBE_HOME}/${cni_tar}" -C "${cni_dir}/bin" --overwrite
-  cp -f "${cni_dir}/bin"/* "${KUBE_BIN}" #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
-  mv "${cni_dir}/bin"/* "${CNI_BIN_DIR}"
+  mv "${cni_dir}/bin"/* "${KUBE_BIN}"
   rmdir "${cni_dir}/bin"
   rm -f "${KUBE_HOME}/${cni_tar}"
 }
@@ -632,9 +642,6 @@ function load-docker-images {
     try-load-docker-image "${img_dir}/kube-controller-manager.tar"
     try-load-docker-image "${img_dir}/kube-scheduler.tar"
     try-load-docker-image "${img_dir}/workload-controller-manager.tar"
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-      try-load-docker-image "${img_dir}/kube-proxy.tar"
-    fi
   else
     try-load-docker-image "${img_dir}/kube-proxy.tar"
   fi
@@ -673,9 +680,6 @@ function install-kube-binary-config {
       cp "${src_dir}/kube-scheduler.tar" "${dst_dir}"
       cp "${src_dir}/workload-controller-manager.tar" "${dst_dir}"
       cp -r "${KUBE_HOME}/kubernetes/addons" "${dst_dir}"
-      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-        cp "${src_dir}/kube-proxy.tar" "${dst_dir}"
-      fi
     fi
     load-docker-images
     mv "${src_dir}/kubelet" "${KUBE_BIN}"
@@ -726,27 +730,6 @@ function install-kube-binary-config {
   rm -rf "${KUBE_HOME}/kubernetes"
   rm -f "${KUBE_HOME}/${server_binary_tar}"
   rm -f "${KUBE_HOME}/${server_binary_tar}.sha1"
-}
-
-function ensure-mizar-kernel-and-ifname() {
-  sed -i "s/set-name: .*/set-name: eth0/" /etc/netplan/50-cloud-init.yaml
-  local kernel_ver=`uname -r`
-  echo "Running kernel version: $kernel_ver"
-  local mj_ver=$(echo $kernel_ver | cut -d. -f1)
-  local mn_ver=$(echo $kernel_ver | cut -d. -f2)
-  if [[ "$mj_ver" < "5" ]] || [[ "$mn_ver" < "6" ]]; then
-    echo "Mizar requires an updated kernel: linux-5.6-rc2 or above for TCP to function correctly. Current version is $kernel_ver. Updating.."
-    local mz_kernel_tmp_dir="/tmp/linux-5.6-rc2"
-    mkdir -p $mz_kernel_tmp_dir
-    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-headers-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
-    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2-dbg_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
-    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
-    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-libc-dev_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
-    sudo dpkg -i $mz_kernel_tmp_dir/*.deb
-    sudo reboot
-  else
-    echo "Kernel version needed by Mizar is running."
-  fi
 }
 
 function ensure-docker() {
@@ -932,18 +915,9 @@ validate-python
 download-kube-env
 source "${KUBE_HOME}/kube-env"
 
-# This hack is only needed because arktos does not support ubuntu 20.04 with latest kernels
-# When arktos adds support for 20.04 that has 5.11.0 kernel, we don't need to update kernel.
-if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-  OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
-  OS_VER=$(cat /etc/os-release | grep ^VERSION= | cut -d= -f2)
-  if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
-    ensure-mizar-kernel-and-ifname
-  fi
-fi
-
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-network-template "${KUBE_HOME}/network.tmpl"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
@@ -969,5 +943,6 @@ else
   # binaries and kube-system manifests
   install-kube-binary-config
 fi
+
 
 echo "Done for installing kubernetes files"

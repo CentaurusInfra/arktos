@@ -160,6 +160,7 @@ function create-scaleoutserver-instance-internal() {
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
+  metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${server_name}-pd"
