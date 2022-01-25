@@ -218,14 +218,14 @@ func buildControllerRoles() ([]rbacv1.ClusterRole, []rbacv1.ClusterRoleBinding) 
 			rbacv1helpers.NewRule("get", "list", "delete", "deletecollection").Groups("*").Resources("*").RuleOrDie(),
 		},
 	})
-	/* This is a too braod authorization - need to revisit. For now, just disable since this controller is not used
 	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "mizar-service-controller"},
 		Rules: []rbacv1.PolicyRule{
-			rbacv1helpers.NewRule("*").Groups("*").Resources("*").RuleOrDie(),
-			eventsRule(),
+			rbacv1helpers.NewRule("get", "list", "update", "watch").Groups(legacyGroup).Resources("services").RuleOrDie(),
+			rbacv1helpers.NewRule("get", ).Groups(legacyGroup).Resources("endpoints").RuleOrDie(),
+			rbacv1helpers.NewRule("get").Groups("arktos.futurewei.com").Resources("networks").RuleOrDie(),
 		},
-	})*/
+	})
 	addControllerRole(&controllerRoles, &controllerRoleBindings, rbacv1.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{Name: saRolePrefix + "node-controller"},
 		Rules: []rbacv1.PolicyRule{
