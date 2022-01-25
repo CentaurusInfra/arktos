@@ -209,12 +209,11 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 	}
 
+	//Skip pod when it uses host networking
 	if obj.Spec.HostNetwork {
 		return nil
 	}
 
-	//The annotations of vpc and subnet should not be added into pods
-	//which use host networking
 	if eventType == EventType_Create || eventType == EventType_Update {
 		klog.V(4).Infof("Get hostIP (%s) - podIP(%s)", obj.Status.HostIP, obj.Status.PodIP)
 		network, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
@@ -267,7 +266,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 			_, err := c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 			if err != nil {
-				klog.Errorf("Pod %s/%s/%s - update pod's annotation to API server got error (%v)", tenant, namespace, name)
+				klog.Errorf("Pod %s/%s/%s - update pod's annotation to API server got error (%v)", tenant, namespace, name, err)
 				return err
 			}
 			klog.V(4).Infof("Pod %s/%s/%s - update pod's annotation to API server successfully", tenant, namespace, name)
