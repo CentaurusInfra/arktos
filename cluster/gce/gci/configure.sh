@@ -238,6 +238,23 @@ function download-controller-config {
   )
 }
 
+function download-network-template {
+  local -r dest="$1"
+  echo "Downloading network template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_network_template="/tmp/network.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_network_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/networktemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_network_template} ${dest}
+    fi
+  )
+}
+
 function download-proxy-config {
   local -r dest="$1"
   echo "Downloading proxy config file, if it exists"
@@ -944,6 +961,7 @@ fi
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-network-template "${KUBE_HOME}/network.tmpl"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
