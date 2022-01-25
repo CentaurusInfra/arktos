@@ -23,6 +23,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
+//TODO: fix UT
 func TestConvertToOpenstackRequest(t *testing.T) {
 	tests := []struct {
 		name           string

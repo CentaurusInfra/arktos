@@ -18,14 +18,13 @@ package openstack
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"reflect"
 	"regexp"
 	"strings"
 	"time"
 
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -40,26 +39,10 @@ const (
 	RESTORE  = "restore"
 )
 
-var POD_JSON_STRING_TEMPLATE, REPLICATES_JSON_STRING_TEMPLATE string
 var supportedActions = []string{REBOOT, SNAPSHOT, RESTORE}
 
+// init function initialize the VM flavor and image cache
 func init() {
-	t, err := ioutil.ReadFile("/openstackRequestTemplate.json")
-	if err != nil {
-		klog.Errorf("error reading template file. error : %v", err)
-		return
-	}
-
-	POD_JSON_STRING_TEMPLATE = string(t)
-
-	t, err = ioutil.ReadFile("/openstackBatchRequestTemplate.json")
-	if err != nil {
-		klog.Errorf("error reading batch request template file. error : %v", err)
-		return
-	}
-
-	REPLICATES_JSON_STRING_TEMPLATE = string(t)
-
 	initFlavorsCache()
 	initImagesCache()
 
@@ -268,15 +251,20 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	var ret string
+	var ret []byte
 
 	if IsBatchCreationRequest(obj) {
 		replicas := obj.Min_count
-		ret = fmt.Sprintf(REPLICATES_JSON_STRING_TEMPLATE, obj.Server.Name, replicas, obj.Server.Name, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructReplicasetRequestBody(replicas, obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	} else {
-		ret = fmt.Sprintf(POD_JSON_STRING_TEMPLATE, obj.Server.Name, image.ImageRef, obj.Server.Name, flavor.Vcpus, flavor.MemoryMb, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructVmPodRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	}
-	return []byte(ret), nil
+	if err != nil {
+		klog.Errorf("failed to construct request body. error: %v", err)
+		return nil, err
+	}
+
+	return ret, nil
 }
 
 // Convert the action request to Arktos action request body
@@ -322,7 +310,7 @@ func getActionOperation(body []byte) string {
 }
 
 func ConvertActionToOpenstackResponse(obj runtime.Object) runtime.Object {
-	o := obj.(*v1.Status)
+	o := obj.(*metav1.Status)
 	klog.V(6).Infof("Convert Arktos object: %v", o)
 
 	// for action types reboot, start, stop, simply return empty response since Openstack
@@ -387,12 +375,12 @@ func IsOpenstackRequest(req *http.Request) bool {
 
 // TODO: Get the tenant for the request from the request Token
 func GetTenantFromRequest(r *http.Request) string {
-	return "system"
+	return metav1.TenantSystem
 }
 
 // TODO: Get the namespace, maps to the Openstack projct, from the Openstack token
 func GetNamespaceFromRequest(r *http.Request) string {
-	return "kube-system"
+	return metav1.NamespaceSystem
 }
 
 // the suffix of URL path is the action of the VM
@@ -402,7 +390,7 @@ func IsActionRequest(path string) bool {
 }
 
 // Internally the OpenStackServerRequest struct is shared with both batch request and non-batch request.
-// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users 
+// For non-batch requests, which create VM in bare Arktos PODs, only Server object is set from users
 // so the min-count is 0 as default int value
 //
 // Any non-zero possitive numbers which are set by the user request body and will be considerred as a batch request
