@@ -95,6 +95,9 @@ function main() {
     override-pv-recycler
     create-default-network-template-volume-mount
     gke-master-start
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+      create-kubeproxy-user-kubeconfig
+    fi
   else
     create-node-pki
     if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
@@ -134,6 +137,9 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+      start-kube-proxy
+    fi
 
     if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" != "rp" ]]; then
       start-kube-scheduler
@@ -166,6 +172,13 @@ function main() {
         create-mizar-daemon-manifest
       fi
     fi
+  fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
+    until [ -f "/opt/cni/bin/mizarcni" ]; do
+      sleep 5
+    done
+    cp -f "/opt/cni/bin/mizarcni" "/home/kubernetes/bin/"
   fi
   reset-motd
   prepare-mounter-rootfs
