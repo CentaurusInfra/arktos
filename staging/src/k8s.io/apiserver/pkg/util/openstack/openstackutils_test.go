@@ -18,30 +18,36 @@ package openstack
 
 import (
 	"bytes"
+	"k8s.io/klog"
 	"testing"
-
-	"k8s.io/apimachinery/pkg/util/json"
 )
 
-//TODO: fix UT
-func TestConvertToOpenstackRequest(t *testing.T) {
+var outputStr1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","keyPairName":"foobar","publicKey":"ssh-rsa AAA"}}}`
+
+func TestConvertServerFromOpenstackRequest(t *testing.T) {
 	tests := []struct {
 		name           string
 		input          string
-		expectedOutput OpenstackServerRequest
-
+		expectedOutput []byte
 		expectedError error
 	}{
 		{
 			name:  "all valid, basic test",
-			input: `{"server":{"name":"testvm","imageRef":"6db08272-a856-49da-8909-7c4c73ab0bac","flavorRef":"m1.tiny"}}`,
-			expectedOutput: OpenstackServerRequest{
-				Server: ServerType{Name: "testvm",
-					ImageRef: "6db08272-a856-49da-8909-7c4c73ab0bac",
-					Flavor:   "mi.tiny",
-				},
-			},
+			input: `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"m1.tiny"}}`,
+			expectedOutput: []byte(outputStr1),
 			expectedError: nil,
+		},
+		{
+			name:  "Non-existing flavor",
+			input: `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"NotExistFlavor"}}`,
+			expectedOutput: nil,
+			expectedError: ERROR_FLAVOR_NOT_FOUND,
+		},
+		{
+			name:  "Non-existing image",
+			input: `{"server":{"name":"testvm","imageRef":"NotExistImage","flavorRef":"m1.tiny"}}`,
+			expectedOutput: nil,
+			expectedError: ERROR_IMAGE_NOT_FOUND,
 		},
 	}
 
@@ -52,13 +58,55 @@ func TestConvertToOpenstackRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		expectedBytes, err := json.Marshal(test.expectedOutput)
+		if bytes.Compare(actualBytes, test.expectedOutput) != 0 {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestConvertActionFromOpenstackRequest(t *testing.T) {
+	tests := []struct {
+		name           string
+		input          string
+		expectedOutput []byte
+		expectedError error
+	}{
+		{
+			name:  "all valid, basic reboot action",
+			input: `{"reboot":{"type":"HARD"}}`,
+			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"reboot","rebootParams":{"delayInSeconds":10}}`),
+			expectedError: nil,
+		},
+		{
+			name:  "all valid, basic snapshot action",
+			input: `{"snapshot":{"name":"foobar","metadata":{"meta_var":"meta_val"}}}`,
+			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"snapshot","snapshotParams":{"snapshotName":"foobar"}}`),
+			expectedError: nil,
+		},
+		{
+			name:  "all valid, basic rebuild action",
+			input: `{"restore":{"ImageRef":"foobar","metadata":{"meta_var":"meta_val"}}}`,
+			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"restore","restoreParams":{"snapshotID":"foobar"}}`),
+			expectedError: nil,
+		},
+		{
+			name:  "Non-existing flavor",
+			input: `{"not-exist":{"type":"HARD"}}`,
+			expectedOutput: nil,
+			expectedError: ERROR_UNKNOWN_ACTION,
+		},
+	}
+
+	for _, test := range tests {
+		actualBytes, err := ConvertActionFromOpenstackRequest([]byte(test.input))
 
 		if err != test.expectedError {
 			t.Fatal(err)
 		}
 
-		if bytes.Compare(actualBytes, expectedBytes) != 0 {
+		klog.Infof("output: %s", string(actualBytes))
+
+		if bytes.Compare(actualBytes, test.expectedOutput) != 0 {
 			t.Fatal(err)
 		}
 	}
