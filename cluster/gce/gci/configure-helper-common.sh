@@ -3388,10 +3388,8 @@ EOF
 }
 
 function create-default-network-template-volume-mount {
-  if [[ -n "${KUBE_HOME}/network.tmpl" ]]; then
     DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${KUBE_HOME}/network.tmpl\", \"type\": \"File\"}},"
     DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${KUBE_HOME}/network.tmpl\", \"readOnly\": false},"
-  fi
 }
 
 function wait-till-apiserver-ready() {
