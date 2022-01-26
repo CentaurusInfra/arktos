@@ -667,8 +667,7 @@ fi
 function write-network-template {
   ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
 
-  if [[ ! -z ${ARKTOS_NETWORK_TEMPLATE} && -n ${ARKTOS_NETWORK_TEMPLATE} ]]; then
-  #if [[ -f ${ARKTOS_NETWORK_TEMPLATE} ]]; then
+  if [[ -n ${ARKTOS_NETWORK_TEMPLATE} ]]; then
     cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
   else
     cat <<EOF >${KUBE_TEMP}/network.tmpl

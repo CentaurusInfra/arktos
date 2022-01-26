@@ -2359,7 +2359,7 @@ function start-kube-controller-manager {
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
 
-  if [[ -n "${DEFAULT_NETWORK_TEMPLATE:-}" -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  if [[ -n "${DEFAULT_NETWORK_TEMPLATE:-}" && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
     params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
   fi
 
@@ -2390,8 +2390,8 @@ function start-kube-controller-manager {
   sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
-  sed -i -e "s@{{default_network_template_path_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
-  sed -i -e "s@{{default_network_template_path_volume}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
@@ -3394,8 +3394,8 @@ function create-default-network-template-volume-mount {
     exit 1
   fi
 
-  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"default_network_template_path_mount\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"FileOrCreate\"}},"
-  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"default_network_template_path_mount\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": true},"
+  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"File\"}},"
+  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": false},"
 
   cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
 }
