@@ -2358,7 +2358,7 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
-  if [[ -n "${KUBE_HOME}/network.tmpl" && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  if [[ -s "${KUBE_HOME}/network.tmpl" && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
     params+=" --default-network-template-path=${KUBE_HOME}/network.tmpl"
    fi
 
@@ -3359,7 +3359,7 @@ function override-pv-recycler {
     exit 1
   fi
 
-  PV_RECYCLER_VOLUME="{\"name\": \"pv-recycler-mount\",\"hostPath\": {\"path\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"type\": \"File\"}},"
+  PV_RECYCLER_VOLUME="{\"name\": \"pv-recycler-mount\",\"hostPath\": {\"path\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"type\": \"FileOrCreate\"}},"
   PV_RECYCLER_MOUNT="{\"name\": \"pv-recycler-mount\",\"mountPath\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"readOnly\": true},"
 
   cat > ${PV_RECYCLER_OVERRIDE_TEMPLATE} <<EOF
@@ -3388,8 +3388,10 @@ EOF
 }
 
 function create-default-network-template-volume-mount {
+  if [[ -s "${KUBE_HOME}/network.tmpl" ]]; then
     DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${KUBE_HOME}/network.tmpl\", \"type\": \"File\"}},"
     DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${KUBE_HOME}/network.tmpl\", \"readOnly\": false},"
+  fi
 }
 
 function wait-till-apiserver-ready() {
