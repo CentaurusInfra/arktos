@@ -29,25 +29,25 @@ func TestConvertServerFromOpenstackRequest(t *testing.T) {
 		name           string
 		input          string
 		expectedOutput []byte
-		expectedError error
+		expectedError  error
 	}{
 		{
-			name:  "all valid, basic test",
-			input: `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"m1.tiny"}}`,
+			name:           "all valid, basic test",
+			input:          `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"m1.tiny"}}`,
 			expectedOutput: []byte(outputStr1),
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		{
-			name:  "Non-existing flavor",
-			input: `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"NotExistFlavor"}}`,
+			name:           "Non-existing flavor",
+			input:          `{"server":{"name":"testvm","imageRef":"cirros-0.5.1","flavorRef":"NotExistFlavor"}}`,
 			expectedOutput: nil,
-			expectedError: ERROR_FLAVOR_NOT_FOUND,
+			expectedError:  ERROR_FLAVOR_NOT_FOUND,
 		},
 		{
-			name:  "Non-existing image",
-			input: `{"server":{"name":"testvm","imageRef":"NotExistImage","flavorRef":"m1.tiny"}}`,
+			name:           "Non-existing image",
+			input:          `{"server":{"name":"testvm","imageRef":"NotExistImage","flavorRef":"m1.tiny"}}`,
 			expectedOutput: nil,
-			expectedError: ERROR_IMAGE_NOT_FOUND,
+			expectedError:  ERROR_IMAGE_NOT_FOUND,
 		},
 	}
 
@@ -69,31 +69,31 @@ func TestConvertActionFromOpenstackRequest(t *testing.T) {
 		name           string
 		input          string
 		expectedOutput []byte
-		expectedError error
+		expectedError  error
 	}{
 		{
-			name:  "all valid, basic reboot action",
-			input: `{"reboot":{"type":"HARD"}}`,
+			name:           "all valid, basic reboot action",
+			input:          `{"reboot":{"type":"HARD"}}`,
 			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"reboot","rebootParams":{"delayInSeconds":10}}`),
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		{
-			name:  "all valid, basic snapshot action",
-			input: `{"snapshot":{"name":"foobar","metadata":{"meta_var":"meta_val"}}}`,
+			name:           "all valid, basic snapshot action",
+			input:          `{"snapshot":{"name":"foobar","metadata":{"meta_var":"meta_val"}}}`,
 			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"snapshot","snapshotParams":{"snapshotName":"foobar"}}`),
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		{
-			name:  "all valid, basic rebuild action",
-			input: `{"restore":{"ImageRef":"foobar","metadata":{"meta_var":"meta_val"}}}`,
+			name:           "all valid, basic rebuild action",
+			input:          `{"restore":{"ImageRef":"foobar","metadata":{"meta_var":"meta_val"}}}`,
 			expectedOutput: []byte(`{"apiVersion":"v1","kind":"CustomAction","operation":"restore","restoreParams":{"snapshotID":"foobar"}}`),
-			expectedError: nil,
+			expectedError:  nil,
 		},
 		{
-			name:  "Non-existing flavor",
-			input: `{"not-exist":{"type":"HARD"}}`,
+			name:           "Non-existing flavor",
+			input:          `{"not-exist":{"type":"HARD"}}`,
 			expectedOutput: nil,
-			expectedError: ERROR_UNKNOWN_ACTION,
+			expectedError:  ERROR_UNKNOWN_ACTION,
 		},
 	}
 

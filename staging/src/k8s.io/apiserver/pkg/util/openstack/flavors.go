@@ -22,6 +22,7 @@ var flavors = map[string]FlavorType{}
 var flavorList = []*FlavorType{}
 
 var ERROR_FLAVOR_NOT_FOUND = fmt.Errorf("flavor not found")
+
 // slim down version of the openstack flavor data structure
 type FlavorType struct {
 	Id          int

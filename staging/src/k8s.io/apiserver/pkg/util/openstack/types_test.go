@@ -36,7 +36,7 @@ func TestConstructVmPodRequestBody(t *testing.T) {
 		name               string
 		input              input
 		expectedJsonString string
-		expectedError error
+		expectedError      error
 	}{
 		{
 			name:               "basic valid test",
@@ -60,16 +60,17 @@ func TestConstructVmPodRequestBody(t *testing.T) {
 }
 
 var expectedJson2 = `{"apiVersion":"apps/v1","kind":"ReplicaSet","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null},"spec":{"replicas":3,"selector":{"matchLabels":{"ln":"testvm"}},"template":{"metadata":{"creationTimestamp":null,"labels":{"ln":"testvm"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","keyPairName":"foobar","publicKey":"ssh-rsa AAA"}}}}}`
+
 func TestConstructReplicasetRequestBody(t *testing.T) {
 	tests := []struct {
 		name               string
 		input              input
 		expectedJsonString string
-		expectedError error
+		expectedError      error
 	}{
 		{
 			name:               "basic valid test",
-			input:              input{replicas: 3,  serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
+			input:              input{replicas: 3, serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
 			expectedJsonString: expectedJson2,
 			expectedError:      nil,
 		},
