@@ -21,6 +21,8 @@ import "fmt"
 var flavors = map[string]FlavorType{}
 var flavorList = []*FlavorType{}
 
+var ERROR_FLAVOR_NOT_FOUND = fmt.Errorf("flavor not found")
+
 // slim down version of the openstack flavor data structure
 type FlavorType struct {
 	Id          int
@@ -54,7 +56,7 @@ func GetFalvor(name string) (*FlavorType, error) {
 		return &flavor, nil
 	}
 
-	return nil, fmt.Errorf("flavor %s, not found", name)
+	return nil, ERROR_FLAVOR_NOT_FOUND
 }
 
 func ListFalvors() []*FlavorType {

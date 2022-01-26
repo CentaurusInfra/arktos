@@ -22,53 +22,21 @@ import (
 )
 
 type input struct {
+	replicas   int
 	serverName string
 	imageRef   string
 	vcpu       int
 	memInMi    int
 }
 
-var expectedJson1 = `
-{
-   "apiVersion":"v1",
-   "kind":"Pod",
-   "MetaData":{
-      "name":"testvm",
-      "tenant":"system",
-      "namespace":"kube-system",
-      "creationTimestamp":null,
-      "annotations":{
-         "VirtletCPUModel":"host-model"
-      }
-   },
-   "spec":{
-      "virtualMachine":{
-         "name":"testvm",
-         "image":"m1.tiny",
-         "resources":{
-            "limits":{
-               "cpu":"1",
-               "memory":"512Mi"
-            },
-            "requests":{
-               "cpu":"1",
-               "memory":"512Mi"
-            }
-         },
-         "keyPairName":"foobar",
-         "publicKey":"ssh-rsa AAA"
-      }
-   }
-}`
+var expectedJson1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","keyPairName":"foobar","publicKey":"ssh-rsa AAA"}}}`
 
-//TODO: fix UT
-func TestGetRequestBody(t *testing.T) {
+func TestConstructVmPodRequestBody(t *testing.T) {
 	tests := []struct {
 		name               string
 		input              input
 		expectedJsonString string
-
-		expectedError error
+		expectedError      error
 	}{
 		{
 			name:               "basic valid test",
@@ -80,6 +48,36 @@ func TestGetRequestBody(t *testing.T) {
 
 	for _, test := range tests {
 		b, err := constructVmPodRequestBody(test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
+
+		if err != test.expectedError {
+			t.Fatal(err)
+		}
+
+		if strings.Compare(string(b), test.expectedJsonString) != 0 {
+			t.Fatal(err)
+		}
+	}
+}
+
+var expectedJson2 = `{"apiVersion":"apps/v1","kind":"ReplicaSet","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null},"spec":{"replicas":3,"selector":{"matchLabels":{"ln":"testvm"}},"template":{"metadata":{"creationTimestamp":null,"labels":{"ln":"testvm"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","keyPairName":"foobar","publicKey":"ssh-rsa AAA"}}}}}`
+
+func TestConstructReplicasetRequestBody(t *testing.T) {
+	tests := []struct {
+		name               string
+		input              input
+		expectedJsonString string
+		expectedError      error
+	}{
+		{
+			name:               "basic valid test",
+			input:              input{replicas: 3, serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
+			expectedJsonString: expectedJson2,
+			expectedError:      nil,
+		},
+	}
+
+	for _, test := range tests {
+		b, err := constructReplicasetRequestBody(test.input.replicas, test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
 
 		if err != test.expectedError {
 			t.Fatal(err)
