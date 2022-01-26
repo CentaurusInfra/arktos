@@ -2738,8 +2738,6 @@ function kube-up() {
       check-cluster
       validate-cluster-status
       create-node-port
-      # create arktos network crd for scale-up
-      "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="$HOME/.kube/config" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
     fi
   fi
 }
