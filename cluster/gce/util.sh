@@ -669,18 +669,7 @@ function write-network-template {
 
   if [[ -n ${ARKTOS_NETWORK_TEMPLATE} ]]; then
     cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
-  else
-    cat <<EOF >${KUBE_TEMP}/network.tmpl
-{
-    "metadata": {
-        "name": "default"
-    },
-    "spec": {
-        "type": "flat"
-    }
-}
-EOF
-fi
+  fi
 }
 
 # Writes the cluster name into a temporary file.
@@ -2738,6 +2727,8 @@ function kube-up() {
       check-cluster
       validate-cluster-status
       create-node-port
+      # create arktos network crd for scale-up
+      "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="$HOME/.kube/config" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
     fi
   fi
 }
