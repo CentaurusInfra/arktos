@@ -20,6 +20,7 @@ import "fmt"
 
 var images = map[string]ImageType{}
 var imageList = []*ImageType{}
+var ERROR_IMAGE_NOT_FOUND = fmt.Errorf("image not found")
 
 // Arktos doesn't have its own image registry
 // this is simulate the read-only image service to get test images for VM
@@ -50,7 +51,7 @@ func GetImage(name string) (*ImageType, error) {
 		return &image, nil
 	}
 
-	return nil, fmt.Errorf("image %s, not found", name)
+	return nil, ERROR_IMAGE_NOT_FOUND
 }
 
 func ListImages() []*ImageType {

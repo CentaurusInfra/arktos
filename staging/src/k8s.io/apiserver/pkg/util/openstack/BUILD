@@ -46,5 +46,5 @@ go_test(
         "types_test.go",
     ],
     embed = [":go_default_library"],
-    deps = ["//staging/src/k8s.io/apimachinery/pkg/util/json:go_default_library"],
+    deps = ["//vendor/k8s.io/klog:go_default_library"],
 )

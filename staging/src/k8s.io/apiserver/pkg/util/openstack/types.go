@@ -23,6 +23,8 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/json"
 )
 
@@ -31,6 +33,180 @@ const (
 )
 
 var cpuModelAnnotation = map[string]string{"VirtletCPUModel": "host-model"}
+
+type Network struct {
+	Uuid     string `json:"uuid"`
+	Port     string `json:"port"`
+	Fixed_ip string `json:"fixed_ip"`
+}
+
+type MetadataType struct {
+	key   string
+	value string
+}
+
+type SecurityGroup struct {
+	name string
+}
+
+type LinkType struct {
+	Link string
+	Rel  string
+}
+
+type ServerType struct {
+	Name            string          `json:"name"`
+	ImageRef        string          `json:"imageRef"`
+	Flavor          string          `json:"flavorRef"`
+	Networks        []Network       `json:"networks"`
+	Security_groups []SecurityGroup `json:"security_groups"`
+	Key_name        string          `json:"key_name"`
+	Metadata        MetadataType    `json:"metadata"`
+	User_data       string          `json:"user_data"`
+}
+
+// VM creation request in Openstack
+// non-zero possitive Min or max count indicates batch creation, even if it is one
+// Return_Reservation_Id indicates response behavior, true to return the reservationID ( replicset name in Arktos )
+// So that the client can list the servers associated with this replicaset
+type OpenstackServerRequest struct {
+	Server                ServerType `json:"server"`
+	Min_count             int        `json:"min_count"`
+	Max_count             int        `json:"max_count"`
+	Return_Reservation_Id bool       `json:"return_reservation_id"`
+}
+
+// VM creation response in Openstack
+type OpenstackResponse struct {
+	Id              string
+	Links           []LinkType
+	Security_groups []SecurityGroup
+}
+
+func (o *OpenstackResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+type OpenstackServerListRequest struct {
+	Reservation_Id string `json:"reservation_id"`
+}
+
+// VM list response
+type OpenstackServerListResponse struct {
+	Servers []OpenstackResponse
+}
+
+func (o *OpenstackServerListResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackServerListResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+// VM Batch creation response in Openstack
+type OpenstackBatchResponse struct {
+	Reservation_Id string `json:"reservation_id"`
+}
+
+func (o *OpenstackBatchResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackBatchResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+type ArktosRebootParams struct {
+	DelayInSeconds int `json:"delayInSeconds"`
+}
+
+// Reboot action support
+//
+type ArktosReboot struct {
+	ApiVersion   string             `json:"apiVersion"`
+	Kind         string             `json:"kind"`
+	Operation    string             `json:"operation"`
+	RebootParams ArktosRebootParams `json:"rebootParams"`
+}
+
+// Snapshot action support
+//
+type ArktosSnapshotParams struct {
+	SnapshotName string `json:"snapshotName"`
+}
+type ArktosSnapshot struct {
+	ApiVersion     string               `json:"apiVersion"`
+	Kind           string               `json:"kind"`
+	Operation      string               `json:"operation"`
+	SnapshotParams ArktosSnapshotParams `json:"snapshotParams"`
+}
+
+// Openstack createImage action match to the Arktos snapshot action
+type OpenstackCreateImage struct {
+	Name     string
+	Metadata MetadataType
+}
+
+type OpenstackCreateImageRequest struct {
+	Snapshot OpenstackCreateImage
+}
+
+// snapshot creation response in Openstack
+type OpenstackCreateImageResponse struct {
+	ImageId string
+}
+
+func (o *OpenstackCreateImageResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackCreateImageResponse) DeepCopyObject() runtime.Object {
+	return o
+}
+
+// Restore action support
+//
+type ArktosRestoreParams struct {
+	SnapshotID string `json:"snapshotID"`
+}
+type ArktosRestore struct {
+	ApiVersion    string              `json:"apiVersion"`
+	Kind          string              `json:"kind"`
+	Operation     string              `json:"operation"`
+	RestoreParams ArktosRestoreParams `json:"restoreParams"`
+}
+
+// Openstack rebuild action match to the Arktos restore action
+// Openstack rebuild struct has much optional field which are not applicable to Arktos restore action
+// slim down to key info
+type OpenstackRebuild struct {
+	ImageRef string
+	Metadata MetadataType
+}
+
+type OpenstackRebuildRequest struct {
+	Restore OpenstackRebuild
+}
+
+// rebuild response in Openstack
+type OpenstackRebuildResponse struct {
+	ServerId  string
+	ImageId   string
+	CreatedAt string
+}
+
+func (o *OpenstackRebuildResponse) GetObjectKind() schema.ObjectKind {
+	return schema.OpenstackObjectKind
+}
+
+func (o *OpenstackRebuildResponse) DeepCopyObject() runtime.Object {
+	return o
+}
 
 type batchRequestBody struct {
 	ApiVersion string             `json:"apiVersion"`
