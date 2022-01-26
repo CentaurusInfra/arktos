@@ -665,9 +665,7 @@ fi
 # copy controller config into a temporary file.
 # Assumed vars
 function write-network-template {
-  ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
-
-  if [[ -n ${ARKTOS_NETWORK_TEMPLATE} ]]; then
+  if [[ -n "${ARKTOS_NETWORK_TEMPLATE:-}" ]]; then
     cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
   fi
 }
