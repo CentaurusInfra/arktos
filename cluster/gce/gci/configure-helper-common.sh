@@ -2358,7 +2358,7 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
-  if [[ -n "${KUBE_HOME}/network.tmpl" -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  if [[ -n "${KUBE_HOME}/network.tmpl" && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
     params+=" --default-network-template-path=${KUBE_HOME}/network.tmpl"
    fi
 
