@@ -3359,7 +3359,7 @@ function override-pv-recycler {
     exit 1
   fi
 
-  PV_RECYCLER_VOLUME="{\"name\": \"pv-recycler-mount\",\"hostPath\": {\"path\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"type\": \"FileOrCreate\"}},"
+  PV_RECYCLER_VOLUME="{\"name\": \"pv-recycler-mount\",\"hostPath\": {\"path\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"type\": \"File\"}},"
   PV_RECYCLER_MOUNT="{\"name\": \"pv-recycler-mount\",\"mountPath\": \"${PV_RECYCLER_OVERRIDE_TEMPLATE}\", \"readOnly\": true},"
 
   cat > ${PV_RECYCLER_OVERRIDE_TEMPLATE} <<EOF
