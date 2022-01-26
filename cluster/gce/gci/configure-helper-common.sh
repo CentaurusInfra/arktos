@@ -2358,10 +2358,9 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
-
-  if [[ -n "${DEFAULT_NETWORK_TEMPLATE:-}" && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
-    params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
-  fi
+  if [[ -n "${KUBE_HOME}/network.tmpl" -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+    params+=" --default-network-template-path=${KUBE_HOME}/network.tmpl"
+   fi
 
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
@@ -3389,15 +3388,10 @@ EOF
 }
 
 function create-default-network-template-volume-mount {
-  if [[ -z "${DEFAULT_NETWORK_TEMPLATE:-}" ]]; then
-    echo "DEFAULT_NETWORK_TEMPLATE is not set"
-    exit 1
+  if [[ -n "${KUBE_HOME}/network.tmpl" ]]; then
+    DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${KUBE_HOME}/network.tmpl\", \"type\": \"File\"}},"
+    DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${KUBE_HOME}/network.tmpl\", \"readOnly\": false},"
   fi
-
-  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"File\"}},"
-  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": false},"
-
-  cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
 }
 
 function wait-till-apiserver-ready() {
