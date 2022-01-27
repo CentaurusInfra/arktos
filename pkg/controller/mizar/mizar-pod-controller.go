@@ -232,7 +232,7 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			klog.Warningf("The arktos network %s is not Ready.", network.Name)
 			// put key back into queue
 			go func() {
-				time.Sleep(100 * time.Millisecond)	// avoid busy waiting
+				time.Sleep(100 * time.Millisecond) // avoid busy waiting
 				if eventType == EventType_Create {
 					c.createObj(obj)
 				} else { // Update
