@@ -252,24 +252,12 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 	}
 
-	netName := getArktosNetworkName(service.Name)
-	klog.V(4).Infof("processServiceCreation arktos network name: [%v]", netName)
-	networkName, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
+	_, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
 
-	if hasDNSServiceLabel && len(netName) != 0 {
-		klog.V(4).Infof("Starting processServiceCreation network: %v", netName)
-		net, err := c.networkLister.NetworksWithMultiTenancy(service.Tenant).Get(netName)
-		if err != nil {
-			klog.Errorf("Failed to get network %v: error %v", networkName, err)
-			return err
-		}
-		c.updateMizarVpcWithArktosName(net)
-	}
 	klog.V(4).Infof("Starting processServiceCreation service: %v", service)
 
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
-		ArktosNetwork: networkName,
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
@@ -284,12 +272,12 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	case CodeType_OK:
 		klog.V(4).Infof("Mizar handled service creation successfully: %s", key)
 		if beginsWithKubernetes(service.Name) {
-			endpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy("default", "system").Get(kubernetesSvcDefaultName, metav1.GetOptions{})
+			kubernetesEndpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy(metav1.NamespaceDefault, metav1.TenantSystem).Get(kubernetesSvcDefaultName, metav1.GetOptions{})
 			if err != nil {
-				klog.Errorf("The get endpoint failed to get: %v", endpoint)
+				klog.Errorf("Failed to get kubernetes endpoint: %v. Error: %v", kubernetesEndpoint, err)
 				return err
 			}
-			message := convertToServiceEndpointMessage(service.Name, service.Namespace, service.Tenant, endpoint, service)
+			message := convertToServiceEndpointMessage(service.Name, service.Namespace, service.Tenant, kubernetesEndpoint, service)
 			resp := c.grpcAdaptor.CreateServiceEndpoint(c.grpcHost, message)
 			returnCode := resp.Code
 			context := resp.Message
@@ -311,33 +299,32 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		return errors.New("Service creation failed permanently on mizar side")
 	}
 
+	// update service cluster ip with ip from mizar
 	if len(service.Spec.ClusterIP) == 0 {
 		svcToUpdate := service.DeepCopy()
-		svcToUpdate.Spec.ClusterIP = ip	// Is this correct to update arktos service ip from IP assigned by VPC
-		svcUpdated, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(svcToUpdate)
+		svcToUpdate.Spec.ClusterIP = ip
+		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(svcToUpdate)
 		if err != nil {
-			klog.Errorf("The following service failed to update: %v", svcUpdated)
+			klog.Errorf("Failed to update service %v/%v/%v: %v", service.Tenant, service.Namespace, service.Name, err)
 			return err
 		}
-		klog.V(4).Infof("Updated service: %v", svcUpdated)
 	}
 
-	if hasDNSServiceLabel && len(netName) != 0 {
-		klog.V(4).Info("[Mizar network controller] Arktos Network update starts ...")
-		net, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(service.Tenant).Get(netName, metav1.GetOptions{})
+	// update arktos network object with cluster ip from mizar
+	if hasDNSServiceLabel {
+		networkObj, err := c.networkLister.NetworksWithMultiTenancy(service.Tenant).Get(defaultNetworkName)
 		if err != nil {
-			klog.Errorf("The following network failed to get: %v", net)
+			klog.Errorf("Failed to get network object %v/%v from informer. Error: %v ", service.Tenant, defaultNetworkName, err)
 			return err
 		}
-		if len(net.Status.DNSServiceIP) == 0 {
-			netReady := net.DeepCopy()
-			netReady.Status.DNSServiceIP = ip
-			netNew, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(net.Tenant).UpdateStatus(netReady)
+		if len(networkObj.Status.DNSServiceIP) == 0 {
+			networkObjToUpdate := networkObj.DeepCopy()
+			networkObjToUpdate.Status.DNSServiceIP = ip
+			_, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(networkObj.Tenant).UpdateStatus(networkObjToUpdate)
 			if err != nil {
-				klog.Errorf("The following network failed to update: %v", netReady)
+				klog.Errorf("Failed to update arktos network object %v/%v. Error: %v", networkObjToUpdate.Tenant, networkObjToUpdate.Name, err)
 				return err
 			}
-			klog.V(4).Infof("Updated network: %v", netNew)
 		}
 	}
 	return nil
@@ -348,7 +335,6 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 	klog.V(4).Infof("processServiceUpdate network name is %v", service.Name)
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
-		ArktosNetwork: "",
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
@@ -375,11 +361,9 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 	if err != nil {
 		return err
 	}
-	netName := strings.Split(name, dnsServiceDefaultName+"-")[0]
 
 	msg := &BuiltinsServiceMessage{
 		Name:          name,
-		ArktosNetwork: netName,
 		Namespace:     namespace,
 		Tenant:        tenant,
 		Ip:            "",
@@ -422,32 +406,6 @@ func beginsWithKubernetes(svcName string) bool {
 	}
 	klog.V(4).Infof("process kubernetes network services")
 	return false
-}
-
-func (c *MizarServiceController) updateMizarVpcWithArktosName(network *arktosapisv1.Network) {
-
-	if network.Spec.Type != mizarNetworkType || network.Status.Phase == arktosapisv1.NetworkReady {
-		return
-	}
-
-	msg := &BuiltinsArktosMessage{
-		Name: network.Name,
-		Vpc:  network.Spec.VPCID,
-	}
-
-	response := c.grpcAdaptor.CreateArktosNetwork(c.grpcHost, msg)
-
-	code := response.Code
-	context := response.Message
-	klog.V(4).Infof("Updating Arktos Network")
-	switch code {
-	case CodeType_OK:
-		klog.V(4).Infof("Mizar handled arktos network and vpc id update successfully: %s", context)
-	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for arktos network and vpc id update: %s", context)
-	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for Arktos network creation for Arktos network: %s", context)
-	}
 }
 
 func convertToServiceEndpointMessage(name string, namespace string, tenant string, endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
