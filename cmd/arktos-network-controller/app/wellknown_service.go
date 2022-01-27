@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/klog"
 )
 
 func createOrGetKubernetesService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
@@ -60,7 +61,7 @@ func createOrGetKubernetesService(net *v1.Network, svcClient kubernetes.Interfac
 			Type:            corev1.ServiceTypeClusterIP,
 		},
 	}
-	return createOrGetwellKnownService(svcClient, &kubernetesService)
+	return getOrCreateWellKnownService(svcClient, &kubernetesService)
 }
 
 func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*corev1.Service, error) {
@@ -103,23 +104,17 @@ func createOrGetDNSService(net *v1.Network, svcClient kubernetes.Interface) (*co
 			Type: corev1.ServiceTypeClusterIP,
 		},
 	}
-	return createOrGetwellKnownService(svcClient, &dnsService)
+	return getOrCreateWellKnownService(svcClient, &dnsService)
 }
 
-func createOrGetwellKnownService(svcClient kubernetes.Interface, svc *corev1.Service) (*corev1.Service, error) {
-	result, err := svcClient.CoreV1().ServicesWithMultiTenancy(svc.Namespace, svc.Tenant).Create(svc)
-	if err != nil {
-		if !errors.IsAlreadyExists(err) {
-			// todo: consider differing temporary errors from permanent errors
-			// todo: to fail the network provision in case of permanent errors
+func getOrCreateWellKnownService(svcClient kubernetes.Interface, svc *corev1.Service) (*corev1.Service, error) {
+	result, err := svcClient.CoreV1().ServicesWithMultiTenancy(svc.Namespace, svc.Tenant).Get(svc.Name, metav1.GetOptions{})
+	if errors.IsNotFound(err) {
+		result, err = svcClient.CoreV1().ServicesWithMultiTenancy(svc.Namespace, svc.Tenant).Create(svc)
+		if err != nil {
+			klog.Errorf("Failed to create service %v/%v/%v. Error %v", svc.Tenant, svc.Namespace, svc.Name, err)
 			return nil, err
-		} else {
-			result, err = svcClient.CoreV1().ServicesWithMultiTenancy(svc.Namespace, svc.Tenant).Get(svc.Name, metav1.GetOptions{})
-			if err != nil {
-				return nil, err
-			}
 		}
 	}
-
-	return result, nil
+	return result, err
 }
