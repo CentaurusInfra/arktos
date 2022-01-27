@@ -22,7 +22,7 @@
 readonly GCE_MAX_LOCAL_SSD=8
 
 KUBE_ROOT=$(dirname "${BASH_SOURCE}")/../..
-source "${KUBE_ROOT}/cluster/gce/${KUBE_CONFIG_FILE-"config-default.sh"}"
+source "${KUBE_ROOT}/cluster/gce/${KUBE_CONFIG_FILE:-"config-default.sh"}"
 source "${KUBE_ROOT}/cluster/common.sh"
 source "${KUBE_ROOT}/hack/lib/util.sh"
 source "${KUBE_ROOT}/hack/lib/etcd.sh"
@@ -665,7 +665,9 @@ fi
 # copy controller config into a temporary file.
 # Assumed vars
 function write-network-template {
-  if [[ -n "${ARKTOS_NETWORK_TEMPLATE:-}" ]]; then
+  ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
+
+  if [[ -s ${ARKTOS_NETWORK_TEMPLATE} ]]; then
     cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
   fi
 }

@@ -364,8 +364,9 @@ fi
  # pod is associated to certain network, which has its own DNS service.
  # By default, this feature is enabled in the dev cluster started by this script.
 DISABLE_NETWORK_SERVICE_SUPPORT="${DISABLE_NETWORK_SERVICE_SUPPORT:-}"
-
 DISABLE_ADMISSION_PLUGINS=${DISABLE_ADMISSION_PLUGINS:-""}
+ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+
 # check for network service support flags
 if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
@@ -374,8 +375,6 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # tenant controller automatically creates a default network resource for new tenant
   if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
-  else
-    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
   fi
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
