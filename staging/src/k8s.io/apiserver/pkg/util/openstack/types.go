@@ -55,23 +55,23 @@ type LinkType struct {
 }
 
 type ServerType struct {
-	Name            string          `json:"name"`
+	Name string `json:"name"`
 	// Boot from image is what currently supported in Arktos-vm-runtime, so this is required
-	ImageRef        string          `json:"imageRef"`
-	Flavor          string          `json:"flavorRef"`
+	ImageRef string `json:"imageRef"`
+	Flavor   string `json:"flavorRef"`
 	// +optional
-	Networks        []Network       `json:"networks"`
+	Networks []Network `json:"networks"`
 	// +optional
 	Security_groups []SecurityGroup `json:"security_groups"`
 	// +optional
-	Key_name        string          `json:"key_name"`
+	Key_name string `json:"key_name"`
 	// +optional
-	Metadata        MetadataType    `json:"metadata"`
+	Metadata MetadataType `json:"metadata"`
 	// +optional
-	User_data       string          `json:"user_data"`
+	User_data string `json:"user_data"`
 	// the compute service host node the server to be created on
 	// +optional
-	Host            string           `json:"host"`
+	Host string `json:"host"`
 }
 
 // VM creation request in Openstack
@@ -299,7 +299,7 @@ func constructVMSpec(server ServerType, imageRef string, vcpu, memInMi int) *v1.
 		ImagePullPolicy: v1.PullIfNotPresent,
 		Name:            server.Name,
 		PublicKey:       server.Key_name,
-		UserData:        server.User_data,
+		UserData:        []byte(server.User_data),
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),
