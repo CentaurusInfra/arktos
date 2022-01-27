@@ -226,13 +226,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	}
 
 	if tenantDefaultNetwork.Status.Phase != arktosapisv1.NetworkReady {
-		klog.Warningf("The arktos network %s is not Ready.", tenantDefaultNetwork.Name)
-		// put key back into queue
-		go func() {
-			time.Sleep(100 * time.Millisecond)	// avoid busy waiting
-			c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
-		}()
-		return nil
+		return errors.New(fmt.Sprintf("The arktos network %s is not Ready.", tenantDefaultNetwork.Name))
 	}
 
 	// update service spec with mizar annotation
@@ -254,9 +248,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		_, err = c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", obj.Tenant, obj.Namespace, obj.Name, err)
 		if err != nil {
-			klog.Errorf("Service %s/%s/%s - update service's mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err)
-			c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
-			return err
+			return errors.New(fmt.Sprintf("Service %s/%s/%s - update service's mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err))
 		}
 	}
 
