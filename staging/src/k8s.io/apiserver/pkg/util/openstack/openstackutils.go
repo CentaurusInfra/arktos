@@ -81,9 +81,9 @@ func ConvertServerFromOpenstackRequest(body []byte) ([]byte, error) {
 
 	if IsBatchCreationRequest(obj) {
 		replicas := obj.Min_count
-		ret, err = constructReplicasetRequestBody(replicas, obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructReplicasetRequestBody(replicas, obj.Server, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	} else {
-		ret, err = constructVmPodRequestBody(obj.Server.Name, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
+		ret, err = constructVmPodRequestBody(obj.Server, image.ImageRef, flavor.Vcpus, flavor.MemoryMb)
 	}
 	if err != nil {
 		klog.Errorf("failed to construct request body. error: %v", err)

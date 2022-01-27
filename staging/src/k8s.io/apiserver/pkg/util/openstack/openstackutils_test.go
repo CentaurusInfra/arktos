@@ -104,7 +104,7 @@ func TestConvertActionFromOpenstackRequest(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		klog.Infof("output: %s", string(actualBytes))
+		klog.V(8).Infof("output: %s", string(actualBytes))
 
 		if bytes.Compare(actualBytes, test.expectedOutput) != 0 {
 			t.Fatal(err)

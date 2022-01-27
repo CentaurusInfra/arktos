@@ -56,13 +56,22 @@ type LinkType struct {
 
 type ServerType struct {
 	Name            string          `json:"name"`
+	// Boot from image is what currently supported in Arktos-vm-runtime, so this is required
 	ImageRef        string          `json:"imageRef"`
 	Flavor          string          `json:"flavorRef"`
+	// +optional
 	Networks        []Network       `json:"networks"`
+	// +optional
 	Security_groups []SecurityGroup `json:"security_groups"`
+	// +optional
 	Key_name        string          `json:"key_name"`
+	// +optional
 	Metadata        MetadataType    `json:"metadata"`
+	// +optional
 	User_data       string          `json:"user_data"`
+	// the compute service host node the server to be created on
+	// +optional
+	Host            string           `json:"host"`
 }
 
 // VM creation request in Openstack
@@ -215,12 +224,12 @@ type batchRequestBody struct {
 	Spec       v12.ReplicaSetSpec `json:"spec"`
 }
 
-func constructReplicasetRequestBody(replicas int, serverName, imageRef string, vcpu, memInMi int) ([]byte, error) {
+func constructReplicasetRequestBody(replicas int, server ServerType, imageRef string, vcpu, memInMi int) ([]byte, error) {
 	t := batchRequestBody{}
 	t.ApiVersion = "apps/v1"
 	t.Kind = "ReplicaSet"
 	t.MetaData = metav1.ObjectMeta{
-		Name:      serverName,
+		Name:      server.Name,
 		Namespace: metav1.NamespaceSystem,
 		Tenant:    metav1.TenantSystem,
 	}
@@ -229,15 +238,15 @@ func constructReplicasetRequestBody(replicas int, serverName, imageRef string, v
 	t.Spec = v12.ReplicaSetSpec{
 		Replicas: &i,
 		Selector: &metav1.LabelSelector{
-			MatchLabels: map[string]string{LABEL_SELECTOR_NAME: serverName},
+			MatchLabels: map[string]string{LABEL_SELECTOR_NAME: server.Name},
 		},
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: cpuModelAnnotation,
-				Labels:      map[string]string{LABEL_SELECTOR_NAME: serverName},
+				Labels:      map[string]string{LABEL_SELECTOR_NAME: server.Name},
 			},
 			Spec: v1.PodSpec{
-				VirtualMachine: constructVMSpec(serverName, imageRef, vcpu, memInMi),
+				VirtualMachine: constructVMSpec(server, imageRef, vcpu, memInMi),
 			},
 		},
 	}
@@ -259,19 +268,19 @@ type vmRequestBody struct {
 	Spec       v1.PodSpec        `json:"spec"`
 }
 
-func constructVmPodRequestBody(serverName, imageRef string, vcpu, memInMi int) ([]byte, error) {
+func constructVmPodRequestBody(server ServerType, imageRef string, vcpu, memInMi int) ([]byte, error) {
 	t := vmRequestBody{}
 	t.ApiVersion = "v1"
 	t.Kind = "Pod"
 	t.MetaData = metav1.ObjectMeta{
-		Name:        serverName,
+		Name:        server.Name,
 		Namespace:   metav1.NamespaceSystem,
 		Tenant:      metav1.TenantSystem,
 		Annotations: cpuModelAnnotation,
 	}
 
 	t.Spec = v1.PodSpec{
-		VirtualMachine: constructVMSpec(serverName, imageRef, vcpu, memInMi),
+		VirtualMachine: constructVMSpec(server, imageRef, vcpu, memInMi),
 	}
 
 	b, err := json.Marshal(t)
@@ -284,13 +293,13 @@ func constructVmPodRequestBody(serverName, imageRef string, vcpu, memInMi int) (
 
 }
 
-func constructVMSpec(serverName, imageRef string, vcpu, memInMi int) *v1.VirtualMachine {
+func constructVMSpec(server ServerType, imageRef string, vcpu, memInMi int) *v1.VirtualMachine {
 	return &v1.VirtualMachine{
 		Image:           imageRef,
 		ImagePullPolicy: v1.PullIfNotPresent,
-		KeyPairName:     "foobar",
-		Name:            serverName,
-		PublicKey:       "ssh-rsa AAA",
+		Name:            server.Name,
+		PublicKey:       server.Key_name,
+		UserData:        server.User_data,
 		Resources: v1.ResourceRequirements{
 			Limits: v1.ResourceList{
 				v1.ResourceCPU:    resource.MustParse(strconv.Itoa(vcpu)),

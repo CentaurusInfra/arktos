@@ -23,7 +23,7 @@ import (
 
 type input struct {
 	replicas   int
-	serverName string
+	server     ServerType
 	imageRef   string
 	vcpu       int
 	memInMi    int
@@ -40,14 +40,14 @@ func TestConstructVmPodRequestBody(t *testing.T) {
 	}{
 		{
 			name:               "basic valid test",
-			input:              input{serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
+			input:              input{server: ServerType{Name: "testvm"}, imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
 			expectedJsonString: expectedJson1,
 			expectedError:      nil,
 		},
 	}
 
 	for _, test := range tests {
-		b, err := constructVmPodRequestBody(test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
+		b, err := constructVmPodRequestBody(test.input.server, test.input.imageRef, test.input.vcpu, test.input.memInMi)
 
 		if err != test.expectedError {
 			t.Fatal(err)
@@ -70,14 +70,14 @@ func TestConstructReplicasetRequestBody(t *testing.T) {
 	}{
 		{
 			name:               "basic valid test",
-			input:              input{replicas: 3, serverName: "testvm", imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
+			input:              input{replicas: 3, server: ServerType{Name: "testvm"}, imageRef: "m1.tiny", vcpu: 1, memInMi: 512},
 			expectedJsonString: expectedJson2,
 			expectedError:      nil,
 		},
 	}
 
 	for _, test := range tests {
-		b, err := constructReplicasetRequestBody(test.input.replicas, test.input.serverName, test.input.imageRef, test.input.vcpu, test.input.memInMi)
+		b, err := constructReplicasetRequestBody(test.input.replicas, test.input.server, test.input.imageRef, test.input.vcpu, test.input.memInMi)
 
 		if err != test.expectedError {
 			t.Fatal(err)
