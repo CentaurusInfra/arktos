@@ -298,6 +298,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 				klog.V(4).Infof("Mizar handled kubernetes network service endpoint successfully: %s", context)
 			case CodeType_TEMP_ERROR:
 				klog.Warningf("Mizar hit temporary error for kubernetes network service endpoint: %s", context)
+				// Question - does this need to be retry?
 			case CodeType_PERM_ERROR:
 				klog.Errorf("Mizar hit permanent error for kubernetes network service endpoint %s", context)
 			}
@@ -312,7 +313,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 
 	if len(service.Spec.ClusterIP) == 0 {
 		svcToUpdate := service.DeepCopy()
-		svcToUpdate.Spec.ClusterIP = ip
+		svcToUpdate.Spec.ClusterIP = ip	// Is this correct to update arktos service ip from IP assigned by VPC
 		svcUpdated, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(svcToUpdate)
 		if err != nil {
 			klog.Errorf("The following service failed to update: %v", svcUpdated)
