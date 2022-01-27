@@ -98,6 +98,8 @@ func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient ar
 func (c *MizarServiceController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
+	defer klog.Info("shutting down mizar service controller")
+
 	klog.Infoln("Starting mizar service controller")
 	klog.Infoln("Waiting cache to be synced.")
 	if ok := cache.WaitForCacheSync(stopCh, c.serviceListerSynced, c.networkListerSynced); !ok {
@@ -108,7 +110,6 @@ func (c *MizarServiceController) Run(workers int, stopCh <-chan struct{}) {
 		go wait.Until(c.worker, time.Second, stopCh)
 	}
 	<-stopCh
-	klog.Info("shutting down mizar service controller")
 }
 
 func (c *MizarServiceController) worker() {
@@ -311,7 +312,6 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for service creation for service: %s", key)
-		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service creation failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service creation for service: %s", key)
@@ -368,7 +368,6 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 		klog.V(4).Infof("Mizar handled service update successfully: %s", key)
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for service update: %s", key)
-		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service update failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service update: %s", key)
@@ -400,7 +399,6 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 		klog.V(4).Infof("Mizar handled service deletion successfully: %s", key)
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for service deletion for service: %s", key)
-		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Service deletion failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service deletion for service: %s", key)
