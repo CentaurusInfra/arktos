@@ -71,7 +71,7 @@ func isBatchCreationRequest(req *http.Request) (bool, error) {
 	err = json.Unmarshal(body, &obj)
 
 	if err != nil {
-		klog.Errorf("error unmarshal request. error %v", err)
+		klog.Errorf("error unmarshal request body :%s. error %v", string(body), err)
 		return false, err
 	}
 
