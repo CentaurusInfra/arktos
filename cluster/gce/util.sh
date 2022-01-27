@@ -662,6 +662,14 @@ EOF
 fi
 }
 
+# copy controller config into a temporary file.
+# Assumed vars
+function write-network-template {
+  if [[ -s ${ARKTOS_NETWORK_TEMPLATE} ]]; then
+    cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
+  fi
+}
+
 # Writes the cluster name into a temporary file.
 # Assumed vars
 #   CLUSTER_NAME
@@ -1599,6 +1607,16 @@ EOF
     if [ -n "${SCHEDULER_TEST_LOG_LEVEL:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_LOG_LEVEL: $(yaml-quote ${SCHEDULER_TEST_LOG_LEVEL})
+EOF
+    fi
+    if [ -n "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]; then
+      cat >>$file <<EOF
+DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
+EOF
+    fi
+    if [ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]; then
+      cat >>$file <<EOF
+DISABLE_ADMISSION_PLUGINS: $(yaml-quote ${DISABLE_ADMISSION_PLUGINS})
 EOF
     fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then
@@ -2611,6 +2629,7 @@ function kube-up() {
     write-cluster-location
     write-cluster-name
     write-controller-config
+    write-network-template
     create-autoscaler-config
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       echo "DBG: Generating shared CA certificates"
@@ -2706,6 +2725,8 @@ function kube-up() {
       check-cluster
       validate-cluster-status
       create-node-port
+      # create arktos network crd for scale-up
+      "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="$HOME/.kube/config" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
     fi
   fi
 }
