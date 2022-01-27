@@ -1805,6 +1805,9 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
+  if [[ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]]; then
+    params+=" --disable-admission-plugins=${DISABLE_ADMISSION_PLUGINS}"
+  fi
 
   if [[ -n "${NUM_NODES:-}" ]]; then
     local max_request_inflight="-1"
@@ -2355,6 +2358,9 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
+  if [[ -s ${DEFAULT_NETWORK_TEMPLATE} && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+    params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
+  fi
 
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
@@ -2383,6 +2389,8 @@ function start-kube-controller-manager {
   sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
@@ -3377,6 +3385,18 @@ spec:
     - name: vol
       mountPath: /scrub
 EOF
+}
+
+function create-default-network-template-volume-mount {
+  if [[ -z "${DEFAULT_NETWORK_TEMPLATE:-}" ]]; then
+    echo "DEFAULT_NETWORK_TEMPLATE is not set"
+    exit 1
+  fi
+
+  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"File\"}},"
+  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": false},"
+
+  cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
 }
 
 function wait-till-apiserver-ready() {

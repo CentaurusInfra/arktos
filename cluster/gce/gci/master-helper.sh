@@ -85,6 +85,7 @@ function replicate-master-instance() {
   get-metadata "${existing_master_zone}" "${existing_master_name}" kube-master-certs > "${KUBE_TEMP}/kube-master-certs.yaml"
   get-metadata "${existing_master_zone}" "${existing_master_name}" cluster-location > "${KUBE_TEMP}/cluster-location.txt"
   get-metadata "${existing_master_zone}" "${existing_master_name}" controllerconfig > "${KUBE_TEMP}/controllerconfig.json"
+  get-metadata "${existing_master_zone}" "${existing_master_name}" networktemplate > "${KUBE_TEMP}/network.tmpl"
 
   create-master-instance-internal "${REPLICA_NAME}"
 }
@@ -135,6 +136,7 @@ function create-master-instance-internal() {
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
+  metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${master_name}-pd"
