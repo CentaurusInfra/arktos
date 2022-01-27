@@ -213,6 +213,52 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 
 func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	key := eventKeyWithType.Key
+	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
+	if err != nil {
+		return err
+	}
+
+	// Get tenant default network
+	tenantDefaultNetwork, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
+	if tenantDefaultNetwork.Spec.Type != mizarNetworkType {
+		return nil
+	}
+
+	if tenantDefaultNetwork.Status.Phase != arktosapisv1.NetworkReady {
+		klog.Warningf("The arktos network %s is not Ready.", tenantDefaultNetwork.Name)
+		// put key back into queue
+		go func() {
+			time.Sleep(100 * time.Millisecond)	// avoid busy waiting
+			c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
+		}()
+		return nil
+	}
+
+	// update service spec with mizar annotation
+	obj, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
+	if err != nil {
+		return err
+	}
+	_, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
+	_, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
+
+	if !vpcNameOk && !subnetNameOk {
+		// assign default network when only there is no mizar annotation
+		// otherwise, this pod annotation needs to be fixed manually
+		if obj.Annotations == nil {
+			obj.Annotations = make(map[string]string)
+		}
+		obj.Annotations[mizarAnnotationsVpcKey] = getVPC(tenantDefaultNetwork)
+		obj.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(tenantDefaultNetwork.Spec.VPCID)
+		_, err = c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
+		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", obj.Tenant, obj.Namespace, obj.Name, err)
+		if err != nil {
+			klog.Errorf("Service %s/%s/%s - update service's mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err)
+			c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Create})
+			return err
+		}
+	}
+
 	netName := getArktosNetworkName(service.Name)
 	klog.V(4).Infof("processServiceCreation arktos network name: [%v]", netName)
 	networkName, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
