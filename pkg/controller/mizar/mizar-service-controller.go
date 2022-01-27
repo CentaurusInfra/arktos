@@ -252,10 +252,9 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 	}
 
-	_, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
-
 	klog.V(4).Infof("Starting processServiceCreation service: %v", service)
 
+	// create service in mizar
 	msg := &BuiltinsServiceMessage{
 		Name:          service.Name,
 		Namespace:     service.Namespace,
@@ -271,7 +270,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	switch code {
 	case CodeType_OK:
 		klog.V(4).Infof("Mizar handled service creation successfully: %s", key)
-		if beginsWithKubernetes(service.Name) {
+		if beginsWithKubernetes(service.Name) {	// Is this logic expected?
 			kubernetesEndpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy(metav1.NamespaceDefault, metav1.TenantSystem).Get(kubernetesSvcDefaultName, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Failed to get kubernetes endpoint: %v. Error: %v", kubernetesEndpoint, err)
@@ -310,7 +309,8 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 	}
 
-	// update arktos network object with cluster ip from mizar
+	// If this is the tenant dns service, update arktos network object with cluster ip from mizar
+	_, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
 	if hasDNSServiceLabel {
 		networkObj, err := c.networkLister.NetworksWithMultiTenancy(service.Tenant).Get(defaultNetworkName)
 		if err != nil {
