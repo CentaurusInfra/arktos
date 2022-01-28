@@ -1599,6 +1599,11 @@ EOF
 WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
+    if [ -n "${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL: $(yaml-quote ${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL})
+EOF
+    fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_ARGS: $(yaml-quote ${SCHEDULER_TEST_ARGS})
@@ -2703,15 +2708,6 @@ function kube-up() {
         create-node-port
       done
       restart_tp_scheduler_and_controller
-
-      # start-kubemark.sh sets KUBEMARK_PREFIX default to 'kubemark'
-      # we use this env var to tell whether it is for kube-up or kubemark cluster
-      if [[ "${KUBEMARK_PREFIX:-}" == "" ]]; then
-        echo "DBG: defining CRD networks.arktos.futurewei.com at all TPs, in kube-up process"
-        for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
-          "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="cluster/kubeconfig.tp-${num}" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
-        done
-      fi
     else
       export ARKTOS_SCALEOUT_SERVER_TYPE=""
       create-master
@@ -2725,8 +2721,6 @@ function kube-up() {
       check-cluster
       validate-cluster-status
       create-node-port
-      # create arktos network crd for scale-up
-      "${KUBE_ROOT}/cluster/kubectl.sh" --kubeconfig="$HOME/.kube/config" apply -f "${KUBE_ROOT}/pkg/controller/artifacts/crd-network.yaml"
     fi
   fi
 }

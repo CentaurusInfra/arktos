@@ -70,6 +70,7 @@ kube::golang::server_targets() {
     cmd/kube-controller-manager
     cmd/cloud-controller-manager
     cmd/workload-controller-manager
+    cmd/arktos-network-controller
     cmd/kubelet
     cmd/kubeadm
     cmd/hyperkube
@@ -92,6 +93,7 @@ kube::golang::server_image_targets() {
     cmd/kube-apiserver
     cmd/kube-controller-manager
     cmd/workload-controller-manager
+    cmd/arktos-network-controller
     cmd/kube-scheduler
     cmd/kube-proxy
   )
@@ -321,6 +323,7 @@ readonly KUBE_STATIC_LIBRARIES=(
   kube-apiserver
   kube-controller-manager
   workload-controller-manager
+  arktos-network-controller
   kube-scheduler
   kube-proxy
   kubeadm
@@ -332,6 +335,7 @@ readonly KUBE_COVERAGE_INSTRUMENTED_PACKAGES=(
   k8s.io/kubernetes/cmd/kube-apiserver
   k8s.io/kubernetes/cmd/kube-controller-manager
   k8s.io/kubernetes/cmd/workload-controller-manager
+  k8s.io/kubernetes/cmd/arktos-network-controller
   k8s.io/kubernetes/cmd/kube-scheduler
   k8s.io/kubernetes/cmd/kube-proxy
   k8s.io/kubernetes/cmd/kubelet

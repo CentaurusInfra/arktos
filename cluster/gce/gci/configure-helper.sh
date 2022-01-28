@@ -40,6 +40,7 @@ function main() {
   # Resource requests of master components.
   KUBE_CONTROLLER_MANAGER_CPU_REQUEST="${KUBE_CONTROLLER_MANAGER_CPU_REQUEST:-200m}"
   WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST="${WORKLOAD_CONTROLLER_MANAGER_CPU_REQUEST:-200m}"
+  ARKTOS_NETWORK_CONTROLLER_CPU_REQUEST="${ARKTOS_NETWORK_CONTROLLER_CPU_REQUEST:-200m}"
   KUBE_SCHEDULER_CPU_REQUEST="${KUBE_SCHEDULER_CPU_REQUEST:-75m}"
 
   # Use --retry-connrefused opt only if it's supported by curl.
@@ -151,8 +152,19 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
-    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    apply-network-crd 
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+      if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+        start-arktos-network-controller
+      fi
       start-cluster-networking   ####start cluster networking if not using default kubenet
+    else
+      if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+        if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+          start-arktos-network-controller ${KUBERNETES_MASTER_NAME}
+        fi
+        start-cluster-networking   ####start cluster networking if not using default kubenet
+      fi
     fi
 
   else
