@@ -43,8 +43,12 @@ const (
 
 type Openstack struct{}
 
-// the url path is /servers/{vmId}
+// the url path is /servers/{vmId} OR /servers/{vmId}/{action}
 func getElementFromPath(path string) string {
+	elements := strings.Split(path, "/")
+	if len(elements) < 3 {
+		return ""
+	}
 	return strings.Split(path, "/")[2]
 }
 
@@ -67,7 +71,8 @@ func isBatchCreationRequest(req *http.Request) (bool, error) {
 	err = json.Unmarshal(body, &obj)
 
 	if err != nil {
-		klog.Errorf("error unmarshal request. error %v", err)
+		klog.V(6).Infof("Failed unmarshal request body: %s", string(body))
+		klog.Errorf("error unmarshal request: %v", err)
 		return false, err
 	}
 
@@ -186,12 +191,21 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 
 	tenant := openstack.GetTenantFromRequest(req)
 	namespace := openstack.GetNamespaceFromRequest(req)
-
+	vmId := getElementFromPath(req.URL.Path)
 	redirectUrl := ""
 
+	// For now, just check if it is empty string, which indicate badRequest
+	validateVmName := func(name string) {
+		if name == "" {
+			resp.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
 	if openstack.IsActionRequest(req.URL.Path) {
+		validateVmName(vmId)
 		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
-		redirectUrl += "/" + getElementFromPath(req.URL.Path) + "/action"
+		redirectUrl += "/" + vmId + "/action"
 		o.actionHandler(resp, req, redirectUrl)
 		return
 	}
@@ -200,7 +214,8 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 	case http.MethodGet:
 		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
 		if isGetDetail(req.URL.Path) {
-			redirectUrl += "/" + getElementFromPath(req.URL.Path)
+			validateVmName(vmId)
+			redirectUrl += "/" + vmId
 		}
 
 		rev_id, err := getReservationIdFromListRequest(req)
@@ -213,8 +228,9 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 		}
 
 	case http.MethodDelete:
+		validateVmName(vmId)
 		redirectUrl = fmt.Sprintf(POD_URL_TEMPLATE, tenant, namespace)
-		redirectUrl += "/" + getElementFromPath(req.URL.Path)
+		redirectUrl += "/" + vmId
 	case http.MethodPost:
 		isBatchRequest, err := isBatchCreationRequest(req)
 		if err != nil {
