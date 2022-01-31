@@ -610,6 +610,12 @@ echo "*******************************************"
 
 print_success
 
+if [ "${CNIPLUGIN}" == "mizar" ]; then
+  echo "*******************************************"
+  kube::common::wait-until-mizar-ready
+  echo "Local Kubernetes cluster is running with Mizar. Press Ctrl-C to shut it down."
+fi
+
 if [[ "${ENABLE_DAEMON}" = false ]]; then
   while true; do sleep 1; healthcheck; done
 fi
