@@ -27,7 +27,6 @@ import (
 	"strings"
 	"sync"
 
-	"k8s.io/apiserver/pkg/util/openstack"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -39,6 +38,7 @@ import (
 	"k8s.io/apiserver/pkg/registry/rest"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/flushwriter"
+	"k8s.io/apiserver/pkg/util/openstack"
 	"k8s.io/apiserver/pkg/util/wsstream"
 )
 
