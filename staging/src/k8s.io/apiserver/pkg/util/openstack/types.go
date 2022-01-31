@@ -30,9 +30,16 @@ import (
 
 const (
 	LABEL_SELECTOR_NAME = "ln"
+	OPENSTACK_API = "openstsckApi"
 )
 
 var cpuModelAnnotation = map[string]string{"VirtletCPUModel": "host-model"}
+
+type Openstack_error struct {
+	Message string `json:"message"`
+	ErrorCode int `json:"errorcode"`
+	Reason string `json:"reason"`
+}
 
 type Network struct {
 	Uuid     string `json:"uuid"`
@@ -243,7 +250,7 @@ func constructReplicasetRequestBody(replicas int, server ServerType, imageRef st
 		Template: v1.PodTemplateSpec{
 			ObjectMeta: metav1.ObjectMeta{
 				Annotations: cpuModelAnnotation,
-				Labels:      map[string]string{LABEL_SELECTOR_NAME: server.Name},
+				Labels:      map[string]string{LABEL_SELECTOR_NAME: server.Name, OPENSTACK_API:"true"},
 			},
 			Spec: v1.PodSpec{
 				VirtualMachine: constructVMSpec(server, imageRef, vcpu, memInMi),
@@ -277,6 +284,7 @@ func constructVmPodRequestBody(server ServerType, imageRef string, vcpu, memInMi
 		Namespace:   metav1.NamespaceSystem,
 		Tenant:      metav1.TenantSystem,
 		Annotations: cpuModelAnnotation,
+		Labels: map[string]string{OPENSTACK_API:"true"},
 	}
 
 	t.Spec = v1.PodSpec{
