@@ -224,7 +224,9 @@ func (o Openstack) serverHandler(resp http.ResponseWriter, req *http.Request) {
 			return
 		}
 		if rev_id != "" {
-			redirectUrl += fmt.Sprintf("?labelSelector=ln=%s", rev_id)
+			redirectUrl += fmt.Sprintf("?labelSelector=%s=true,ln=%s", openstack.OPENSTACK_API, rev_id)
+		} else {
+			redirectUrl += fmt.Sprintf("?labelSelector=%s=true", openstack.OPENSTACK_API)
 		}
 
 	case http.MethodDelete:
