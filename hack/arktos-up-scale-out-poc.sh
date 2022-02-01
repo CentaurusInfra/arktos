@@ -711,13 +711,11 @@ echo "Arktos Setup done."
 #echo "Kata Setup done."
 #echo "*******************************************"
 
-print_success
-
-if [ IS_RESOURCE_PARTITION == "true" and "${CNIPLUGIN}" == "mizar" ]; then
-  echo "*******************************************"
+if [ "${CNIPLUGIN}" == "mizar" ] && [ "${IS_RESOURCE_PARTITION}" == "false" ]; then
   kube::common::wait-until-mizar-ready
-  echo "Tenant Partition is ready. Press Ctrl-C to shut it down."
 fi
+
+print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
   while true; do sleep 1; healthcheck; done

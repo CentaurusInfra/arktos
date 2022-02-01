@@ -608,13 +608,11 @@ KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
 echo "Kata Setup done."
 echo "*******************************************"
 
-print_success
-
 if [ "${CNIPLUGIN}" == "mizar" ]; then
-  echo "*******************************************"
   kube::common::wait-until-mizar-ready
-  echo "Local Kubernetes cluster is ready. Press Ctrl-C to shut it down."
 fi
+
+print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
   while true; do sleep 1; healthcheck; done
