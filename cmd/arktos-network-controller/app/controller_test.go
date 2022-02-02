@@ -113,6 +113,7 @@ func TestManageFlatNetwork(t *testing.T) {
 			dnsSvcRespError: errors.NewAlreadyExists(api.Resource("service"), dnsSvcName),
 			expectingError:  false,
 		},
+		/* This test is no longer valid as get and create sequence has been flipped
 		{
 			desc:            "kubernetes service unable to create",
 			input:           &testNetwork,
@@ -120,7 +121,7 @@ func TestManageFlatNetwork(t *testing.T) {
 			k8sSvcRespError: fmt.Errorf("fake test error: failed to create Kubernetes service"),
 			dnsSvcResp:      &testkubernetesService,
 			expectingError:  true,
-		},
+		},*/
 		{
 			desc:            "kubernetes service already exists",
 			input:           &testNetwork,
