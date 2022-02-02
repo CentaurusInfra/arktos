@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Arktos Authors.
+Copyright 2021 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ import (
 	"testing"
 )
 
-var outputStr1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent"}}}`
+var outputStr1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"labels":{"openstsckApi":"true"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"download.cirros-cloud.net/0.5.1/cirros-0.5.1-x86_64-disk.img","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent"}}}`
 
 func TestConvertServerFromOpenstackRequest(t *testing.T) {
 	tests := []struct {

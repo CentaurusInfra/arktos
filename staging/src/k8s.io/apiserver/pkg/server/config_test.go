@@ -109,6 +109,8 @@ func TestNewWithDelegate(t *testing.T) {
 	expectedPaths := []string{
 		"/apis",
 		"/bar",
+		"/flavors",
+		"/flavors/",
 		"/foo",
 		"/healthz",
 		"/healthz/delegate-health",
@@ -118,6 +120,8 @@ func TestNewWithDelegate(t *testing.T) {
 		"/healthz/poststarthook/generic-apiserver-start-informers",
 		"/healthz/poststarthook/wrapping-post-start-hook",
 		"/healthz/wrapping-health",
+		"/images",
+		"/images/",
 		"/livez",
 		"/livez/delegate-health",
 		"/livez/log",
@@ -134,6 +138,8 @@ func TestNewWithDelegate(t *testing.T) {
 		"/readyz/poststarthook/generic-apiserver-start-informers",
 		"/readyz/poststarthook/wrapping-post-start-hook",
 		"/readyz/shutdown",
+		"/servers",
+		"/servers/",
 	}
 	checkExpectedPathsAtRoot(server.URL, expectedPaths, t)
 	checkPath(server.URL+"/healthz", http.StatusInternalServerError, `[+]ping ok

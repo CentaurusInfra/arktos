@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Arktos Authors.
+Copyright 2021 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -30,7 +30,7 @@ type input struct {
 	memInMi  int
 }
 
-var expectedJson1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","publicKey":"ssh-rsa AAA"}}}`
+var expectedJson1 = `{"apiVersion":"v1","kind":"Pod","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null,"labels":{"openstsckApi":"true"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","publicKey":"ssh-rsa AAA"}}}`
 
 func TestConstructVmPodRequestBody(t *testing.T) {
 	tests := []struct {
@@ -61,7 +61,7 @@ func TestConstructVmPodRequestBody(t *testing.T) {
 	}
 }
 
-var expectedJson2 = `{"apiVersion":"apps/v1","kind":"ReplicaSet","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null},"spec":{"replicas":3,"selector":{"matchLabels":{"ln":"testvm"}},"template":{"metadata":{"creationTimestamp":null,"labels":{"ln":"testvm"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","publicKey":"ssh-rsa AAA"}}}}}`
+var expectedJson2 = `{"apiVersion":"apps/v1","kind":"ReplicaSet","metadata":{"name":"testvm","tenant":"system","namespace":"kube-system","creationTimestamp":null},"spec":{"replicas":3,"selector":{"matchLabels":{"ln":"testvm"}},"template":{"metadata":{"creationTimestamp":null,"labels":{"ln":"testvm","openstsckApi":"true"},"annotations":{"VirtletCPUModel":"host-model"}},"spec":{"virtualMachine":{"name":"testvm","image":"m1.tiny","resources":{"limits":{"cpu":"1","memory":"512Mi"},"requests":{"cpu":"1","memory":"512Mi"}},"imagePullPolicy":"IfNotPresent","publicKey":"ssh-rsa AAA"}}}}}`
 
 func TestConstructReplicasetRequestBody(t *testing.T) {
 	tests := []struct {
