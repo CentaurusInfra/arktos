@@ -35,7 +35,6 @@ filegroup(
         "//cmd/linkcheck:all-srcs",
         "//cmd/preferredimports:all-srcs",
         "//cmd/workload-controller-manager:all-srcs",
-        "//cmd/arktos-network-controller:all-srcs",
     ],
     tags = ["automanaged"],
 )
