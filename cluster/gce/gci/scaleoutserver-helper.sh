@@ -160,9 +160,17 @@ function create-scaleoutserver-instance-internal() {
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
-  if [[ -s ${KUBE_TEMP}/network.tmpl ]]; then
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT}" && -s ${KUBE_TEMP}/network.tmpl ]]; then
     metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
   fi
+
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT}" && "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -s ${KUBE_TEMP}/vpc.tmpl && -s ${KUBE_TEMP}/subnet.tmpl ]]; then
+      metadata="${metadata},vpctemplate=${KUBE_TEMP}/vpc.tmpl"
+      metadata="${metadata},subnettemplate=${KUBE_TEMP}/subnet.tmpl"
+    fi
+  fi
+
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${server_name}-pd"

@@ -86,6 +86,8 @@ function replicate-master-instance() {
   get-metadata "${existing_master_zone}" "${existing_master_name}" cluster-location > "${KUBE_TEMP}/cluster-location.txt"
   get-metadata "${existing_master_zone}" "${existing_master_name}" controllerconfig > "${KUBE_TEMP}/controllerconfig.json"
   get-metadata "${existing_master_zone}" "${existing_master_name}" networktemplate > "${KUBE_TEMP}/network.tmpl"
+  get-metadata "${existing_master_zone}" "${existing_master_name}" vpctemplate > "${KUBE_TEMP}/vpc.tmpl"
+  get-metadata "${existing_master_zone}" "${existing_master_name}" subnettemplate > "${KUBE_TEMP}/subnet.tmpl"
 
   create-master-instance-internal "${REPLICA_NAME}"
 }
@@ -136,9 +138,17 @@ function create-master-instance-internal() {
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
-  if [[ -s ${KUBE_TEMP}/network.tmpl ]]; then
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT}" && -s ${KUBE_TEMP}/network.tmpl ]]; then
     metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
   fi
+
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT}" && "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -s ${KUBE_TEMP}/vpc.tmpl && -s ${KUBE_TEMP}/subnet.tmpl ]]; then
+      metadata="${metadata},vpctemplate=${KUBE_TEMP}/vpc.tmpl"
+      metadata="${metadata},subnettemplate=${KUBE_TEMP}/subnet.tmpl"
+    fi
+  fi
+
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${master_name}-pd"

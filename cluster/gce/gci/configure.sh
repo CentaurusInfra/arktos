@@ -255,6 +255,40 @@ function download-network-template {
   )
 }
 
+function download-vpc-template {
+  local -r vpc="$1"
+  echo "Downloading vpc template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_vpc_template="/tmp/vpc.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_vpc_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/vpctemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_vpc_template} ${vpc}
+    fi
+  )
+}
+
+function download-subnet-template {
+  local -r subnet="$1"
+  echo "Downloading subnet template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_subnet_template="/tmp/subnet.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_subnet_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/subnettemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_subnet_template} ${subnet}
+    fi
+  )
+}
+
 function download-proxy-config {
   local -r dest="$1"
   echo "Downloading proxy config file, if it exists"
@@ -963,7 +997,14 @@ fi
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
-download-network-template "${KUBE_HOME}/network.tmpl"
+if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  download-network-template "${KUBE_HOME}/network.tmpl"
+
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    download-vpc-template "${KUBE_HOME}/vpc.tmpl"
+    download-subnet-template "${KUBE_HOME}/subnet.tmpl"
+  fi
+fi
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
