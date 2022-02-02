@@ -608,6 +608,10 @@ KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
 echo "Kata Setup done."
 echo "*******************************************"
 
+if [ "${CNIPLUGIN}" == "mizar" ]; then
+  kube::common::wait-until-mizar-ready
+fi
+
 print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then

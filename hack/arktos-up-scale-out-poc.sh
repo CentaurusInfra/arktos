@@ -711,6 +711,10 @@ echo "Arktos Setup done."
 #echo "Kata Setup done."
 #echo "*******************************************"
 
+if [ "${CNIPLUGIN}" == "mizar" ] && [ "${IS_RESOURCE_PARTITION}" == "false" ]; then
+  kube::common::wait-until-mizar-ready
+fi
+
 print_success
 
 if [[ "${ENABLE_DAEMON}" = false ]]; then
