@@ -482,7 +482,7 @@ if [[ -z "${KUBE_ADMISSION_CONTROL:-}" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
     ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
   fi
-  if [[ -n ${DISABLE_NETWORK_SERVICE_SUPPORT:-} ]]; then # when network service is enabled
+  if [[ -z ${DISABLE_NETWORK_SERVICE_SUPPORT:-} ]]; then # when network service is enabled
     ADMISSION_CONTROL="${ADMISSION_CONTROL},DeploymentNetwork"
   fi
   # ResourceQuota must come last, or a creation is recorded, but the pod may be forbidden.
