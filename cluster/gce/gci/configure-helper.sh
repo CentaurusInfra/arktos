@@ -161,7 +161,7 @@ function main() {
     else
       if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
         if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
-          start-arktos-network-controller ${KUBERNETES_MASTER_NAME}
+          start-arktos-network-controller ${CLUSTER_NAME}
         fi
         start-cluster-networking   ####start cluster networking if not using default kubenet
       fi
