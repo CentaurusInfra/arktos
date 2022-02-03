@@ -178,14 +178,37 @@ func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 		}
 
 		return osObj
-
 	case "*core.Pod":
 		pod := obj.(*core.Pod)
 		osObj := &OpenstackResponse{}
 		osObj.Id = pod.Name
-
 		osObj.Links = []LinkType{{pod.GetSelfLink(), ""}}
-		//osObj.SecurityGroups = nil
+		osObj.Image = &ImageType{Name: pod.Spec.VirtualMachine.Image}
+		osObj.Tenant = pod.Tenant
+		if pod.Status.VirtualMachineStatus != nil {
+			osObj.Status = string(pod.Status.VirtualMachineStatus.State)
+			osObj.OS_EXT_STS_Power_state = string(pod.Status.VirtualMachineStatus.PowerState)
+		} else {
+			osObj.Status = "statusUnknown"
+			osObj.OS_EXT_STS_Power_state = string(core.NoState)
+		}
+
+		if pod.Status.StartTime != nil {
+			osObj.CreatedAt = pod.Status.StartTime.String()
+		}
+
+		osObj.AccessIpV4 = pod.Status.PodIP
+
+		osObj.Flavor = &FlavorType{Vcpus: int(pod.Spec.VirtualMachine.Resources.Requests.Cpu().Value()),
+			MemoryMb: int(pod.Spec.VirtualMachine.Resources.Requests.Memory().Value() / 1024 / 1024)} // display in Mi
+
+		osObj.HostId = pod.Spec.Hostname
+		if v, found := pod.Annotations["mizar.com/vpc"]; found {
+			osObj.Vpc = v
+		}
+		if v, found := pod.Annotations["mizar.com/subnet"]; found {
+			osObj.Subnet = v
+		}
 
 		return osObj
 	default:

@@ -25,12 +25,12 @@ var ERROR_FLAVOR_NOT_FOUND = fmt.Errorf("flavor not found")
 
 // slim down version of the openstack flavor data structure
 type FlavorType struct {
-	Id          int
-	Name        string
-	MemoryMb    int
-	Vcpus       int
-	RootGb      int
-	EphemeralGb int
+	Id          int    `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	MemoryMb    int    `json:"memoryMb,omitempty"`
+	Vcpus       int    `json:"vcpus,omitempty"`
+	RootGb      int    `json:"rootGb,omitempty"`
+	EphemeralGb int    `json:"ephemeralGb,omitempty"`
 }
 
 // for 130 release, only READ operation with static list of flavors

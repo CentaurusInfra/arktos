@@ -94,9 +94,19 @@ type OpenstackServerRequest struct {
 
 // VM creation response in Openstack
 type OpenstackResponse struct {
-	Id              string
-	Links           []LinkType
-	Security_groups []SecurityGroup
+	Id                     string          `json:"id,omitempty"`
+	Links                  []LinkType      `json:"links,omitempty"`
+	Security_groups        []SecurityGroup `json:"reason,omitempty"`
+	Flavor                 *FlavorType     `json:"flavor,omitempty"`
+	Image                  *ImageType      `json:"image,omitempty"`
+	Status                 string          `json:"status,omitempty"`
+	Tenant                 string          `json:"tenant,omitempty"`
+	CreatedAt              string          `json:"createdAt,omitempty"`
+	HostId                 string          `json:"hostid,omitempty"`
+	AccessIpV4             string          `json:"accessIpv4,omitempty"`
+	OS_EXT_STS_Power_state string          `json:"os_ext_sts_power_state,omitempty"`
+	Vpc                    string          `json:"vpc,omitempty"`
+	Subnet                 string          `json:"subnet,omitempty"`
 }
 
 func (o *OpenstackResponse) GetObjectKind() schema.ObjectKind {
