@@ -103,6 +103,7 @@ function main() {
     gke-master-start
     if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
       create-kubeproxy-user-kubeconfig
+      create-default-vpc-subnet-template-volume-mount
     fi
   else
     create-node-pki

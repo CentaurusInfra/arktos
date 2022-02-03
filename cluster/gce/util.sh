@@ -671,7 +671,7 @@ function write-network-template {
 }
 
 function write-vpc-subnet-template {
-  if [[ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} && "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     if [[ -s ${VPC_NETWORK_TEMPLATE} && -s ${SUBNET_NETWORK_TEMPLATE} ]]; then
       cp "${VPC_NETWORK_TEMPLATE}" "${KUBE_TEMP}/vpc.tmpl"
       cp "${SUBNET_NETWORK_TEMPLATE}" "${KUBE_TEMP}/subnet.tmpl"
@@ -1626,6 +1626,11 @@ EOF
     if [ -n "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]; then
       cat >>$file <<EOF
 DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
+EOF
+    fi
+    if [ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]; then
+      cat >>$file <<EOF
+DISABLE_ADMISSION_PLUGINS: $(yaml-quote ${DISABLE_ADMISSION_PLUGINS})
 EOF
     fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then

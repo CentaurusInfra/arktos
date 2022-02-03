@@ -942,9 +942,9 @@ EOF
 DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
 EOF
     fi
-    if [ -n "${NETWORK_PROVIDER:-}" ]; then
+    if [ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]; then
       cat >>$file <<EOF
-NETWORK_PROVIDER: $(yaml-quote ${NETWORK_PROVIDER})
+DISABLE_ADMISSION_PLUGINS: $(yaml-quote ${DISABLE_ADMISSION_PLUGINS})
 EOF
     fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then

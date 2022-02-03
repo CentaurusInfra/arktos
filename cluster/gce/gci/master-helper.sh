@@ -142,7 +142,7 @@ function create-master-instance-internal() {
     metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
   fi
 
-  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT}" && "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     if [[ -s ${KUBE_TEMP}/vpc.tmpl && -s ${KUBE_TEMP}/subnet.tmpl ]]; then
       metadata="${metadata},vpctemplate=${KUBE_TEMP}/vpc.tmpl"
       metadata="${metadata},subnettemplate=${KUBE_TEMP}/subnet.tmpl"
