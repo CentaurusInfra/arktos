@@ -260,6 +260,8 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
+		Vpc:           service.Annotations[mizarAnnotationsVpcKey],
+		Subnet:        service.Annotations[mizarAnnotationsSubnetKey],
 	}
 
 	response := c.grpcAdaptor.CreateService(c.grpcHost, msg)
@@ -338,6 +340,8 @@ func (c *MizarServiceController) processServiceUpdate(service *v1.Service, event
 		Namespace:     service.Namespace,
 		Tenant:        service.Tenant,
 		Ip:            service.Spec.ClusterIP,
+		Vpc:           service.Annotations[mizarAnnotationsVpcKey],
+		Subnet:        service.Annotations[mizarAnnotationsSubnetKey],
 	}
 	response := c.grpcAdaptor.UpdateService(c.grpcHost, msg)
 	code := response.Code
@@ -367,6 +371,8 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 		Namespace:     namespace,
 		Tenant:        tenant,
 		Ip:            "",
+		Vpc:           "",
+		Subnet:        "",
 	}
 
 	response := c.grpcAdaptor.DeleteService(c.grpcHost, msg)
