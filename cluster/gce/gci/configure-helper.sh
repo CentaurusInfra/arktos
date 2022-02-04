@@ -53,6 +53,9 @@ function main() {
   CONTAINERIZED_MOUNTER_HOME="${KUBE_HOME}/containerized_mounter"
   PV_RECYCLER_OVERRIDE_TEMPLATE="${KUBE_HOME}/kube-manifests/kubernetes/pv-recycler-template.yaml"
   DEFAULT_NETWORK_TEMPLATE="${KUBE_HOME}/kube-manifests/kubernetes/default-network.tmpl"
+  DEFAULT_PATH="/hack/runtime"
+  DEFAULT_VPC_TEMPLATE_PATH="${DEFAULT_PATH}/default_mizar_network_vpc_template.json"
+  DEFAULT_SUBNET_TEMPLATE_PATH="${DEFAULT_PATH}/default_mizar_network_subnet_template.json"
 
   if [[ ! -e "${KUBE_HOME}/kube-env" ]]; then
     echo "The ${KUBE_HOME}/kube-env file does not exist!! Terminate cluster initialization."
@@ -94,10 +97,13 @@ function main() {
     create-master-etcd-auth
     create-master-etcd-apiserver-auth
     override-pv-recycler
-    create-default-network-template-volume-mount
+    if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+      create-default-network-template-volume-mount
+    fi
     gke-master-start
     if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
       create-kubeproxy-user-kubeconfig
+      create-default-vpc-subnet-template-volume-mount
     fi
   else
     create-node-pki

@@ -2355,7 +2355,7 @@ function start-kube-controller-manager {
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
-  if [[ -s ${DEFAULT_NETWORK_TEMPLATE} && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" && -s ${DEFAULT_NETWORK_TEMPLATE} ]]; then
     params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
   fi
 
@@ -2386,11 +2386,33 @@ function start-kube-controller-manager {
   sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
-  sed -i -e "s@{{defaulttemplate_hostpath_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
-  sed -i -e "s@{{defaulttemplate_hostpath}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
+
+  # For default arktos network controller
+  if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+    sed -i -e "s@{{defaulttemplate_hostpath_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+    sed -i -e "s@{{defaulttemplate_hostpath}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
+  else
+    sed -i -e "/{{defaulttemplate_hostpath}}/d" "${src_file}"
+    sed -i -e "/{{defaulttemplate_hostpath_mount}}/d" "${src_file}"
+  fi
+
+  # For mizar default vpc and subnet
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      sed -i -e "s@{{defaultvpctemplate_hostpath_mount}}@${DEFAULT_VPC_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+      sed -i -e "s@{{defaultvpctemplate_hostpath}}@${DEFAULT_VPC_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
+
+      sed -i -e "s@{{defaultsubnettemplate_hostpath_mount}}@${DEFAULT_SUBNET_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+      sed -i -e "s@{{defaultsubnettemplate_hostpath}}@${DEFAULT_SUBNET_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
+  else
+      sed -i -e "/{{defaultvpctemplate_hostpath}}/d" "${src_file}"
+      sed -i -e "/{{defaultvpctemplate_hostpath_mount}}/d" "${src_file}"
+
+      sed -i -e "/{{defaultsubnettemplate_hostpath}}/d" "${src_file}"
+      sed -i -e "/{{defaultsubnettemplate_hostpath_mount}}/d" "${src_file}"
+  fi
 
   cp "${src_file}" /etc/kubernetes/manifests
 }
@@ -3458,6 +3480,25 @@ function create-default-network-template-volume-mount {
   DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": false},"
 
   cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
+}
+
+function create-default-vpc-subnet-template-volume-mount {
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -z "${DEFAULT_VPC_TEMPLATE_PATH:-}" || -z "${DEFAULT_SUBNET_TEMPLATE_PATH:-}" ]]; then
+      echo "DEFAULT_VPC_TEMPLATE_PATH or DEFAULT_SUBNET_TEMPLATE_PATH is not set"
+      exit 1
+    fi
+
+    DEFAULT_VPC_TEMPLATE_PATH_VOLUME="{\"name\": \"defaultvpctemplate\",\"hostPath\": {\"path\": \"${DEFAULT_VPC_TEMPLATE_PATH}\", \"type\": \"File\"}},"
+    DEFAULT_VPC_TEMPLATE_PATH_MOUNT="{\"name\": \"defaultvpctemplate\",\"mountPath\": \"${DEFAULT_VPC_TEMPLATE_PATH}\", \"readOnly\": false},"
+
+    DEFAULT_SUBNET_TEMPLATE_PATH_VOLUME="{\"name\": \"defaultsubnettemplate\",\"hostPath\": {\"path\": \"${DEFAULT_SUBNET_TEMPLATE_PATH}\", \"type\": \"File\"}},"
+    DEFAULT_SUBNET_TEMPLATE_PATH_MOUNT="{\"name\": \"defaultsubnettemplate\",\"mountPath\": \"${DEFAULT_SUBNET_TEMPLATE_PATH}\", \"readOnly\": false},"
+
+    mkdir -p "${DEFAULT_PATH}"
+    cat > ${DEFAULT_VPC_TEMPLATE_PATH} < ${KUBE_HOME}/vpc.tmpl
+    cat > ${DEFAULT_SUBNET_TEMPLATE_PATH} < ${KUBE_HOME}/subnet.tmpl
+  fi
 }
 
 function wait-till-apiserver-ready() {

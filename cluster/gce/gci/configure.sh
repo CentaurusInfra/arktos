@@ -238,19 +238,21 @@ function download-controller-config {
   )
 }
 
-function download-network-template {
+function download-template-file {
   local -r dest="$1"
-  echo "Downloading network template file, if it exists"
+  local -r object="$2"
+  local -r objecttemplate="$3"
+  echo "Downloading $object template file, if it exists"
   # Fetch kubelet config file from GCE metadata server.
   (
     umask 077
-    local -r tmp_network_template="/tmp/network.tmpl"
+    local -r tmp_template="/tmp/${object}.tmpl"
     if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
         -H "X-Google-Metadata-Request: True" \
-        -o "${tmp_network_template}" \
-        http://metadata.google.internal/computeMetadata/v1/instance/attributes/networktemplate; then
+        -o "${tmp_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/${objecttemplate}; then
       # only write to the final location if curl succeeds
-      mv ${tmp_network_template} ${dest}
+      mv ${tmp_template} ${dest}
     fi
   )
 }
@@ -959,11 +961,15 @@ if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
   if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
     ensure-mizar-kernel-and-ifname
   fi
+  download-template-file "${KUBE_HOME}/vpc.tmpl" "vpc" "vpctemplate"
+  download-template-file "${KUBE_HOME}/subnet.tmpl" "subnet" "subnettemplate"
 fi
 
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
-download-network-template "${KUBE_HOME}/network.tmpl"
+if [[ -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+  download-template-file "${KUBE_HOME}/network.tmpl" "network" "networktemplate"
+fi
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then

@@ -51,6 +51,8 @@
         "mountPath": "/var/log/kube-controller-manager.log",
         "readOnly": false},
         {{defaulttemplate_hostpath_mount}}
+        {{defaultvpctemplate_hostpath_mount}}
+        {{defaultsubnettemplate_hostpath_mount}}
         { "name": "etcssl",
         "mountPath": "/etc/ssl",
         "readOnly": true},
@@ -84,6 +86,8 @@
         "type": "FileOrCreate"}
   },
   {{defaulttemplate_hostpath}}
+  {{defaultvpctemplate_hostpath}}
+  {{defaultsubnettemplate_hostpath}}
   { "name": "etcssl",
     "hostPath": {
         "path": "/etc/ssl"}

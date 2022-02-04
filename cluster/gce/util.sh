@@ -670,6 +670,15 @@ function write-network-template {
   fi
 }
 
+function write-vpc-subnet-template {
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -s ${VPC_NETWORK_TEMPLATE} && -s ${SUBNET_NETWORK_TEMPLATE} ]]; then
+      cp "${VPC_NETWORK_TEMPLATE}" "${KUBE_TEMP}/vpc.tmpl"
+      cp "${SUBNET_NETWORK_TEMPLATE}" "${KUBE_TEMP}/subnet.tmpl"
+    fi
+  fi
+}
+
 # Writes the cluster name into a temporary file.
 # Assumed vars
 #   CLUSTER_NAME
@@ -2630,6 +2639,7 @@ function kube-up() {
     write-cluster-name
     write-controller-config
     write-network-template
+    write-vpc-subnet-template
     create-autoscaler-config
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       echo "DBG: Generating shared CA certificates"

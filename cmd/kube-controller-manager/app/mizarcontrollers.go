@@ -22,8 +22,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
-	//"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
@@ -189,11 +187,6 @@ func startArktosNetworkController(ctx *ControllerContext, networkInformerFactory
 	currentDir, err := os.Getwd()
 	if err != nil {
 		klog.Errorf("Get current directory (%s) in error (%v).", currentDir, err)
-		return nil, false, err
-	}
-
-	if !strings.HasSuffix(currentDir, arktosName) {
-		klog.Errorf("Current directory (%s) is not in Arktos Home directory with error (%v).", currentDir, err)
 		return nil, false, err
 	}
 
