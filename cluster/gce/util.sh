@@ -1619,11 +1619,6 @@ EOF
 DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
 EOF
     fi
-    if [ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]; then
-      cat >>$file <<EOF
-DISABLE_ADMISSION_PLUGINS: $(yaml-quote ${DISABLE_ADMISSION_PLUGINS})
-EOF
-    fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then
       cat >>$file <<EOF
 INITIAL_ETCD_CLUSTER: $(yaml-quote ${INITIAL_ETCD_CLUSTER})

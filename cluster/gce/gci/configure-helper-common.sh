@@ -1805,9 +1805,6 @@ function start-kube-apiserver {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
-  if [[ -n "${DISABLE_ADMISSION_PLUGINS:-}" ]]; then
-    params+=" --disable-admission-plugins=${DISABLE_ADMISSION_PLUGINS}"
-  fi
 
   if [[ -n "${NUM_NODES:-}" ]]; then
     local max_request_inflight="-1"
