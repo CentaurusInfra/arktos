@@ -367,7 +367,6 @@ fi
  # pod is associated to certain network, which has its own DNS service.
  # By default, this feature is enabled in the dev cluster started by this script.
 DISABLE_NETWORK_SERVICE_SUPPORT="${DISABLE_NETWORK_SERVICE_SUPPORT:-}"
-DISABLE_ADMISSION_PLUGINS=${DISABLE_ADMISSION_PLUGINS:-""}
 ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
 
 # check for network service support flags
@@ -381,9 +380,6 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   else
     ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
   fi
-else # when disabled
-  # kube-apiserver not to enforce deployment-network validation
-  DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
 fi
 
 # Optional: Install cluster DNS.
@@ -487,6 +483,9 @@ if [[ -z "${KUBE_ADMISSION_CONTROL:-}" ]]; then
   if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
     ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
+  fi
+  if [[ -z ${DISABLE_NETWORK_SERVICE_SUPPORT:-} ]]; then # when network service is enabled
+    ADMISSION_CONTROL="${ADMISSION_CONTROL},DeploymentNetwork"
   fi
   # ResourceQuota must come last, or a creation is recorded, but the pod may be forbidden.
   ADMISSION_CONTROL="${ADMISSION_CONTROL},MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"
