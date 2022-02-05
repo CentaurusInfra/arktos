@@ -20,8 +20,6 @@ package app
 
 import (
 	"net/http"
-	"os"
-	"path/filepath"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
@@ -183,22 +181,8 @@ func startArktosNetworkController(ctx *ControllerContext, networkInformerFactory
 		return nil, false, err
 	}
 
-	// initialized once for vpcDefaultTemplatePath and subnetDefaultTemplatePath
-	currentDir, err := os.Getwd()
-	if err != nil {
-		klog.Errorf("Get current directory (%s) in error (%v).", currentDir, err)
-		return nil, false, err
-	}
-
-	vpcDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, vpcTemplateJson)
-	subnetDefaultTemplatePath := filepath.Join(currentDir, homeSubPath, subnetTemplateJson)
-
-	klog.V(4).Infof("vpcPath: (%s) + subnetPath: (%s)", vpcDefaultTemplatePath, subnetDefaultTemplatePath)
-
 	go func() {
 		networkController := controllers.NewMizarArktosNetworkController(
-			vpcDefaultTemplatePath,
-			subnetDefaultTemplatePath,
 			dynamicClient,
 			discoveryClient,
 			networkClient,
