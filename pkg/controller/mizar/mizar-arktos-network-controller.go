@@ -218,7 +218,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(key string) error 
 	response := c.grpcAdaptor.CreateArktosNetwork(c.grpcHost, msg)
 	switch response.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled arktos network %v successfully", network.Name)
+		klog.Infof("Mizar handled arktos network %v successfully", key)
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for arktos network and vpc id update: %s", key)
 		return errors.New("Arktos network and vpc id update failed on mizar side, will try again.....")
