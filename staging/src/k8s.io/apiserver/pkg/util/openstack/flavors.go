@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Arktos Authors.
+Copyright 2021 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -25,12 +25,12 @@ var ERROR_FLAVOR_NOT_FOUND = fmt.Errorf("flavor not found")
 
 // slim down version of the openstack flavor data structure
 type FlavorType struct {
-	Id          int
-	Name        string
-	MemoryMb    int
-	Vcpus       int
-	RootGb      int
-	EphemeralGb int
+	Id          int    `json:"id,omitempty"`
+	Name        string `json:"name,omitempty"`
+	MemoryMb    int    `json:"memoryMb,omitempty"`
+	Vcpus       int    `json:"vcpus,omitempty"`
+	RootGb      int    `json:"rootGb,omitempty"`
+	EphemeralGb int    `json:"ephemeralGb,omitempty"`
 }
 
 // for 130 release, only READ operation with static list of flavors

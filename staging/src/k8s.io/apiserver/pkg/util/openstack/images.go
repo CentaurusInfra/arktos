@@ -1,5 +1,5 @@
 /*
-Copyright 2021 The Arktos Authors.
+Copyright 2021 Authors of Arktos.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,9 +26,9 @@ var ERROR_IMAGE_NOT_FOUND = fmt.Errorf("image not found")
 // this is simulate the read-only image service to get test images for VM
 // the ImageRef is still the original site from the image providers
 type ImageType struct {
-	Id       int
-	Name     string
-	ImageRef string
+	Id       int    `json:"id,omitempty"`
+	Name     string `json:"name,omitempty"`
+	ImageRef string `json:"imageRef,omitempty"`
 }
 
 // for 130 release, only READ operation with static list of images
