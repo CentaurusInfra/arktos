@@ -90,6 +90,9 @@ The API call chains of /servers will be the same as the other API requests, whic
 |POST	 |/servers/{server-id}/action	|Perform specific action on a given VM |	Yes (subset of actions) * |
 
 *Currently only “reboot, stop, start, snapshot, restore” are supported in Arktos VM runtime. So the exposed action APIs will be limited to those actions for Arktos 130 release.
+
+The URL path and body will follow Openstack API specifications. Request body contains the action name(operation) and parameters needed to perform the action.
+
 For a full list of Openstack VM actions, please refer to [Openstack compute API doc](https://docs.openstack.org/api-ref/compute/#servers-run-an-action-servers-action)
 
 ### Error Handling
