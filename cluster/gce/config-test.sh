@@ -380,15 +380,6 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   fi
 fi
 
-# When NETWORK_PROVIDER is set to mizar, the template files of default
-# vpc and subnets are provided here
-VPC_NETWORK_TEMPLATE="${VPC_NETWORK_TEMPLATE:-}"
-SUBNET_NETWORK_TEMPLATE="${SUBNET_NETWORK_TEMPLATE:-}"
-if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-  VPC_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network_vpc_template.json"
-  SUBNET_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network_subnet_template.json"
-fi
-
 # Optional: Install cluster DNS.
 # Set CLUSTER_DNS_CORE_DNS to 'false' to install kube-dns instead of CoreDNS.
 CLUSTER_DNS_CORE_DNS="${CLUSTER_DNS_CORE_DNS:-true}"
