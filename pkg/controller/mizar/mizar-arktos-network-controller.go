@@ -24,8 +24,8 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/meta"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -327,7 +327,7 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 		},
 		Spec:     MizarVPCSpec{
 			IP:      fmt.Sprintf("%d.0.0.0", ipStart),
-			Prefix:  "16",
+			Prefix:  "8",
 			Divider: 1,
 			Status:  "Init",
 		},
@@ -347,8 +347,8 @@ func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, err
 			Name: subnetName,
 		},
 		Spec:     MizarSubnetSpec{
-			IP:       fmt.Sprintf("%d.0.%d.0", vpcIpStart, subnetIpSeg),
-			Prefix:   "24",
+			IP:       fmt.Sprintf("%d.%d.0.0", vpcIpStart, subnetIpSeg),
+			Prefix:   "16",
 			Bouncers: 1,
 			VPC:      vpcName,
 			Status:   "Init",
