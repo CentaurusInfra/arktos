@@ -8,27 +8,28 @@ authors:
 
 ## Table of Contents
 
-   * [Background and context](#Background and context)
-   * [Goal and non-goals](#Goal and non-goals)
+   * [Background and context](#background-and-context)
+   * [Goal and non-goals](#goal-and-non-goals)
       * [Goals](#goals)
       * [Non-Goals](#non-goals)
-   * [New APIs in Arktos](#New APIs in Arktos)
-      * [New API route paths](#New API route paths)
-      * [API call chain](#API call chain)
-      * [VM operations](#VM operations)
-      * [VM actions](#VM actions)
-      * [Errors Handling](#Errors Handling)
-      * [API Details](#API Details)
-   * [Implementation](#Implementation)
-      * [List of changes in Arktos](#List of changes in Arktos)
-      * [API Security](#API Security)
-      * [Handel Namespace and Tenants in request](#Handel Namespace and Tenants in request)
-      * [VM flavor support](#VM flavor support)
-      * [VM imageRef support](#VM imageRef support)
-      * [VM batch creation](#VM batch creation)
-   * [Future works](#Future works)
-   * [Release plan](#Release plan)
-   * [Appendix](#Appendix)
+   * [New APIs in Arktos](#new-apis-in-arktos)
+      * [New API route paths](#new-api-route-paths)
+      * [API call chain](#api-call-chain)
+      * [VM operations](#vm-operations)
+      * [VM actions](#vm-actions)
+      * [Errors Handling](#error-handling)
+      * [API Details](#api-details)
+   * [Implementation](#implementation)
+      * [List of changes in Arktos](#list-of-changes-in-arktos)
+      * [API Security](#api-security)
+      * [Handel Namespace and Tenants in request](#handel-namespace-and-tenants-in-request)
+      * [VM flavor support](#vm-flavor-support)
+      * [VM imageRef support](#vm-imageref-support)
+      * [VM batch creation](#vm-batch-creation)
+   * [Future works](#future-works)
+   * [Release plan](#release-plan)
+   * [Appendix](#appendix)
+   
       
 ## Background and context
 To boost Arktos VM adoption and to let Openstack users to easily explore Arktos VM support without a lot of changes from 
@@ -91,7 +92,7 @@ The API call chains of /servers will be the same as the other API requests, whic
 *Currently only “reboot, stop, start, snapshot, restore” are supported in Arktos VM runtime. So the exposed action APIs will be limited to those actions for Arktos 130 release.
 For a full list of Openstack VM actions, please refer to [Openstack compute API doc](https://docs.openstack.org/api-ref/compute/#servers-run-an-action-servers-action)
 
-### Errors Handling
+### Error Handling
 Will relay whatever errors from Arktos, which is standard http errors. Error code will be in response header and more info will be in response body.
 
 ### API Details
@@ -475,7 +476,9 @@ A few efforts are needed as listed below:
 Arktos 130, alpha for initial evaluation.
 TBD
 
-## Appendix: Debug output of creating a simple VM with DevStack
+## Appendix
+Debug output of creating a simple VM with DevStack:
+
 The below shows the openStack client interact with Identity service for AuthN,  neutron service for network, compute 
 service for image, flavor during the request for creating a simple VM with DevStack.
 ```
