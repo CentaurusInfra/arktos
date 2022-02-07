@@ -5,29 +5,54 @@ authors:
 ---
 
 # Support Openstack Compute APIs in Arktos
+
+## Table of Contents
+
+   * [Background and context](#Background and context)
+   * [Goal and non-goals](#Goal and non-goals)
+      * [Goals](#goals)
+      * [Non-Goals](#non-goals)
+   * [New APIs in Arktos](#New APIs in Arktos)
+      * [New API route paths](#New API route paths)
+      * [API call chain](#API call chain)
+      * [VM operations](#VM operations)
+      * [VM actions](#VM actions)
+      * [Errors Handling](#Errors Handling)
+      * [API Details](#API Details)
+   * [Implementation](#Implementation)
+      * [List of changes in Arktos](#List of changes in Arktos)
+      * [API Security](#API Security)
+      * [Handel Namespace and Tenants in request](#Handel Namespace and Tenants in request)
+      * [VM flavor support](#VM flavor support)
+      * [VM imageRef support](#VM imageRef support)
+      * [VM batch creation](#VM batch creation)
+   * [Future works](#Future works)
+   * [Release plan](#Release plan)
+   * [Appendix](#Appendix)
+      
 ## Background and context
 To boost Arktos VM adoption and to let Openstack users to easily explore Arktos VM support without a lot of changes from 
 the users’ applications, it is decided to add a new set of APIs in Arktos to match Openstack Server related operations. 
-Besides better user experiences, this new set ofAPIs will also help existing Openstack perf tests to be relatively easily 
+Besides better user experiences, this new set of APIs will also help existing Openstack perf tests to be relatively easily 
 converted to run against Arktos.
 
 ## Goal and non-goals
 For the Arktos 130 release (1-30-2022):
 
-Goals:
+### Goals:
 
 1. New set of REST interfaces in Arktos to support Openstack requests for Server operations
 1. New set of REST interfaces in Arktos to support Openstack requests for Server actions
 1. Initial Batch support with Arktos replicaset
 
-Non-goals:
+### Non-goals:
 
 1. Nova or Nova test tool can switch to Arktos for basic VM operation, by switching to the Arktos URL. 
 1. Openstack client-side SDK or other dev tools are not in the scope of this design doc.
 1. Openstack API other than VM CRUD, VM Actions, is not in the scope of this design doc.
 
 ## New APIs in Arktos
-### New API route paths:
+### New API route paths
 The new routes for servers
 
 * 	{Arktos-service-url}/servers
@@ -42,12 +67,10 @@ The new routes for VM flavors and images
 *   {Arktos-service-url}/flavors
 *   {Arktos-service-url}/images
 
-
 ### API call chain
 The API call chains of /servers will be the same as the other API requests, which is created in the DefaultBuildHandlerChain() function
 
-
-### VM list, get, create and delete
+### VM operations
 
 |Methods |URL.         |Function                     |Supported in Arktos|
 |--------|---------|-----------------------------|-------------------|
@@ -68,7 +91,7 @@ The API call chains of /servers will be the same as the other API requests, whic
 *Currently only “reboot, stop, start, snapshot, restore” are supported in Arktos VM runtime. So the exposed action APIs will be limited to those actions for Arktos 130 release.
 For a full list of Openstack VM actions, please refer to [Openstack compute API doc](https://docs.openstack.org/api-ref/compute/#servers-run-an-action-servers-action)
 
-### Errors
+### Errors Handling
 Will relay whatever errors from Arktos, which is standard http errors. Error code will be in response header and more info will be in response body.
 
 ### API Details
@@ -208,6 +231,7 @@ Example of GET VM response
 }
 
 ```
+
 #### Delete a VM:
 Request
 
@@ -329,8 +353,7 @@ Example of response of listing VMs in a batch:
 }
 ```
 
-
-### VM Actions
+#### VM Actions
 The /servers/{server-id}/action will take an action defined in the request, the below uses reboot VM as an example.
 
 Request
@@ -353,7 +376,7 @@ Response
 
 If successful, the http.StatusCreated will return in headers.  This method does not return content in the response body.
 
-### Error handling
+#### Error handling
 The new APIs will relay Arktos return http status code in headers for all responses. when error occurs, the response body 
 contains the error details. For example, the attempt to create an action with a VM name that does not exist in the server.
 ```$xslt
@@ -373,9 +396,8 @@ curl -L -k -XPOST -H "Content-Type: application/json" -H "User-Agent: kubectl/v0
 }
 ```
 
-
 ## Implementation
-List of changes in Arktos:
+### List of changes in Arktos
 1.	New routes registered to the API server, for servers and actions
 2.	New set of handlers for each route for VM and actions ( Reuse of existing pod handlers )
 3.	Converting logic to convert Openstack requests to Arktos request and Response to Openstack response in the web service, for both Server and Action requests and responses
@@ -392,7 +414,7 @@ Ideally, the namespace in Arktos should map to Project in Openstack. for Arktos 
 integrate with Keystone with Arktos, the current approach will be simply using the kube-system namespace, and the system 
 tenant for all VM requests that comes from the new APIs.
 
-### VM flavor support:
+### VM flavor support
 Arktos maintains a static VM flavors for testing purpose:
 
 ```$xslt
@@ -448,10 +470,10 @@ A few efforts are needed as listed below:
 1. Modify Openstack client SDK for Arktos VM APIs, and testing Nova client to Arktos 
 
  
+ 
 ## Release plan
 Arktos 130, alpha for initial evaluation.
 TBD
-
 
 ## Appendix: Debug output of creating a simple VM with DevStack
 The below shows the openStack client interact with Identity service for AuthN,  neutron service for network, compute 
