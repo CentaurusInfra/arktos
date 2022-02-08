@@ -23,7 +23,7 @@ KUBE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 export DISABLE_NETWORK_SERVICE_SUPPORT=${DISABLE_NETWORK_SERVICE_SUPPORT:-}
 
 # flannel is the default cni plugin for scale-out env
-export CNIPLUGIN=${CNIPLUG:-flannel}
+export CNIPLUGIN=${CNIPLUGIN:-flannel}
 if [ "${CNIPLUGIN}" == "flannel" ]
 then
   echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
