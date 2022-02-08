@@ -25,10 +25,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
@@ -66,7 +63,6 @@ type MizarArktosNetworkController struct {
 	recorder            record.EventRecorder
 	grpcHost            string
 	grpcAdaptor         IGrpcAdaptor
-
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
@@ -235,7 +231,7 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 		klog.Errorf("Error marshalling VPC %s spec. Error: %v", vpc, err)
 		return err
 	}
-	err = createUnstructuredObject(vpcData, dynamicClient)
+	err = controller.CreateUnstructuredObject(vpcData, dynamicClient)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		klog.Errorf("Error creating VPC %s. Error: %v", vpc, err)
 		return err
@@ -247,7 +243,7 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 		klog.Errorf("Error getting Subnet %s spec. Error: %v", subnet, err)
 		return err
 	}
-	err = createUnstructuredObject(subnetSpec, dynamicClient)
+	err = controller.CreateUnstructuredObject(subnetSpec, dynamicClient)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		klog.Errorf("Error creating Subnet %s for VPC %s. Error: %v", subnetSpec, vpc, err)
 		return err
@@ -256,31 +252,9 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 	return nil
 }
 
-func createUnstructuredObject(data []byte, dynamicClient dynamic.Interface) error {
-	unstructuredObj := &unstructured.Unstructured{}
-	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-
-	// Get GVK(Group Version Kind)
-	_, gvk, err := decUnstructured.Decode(data, nil, unstructuredObj)
-	if err != nil {
-		klog.Errorf("Getting GVK for %v/%v result in error (%v).", unstructuredObj.GetTenant(), unstructuredObj.GetName(), err)
-		return err
-	}
-
-	gvr, _ := meta.UnsafeGuessKindToResource(*gvk)
-
-	_, err = dynamicClient.Resource(gvr).NamespaceWithMultiTenancy(metav1.NamespaceDefault, metav1.TenantSystem).Create(unstructuredObj, metav1.CreateOptions{})
-
-	if err != nil {
-		klog.Errorf("Create unstructed object (%s) result in error (%v).", unstructuredObj.GetName(), err)
-	}
-
-	return err
-}
-
 func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	// randomize ip start segment:
-	ipStart := ran.Intn(255) + 1 	// IpStart range [1, 255]
+	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
 	// Simply not allow ip start from 10, 172, 192, 100 for well-known private range
 	if ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
 		ipStart++
@@ -289,12 +263,14 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	vpc := &MizarVPC{
 		TypeMeta: TypeMeta{
 			APIVersion: "mizar.com/v1",
-			Kind: "Vpc",
+			Kind:       "Vpc",
 		},
 		Metadata: ObjectMeta{
-			Name: vpcName,
+			Name:      vpcName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
 		},
-		Spec:     MizarVPCSpec{
+		Spec: MizarVPCSpec{
 			IP:      fmt.Sprintf("%d.0.0.0", ipStart),
 			Prefix:  "8",
 			Divider: 1,
@@ -306,16 +282,18 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 }
 
 func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, error) {
-	subnetIpSeg := ran.Intn(256)	// 0-255
+	subnetIpSeg := ran.Intn(256) // 0-255
 	subnet := &MizarSubnet{
 		TypeMeta: TypeMeta{
 			APIVersion: "mizar.com/v1",
-			Kind: "Subnet",
+			Kind:       "Subnet",
 		},
 		Metadata: ObjectMeta{
-			Name: subnetName,
+			Name:      subnetName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
 		},
-		Spec:     MizarSubnetSpec{
+		Spec: MizarSubnetSpec{
 			IP:       fmt.Sprintf("%d.%d.0.0", vpcIpStart, subnetIpSeg),
 			Prefix:   "16",
 			Bouncers: 1,

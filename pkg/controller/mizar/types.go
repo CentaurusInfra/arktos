@@ -19,7 +19,9 @@ type TypeMeta struct {
 }
 
 type ObjectMeta struct {
-	Name string `json:"name,omitempty"`
+	Tenant    string `json:"tenant,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+	Name      string `json:"name,omitempty"`
 }
 
 type MizarVPCSpec struct {
