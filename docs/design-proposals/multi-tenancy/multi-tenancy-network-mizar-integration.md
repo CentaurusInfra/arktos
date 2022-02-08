@@ -147,7 +147,7 @@ metadata:
   name: subnet-tenant-a
 spec:
   ip: "10.0.0.0"
-  prefix: "8"
+  prefix: "16"
   bouncers: 3
   vpc: "vpc-tenant-a"
   status: "Init"
