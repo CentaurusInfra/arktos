@@ -3674,46 +3674,56 @@ spec:
 EOF
 }
 
-function create-mizar-daemon-manifest {
-  cat <<EOF >/etc/kubernetes/manifests/mizar-daemon.yaml
-# mizar daemon set of node agents
-apiVersion: v1
-kind: Pod
+function deploy-mizar-daemonset {
+  mkdir -p "${KUBE_HOME}/mizar"
+  cat <<EOF >${KUBE_HOME}/mizar/mizar-daemonset.yaml
+# Daemonset to deploy Mizar node agents
+apiVersion: apps/v1
+kind: DaemonSet
 metadata:
   name: mizar-daemon
   namespace: default
 spec:
-  tolerations:
-    # The daemon shall run on the master node
-    - effect: NoSchedule
-      operator: Exists
-  terminationGracePeriodSeconds: 5
-  hostNetwork: true
-  hostPID: true
-  initContainers:
-  - name: node-init
-    image: mizarnet/mizar:${NETWORK_PROVIDER_VERSION}
-    command: [./node-init.sh]
-    securityContext:
-    # Start mizar daemon static pod
-      privileged: true
-    volumeMounts:
-    - name: mizar
-      mountPath: /home
-  containers:
-  - name: mizar-daemon
-    image: mizarnet/dropletd:${NETWORK_PROVIDER_VERSION}
-    env:
-    - name: FEATUREGATE_BWQOS
-      value: 'false'
-    securityContext:
-      privileged: true
-  volumes:
-  - name: mizar
-    hostPath:
-      path: /var
-      type: Directory
+  selector:
+    matchLabels:
+      job: mizar-daemon
+  template:
+    metadata:
+      labels:
+        job: mizar-daemon
+    spec:
+      tolerations:
+        # The daemon shall run on the master node
+        - effect: NoSchedule
+          operator: Exists
+      terminationGracePeriodSeconds: 5
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+      - name: node-init
+        image: mizarnet/mizar:${NETWORK_PROVIDER_VERSION}
+        command: [./node-init.sh]
+        securityContext:
+        # Start mizar daemon static pod
+          privileged: true
+        volumeMounts:
+        - name: mizar
+          mountPath: /home
+      containers:
+      - name: mizar-daemon
+        image: mizarnet/dropletd:${NETWORK_PROVIDER_VERSION}
+        env:
+        - name: FEATUREGATE_BWQOS
+          value: 'false'
+        securityContext:
+          privileged: true
+      volumes:
+      - name: mizar
+        hostPath:
+          path: /var
+          type: Directory
 EOF
+  kubectl create -f "${KUBE_HOME}/mizar/mizar-daemonset.yaml"
 }
 
 function create-mizar-operator-manifest {
@@ -3794,7 +3804,7 @@ EOF
 
 function start-mizar-scaleout {
   echo "Installing Mizar for scale-out architecture..."
-  create-mizar-daemon-manifest
+  deploy-mizar-daemonset
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     # Wait until nodes RPs are ready
     until [ -f "/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1" ]; do
