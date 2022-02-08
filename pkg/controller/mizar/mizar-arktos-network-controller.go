@@ -25,23 +25,17 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	arktoscheme "k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme"
 	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
 	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
-	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/discovery/cached/memory"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
-	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/workqueue"
@@ -61,9 +55,6 @@ type MizarArktosNetworkController struct {
 	// Used to create CRDs - VPC or Subnet of tenant
 	dynamicClient dynamic.Interface
 
-	// Used to create mapping to find out GVR via GVK before creating CRDs - VPC or Subnet
-	discoveryClient discovery.DiscoveryInterface
-
 	netClientset        *arktos.Clientset
 	networkLister       arktosv1.NetworkLister
 	networkListerSynced cache.InformerSynced
@@ -72,11 +63,10 @@ type MizarArktosNetworkController struct {
 	recorder            record.EventRecorder
 	grpcHost            string
 	grpcAdaptor         IGrpcAdaptor
-
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, discoveryClient discovery.DiscoveryInterface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
@@ -84,7 +74,6 @@ func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, discoveryC
 
 	c := &MizarArktosNetworkController{
 		dynamicClient:       dynamicClient,
-		discoveryClient:     discoveryClient,
 		netClientset:        netClientset,
 		networkLister:       networkInformer.Lister(),
 		networkListerSynced: networkInformer.Informer().HasSynced,
@@ -204,7 +193,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(key string) error 
 	}
 
 	// Create default VPC and Subnet
-	err = createVpcAndSubnet(vpc, subnet, c.discoveryClient, c.dynamicClient)
+	err = createVpcAndSubnet(vpc, subnet, c.dynamicClient)
 	if err != nil {
 		klog.Errorf("Create VPC and Subnet failed for tenant %v. Error: (%v).", network.Tenant, err)
 		return err
@@ -234,7 +223,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(key string) error 
 	return nil
 }
 
-func createVpcAndSubnet(vpc, subnet string, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
+func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) error {
 	// Create VPC object
 	vpcIpStart, vpcSpec := generateVPCSpec(vpc)
 	vpcData, err := json.Marshal(vpcSpec)
@@ -242,7 +231,7 @@ func createVpcAndSubnet(vpc, subnet string, discoveryClient discovery.DiscoveryI
 		klog.Errorf("Error marshalling VPC %s spec. Error: %v", vpc, err)
 		return err
 	}
-	err = createUnstructuredObject(vpcData, discoveryClient, dynamicClient)
+	err = controller.CreateUnstructuredObject(vpcData, dynamicClient)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		klog.Errorf("Error creating VPC %s. Error: %v", vpc, err)
 		return err
@@ -254,7 +243,7 @@ func createVpcAndSubnet(vpc, subnet string, discoveryClient discovery.DiscoveryI
 		klog.Errorf("Error getting Subnet %s spec. Error: %v", subnet, err)
 		return err
 	}
-	err = createUnstructuredObject(subnetSpec, discoveryClient, dynamicClient)
+	err = controller.CreateUnstructuredObject(subnetSpec, dynamicClient)
 	if err != nil && !apierrors.IsAlreadyExists(err) {
 		klog.Errorf("Error creating Subnet %s for VPC %s. Error: %v", subnetSpec, vpc, err)
 		return err
@@ -263,55 +252,9 @@ func createVpcAndSubnet(vpc, subnet string, discoveryClient discovery.DiscoveryI
 	return nil
 }
 
-func createUnstructuredObject(data []byte, discoveryClient discovery.DiscoveryInterface, dynamicClient dynamic.Interface) error {
-	unstructuredObj := &unstructured.Unstructured{}
-	decUnstructured := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-
-	// Get GVK(Group Version Kind)
-	_, gvk, err := decUnstructured.Decode(data, nil, unstructuredObj)
-	if err != nil {
-		klog.Errorf("Getting GVK for %v/%v result in error (%v).", unstructuredObj.GetTenant(), unstructuredObj.GetName(), err)
-		return err
-	}
-
-	// Get mapping from GVK for GVR (Group Version Resource) used by dynamic client resource
-	mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-	mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-
-	if err != nil {
-		klog.Errorf("Get mapping between GVK and GVR in error (%v).", err)
-		return err
-	}
-
-	// Create dynamic client resource
-	var dynamicClientResource dynamic.ResourceInterface
-	if mapping.Scope.Name() == meta.RESTScopeNameNamespace {
-		// namespaced resources should specify the namespace under tenant
-		// VPC/Subnet is tenant unaware
-		if unstructuredObj.GetNamespace() == "" {
-			unstructuredObj.SetNamespace(metav1.NamespaceDefault)
-		}
-		namespace := unstructuredObj.GetNamespace()
-		dynamicClientResource = dynamicClient.Resource(mapping.Resource).NamespaceWithMultiTenancy(namespace, metav1.TenantSystem)
-
-	} else {
-		// for cluster-wide resources
-		dynamicClientResource = dynamicClient.Resource(mapping.Resource)
-	}
-
-	// Create CRD resource - vpc or subnet
-	_, err = dynamicClientResource.Create(unstructuredObj, metav1.CreateOptions{})
-
-	if err != nil {
-		klog.Errorf("Create unstructed object (%s) result in error (%v).", unstructuredObj.GetName(), err)
-	}
-
-	return err
-}
-
 func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	// randomize ip start segment:
-	ipStart := ran.Intn(255) + 1 	// IpStart range [1, 255]
+	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
 	// Simply not allow ip start from 10, 172, 192, 100 for well-known private range
 	if ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
 		ipStart++
@@ -320,12 +263,14 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	vpc := &MizarVPC{
 		TypeMeta: TypeMeta{
 			APIVersion: "mizar.com/v1",
-			Kind: "Vpc",
+			Kind:       "Vpc",
 		},
 		Metadata: ObjectMeta{
-			Name: vpcName,
+			Name:      vpcName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
 		},
-		Spec:     MizarVPCSpec{
+		Spec: MizarVPCSpec{
 			IP:      fmt.Sprintf("%d.0.0.0", ipStart),
 			Prefix:  "8",
 			Divider: 1,
@@ -337,16 +282,18 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 }
 
 func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, error) {
-	subnetIpSeg := ran.Intn(256)	// 0-255
+	subnetIpSeg := ran.Intn(256) // 0-255
 	subnet := &MizarSubnet{
 		TypeMeta: TypeMeta{
 			APIVersion: "mizar.com/v1",
-			Kind: "Subnet",
+			Kind:       "Subnet",
 		},
 		Metadata: ObjectMeta{
-			Name: subnetName,
+			Name:      subnetName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
 		},
-		Spec:     MizarSubnetSpec{
+		Spec: MizarSubnetSpec{
 			IP:       fmt.Sprintf("%d.%d.0.0", vpcIpStart, subnetIpSeg),
 			Prefix:   "16",
 			Bouncers: 1,
