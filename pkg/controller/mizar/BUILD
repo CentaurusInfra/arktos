@@ -17,6 +17,7 @@ go_library(
         "mizar-service-controller.go",
         "mizar-starter-controller.go",
         "testutil.go",
+        "types.go",
         "util.go",
     ],
     importpath = "k8s.io/kubernetes/pkg/controller/mizar",
@@ -35,6 +36,7 @@ go_library(
         "//staging/src/k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1:go_default_library",
         "//staging/src/k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1:go_default_library",
+        "//staging/src/k8s.io/client-go/dynamic:go_default_library",
         "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/informers/networking/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes:go_default_library",
@@ -69,6 +71,7 @@ filegroup(
 go_test(
     name = "go_default_test",
     srcs = [
+        "mizar-arktos-network-controller_test.go",
         "mizar_node_controller_test.go",
         "util_test.go",
     ],
@@ -84,5 +87,6 @@ go_test(
         "//staging/src/k8s.io/client-go/informers/core/v1:go_default_library",
         "//staging/src/k8s.io/client-go/kubernetes/fake:go_default_library",
         "//staging/src/k8s.io/client-go/tools/cache:go_default_library",
+        "//vendor/github.com/stretchr/testify/assert:go_default_library",
     ],
 )

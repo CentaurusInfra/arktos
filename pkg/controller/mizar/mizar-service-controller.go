@@ -52,8 +52,9 @@ type MizarServiceController struct {
 	netClient           arktos.Interface
 	kubeClientset       *kubernetes.Clientset
 	serviceLister       corelisters.ServiceLister
-	netLister           arktosextv1.NetworkLister
 	serviceListerSynced cache.InformerSynced
+	networkLister       arktosextv1.NetworkLister
+	networkListerSynced cache.InformerSynced
 	syncHandler         func(eventKeyWithType KeyWithEventType) error
 	queue               workqueue.RateLimitingInterface
 	recorder            record.EventRecorder
@@ -71,8 +72,9 @@ func NewMizarServiceController(kubeClientset *kubernetes.Clientset, netClient ar
 		kubeClientset:       kubeClientset,
 		netClient:           netClient,
 		serviceLister:       serviceInformer.Lister(),
-		netLister:           arktosNetworkInformer.Lister(),
 		serviceListerSynced: serviceInformer.Informer().HasSynced,
+		networkLister:       arktosNetworkInformer.Lister(),
+		networkListerSynced: arktosNetworkInformer.Informer().HasSynced,
 		queue:               workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
 		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "mizar-service-controller"}),
 		grpcHost:            grpcHost,
@@ -98,7 +100,7 @@ func (c *MizarServiceController) Run(workers int, stopCh <-chan struct{}) {
 	defer c.queue.ShutDown()
 	klog.Infoln("Starting mizar service controller")
 	klog.Infoln("Waiting cache to be synced.")
-	if ok := cache.WaitForCacheSync(stopCh, c.serviceListerSynced); !ok {
+	if ok := cache.WaitForCacheSync(stopCh, c.serviceListerSynced, c.networkListerSynced); !ok {
 		klog.Fatalln("Timeout expired during waiting for caches to sync.")
 	}
 
@@ -190,7 +192,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 		}
 	}
 
-	klog.Infof("Mizar-Service-controller - get service: %#v.", svc)
+	klog.V(4).Infof("Mizar-Service-controller - get service: %#v.", svc)
 
 	switch event {
 	case EventType_Create:

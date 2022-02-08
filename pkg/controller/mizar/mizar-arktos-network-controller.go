@@ -17,19 +17,22 @@ limitations under the License.
 package mizar
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	v1 "k8s.io/arktos-ext/pkg/apis/arktosextensions/v1"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	arktoscheme "k8s.io/arktos-ext/pkg/generated/clientset/versioned/scheme"
 	arktosinformer "k8s.io/arktos-ext/pkg/generated/informers/externalversions/arktosextensions/v1"
 	arktosv1 "k8s.io/arktos-ext/pkg/generated/listers/arktosextensions/v1"
+	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
@@ -44,41 +47,48 @@ const (
 	mizarNetworkType = "mizar"
 )
 
+var seed = rand.NewSource(time.Now().UnixNano())
+var ran = rand.New(seed)
+
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
 type MizarArktosNetworkController struct {
-	netClientset    *arktos.Clientset
-	netLister       arktosv1.NetworkLister
-	netListerSynced cache.InformerSynced
-	syncHandler     func(eventKeyWithType KeyWithEventType) error
-	queue           workqueue.RateLimitingInterface
-	recorder        record.EventRecorder
-	grpcHost        string
-	grpcAdaptor     IGrpcAdaptor
+	// Used to create CRDs - VPC or Subnet of tenant
+	dynamicClient dynamic.Interface
+
+	netClientset        *arktos.Clientset
+	networkLister       arktosv1.NetworkLister
+	networkListerSynced cache.InformerSynced
+	syncHandler         func(eventKeyWithType KeyWithEventType) error
+	queue               workqueue.RateLimitingInterface
+	recorder            record.EventRecorder
+	grpcHost            string
+	grpcAdaptor         IGrpcAdaptor
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
 
 	c := &MizarArktosNetworkController{
-		netClientset:    netClientset,
-		netLister:       networkInformer.Lister(),
-		netListerSynced: networkInformer.Informer().HasSynced,
-		queue:           workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
-		recorder:        eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
-		grpcHost:        grpcHost,
-		grpcAdaptor:     grpcAdaptor,
+		dynamicClient:       dynamicClient,
+		netClientset:        netClientset,
+		networkLister:       networkInformer.Lister(),
+		networkListerSynced: networkInformer.Informer().HasSynced,
+		queue:               workqueue.NewRateLimitingQueue(workqueue.DefaultControllerRateLimiter()),
+		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
+		grpcHost:            grpcHost,
+		grpcAdaptor:         grpcAdaptor,
 	}
 
 	networkInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: c.createNetwork,
 	})
 
-	c.netLister = networkInformer.Lister()
-	c.netListerSynced = networkInformer.Informer().HasSynced
+	c.networkLister = networkInformer.Lister()
+	c.networkListerSynced = networkInformer.Informer().HasSynced
 	c.syncHandler = c.syncNetwork
 
 	return c
@@ -88,19 +98,17 @@ func NewMizarArktosNetworkController(netClientset *arktos.Clientset, kubeClients
 func (c *MizarArktosNetworkController) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
+	defer klog.Info("shutting down mizar arktos network controller")
+
 	klog.Info("Starting Mizar arktos network controller")
-	klog.V(5).Info("waiting for informer caches to sync")
-	if !cache.WaitForCacheSync(stopCh, c.netListerSynced) {
+	if !cache.WaitForCacheSync(stopCh, c.networkListerSynced) {
 		klog.Error("failed to wait for cache to sync")
 		return
 	}
-	klog.V(5).Info("staring workers of network controller")
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.worker, time.Second, stopCh)
 	}
-	klog.V(5).Infof("%d workers started", workers)
 	<-stopCh
-	klog.Info("shutting down mizar arktos network controller")
 }
 
 func (c *MizarArktosNetworkController) worker() {
@@ -149,36 +157,46 @@ func (c *MizarArktosNetworkController) syncNetwork(eventKeyWithType KeyWithEvent
 		klog.V(4).Infof("Finished syncing service %q (%v)", key, time.Since(startTime))
 	}()
 
+	switch event {
+	case EventType_Create:
+		err := c.processNetworkCreation(key)
+		if err != nil {
+			return err
+		}
+	default:
+		panic(fmt.Sprintf("unimplemented for eventType %v", event))
+	}
+	return nil
+}
+
+func (c *MizarArktosNetworkController) processNetworkCreation(key string) error {
 	tenant, name, err := cache.SplitMetaTenantKey(key)
 	if err != nil {
 		return err
 	}
 
-	net, err := c.netLister.NetworksWithMultiTenancy(tenant).Get(name)
+	network, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(name)
 	if err != nil {
 		return err
 	}
 
-	klog.Infof("Mizar-Arktos-Network-controller - get network: %#v.", net)
+	//Find out the paths of default template to create vpc and subnet
+	vpc := network.Spec.VPCID
+	//subnet := vpc + subnetSuffix
+	subnet := fmt.Sprintf("%s%s", vpc, subnetSuffix)
+	klog.V(4).Infof("Processing arktos network: %#v. vpc [%v], subnet [%v]. Network Type [%v]", network, vpc, subnet, network.Spec.Type)
 
-	switch event {
-	case EventType_Create:
-		err = c.processNetworkCreation(net, eventKeyWithType)
-	default:
-		panic(fmt.Sprintf("unimplemented for eventType %v", event))
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Network, eventKeyWithType KeyWithEventType) error {
 	//skip update or create if type is not mizar or network status is ready
-	key := eventKeyWithType.Key
-	if network.Spec.Type != mizarNetworkType || network.Status.Phase == v1.NetworkReady {
-		c.recorder.Eventf(network, corev1.EventTypeNormal, "processNetworkCreation", "Type is not mizar, nothing to be done in mizar cluster: %v.", network)
+	if network.Spec.Type != mizarNetworkType {
+		c.recorder.Eventf(network, corev1.EventTypeNormal, "NotRelevent", "Skip processing non mizar network")
 		return nil
+	}
+
+	// Create default VPC and Subnet
+	err = createVpcAndSubnet(vpc, subnet, c.dynamicClient)
+	if err != nil {
+		klog.Errorf("Create VPC and Subnet failed for tenant %v. Error: (%v).", network.Tenant, err)
+		return err
 	}
 
 	msg := &BuiltinsArktosMessage{
@@ -187,22 +205,102 @@ func (c *MizarArktosNetworkController) processNetworkCreation(network *v1.Networ
 	}
 
 	response := c.grpcAdaptor.CreateArktosNetwork(c.grpcHost, msg)
-
-	code := response.Code
-	context := response.Message
-
-	switch code {
+	switch response.Code {
 	case CodeType_OK:
-		klog.Infof("Mizar handled arktos network and vpc id update successfully: %s", key)
+		klog.Infof("Mizar handled arktos network %v successfully", key)
 	case CodeType_TEMP_ERROR:
 		klog.Warningf("Mizar hit temporary error for arktos network and vpc id update: %s", key)
-		c.queue.AddRateLimited(eventKeyWithType)
 		return errors.New("Arktos network and vpc id update failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for Arktos network creation for Arktos network: %s", key)
 		return errors.New("Arktos network and vpc id update failed permanently on mizar side")
 	}
 
-	c.recorder.Eventf(network, corev1.EventTypeNormal, "processNetworkCreation", "successfully created network from mizar cluster: %v.", context)
+	c.recorder.Eventf(network, corev1.EventTypeNormal, "SucessfulCreate", "Created Mizar VPC %s and subnet %s for tenant %v", vpc, subnet, network.Tenant)
+
+	klog.V(3).Infof("Created VPC (%s) and Subnet(%s) for tenant %s successfully", vpc, subnet, network.Tenant)
+
 	return nil
+}
+
+func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) error {
+	// Create VPC object
+	vpcIpStart, vpcSpec := generateVPCSpec(vpc)
+	vpcData, err := json.Marshal(vpcSpec)
+	if err != nil {
+		klog.Errorf("Error marshalling VPC %s spec. Error: %v", vpc, err)
+		return err
+	}
+	err = controller.CreateUnstructuredObject(vpcData, dynamicClient)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		klog.Errorf("Error creating VPC %s. Error: %v", vpc, err)
+		return err
+	}
+
+	// Create Subnet object
+	subnetSpec, err := generateSubnetSpec(vpc, subnet, vpcIpStart)
+	if err != nil {
+		klog.Errorf("Error getting Subnet %s spec. Error: %v", subnet, err)
+		return err
+	}
+	err = controller.CreateUnstructuredObject(subnetSpec, dynamicClient)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
+		klog.Errorf("Error creating Subnet %s for VPC %s. Error: %v", subnetSpec, vpc, err)
+		return err
+	}
+
+	return nil
+}
+
+func generateVPCSpec(vpcName string) (int, *MizarVPC) {
+	// randomize ip start segment:
+	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
+	// Simply not allow ip start from 10, 172, 192, 100 for well-known private range
+	if ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
+		ipStart++
+	}
+
+	vpc := &MizarVPC{
+		TypeMeta: TypeMeta{
+			APIVersion: "mizar.com/v1",
+			Kind:       "Vpc",
+		},
+		Metadata: ObjectMeta{
+			Name:      vpcName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
+		},
+		Spec: MizarVPCSpec{
+			IP:      fmt.Sprintf("%d.0.0.0", ipStart),
+			Prefix:  "8",
+			Divider: 1,
+			Status:  "Init",
+		},
+	}
+
+	return ipStart, vpc
+}
+
+func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, error) {
+	subnetIpSeg := ran.Intn(256) // 0-255
+	subnet := &MizarSubnet{
+		TypeMeta: TypeMeta{
+			APIVersion: "mizar.com/v1",
+			Kind:       "Subnet",
+		},
+		Metadata: ObjectMeta{
+			Name:      subnetName,
+			Namespace: metav1.NamespaceDefault,
+			Tenant:    metav1.TenantSystem,
+		},
+		Spec: MizarSubnetSpec{
+			IP:       fmt.Sprintf("%d.%d.0.0", vpcIpStart, subnetIpSeg),
+			Prefix:   "16",
+			Bouncers: 1,
+			VPC:      vpcName,
+			Status:   "Init",
+		},
+	}
+
+	return json.Marshal(subnet)
 }

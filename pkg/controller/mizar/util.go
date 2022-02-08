@@ -42,47 +42,6 @@ type KeyWithEventType struct {
 	ResourceVersion string
 }
 
-type MizarNetworkPolicyPortSelector struct {
-	Protocol string `json:"protocol"`
-	Port     string `json:"port"`
-}
-
-type MizarNetworkPolicyPodSelector struct {
-	MatchLabels map[string]string `json:"matchLabels,omitempty"`
-}
-
-type MizarNetworkPolicyNamespaceSelector struct {
-	MatchLabels map[string]string `json:"matchLabels,omitempty"`
-}
-
-type MizarNetworkPolicyIPBlock struct {
-	Cidr   string   `json:"cidr,omitempty"`
-	Except []string `json:"except,omitempty"`
-}
-
-type MizarNetworkPolicyRule struct {
-	P MizarNetworkPolicyPodSelector       `json:"podSelector,omitempty"`
-	N MizarNetworkPolicyNamespaceSelector `json:"namespaceSelector,omitempty"`
-	I MizarNetworkPolicyIPBlock           `json:"ipBlock,omitempty"`
-}
-
-type MizarNetworkPolicyIngressMsg struct {
-	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
-	From  []MizarNetworkPolicyRule         `json:"from"`
-}
-
-type MizarNetworkPolicyEgressMsg struct {
-	Ports []MizarNetworkPolicyPortSelector `json:"ports"`
-	To    []MizarNetworkPolicyRule         `json:"to"`
-}
-
-type MizarNetworkPolicyPolicySpecMsg struct {
-	PodSel MizarNetworkPolicyPodSelector  `json:"podSelector,omitempty"`
-	In     []MizarNetworkPolicyIngressMsg `json:"ingress,omitempty"`
-	Out    []MizarNetworkPolicyEgressMsg  `json:"egress,omitempty"`
-	Type   []string                       `json:"policyTypes,omitempty"`
-}
-
 type StartHandler func(interface{}, string)
 
 func ConvertToServiceEndpointContract(endpoints *v1.Endpoints, service *v1.Service) *BuiltinsServiceEndpointMessage {
@@ -154,6 +113,8 @@ func ConvertToPodContract(pod *v1.Pod) *BuiltinsPodMessage {
 		Labels:        labels,
 		ArktosNetwork: network,
 		Phase:         string(pod.Status.Phase),
+		Vpc:           string(pod.Annotations[mizarAnnotationsVpcKey]),
+		Subnet:        string(pod.Annotations[mizarAnnotationsSubnetKey]),
 	}
 }
 
