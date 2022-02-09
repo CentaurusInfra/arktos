@@ -174,12 +174,6 @@ function main() {
     if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
       start-node-problem-detector
     fi
-    #TODO: This hack should not be required but without daemonset support, we need to create static pods for Mizar
-    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
-      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-        create-mizar-daemon-manifest
-      fi
-    fi
   fi
   if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
