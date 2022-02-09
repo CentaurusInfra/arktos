@@ -52,5 +52,5 @@ func (openstackObjectKind) SetGroupVersionKind(gvk GroupVersionKind) {
 
 // GroupVersionKind implements the ObjectKind interface
 func (openstackObjectKind) GroupVersionKind() GroupVersionKind {
-	return GroupVersionKind{"batch", "v1", "openstack"}
+	return GroupVersionKind{"openstack", "v1", "openstack"}
 }

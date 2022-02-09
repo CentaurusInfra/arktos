@@ -205,8 +205,9 @@ func (c *codec) Encode(obj runtime.Object, w io.Writer) error {
 func (c *codec) doEncode(obj runtime.Object, w io.Writer) error {
 	// Openstack is not Arktos API object
 	// simply encode it and return
-	typeStr := reflect.TypeOf(obj).String()
-	if typeStr == "*openstack.OpenstackServerListResponse" || typeStr == "*openstack.OpenstackBatchResponse" || typeStr == "*openstack.OpenstackRebuildResponse" || typeStr == "*openstack.OpenstackCreateImageResponse" || typeStr == "*openstack.OpenstackResponse" {
+	o := obj.GetObjectKind()
+	if o == schema.OpenstackObjectKind {
+		klog.V(6).Infof("Type string: %s", reflect.TypeOf(obj).String())
 		return c.encoder.Encode(obj, w)
 	}
 
