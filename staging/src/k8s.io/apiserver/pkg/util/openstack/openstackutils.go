@@ -173,7 +173,7 @@ func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 		osObj.Servers = make([]OpenstackResponse, len(pl.Items))
 		for i, pod := range pl.Items {
 			osObj.Servers[i].Id = pod.Name
-			osObj.Servers[i].Links = []LinkType{{pod.GetSelfLink(), ""}}
+			osObj.Servers[i].Links = []LinkType{{convertPodSelfLink(pod.GetSelfLink()), ""}}
 			i++
 		}
 
@@ -182,7 +182,7 @@ func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 		pod := obj.(*core.Pod)
 		osObj := &OpenstackResponse{}
 		osObj.Id = pod.Name
-		osObj.Links = []LinkType{{pod.GetSelfLink(), ""}}
+		osObj.Links = []LinkType{{convertPodSelfLink(pod.GetSelfLink()), ""}}
 		osObj.Image = &ImageType{Name: pod.Spec.VirtualMachine.Image}
 		osObj.Tenant = pod.Tenant
 		if pod.Status.VirtualMachineStatus != nil {
@@ -216,6 +216,23 @@ func ConvertToOpenstackResponse(obj runtime.Object) runtime.Object {
 		return nil
 	}
 
+}
+
+// convertPodSelfLink converts the self link from Arktos: /api/v1/namespaces/kube-system/pods/{vmname}
+//                       to Openstack: /servers/{vmid}
+// currently vmname is used as vmid for Arktos 130 release
+func convertPodSelfLink(selfLink string) string {
+	if selfLink == "" {
+		return selfLink
+	}
+
+	elements := strings.Split(selfLink, "pods/")
+
+	if len(elements) != 2 {
+		return selfLink
+	}
+
+	return fmt.Sprintf("/servers/%s", elements[1])
 }
 
 func IsOpenstackRequest(req *http.Request) bool {
