@@ -3257,7 +3257,11 @@ function start-mizar-scaleout {
   src_file="${src_dir}/mizar-daemon.yaml"
   sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
   mv "${src_dir}/mizar-daemon.yaml" "${KUBE_HOME}/mizar/"
-  kubectl apply -f "${KUBE_HOME}/mizar/mizar-daemon.yaml"
+
+  local -r tp_num="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
+  if [[ "${tp_num:-1}" == "1" ]]; then
+    kubectl apply -f "${KUBE_HOME}/mizar/mizar-daemon.yaml"
+  fi
 
   echo "Waiting until nodes RPs are ready"
   until [ -f "/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1" ]; do
@@ -3267,7 +3271,7 @@ function start-mizar-scaleout {
   kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   # Place mizar operator yaml.
   echo "Starting mizar operator"
-  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | rev | cut -d- -f1)"
+  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
   TP_MASTER_NAME="${CLUSTER_NAME}-master"
   src_file="${src_dir}/mizar-operator.yaml"
   sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
