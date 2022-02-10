@@ -22,7 +22,7 @@ set -o pipefail
 
 echo "The script is to help install prerequisites of Arktos development environment"
 echo "on a fresh Linux installation."
-echo "It's been tested on Ubuntu 16.04 LTS and 18.04 LTS."
+echo "It's been tested on Ubuntu 16.04 LTS, 18.04 and 20.04 LTS."
 
 GOLANG_VERSION=${GOLANG_VERSION:-"1.13.9"}
 
@@ -42,5 +42,14 @@ wget https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp
 sudo tar -C /usr/local -xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
 echo "Done."
-echo "Please run and add 'export PATH=\$PATH:/usr/local/go/bin' into your shell profile."
+echo ""
+echo "Please add the following lines into your shell profile ~/.profile."
+echo "    GOROOT=/usr/local/go"
+echo "    GOPATH=\$HOME/go"
+echo "    export PATH=\$PATH:\$GOROOT/bin:\$GOPATH/bin"
+echo ""
+echo "Update the current shell session."
+echo "    $ source ~/.profile"
+echo "    $ echo \$PATH"
+echo ""
 echo "You can proceed to run arktos-up.sh if you want to launch a single-node cluster."
