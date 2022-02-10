@@ -248,7 +248,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		_, err = c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", obj.Tenant, obj.Namespace, obj.Name, err)
 		if err != nil {
-			return errors.New(fmt.Sprintf("Service %s/%s/%s - update service's mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err))
+			return errors.New(fmt.Sprintf("update service %s/%s/%s mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err))
 		}
 	}
 
