@@ -463,21 +463,10 @@ function detect-nodes() {
 function detect-master() {
   detect-project
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-    local server_name
-    for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
-    do
-      server_name="${INSTANCE_PREFIX}-tp-${num}-master"
-      detect-master-name "${server_name}"
-    done
-
-    for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
-    do
-      server_name="${INSTANCE_PREFIX}-rp-${num}-master"
-      detect-master-name "${server_name}"
-    done
-  else
-    detect-master-name "${MASTER_NAME}"
+    MASTER_NAME="${INSTANCE_PREFIX}-tp-1-master"
   fi
+
+  detect-master-name "${MASTER_NAME}"
 }
 
 function detect-master-name {
@@ -4890,6 +4879,7 @@ function setup_proxy {
   export KUBERNETES_SCALEOUT_PROXY_APP=${KUBERNETES_SCALEOUT_PROXY_APP:-haproxy}
   export PROXY_CONFIG_FILE=${PROXY_CONFIG_FILE:-"haproxy.cfg"}
   export PROXY_CONFIG_FILE_TMP="${RESOURCE_DIRECTORY}/${PROXY_CONFIG_FILE}.tmp"
+  export HAPROXY_TLS_MODE=${HAPROXY_TLS_MODE:-"bridging"}
   create-proxy
   export KUBERNETES_SCALEOUT_PROXY=false
 }
