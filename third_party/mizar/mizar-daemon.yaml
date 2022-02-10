@@ -18,6 +18,7 @@ spec:
         - effect: NoSchedule
           operator: Exists
       terminationGracePeriodSeconds: 5
+      serviceAccountName: mizar-operator
       hostNetwork: true
       hostPID: true
       initContainers:

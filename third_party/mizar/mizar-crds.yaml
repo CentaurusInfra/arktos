@@ -446,3 +446,23 @@ spec:
           priority: 0
           jsonPath: .spec.provisiondelay
           description: Time to provision an object from creation
+---
+# mizar service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mizar-operator
+---
+# mizar cluster role binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mizar-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: mizar-operator
+    namespace: default

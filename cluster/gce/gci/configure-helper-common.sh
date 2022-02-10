@@ -3243,26 +3243,14 @@ function wait-until-mizar-ready {
   done
 }
 
-function setup-arktos-mizar-local-admin-conf {
-  cat > /etc/kubernetes/admin.conf <<EOF
-apiVersion: v1
-clusters:
-- cluster:
-    server: http://127.0.0.1:8080
-  name: ${PROJECT_ID}_${CLUSTER_NAME}
-contexts:
-- context:
-    cluster: ${PROJECT_ID}_${CLUSTER_NAME}
-    user: ${PROJECT_ID}_${CLUSTER_NAME}
-  name: ${PROJECT_ID}_${CLUSTER_NAME}
-current-context: ${PROJECT_ID}_${CLUSTER_NAME}
-EOF
-}
-
 function start-mizar-scaleout {
   echo "Installing Mizar for scale-out architecture..."
   local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
   mkdir -p "${KUBE_HOME}/mizar"
+
+  echo "Creating mizar crds yaml"
+  mv "${src_dir}/mizar-crds.yaml" "${KUBE_HOME}/mizar/"
+  kubectl apply -f "${KUBE_HOME}/mizar/mizar-crds.yaml"
 
   echo "Deploying mizar daemonset"
   # Place mizar daemon yaml.
@@ -3275,18 +3263,18 @@ function start-mizar-scaleout {
   until [ -f "/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1" ]; do
     sleep 5
   done
-  setup-arktos-mizar-local-admin-conf
+
   kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
-  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | rev | cut -d- -f1)"
-  echo "Creating mizar crds yaml"
-  mv "${src_dir}/mizar-crds.yaml" "${KUBE_HOME}/mizar/"
-  kubectl apply -f "${KUBE_HOME}/mizar/mizar-crds.yaml"
-  echo "Starting mizar operator"
   # Place mizar operator yaml.
+  echo "Starting mizar operator"
+  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | rev | cut -d- -f1)"
+  TP_MASTER_NAME="${CLUSTER_NAME}-master"
   src_file="${src_dir}/mizar-operator.yaml"
   sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
+  sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
   sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${src_file}"
-  mv "${src_dir}/mizar-operator.yaml" /etc/kubernetes/manifests
+  mv "${src_dir}/mizar-operator.yaml" "${KUBE_HOME}/mizar/"
+  kubectl apply -f "${KUBE_HOME}/mizar/mizar-operator.yaml"
 }
 
 function start-mizar-scaleup {
