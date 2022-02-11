@@ -1367,7 +1367,19 @@ function prepare-log-file {
 function prepare-kube-proxy-manifest-variables {
   local -r src_file=$1;
 
-  local -r kubeconfig="--kubeconfig=/var/lib/kube-proxy/kubeconfig"
+  local kubeconfig="--kubeconfig=/var/lib/kube-proxy/kubeconfig"
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+    kubeconfig+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
+  fi
+
+  local proxy_tpconfig_mount=""
+  local proxy_tpconfig_volume=""
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    proxy_tpconfig_volume="  - hostPath:\n      path: /etc/srv/kubernetes/tp-kubeconfigs\n    name: tp-configs"
+    proxy_tpconfig_mount="    - mountPath: /etc/srv/kubernetes/tp-kubeconfigs\n      name: tp-configs\n      readOnly: true"
+  fi
+
   local kube_docker_registry="k8s.gcr.io"
   if [[ -n "${KUBE_DOCKER_REGISTRY:-}" ]]; then
     kube_docker_registry=${KUBE_DOCKER_REGISTRY}
@@ -1402,6 +1414,8 @@ function prepare-kube-proxy-manifest-variables {
     kube_cache_mutation_detector_env_value="value: \"${ENABLE_CACHE_MUTATION_DETECTOR}\""
   fi
   sed -i -e "s@{{kubeconfig}}@${kubeconfig}@g" ${src_file}
+  sed -i -e "s@{{proxy_tpconfig_mount}}@${proxy_tpconfig_mount}@g" ${src_file}
+  sed -i -e "s@{{proxy_tpconfig_volume}}@${proxy_tpconfig_volume}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${kube_docker_registry}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube-proxy_docker_tag'\]}}@${kube_proxy_docker_tag}@g" ${src_file}
   sed -i -e "s@{{params}}@${params}@g" ${src_file}
