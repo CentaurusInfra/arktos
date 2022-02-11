@@ -124,7 +124,7 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
-  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
 }
@@ -2374,7 +2374,7 @@ function start-kube-controller-manager {
     RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,nodeipam,ttl,csrsigning,csrapproving,csrcleaner"
   fi
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-ttl"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
@@ -3289,10 +3289,6 @@ function wait-until-mizar-ready {
 }
 
 function start-mizar-scaleup {
-  #Wait for apiserver to setup default namespace
-  until kubectl get ns | grep default; do
-    sleep 5
-  done
   echo "Installing Mizar for scale-up architecture..."
   kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
