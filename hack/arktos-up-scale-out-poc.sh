@@ -114,17 +114,21 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
 fi
 
 # set feature gates if enable Pod priority and preemption
+FEATURE_GATES="${FEATURE_GATES_COMMON_BASE}"
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
-FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
 # check for network service support flags
 if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
-  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  if [ "${CNIPLUGIN}" == "mizar" ]; then
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -159,10 +163,12 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron,mizar) before cluster is up.
 # If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
+echo "CNIPLUGIN=|${CNIPLUGIN}|, calling arktos-cni.rc"
 [ "${IS_RESOURCE_PARTITION}" == "true" ] && source ${KUBE_ROOT}/hack/arktos-cni.rc
+echo "CNIPLUGIN=|${CNIPLUGIN}|, calling arktos-cni.rc DONE"
 
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
@@ -681,6 +687,11 @@ if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
 fi
 
 if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
+  # Applying mizar cni
+  if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+    # ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
+    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml
+  fi
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
