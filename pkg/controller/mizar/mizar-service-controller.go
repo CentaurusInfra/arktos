@@ -234,8 +234,8 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	if err != nil {
 		return err
 	}
-	_, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
-	_, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
+	vpc, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
+	subnet, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
 
 	if !vpcNameOk && !subnetNameOk {
 		// assign default network when only there is no mizar annotation
@@ -245,14 +245,19 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		}
 		obj.Annotations[mizarAnnotationsVpcKey] = getVPC(tenantDefaultNetwork)
 		obj.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(tenantDefaultNetwork.Spec.VPCID)
-		_, err = c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
-		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", obj.Tenant, obj.Namespace, obj.Name, err)
+		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
+		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", key, err)
 		if err != nil {
-			return errors.New(fmt.Sprintf("update service %s/%s/%s mizar annotation got error (%v)", obj.Tenant, obj.Namespace, obj.Name, err))
+			return errors.New(fmt.Sprintf("update service %s mizar annotation got error (%v)", key, err))
 		}
+	} else if !vpcNameOk || !subnetNameOk {
+		// Not supported case in 2022-01-30 release
+		// avoid getting infinite loop due to client error
+		klog.Warningf("Invalid VPC %s or subnet %s. Skip processing service %s", vpc, subnet, key)
+		return nil
 	}
 
-	klog.V(4).Infof("Starting processServiceCreation service: %v", service)
+	klog.V(4).Infof("Starting processServiceCreation service: %v.", service)
 
 	// create service in mizar
 	msg := &BuiltinsServiceMessage{
@@ -267,12 +272,14 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	response := c.grpcAdaptor.CreateService(c.grpcHost, msg)
 	code := response.Code
 	ip := response.Message
-	klog.V(4).Infof("Assigned ip by mizar is %v", ip)
+	klog.V(4).Infof("Assigned ip by mizar is %v. Service %v", ip, key)
 
+	// Handle special service kubernetes-default introduced by multi-tenancy support.
+	// The endpoint is not available in endpoint list but can be retrieved via get.
+	// Need to create mizar endpoint for kubernetes-default
 	switch code {
 	case CodeType_OK:
-		klog.V(4).Infof("Mizar handled service creation successfully: %s", key)
-		if beginsWithKubernetes(service.Name) {	// Is this logic expected?
+		if beginsWithKubernetes(service.Name) {
 			kubernetesEndpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy(metav1.NamespaceDefault, metav1.TenantSystem).Get(kubernetesSvcDefaultName, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Failed to get kubernetes endpoint: %v. Error: %v", kubernetesEndpoint, err)
@@ -284,51 +291,37 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 			context := resp.Message
 			switch returnCode {
 			case CodeType_OK:
-				klog.V(4).Infof("Mizar handled kubernetes network service endpoint successfully: %s", context)
+				klog.Info("Mizar handled kubernetes network service endpoint successfully.")
 			case CodeType_TEMP_ERROR:
-				klog.Warningf("Mizar hit temporary error for kubernetes network service endpoint: %s", context)
-				// Question - does this need to be retry?
+				klog.Warningf("Mizar hit temporary error for kubernetes network service endpoint: %s.", context)
 			case CodeType_PERM_ERROR:
-				klog.Errorf("Mizar hit permanent error for kubernetes network service endpoint %s", context)
+				klog.Errorf("Mizar hit permanent error for kubernetes network service endpoint %s.", context)
 			}
 		}
 	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for service creation for service: %s", key)
+		klog.Warningf("Mizar hit temporary error for service creation for service: %s.")
 		return errors.New("Service creation failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for service creation for service: %s", key)
+		klog.Errorf("Mizar hit permanent error for service creation for service: %s.", key)
 		return errors.New("Service creation failed permanently on mizar side")
 	}
 
-	// update service cluster ip with ip from mizar
+	// Update service cluster ip with ip from mizar
+	// Haven't found condition == true for services created by system upon start up
+	// Leave the logic here and add some log for further checking
 	if len(service.Spec.ClusterIP) == 0 {
+		klog.Infof("Set service %s cluster ip to %v", key, ip)
 		svcToUpdate := service.DeepCopy()
 		svcToUpdate.Spec.ClusterIP = ip
 		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(svcToUpdate)
 		if err != nil {
-			klog.Errorf("Failed to update service %v/%v/%v: %v", service.Tenant, service.Namespace, service.Name, err)
+			klog.Errorf("Failed to update service %s cluster ip to %v. Error: %v", key, ip, err)
 			return err
 		}
+	} else if service.Spec.ClusterIP != ip {
+		klog.Warningf("Service %s cluster ip %s is different from mizar assigned ip %s", key, ip)
 	}
 
-	// If this is the tenant dns service, update arktos network object with cluster ip from mizar
-	_, hasDNSServiceLabel := service.Labels[arktosapisv1.NetworkLabel]
-	if hasDNSServiceLabel {
-		networkObj, err := c.networkLister.NetworksWithMultiTenancy(service.Tenant).Get(defaultNetworkName)
-		if err != nil {
-			klog.Errorf("Failed to get network object %v/%v from informer. Error: %v ", service.Tenant, defaultNetworkName, err)
-			return err
-		}
-		if len(networkObj.Status.DNSServiceIP) == 0 {
-			networkObjToUpdate := networkObj.DeepCopy()
-			networkObjToUpdate.Status.DNSServiceIP = ip
-			_, err := c.netClient.ArktosV1().NetworksWithMultiTenancy(networkObj.Tenant).UpdateStatus(networkObjToUpdate)
-			if err != nil {
-				klog.Errorf("Failed to update arktos network object %v/%v. Error: %v", networkObjToUpdate.Tenant, networkObjToUpdate.Name, err)
-				return err
-			}
-		}
-	}
 	return nil
 }
 
