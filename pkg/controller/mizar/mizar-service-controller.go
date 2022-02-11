@@ -214,7 +214,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 
 func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	key := eventKeyWithType.Key
-	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
+	tenant, _, _, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
 		return err
 	}
@@ -229,23 +229,18 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		return errors.New(fmt.Sprintf("The arktos network %s is not Ready.", tenantDefaultNetwork.Name))
 	}
 
-	// update service spec with mizar annotation
-	obj, err := c.serviceLister.ServicesWithMultiTenancy(namespace, tenant).Get(name)
-	if err != nil {
-		return err
-	}
-	vpc, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
-	subnet, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
+	vpc, vpcNameOk := service.Annotations[mizarAnnotationsVpcKey]
+	subnet, subnetNameOk := service.Annotations[mizarAnnotationsSubnetKey]
 
 	if !vpcNameOk && !subnetNameOk {
 		// assign default network when only there is no mizar annotation
 		// otherwise, this pod annotation needs to be fixed manually
-		if obj.Annotations == nil {
-			obj.Annotations = make(map[string]string)
+		if service.Annotations == nil {
+			service.Annotations = make(map[string]string)
 		}
-		obj.Annotations[mizarAnnotationsVpcKey] = getVPC(tenantDefaultNetwork)
-		obj.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(tenantDefaultNetwork.Spec.VPCID)
-		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
+		service.Annotations[mizarAnnotationsVpcKey] = getVPC(tenantDefaultNetwork)
+		service.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(tenantDefaultNetwork.Spec.VPCID)
+		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(service)
 		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", key, err)
 		if err != nil {
 			return errors.New(fmt.Sprintf("update service %s mizar annotation got error (%v)", key, err))
@@ -257,7 +252,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		return nil
 	}
 
-	klog.V(4).Infof("Starting processServiceCreation service: %v.", service)
+	klog.V(4).Infof("Starting processServiceCreation service %v: annotation [%v].", key, service.Annotations)
 
 	// create service in mizar
 	msg := &BuiltinsServiceMessage{
