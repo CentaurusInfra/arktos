@@ -197,9 +197,9 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 
 	switch event {
 	case EventType_Create:
-		err = c.processServiceCreation(svc, eventKeyWithType)
+		err = c.processServiceCreateOrUpdate(svc, eventKeyWithType)
 	case EventType_Update:
-		err = c.processServiceUpdate(svc, eventKeyWithType)
+		err = c.processServiceCreateOrUpdate(svc, eventKeyWithType)
 	case EventType_Delete:
 		err = c.processServiceDeletion(eventKeyWithType)
 	default:
@@ -212,7 +212,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 	return nil
 }
 
-func (c *MizarServiceController) processServiceCreation(service *v1.Service, eventKeyWithType KeyWithEventType) error {
+func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	key := eventKeyWithType.Key
 	tenant, _, _, err := cache.SplitMetaTenantNamespaceKey(key)
 	if err != nil {
@@ -232,6 +232,10 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	vpc, vpcNameOk := service.Annotations[mizarAnnotationsVpcKey]
 	subnet, subnetNameOk := service.Annotations[mizarAnnotationsSubnetKey]
 
+	if vpcNameOk && subnetNameOk && eventKeyWithType.EventType == EventType_Update {
+		// don't update mizar service if this is update event and service is already annotated
+		return nil
+	}
 	if !vpcNameOk && !subnetNameOk {
 		// assign default network when only there is no mizar annotation
 		// otherwise, this pod annotation needs to be fixed manually
@@ -252,7 +256,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		return nil
 	}
 
-	klog.V(4).Infof("Starting processServiceCreation service %v: annotation [%v].", key, service.Annotations)
+	klog.V(4).Infof("Starting processServiceCreation service %v: annotation [%v]. event type %v", key, service.Annotations, eventKeyWithType.EventType)
 
 	// create service in mizar
 	msg := &BuiltinsServiceMessage{
@@ -264,7 +268,12 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		Subnet:        service.Annotations[mizarAnnotationsSubnetKey],
 	}
 
-	response := c.grpcAdaptor.CreateService(c.grpcHost, msg)
+	var response *ReturnCode
+	if eventKeyWithType.EventType == EventType_Create {
+		response = c.grpcAdaptor.CreateService(c.grpcHost, msg)
+	} else {
+		response = c.grpcAdaptor.UpdateService(c.grpcHost, msg)
+	}
 	code := response.Code
 	ip := response.Message
 	klog.V(4).Infof("Assigned ip by mizar is %v. Service %v", ip, key)
@@ -274,7 +283,7 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 	// Need to create mizar endpoint for kubernetes-default
 	switch code {
 	case CodeType_OK:
-		if beginsWithKubernetes(service.Name) {
+		if beginsWithKubernetes(service.Name) && eventKeyWithType.EventType == EventType_Create {
 			kubernetesEndpoint, err := c.kubeClientset.CoreV1().EndpointsWithMultiTenancy(metav1.NamespaceDefault, metav1.TenantSystem).Get(kubernetesSvcDefaultName, metav1.GetOptions{})
 			if err != nil {
 				klog.Errorf("Failed to get kubernetes endpoint: %v. Error: %v", kubernetesEndpoint, err)
@@ -317,33 +326,6 @@ func (c *MizarServiceController) processServiceCreation(service *v1.Service, eve
 		klog.Warningf("Service %s cluster ip %s is different from mizar assigned ip %s", key, ip)
 	}
 
-	return nil
-}
-
-func (c *MizarServiceController) processServiceUpdate(service *v1.Service, eventKeyWithType KeyWithEventType) error {
-	key := eventKeyWithType.Key
-	klog.V(4).Infof("processServiceUpdate network name is %v", service.Name)
-	msg := &BuiltinsServiceMessage{
-		Name:          service.Name,
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            service.Spec.ClusterIP,
-		Vpc:           service.Annotations[mizarAnnotationsVpcKey],
-		Subnet:        service.Annotations[mizarAnnotationsSubnetKey],
-	}
-	response := c.grpcAdaptor.UpdateService(c.grpcHost, msg)
-	code := response.Code
-
-	switch code {
-	case CodeType_OK:
-		klog.V(4).Infof("Mizar handled service update successfully: %s", key)
-	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for service update: %s", key)
-		return errors.New("Service update failed on mizar side, will try again.....")
-	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for service update: %s", key)
-		return errors.New("Service update failed permanently on mizar side")
-	}
 	return nil
 }
 
