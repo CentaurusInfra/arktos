@@ -201,7 +201,7 @@ func (c *MizarServiceController) syncService(eventKeyWithType KeyWithEventType) 
 	case EventType_Update:
 		err = c.processServiceCreateOrUpdate(svc, eventKeyWithType)
 	case EventType_Delete:
-		err = c.processServiceDeletion(eventKeyWithType)
+		err = c.processServiceDeletion(svc, eventKeyWithType)
 	default:
 		utilruntime.HandleError(fmt.Errorf("Unable to process service %v %v", event, key))
 	}
@@ -329,17 +329,11 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 	return nil
 }
 
-func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWithEventType) error {
-	key := eventKeyWithType.Key
-	tenant, namespace, name, err := cache.SplitMetaTenantNamespaceKey(key)
-	if err != nil {
-		return err
-	}
-
+func (c *MizarServiceController) processServiceDeletion(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	msg := &BuiltinsServiceMessage{
-		Name:          name,
-		Namespace:     namespace,
-		Tenant:        tenant,
+		Name:          service.Name,
+		Namespace:     service.Namespace,
+		Tenant:        service.Tenant,
 		Ip:            "",
 		Vpc:           "",
 		Subnet:        "",
@@ -349,12 +343,12 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 	code := response.Code
 	switch code {
 	case CodeType_OK:
-		klog.V(4).Infof("Mizar handled service deletion successfully: %s", key)
+		klog.V(4).Infof("Mizar handled service deletion successfully: %s", eventKeyWithType.Key)
 	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for service deletion for service: %s", key)
+		klog.Warningf("Mizar hit temporary error for service deletion for service: %s", eventKeyWithType.Key)
 		return errors.New("Service deletion failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
-		klog.Errorf("Mizar hit permanent error for service deletion for service: %s", key)
+		klog.Errorf("Mizar hit permanent error for service deletion for service: %s", eventKeyWithType.Key)
 		return errors.New("Service deletion failed permanently on mizar side")
 	}
 
