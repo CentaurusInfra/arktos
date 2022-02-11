@@ -96,7 +96,7 @@ function main() {
     override-pv-recycler
     create-default-network-template-volume-mount
     gke-master-start
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
       create-kubeproxy-user-kubeconfig
     fi
   else
@@ -138,7 +138,7 @@ function main() {
 
     start-kube-apiserver
     start-kube-controller-manager
-    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
       start-kube-proxy
     fi
 
@@ -173,12 +173,6 @@ function main() {
     fi
     if [[ "${ENABLE_NODE_PROBLEM_DETECTOR:-}" == "standalone" ]]; then
       start-node-problem-detector
-    fi
-    #TODO: This hack should not be required but without daemonset support, we need to create static pods for Mizar
-    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]] && [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
-      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-        create-mizar-daemon-manifest
-      fi
     fi
   fi
   if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then

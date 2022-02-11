@@ -124,7 +124,7 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
-  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] && [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
 }
@@ -2374,7 +2374,7 @@ function start-kube-controller-manager {
     RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,nodeipam,ttl,csrsigning,csrapproving,csrcleaner"
   fi
   if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl"
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-ttl"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
@@ -3235,74 +3235,6 @@ function start-cluster-networking {
   esac
 }
 
-function create-mizar-daemon-manifest {
-  cat <<EOF >/etc/kubernetes/manifests/mizar-daemon.yaml
-# mizar daemon set of node agents
-apiVersion: v1
-kind: Pod
-metadata:
-  name: mizar-daemon
-  namespace: default
-spec:
-  tolerations:
-    # The daemon shall run on the master node
-    - effect: NoSchedule
-      operator: Exists
-  terminationGracePeriodSeconds: 5
-  hostNetwork: true
-  hostPID: true
-  initContainers:
-  - name: node-init
-    image: mizarnet/mizar:${NETWORK_PROVIDER_VERSION}
-    command: [./node-init.sh]
-    securityContext:
-    # Start mizar daemon static pod
-      privileged: true
-    volumeMounts:
-    - name: mizar
-      mountPath: /home
-  containers:
-  - name: mizar-daemon
-    image: mizarnet/dropletd:${NETWORK_PROVIDER_VERSION}
-    env:
-    - name: FEATUREGATE_BWQOS
-      value: 'false'
-    securityContext:
-      privileged: true
-  volumes:
-  - name: mizar
-    hostPath:
-      path: /var
-      type: Directory
-EOF
-}
-
-function create-mizar-operator-manifest {
-  # Start mizar operator static pod
-  cat <<EOF >/etc/kubernetes/manifests/mizar-operator.yaml
-# mizar operator
-apiVersion: v1
-kind: Pod
-metadata:
-  name: mizar-operator
-  namespace: default
-spec:
-  tolerations:
-    - effect: NoSchedule
-      operator: Exists
-  terminationGracePeriodSeconds: 5
-  hostNetwork: true
-  containers:
-  - name: mizar-operator
-    image: mizarnet/endpointopr:${NETWORK_PROVIDER_VERSION}
-    env:
-    - name: FEATUREGATE_BWQOS
-      value: 'false'
-    securityContext:
-      privileged: true
-EOF
-}
-
 function wait-for-node-registered {
   until kubectl get nodes | grep `hostname`; do
     sleep 5
@@ -3326,20 +3258,44 @@ function wait-until-mizar-ready {
 }
 
 function start-mizar-scaleout {
-    echo "Installing Mizar for scale-out architecture..."
-  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
-    create-mizar-daemon-manifest
+  echo "Installing Mizar for scale-out architecture..."
+  local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
+  mkdir -p "${KUBE_HOME}/mizar"
+
+  echo "Creating mizar crds yaml"
+  mv "${src_dir}/mizar-crds.yaml" "${KUBE_HOME}/mizar/"
+  kubectl apply -f "${KUBE_HOME}/mizar/mizar-crds.yaml"
+
+  echo "Deploying mizar daemonset"
+  # Place mizar daemon yaml.
+  src_file="${src_dir}/mizar-daemon.yaml"
+  sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
+  mv "${src_dir}/mizar-daemon.yaml" "${KUBE_HOME}/mizar/"
+
+  local -r tp_num="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
+  if [[ "${tp_num:-1}" == "1" ]]; then
+    kubectl apply -f "${KUBE_HOME}/mizar/mizar-daemon.yaml"
   fi
-  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
-    create-mizar-operator-manifest
-  fi
+
+  echo "Waiting until nodes RPs are ready"
+  until [ -f "/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1" ]; do
+    sleep 5
+  done
+
+  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+  # Place mizar operator yaml.
+  echo "Starting mizar operator"
+  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
+  TP_MASTER_NAME="${CLUSTER_NAME}-master"
+  src_file="${src_dir}/mizar-operator.yaml"
+  sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
+  sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
+  sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${src_file}"
+  mv "${src_dir}/mizar-operator.yaml" "${KUBE_HOME}/mizar/"
+  kubectl apply -f "${KUBE_HOME}/mizar/mizar-operator.yaml"
 }
 
 function start-mizar-scaleup {
-  #Wait for apiserver to setup default namespace
-  until kubectl get ns | grep default; do
-    sleep 5
-  done
   echo "Installing Mizar for scale-up architecture..."
   kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
   kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
@@ -3348,6 +3304,10 @@ function start-mizar-scaleup {
 
 function start-mizar {
   wait-for-node-registered
+  #Wait for apiserver to setup default namespace
+  until kubectl get ns | grep default; do
+    sleep 5
+  done
   kubectl label node `hostname` node-role.kubernetes.io/master=""
   if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
     start-mizar-scaleout

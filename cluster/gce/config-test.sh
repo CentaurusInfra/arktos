@@ -95,8 +95,10 @@ fi
 NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
 
 if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-  NETWORK_PROVIDER_VERSION="0.9"
+  NETWORK_PROVIDER_VERSION="dev"
   NETWORK_POLICY_PROVIDER="mizar"
+  CNI_BIN_DIR="/opt/cni/bin"
+  KUBE_CONTAINER_RUNTIME="docker"
   # Mizar currently needs ubuntu due to python dependencies
   KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
   KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
