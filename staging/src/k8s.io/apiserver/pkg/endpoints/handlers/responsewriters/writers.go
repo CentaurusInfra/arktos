@@ -27,8 +27,6 @@ import (
 	"strings"
 	"sync"
 
-	"k8s.io/apiserver/pkg/features"
-
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -36,9 +34,11 @@ import (
 	"k8s.io/apiserver/pkg/endpoints/handlers/negotiation"
 	"k8s.io/apiserver/pkg/endpoints/metrics"
 	"k8s.io/apiserver/pkg/endpoints/request"
+	"k8s.io/apiserver/pkg/features"
 	"k8s.io/apiserver/pkg/registry/rest"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	"k8s.io/apiserver/pkg/util/flushwriter"
+	"k8s.io/apiserver/pkg/util/openstack"
 	"k8s.io/apiserver/pkg/util/wsstream"
 )
 
@@ -256,6 +256,15 @@ func WriteObjectNegotiated(s runtime.NegotiatedSerializer, restrictions negotiat
 func ErrorNegotiated(err error, s runtime.NegotiatedSerializer, gv schema.GroupVersion, w http.ResponseWriter, req *http.Request) int {
 	status := ErrorToAPIStatus(err)
 	code := int(status.Code)
+
+	if openstack.IsOpenstackRequest(req) {
+
+		//TODO:Identify more Arktos specfic terms to replace if needed
+		t := openstack.Openstack_error{Message: strings.ReplaceAll(status.Message, "pod", "server"), ErrorCode: code, Reason: string(status.Reason)}
+		WriteRawJSON(code, t, w)
+		return code
+	}
+
 	// when writing an error, check to see if the status indicates a retry after period
 	if status.Details != nil && status.Details.RetryAfterSeconds > 0 {
 		delay := strconv.Itoa(int(status.Details.RetryAfterSeconds))
