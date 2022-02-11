@@ -361,18 +361,6 @@ func (c *MizarServiceController) processServiceDeletion(eventKeyWithType KeyWith
 	return nil
 }
 
-func getArktosNetworkName(svcName string) string {
-	name := svcName
-	prefix := dnsServiceDefaultName + "-"
-	netName := ""
-	index := strings.Index(name, prefix)
-	if index == 0 {
-		pos := len(prefix)
-		netName = name[pos:]
-	}
-	return netName
-}
-
 func beginsWithKubernetes(svcName string) bool {
 	name := svcName
 	prefix := kubernetesSvcDefaultName + "-"
