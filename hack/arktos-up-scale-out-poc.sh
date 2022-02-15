@@ -640,8 +640,8 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
         KUBELET_LOG=""
         ;;
       Linux)
-	       KUBELET_LOG=/tmp/kubelet.log
-         kube::common::start_kubelet
+        KUBELET_LOG=/tmp/kubelet.log
+        kube::common::start_kubelet
         ;;
       *)
         print_color "Unsupported host OS.  Must be Linux or Mac OS X, kubelet aborted."
