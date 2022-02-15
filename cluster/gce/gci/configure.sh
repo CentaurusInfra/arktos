@@ -107,6 +107,28 @@ function download-tenantpartition-kubeconfig {
   )
 }
 
+function download-resourcepartition-kubeconfig {
+  local -r dest="$1"
+  local -r rp_num="$2"
+
+  echo "Downloading resource partition kubeconfig file, if it exists"
+  (
+    umask 077
+    local -r tmp_resourcepartition_kubeconfig="/tmp/resource_parition_kubeconfig"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_resourcepartition_kubeconfig}" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/rp-${rp_num}"; then
+      # only write to the final location if curl succeeds
+      mv "${tmp_resourcepartition_kubeconfig}" "${dest}"
+      chmod 755 ${dest}
+    else
+      echo "== Failed to download required resource partition config file from metadata server =="
+      exit 1
+    fi
+  )
+}
+
 function download-tenantpartition-kubeconfigs {
   local -r tpconfigs_directory="${KUBE_HOME}/tp-kubeconfigs"
   mkdir -p ${tpconfigs_directory}
@@ -117,6 +139,26 @@ function download-tenantpartition-kubeconfigs {
     echo "DBG: download tenant partition kubeconfig: ${config}"
     download-tenantpartition-kubeconfig "${config}" "${tp_num}"
   done
+
+  # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
+  sudo mkdir -p /etc/srv/kubernetes/tp-kubeconfigs
+  sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
+}
+
+function download-resourcepartition-kubeconfigs {
+  local -r rpconfigs_directory="${KUBE_HOME}/rp-kubeconfigs"
+  mkdir -p ${rpconfigs_directory}
+
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+  do
+    config="${rpconfigs_directory}/rp-${rp_num}-kubeconfig"
+    echo "DBG: download resource partition kubeconfig: ${config}"
+    download-resourcepartition-kubeconfig "${config}" "${rp_num}"
+  done
+
+  # copy over the configfiles from ${KUBE_HOME}/rp-kubeconfigs
+  sudo mkdir -p /etc/srv/kubernetes/rp-kubeconfigs
+  sudo cp -f ${KUBE_HOME}/rp-kubeconfigs/* /etc/srv/kubernetes/rp-kubeconfigs/
 }
 
 function download-kubelet-config {
@@ -650,8 +692,13 @@ download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
-if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     download-tenantpartition-kubeconfigs
+fi
+
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    download-tenantpartition-kubeconfigs
+    #download-resourcepartition-kubeconfigs
 fi
 
 # master/proxy certs

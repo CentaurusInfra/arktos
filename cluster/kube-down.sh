@@ -29,6 +29,9 @@ fi
 
 source "${KUBE_ROOT}/cluster/kube-util.sh"
 
+export RESOURCE_DIRECTORY=${RESOURCE_DIRECTORY:-"${KUBE_ROOT}/cluster"}
+export SHARED_CA_DIRECTORY=${SHARED_CA_DIRECTORY:-"/tmp/shared_ca"}
+
 echo "Bringing down cluster using provider: $KUBERNETES_PROVIDER"
 
 echo "... calling verify-prereqs" >&2
@@ -36,6 +39,12 @@ verify-prereqs
 echo "... calling verify-kube-binaries" >&2
 verify-kube-binaries
 echo "... calling kube-down" >&2
+
+if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+    export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
+    delete-proxy
+fi
+
 if [[ ${PRESET_INSTANCES_ENABLED:-false} == $TRUE ]]; then
     kube-down-for-preset-machines
 else
