@@ -2702,7 +2702,8 @@ function kube-up() {
         validate-cluster-status
         create-node-port
       done
-      restart_tp_scheduler_and_controller
+      restart-tp-scheduler-and-controller
+      start-mizar-scaleout
     else
       export ARKTOS_SCALEOUT_SERVER_TYPE=""
       create-master
@@ -3381,7 +3382,7 @@ function create-rpmaster {
 #       if future design is to let scheduler and controller managers to point to a generic server to get those RP
 #       kubeconfigs, the generic service should generate different ones for them.
 # TODO: remove this restart because all tp/rp ip has been reserved and this config should be ready before tp/rp started
-function restart_tp_scheduler_and_controller {
+function restart-tp-scheduler-and-controller {
   for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
   do
     tp_vm="${TPSERVER_NAME[$tp_num]}"
@@ -3403,6 +3404,42 @@ function restart_tp_scheduler_and_controller {
     echo "DBG: restart controller manager on TP master: ${tp_vm}"
     cmd="sudo pkill -f kube-controller-manager"
     gcloud compute ssh --ssh-flag="-o LogLevel=quiet" --ssh-flag="-o ConnectTimeout=30" --project "${PROJECT}" --zone="${ZONE}" "${tp_vm}" --command "${cmd}"
+  done
+}
+
+function start-mizar-scaleout {
+  echo "Installing Mizar for scale-out architecture..."
+  local -r src_dir="${KUBE_ROOT}/third_party/mizar"
+  local -r dst_dir="/tmp/mizar"
+  for (( tp_num=1; tp_num<=${SCALEOUT_TP_COUNT}; tp_num++ ))
+  do
+    mkdir -p ${dst_dir}
+    tp_kubeconfig="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${tp_num}"
+    # Place mizar crds yaml
+    cp "${src_dir}/mizar-crds.yaml" ${dst_dir}
+    src_file="${dst_dir}/mizar-crds.yaml"
+    kubectl --kubeconfig=${tp_kubeconfig} apply -f "${src_file}"
+
+    if [[ "${tp_num}" == "1" ]]; then
+      # Place mizar daemon yaml.
+      cp "${src_dir}/mizar-daemon.yaml" "${dst_dir}"
+      src_file="${dst_dir}/mizar-daemon.yaml"
+      sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
+      kubectl --kubeconfig=${tp_kubeconfig}  apply -f "${src_file}"
+    fi
+
+    kubectl --kubeconfig=${tp_kubeconfig} create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+
+    # Place mizar operator yaml.
+    CLUSTER_VPC_VNI_ID="$tp_num"
+    TP_MASTER_NAME="${TPSERVER_NAME[$tp_num]}"
+    cp "${src_dir}/mizar-operator.yaml" "${dst_dir}"
+    src_file="${dst_dir}/mizar-operator.yaml"
+    sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
+    sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
+    sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${src_file}"
+    kubectl --kubeconfig=${tp_kubeconfig} apply -f "${src_file}"
+    rm -r "${dst_dir}"
   done
 }
 
