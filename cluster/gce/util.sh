@@ -4267,12 +4267,6 @@ function kube-down() {
       rm -rf "${KUBECONFIG}"
     done
 
-    export SCALEOUT_PROXY_NAME="${KUBE_GCE_INSTANCE_PREFIX}-proxy"
-    
-
-    
-    delete-proxy
-
     rm -rf ${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}-proxy
     rm -rf "${RESOURCE_DIRECTORY}/haproxy.cfg.tmp"
     rm -rf ${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tmp
