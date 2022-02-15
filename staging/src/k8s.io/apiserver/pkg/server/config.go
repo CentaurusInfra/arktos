@@ -632,6 +632,11 @@ func installAPI(s *GenericAPIServer, c *Config) {
 	if c.EnableDiscovery {
 		s.Handler.GoRestfulContainer.Add(s.DiscoveryGroupManager.WebService())
 	}
+
+	//Install openstack api path
+	// TODO: reconsider this to add this to the api extension
+	routes.Openstack{}.Install(s.Handler.NonGoRestfulMux)
+
 }
 
 func NewRequestInfoResolver(c *Config) *apirequest.RequestInfoFactory {
