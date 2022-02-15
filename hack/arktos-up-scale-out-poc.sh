@@ -617,9 +617,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
-    if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-       kube::common::start_kubeproxy
-    fi
+    kube::common::start_kubeproxy
   fi
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
      kube::common::start_kubescheduler
