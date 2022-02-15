@@ -46,6 +46,8 @@ SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-}
 TENANT_SERVER=${TENANT_SERVER:-}
 RESOURCE_SERVER=${RESOURCE_SERVER:-}
 IS_SCALE_OUT=${IS_SCALE_OUT:-"true"}
+IS_SECONDARY_TP=${IS_SECONDARY_TP:-"false"}
+MIZAR_VERSION=${MIZAR_VERSION:-"dev"}
 
 echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
 echo "TENANT_SERVER: |${TENANT_SERVER}|"
@@ -684,8 +686,28 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
   # Applying mizar cni
   if [[ "${CNIPLUGIN}" == "mizar" ]]; then
     ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
-    # ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
-    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml
+
+    # Creating mizar crds
+    echo "Creating mizar crds ......."
+    cp "${KUBE_ROOT}/third_party/mizar/mizar-crds.yaml" mizar-crds.yaml
+    ${KUBECTL} apply -f mizar-crds.yaml
+
+    if [[ "${IS_SECONDARY_TP}" == "false" ]]; then
+      # Deploying mizar daemonset
+      echo "Deploying mizar daemonset ......."
+      cp "${KUBE_ROOT}/third_party/mizar/mizar-daemon.yaml" mizar-daemon.yaml
+      sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-daemon.yaml
+      ${KUBECTL} apply -f mizar-daemon.yaml
+    fi
+
+    # Place mizar operator
+    echo "Starting mizar operator......."
+    CLUSTER_VPC_VNI_ID="${RANDOM}"
+    cp "${KUBE_ROOT}/third_party/mizar/mizar-operator.yaml" mizar-operator.yaml
+    sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-operator.yaml
+    sed -i -e "s@{{tp_master_name}}@${API_HOST}@g" mizar-operator.yaml
+    sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" mizar-operator.yaml
+    ${KUBECTL} apply -f mizar-operator.yaml
   fi
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
