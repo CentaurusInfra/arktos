@@ -702,6 +702,8 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
 
     # Place mizar operator
     echo "Starting mizar operator......."
+    # # For starting mizar-operator pods on scale-out TP servers successfully on Ubuntu 20.04
+    MIZAR_OPERATOR_HOST_PATH=${MIZAR_OPERATOR_HOST_PATH:-"/etc/kubernetes"}
     if [ ! -d "${MIZAR_OPERATOR_HOST_PATH}"  ]; then
       sudo mkdir -p ${MIZAR_OPERATOR_HOST_PATH}
     fi

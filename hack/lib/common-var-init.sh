@@ -236,10 +236,6 @@ nameserver ${UPSTREAM_DNS_IP}
 EOF
   fi
 fi
-#
-# For starting mizar-operator pods on scale-out TP servers successfully on Ubuntu 20.04
-#
-MIZAR_OPERATOR_HOST_PATH=${MIZAR_OPERATOR_HOST_PATH:-"/etc/kubernetes"}
 
 # --------------------------------------------------------------------------------------------
 # End of 2nd Common environment variables used in arktos-up.sh& arktos-apiserver-partition.sh
