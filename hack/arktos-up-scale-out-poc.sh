@@ -46,6 +46,8 @@ SCALE_OUT_PROXY_PORT=${SCALE_OUT_PROXY_PORT:-}
 TENANT_SERVER=${TENANT_SERVER:-}
 RESOURCE_SERVER=${RESOURCE_SERVER:-}
 IS_SCALE_OUT=${IS_SCALE_OUT:-"true"}
+IS_SECONDARY_TP=${IS_SECONDARY_TP:-"false"}
+MIZAR_VERSION=${MIZAR_VERSION:-"dev"}
 
 echo "IS_RESOURCE_PARTITION: |${IS_RESOURCE_PARTITION}|"
 echo "TENANT_SERVER: |${TENANT_SERVER}|"
@@ -163,7 +165,7 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron,mizar) before cluster is up.
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron, mizar) before cluster is up.
 # If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
 echo "CNIPLUGIN=|${CNIPLUGIN}|, calling arktos-cni.rc"
@@ -617,9 +619,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     start_cloud_controller_manager
   fi
   if [[ "${START_MODE}" != "nokubeproxy" ]]; then
-    if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-       kube::common::start_kubeproxy
-    fi
+    kube::common::start_kubeproxy
   fi
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
      kube::common::start_kubescheduler
@@ -640,12 +640,8 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
         KUBELET_LOG=""
         ;;
       Linux)
-    	if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-	   KUBELET_LOG=/tmp/kubelet.log
-           kube::common::start_kubelet
-	else
-           KUBELET_LOG=""
-    	fi
+        KUBELET_LOG=/tmp/kubelet.log
+        kube::common::start_kubelet
         ;;
       *)
         print_color "Unsupported host OS.  Must be Linux or Mac OS X, kubelet aborted."
@@ -689,9 +685,36 @@ fi
 if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
   # Applying mizar cni
   if [[ "${CNIPLUGIN}" == "mizar" ]]; then
-    # ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
-    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml
+    ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+
+    # Creating mizar crds
+    echo "Creating mizar crds ......."
+    cp "${KUBE_ROOT}/third_party/mizar/mizar-crds.yaml" mizar-crds.yaml
+    ${KUBECTL} apply -f mizar-crds.yaml
+
+    if [[ "${IS_SECONDARY_TP}" == "false" ]]; then
+      # Deploying mizar daemonset
+      echo "Deploying mizar daemonset ......."
+      cp "${KUBE_ROOT}/third_party/mizar/mizar-daemon.yaml" mizar-daemon.yaml
+      sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-daemon.yaml
+      ${KUBECTL} apply -f mizar-daemon.yaml
+    fi
+
+    # Place mizar operator
+    echo "Starting mizar operator......."
+    # # For starting mizar-operator pods on scale-out TP servers successfully on Ubuntu 20.04
+    MIZAR_OPERATOR_HOST_PATH=${MIZAR_OPERATOR_HOST_PATH:-"/etc/kubernetes"}
+    if [ ! -d "${MIZAR_OPERATOR_HOST_PATH}"  ]; then
+      sudo mkdir -p ${MIZAR_OPERATOR_HOST_PATH}
+    fi
+    CLUSTER_VPC_VNI_ID="${RANDOM}"
+    cp "${KUBE_ROOT}/third_party/mizar/mizar-operator.yaml" mizar-operator.yaml
+    sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-operator.yaml
+    sed -i -e "s@{{tp_master_name}}@${API_HOST}@g" mizar-operator.yaml
+    sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" mizar-operator.yaml
+    ${KUBECTL} apply -f mizar-operator.yaml
   fi
+
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap -n kube-system virtlet-image-translations --from-file ${VIRTLET_DEPLOYMENT_FILES_DIR}/images.yaml
 
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create -f ${VIRTLET_DEPLOYMENT_FILES_DIR}/vmruntime.yaml
@@ -708,6 +731,10 @@ echo "Arktos Setup done."
 #KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
 #echo "Kata Setup done."
 #echo "*******************************************"
+
+if [ "${CNIPLUGIN}" == "mizar" ] && [ "${IS_RESOURCE_PARTITION}" == "false" ]; then
+  kube::common::wait-until-mizar-ready
+fi
 
 print_success
 
