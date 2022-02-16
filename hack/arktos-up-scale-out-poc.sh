@@ -702,6 +702,14 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
       rm mizar-daemon.yaml
     fi
 
+    # Deploying mizar daemon to tp master
+    echo "Deploying mizar daemon to TP master ......."
+    cp "${KUBE_ROOT}/third_party/mizar/mizar-daemon-tpmaster.yaml" mizar-daemon-tpmaster.yaml
+    sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-daemon-tpmaster.yaml
+    sed -i -e "s@{{tp_master_name}}@${API_HOST}@g" mizar-daemon-tpmaster.yaml
+    ${KUBECTL} apply -f mizar-daemon-tpmaster.yaml
+    rm mizar-daemon-tpmaster.yaml
+
     # Place mizar operator
     echo "Starting mizar operator......."
     CLUSTER_VPC_VNI_ID="${RANDOM}"
