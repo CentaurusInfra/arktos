@@ -40,11 +40,15 @@ const (
 
 // MizarNodeController points to current controller
 type MizarNodeController struct {
-	// A store of objects, populated by the shared informer passed to MizarNodeController
+	// A store of node objects, populated from Resource partition node informers
 	nodeListers map[string]corelisters.NodeLister
 	// listerSynced returns true if the store has been synced at least once.
 	// Added as a member to the struct to allow injection for testing.
 	nodeListersSynced map[string]cache.InformerSynced
+
+	// A store of node objects, populated from Tenant partition node informer
+	tpNodeListers corelisters.NodeLister
+	tpNodeListerSynced cache.InformerSynced
 
 	// To allow injection for testing.
 	handler func(keyWithEventType KeyWithEventType) error
@@ -58,7 +62,7 @@ type MizarNodeController struct {
 }
 
 // NewMizarNodeController creates and configures a new controller instance
-func NewMizarNodeController(nodeInformers map[string]coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNodeController {
+func NewMizarNodeController(tpNodeInformer coreinformers.NodeInformer, nodeInformers map[string]coreinformers.NodeInformer, kubeClient clientset.Interface, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarNodeController {
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClient.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
@@ -69,6 +73,8 @@ func NewMizarNodeController(nodeInformers map[string]coreinformers.NodeInformer,
 	c := &MizarNodeController{
 		nodeListers:       nodeListers,
 		nodeListersSynced: nodeListersSynced,
+		tpNodeListers:     tpNodeInformer.Lister(),
+		tpNodeListerSynced: tpNodeInformer.Informer().HasSynced,
 		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
 		grpcHost:          grpcHost,
 		grpcAdaptor:       grpcAdaptor,
@@ -81,6 +87,12 @@ func NewMizarNodeController(nodeInformers map[string]coreinformers.NodeInformer,
 			DeleteFunc: c.deleteObj,
 		})
 	}
+
+	tpNodeInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.createObj,
+		UpdateFunc: c.updateObj,
+		DeleteFunc: c.deleteObj,
+	})
 
 	c.handler = c.handle
 
@@ -180,13 +192,23 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 		return err
 	}
 
-	obj, _, err := nodeutil.GetNodeFromNodelisters(c.nodeListers, name)
+	var nodeObj *v1.Node
+	// check tenant partition
+	nodeObj, err = c.tpNodeListers.Get(name)
 	if err != nil {
-		if eventType == EventType_Delete && errors.IsNotFound(err) {
-			obj = &v1.Node{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: name,
-				},
+		if errors.IsNotFound(err) {
+			// check resource partitions
+			nodeObj, _, err = nodeutil.GetNodeFromNodelisters(c.nodeListers, name)
+			if err != nil {
+				if eventType == EventType_Delete && errors.IsNotFound(err) {
+					nodeObj = &v1.Node{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: name,
+						},
+					}
+				} else {
+					return err
+				}
 			}
 		} else {
 			return err
@@ -197,11 +219,11 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 
 	switch eventType {
 	case EventType_Create:
-		processNodeGrpcReturnCode(c, c.grpcAdaptor.CreateNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.CreateNode(c.grpcHost, nodeObj), keyWithEventType)
 	case EventType_Update:
-		processNodeGrpcReturnCode(c, c.grpcAdaptor.UpdateNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.UpdateNode(c.grpcHost, nodeObj), keyWithEventType)
 	case EventType_Delete:
-		processNodeGrpcReturnCode(c, c.grpcAdaptor.DeleteNode(c.grpcHost, obj), keyWithEventType)
+		processNodeGrpcReturnCode(c, c.grpcAdaptor.DeleteNode(c.grpcHost, nodeObj), keyWithEventType)
 	default:
 		panic(fmt.Sprintf("unimplemented for eventType %v", eventType))
 	}
