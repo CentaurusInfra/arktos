@@ -3257,44 +3257,6 @@ function wait-until-mizar-ready {
   done
 }
 
-function start-mizar-scaleout {
-  echo "Installing Mizar for scale-out architecture..."
-  local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
-  mkdir -p "${KUBE_HOME}/mizar"
-
-  echo "Creating mizar crds yaml"
-  mv "${src_dir}/mizar-crds.yaml" "${KUBE_HOME}/mizar/"
-  kubectl apply -f "${KUBE_HOME}/mizar/mizar-crds.yaml"
-
-  echo "Deploying mizar daemonset"
-  # Place mizar daemon yaml.
-  src_file="${src_dir}/mizar-daemon.yaml"
-  sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
-  mv "${src_dir}/mizar-daemon.yaml" "${KUBE_HOME}/mizar/"
-
-  local -r tp_num="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
-  if [[ "${tp_num:-1}" == "1" ]]; then
-    kubectl apply -f "${KUBE_HOME}/mizar/mizar-daemon.yaml"
-  fi
-
-  echo "Waiting until nodes RPs are ready"
-  until [ -f "/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1" ]; do
-    sleep 5
-  done
-
-  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
-  # Place mizar operator yaml.
-  echo "Starting mizar operator"
-  CLUSTER_VPC_VNI_ID="$(echo ${CLUSTER_NAME} | grep -Eo '[0-9]+$')"
-  TP_MASTER_NAME="${CLUSTER_NAME}-master"
-  src_file="${src_dir}/mizar-operator.yaml"
-  sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
-  sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
-  sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${src_file}"
-  mv "${src_dir}/mizar-operator.yaml" "${KUBE_HOME}/mizar/"
-  kubectl apply -f "${KUBE_HOME}/mizar/mizar-operator.yaml"
-}
-
 function start-mizar-scaleup {
   echo "Installing Mizar for scale-up architecture..."
   kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
@@ -3309,9 +3271,8 @@ function start-mizar {
     sleep 5
   done
   kubectl label node `hostname` node-role.kubernetes.io/master=""
-  if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
-    start-mizar-scaleout
-  else
+  #For scaleout cluster, mizar will started after all tp and rp ready
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
     start-mizar-scaleup
   fi
 }
