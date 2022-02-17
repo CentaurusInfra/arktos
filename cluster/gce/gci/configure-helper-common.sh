@@ -3143,24 +3143,55 @@ function start-cluster-networking {
 }
 
 function wait-for-node-registered {
+  local start_time=$(date +%s)
   until kubectl get nodes | grep `hostname`; do
     sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for nodes ready failed after 3 minutes elapsed"
+      exit 1
+    fi
   done
 }
 
 function wait-until-mizar-ready {
   echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  local start_time=$(date +%s) 
+  local elapsed
   until kubectl get vpcs | grep Provisioned; do
     sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for vpcs provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
   done
+  start_time=$(date +%s)
   until kubectl get dividers | grep Provisioned; do
     sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for dividers provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
   done
+  start_time=$(date +%s)
   until kubectl get bouncers | grep Provisioned; do
     sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for bouncers provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
   done
+  start_time=$(date +%s)
   until kubectl get subnets | grep Provisioned; do
     sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for subnets provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
   done
 }
 
