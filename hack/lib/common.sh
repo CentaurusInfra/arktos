@@ -876,24 +876,4 @@ function kube::common::generate_kubeproxy_certs {
     fi
 }
 
-function kube::common::wait-until-mizar-ready {
-    echo "Waiting for Mizar CRDs to reach 'Provisioned' state"
-    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get vpcs 2> /dev/null | grep Provisioned > /dev/null; do
-        echo -n .
-        sleep 5
-    done
-    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get dividers 2> /dev/null | grep Provisioned > /dev/null; do
-        echo -n .
-        sleep 5
-    done
-    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get bouncers 2> /dev/null | grep Provisioned > /dev/null; do
-        echo -n .
-        sleep 5
-    done
-    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get subnets 2> /dev/null | grep Provisioned > /dev/null; do
-        echo -n .
-        sleep 5
-    done
-    echo
-    echo "Mizar is ready."
-}
+
