@@ -46,6 +46,7 @@ fi
 
 BASH_TARGETS="
 	update-etcd
+	update-generated-mizar
 	update-generated-protobuf
 	update-codegen
 	update-generated-runtime
