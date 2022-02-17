@@ -245,10 +245,8 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 
 		vpc := network.Spec.VPCID
 		if len(vpc) == 0 {
-			//vpc = tenant + vpcSuffix
 			vpc = fmt.Sprintf("%s%s", tenant, vpcSuffix)
 		}
-		//subnet := vpc + subnetSuffix
 		subnet := fmt.Sprintf("%s%s", vpc, subnetSuffix)
 
 		_, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]

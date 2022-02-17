@@ -182,7 +182,6 @@ func (c *MizarArktosNetworkController) processNetworkCreation(key string) error 
 
 	//Find out the paths of default template to create vpc and subnet
 	vpc := network.Spec.VPCID
-	//subnet := vpc + subnetSuffix
 	subnet := fmt.Sprintf("%s%s", vpc, subnetSuffix)
 	klog.V(4).Infof("Processing arktos network: %#v. vpc [%v], subnet [%v]. Network Type [%v]", network, vpc, subnet, network.Spec.Type)
 
@@ -252,6 +251,8 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 	return nil
 }
 
+// For the initial release of Arktos Mizar integration, user specified VPC CIDR is not supported
+// Generate VPC CIDR randomly for now.
 func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	// randomize ip start segment:
 	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
@@ -281,6 +282,8 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	return ipStart, vpc
 }
 
+// For the initial release of Arktos Mizar integration, user specified subnet CIDR is not supported
+// Generate subnet CIDR randomly for now.
 func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, error) {
 	subnetIpSeg := ran.Intn(256) // 0-255
 	subnet := &MizarSubnet{
