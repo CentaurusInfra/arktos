@@ -712,6 +712,11 @@ if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
 
     # Place mizar operator
     echo "Starting mizar operator......."
+    # # For starting mizar-operator pods on scale-out TP servers successfully on Ubuntu 20.04
+    MIZAR_OPERATOR_HOST_PATH=${MIZAR_OPERATOR_HOST_PATH:-"/etc/kubernetes"}
+    if [ ! -d "${MIZAR_OPERATOR_HOST_PATH}"  ]; then
+      sudo mkdir -p ${MIZAR_OPERATOR_HOST_PATH}
+    fi
     CLUSTER_VPC_VNI_ID="${RANDOM}"
     cp "${KUBE_ROOT}/third_party/mizar/mizar-operator.yaml" mizar-operator.yaml
     sed -i -e "s@{{network_provider_version}}@${MIZAR_VERSION}@g" mizar-operator.yaml
