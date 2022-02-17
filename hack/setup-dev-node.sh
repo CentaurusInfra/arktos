@@ -31,6 +31,7 @@ sudo apt -y update
 
 echo "Install docker."
 sudo apt -y install docker.io
+sudo chmod o+rw /var/run/docker.sock; ls -al /var/run/docker.sock
 
 echo "Install make & gcc."
 sudo apt -y install make
@@ -41,6 +42,22 @@ echo "Install golang."
 wget https://dl.google.com/go/go${GOLANG_VERSION}.linux-amd64.tar.gz -P /tmp
 sudo tar -C /usr/local -xzf /tmp/go${GOLANG_VERSION}.linux-amd64.tar.gz
 
+kubectl_url="https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+
+if [[ ! -f /usr/local/bin/kubectl ]]; then
+    echo -n "Downloading kubectl binary..."
+    sudo wget ${kubectl_url} -P /usr/local/bin
+else
+  # TODO: We should detect version of kubectl binary if it too old
+  # download newer version.
+  echo "Detected existing kubectl binary. Skipping download."
+fi
+sudo chmod a+x "/usr/local/bin/kubectl"
+
+echo "GOROOT=/usr/local/go" >> $HOME/.profile
+echo "GOPATH=$HOME/go" >> $HOME/.profile
+echo "PATH=/usr/local/go/bin:$PATH" >> $HOME/.profile
+
 echo "Done."
-echo "Please run and add 'export PATH=\$PATH:/usr/local/go/bin' into your shell profile."
-echo "You can proceed to run arktos-up.sh if you want to launch a single-node cluster."
+echo "Please run 'source $HOME/.profile' to enforce env PATH changing."
+echo "You can proceed to run hack/arktos-up.sh if you want to launch a single-node cluster."
