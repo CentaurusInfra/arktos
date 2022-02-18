@@ -146,5 +146,5 @@ func getNewMizarNodeController() (*MizarNodeController, *testutil.FakeNodeHandle
 	kubeClient.CreateHook = func(c *testutil.FakeNodeHandler, n *v1.Node) bool { return true }
 
 	grpcAdaptor := NewGrpcAdaptorMock()
-	return NewMizarNodeController(nodeInformerMap, kubeClient, testGrpcHost, grpcAdaptor), kubeClient, nodeInformer, grpcAdaptor, node
+	return NewMizarNodeController(nodeInformer, nodeInformerMap, kubeClient, testGrpcHost, grpcAdaptor), kubeClient, nodeInformer, grpcAdaptor, node
 }
