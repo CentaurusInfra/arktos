@@ -47,7 +47,7 @@ type MizarNodeController struct {
 	nodeListersSynced map[string]cache.InformerSynced
 
 	// A store of node objects, populated from Tenant partition node informer
-	tpNodeListers corelisters.NodeLister
+	tpNodeListers      corelisters.NodeLister
 	tpNodeListerSynced cache.InformerSynced
 
 	// To allow injection for testing.
@@ -71,13 +71,13 @@ func NewMizarNodeController(tpNodeInformer coreinformers.NodeInformer, nodeInfor
 	nodeListers, nodeListersSynced := nodeutil.GetNodeListersAndSyncedFromNodeInformers(nodeInformers)
 
 	c := &MizarNodeController{
-		nodeListers:       nodeListers,
-		nodeListersSynced: nodeListersSynced,
-		tpNodeListers:     tpNodeInformer.Lister(),
+		nodeListers:        nodeListers,
+		nodeListersSynced:  nodeListersSynced,
+		tpNodeListers:      tpNodeInformer.Lister(),
 		tpNodeListerSynced: tpNodeInformer.Informer().HasSynced,
-		queue:             workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
-		grpcHost:          grpcHost,
-		grpcAdaptor:       grpcAdaptor,
+		queue:              workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
+		grpcHost:           grpcHost,
+		grpcAdaptor:        grpcAdaptor,
 	}
 
 	for _, nodeInformer := range nodeInformers {

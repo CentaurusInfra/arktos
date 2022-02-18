@@ -260,12 +260,12 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 
 	// create service in mizar
 	msg := &BuiltinsServiceMessage{
-		Name:          service.Name,
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            service.Spec.ClusterIP,
-		Vpc:           service.Annotations[mizarAnnotationsVpcKey],
-		Subnet:        service.Annotations[mizarAnnotationsSubnetKey],
+		Name:      service.Name,
+		Namespace: service.Namespace,
+		Tenant:    service.Tenant,
+		Ip:        service.Spec.ClusterIP,
+		Vpc:       service.Annotations[mizarAnnotationsVpcKey],
+		Subnet:    service.Annotations[mizarAnnotationsSubnetKey],
 	}
 
 	var response *ReturnCode
@@ -331,12 +331,12 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 
 func (c *MizarServiceController) processServiceDeletion(service *v1.Service, eventKeyWithType KeyWithEventType) error {
 	msg := &BuiltinsServiceMessage{
-		Name:          service.Name,
-		Namespace:     service.Namespace,
-		Tenant:        service.Tenant,
-		Ip:            "",
-		Vpc:           "",
-		Subnet:        "",
+		Name:      service.Name,
+		Namespace: service.Namespace,
+		Tenant:    service.Tenant,
+		Ip:        "",
+		Vpc:       "",
+		Subnet:    "",
 	}
 
 	response := c.grpcAdaptor.DeleteService(c.grpcHost, msg)
