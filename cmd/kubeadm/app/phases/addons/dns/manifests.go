@@ -1,5 +1,6 @@
 /*
 Copyright 2017 The Kubernetes Authors.
+Copyright 2020 Authors of Arktos - file modified.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -260,6 +261,8 @@ spec:
         - name: config-volume
           mountPath: /etc/coredns
           readOnly: true
+        - name: tmp
+          mountPath: /tmp
         ports:
         - containerPort: 53
           name: dns
@@ -294,6 +297,8 @@ spec:
           readOnlyRootFilesystem: true
       dnsPolicy: Default
       volumes:
+        - name: tmp
+          emptyDir: {}
         - name: config-volume
           configMap:
             name: coredns
