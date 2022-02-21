@@ -143,7 +143,9 @@ function main() {
     start-lb-controller
     update-legacy-addon-node-labels &
     apply-encryption-config &
-    start-cluster-networking   ####start cluster networking if not using default kubenet
+    if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+      start-cluster-networking   ####start cluster networking if not using default kubenet
+    fi
 
   else
     if [[ "${KUBE_PROXY_DAEMONSET:-}" != "true" ]]; then
