@@ -3421,33 +3421,33 @@ function start-mizar-scaleout {
     TP_MASTER_NAME="${TPSERVER_NAME[$tp_num]}"
     # Place mizar crds yaml
     cp "${src_dir}/mizar-crds.yaml" ${dst_dir}
-    src_file="${dst_dir}/mizar-crds.yaml"
-    kubectl --kubeconfig=${tp_kubeconfig} apply -f "${src_file}"
+    dst_file="${dst_dir}/mizar-crds.yaml"
+    ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${tp_kubeconfig} apply -f "${dst_file}"
 
     if [[ "${tp_num}" == "1" ]]; then
       # Place mizar daemon yaml.
       cp "${src_dir}/mizar-daemon.yaml" "${dst_dir}"
-      src_file="${dst_dir}/mizar-daemon.yaml"
-      sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
-      kubectl --kubeconfig=${tp_kubeconfig}  apply -f "${src_file}"
+      dst_file="${dst_dir}/mizar-daemon.yaml"
+      sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${dst_file}"
+      ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${tp_kubeconfig}  apply -f "${dst_file}"
     fi
 
     # Place mizar daemon yaml on TP master.
     cp "${src_dir}/mizar-daemon-tpmaster.yaml" "${dst_dir}"
-    src_file="${dst_dir}/mizar-daemon-tpmaster.yaml"
-    sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
-    sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
-    kubectl --kubeconfig=${tp_kubeconfig}  apply -f "${src_file}"
+    dst_file="${dst_dir}/mizar-daemon-tpmaster.yaml"
+    sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${dst_file}"
+    sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${dst_file}"
+    ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${tp_kubeconfig}  apply -f "${dst_file}"
 
-    kubectl --kubeconfig=${tp_kubeconfig} create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+    ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${tp_kubeconfig} create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
 
     # Place mizar operator yaml.
     cp "${src_dir}/mizar-operator.yaml" "${dst_dir}"
-    src_file="${dst_dir}/mizar-operator.yaml"
-    sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${src_file}"
-    sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${src_file}"
-    sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${src_file}"
-    kubectl --kubeconfig=${tp_kubeconfig} apply -f "${src_file}"
+    dst_file="${dst_dir}/mizar-operator.yaml"
+    sed -i -e "s@{{network_provider_version}}@${NETWORK_PROVIDER_VERSION}@g" "${dst_file}"
+    sed -i -e "s@{{tp_master_name}}@${TP_MASTER_NAME}@g" "${dst_file}"
+    sed -i -e "s@{{cluster_vpc_vni_id}}@${CLUSTER_VPC_VNI_ID}@g" "${dst_file}"
+    ${KUBE_ROOT}/cluster/kubectl.sh --kubeconfig=${tp_kubeconfig} apply -f "${dst_file}"
     rm -r "${dst_dir}"
   done
 }
