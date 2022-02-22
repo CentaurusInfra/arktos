@@ -31,6 +31,7 @@ sudo apt -y update
 
 echo "Install docker."
 sudo apt -y install docker.io
+sudo chmod o+rw /var/run/docker.sock; ls -al /var/run/docker.sock
 
 echo "Install make & gcc."
 sudo apt -y install make

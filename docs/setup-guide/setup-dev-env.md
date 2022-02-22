@@ -7,7 +7,7 @@ Note: tested on AWS EC2 Ubuntu 16.04 x86 image.
 ```
 $ mkdir -p go/src/
 $ cd go/src/
-$ git clone https://github.com/futurewei-cloud/arktos
+$ git clone https://github.com/CentaurusInfra/arktos.git
 ```
 
 Note: the following steps can be simplified by running hack/setup-dev-node.sh
@@ -17,10 +17,10 @@ Note: the following steps can be simplified by running hack/setup-dev-node.sh
 $ sudo apt-get update
 # $ sudo apt-get -y upgrade // optional
 $ cd /tmp
-$ wget https://dl.google.com/go/go1.12.9.linux-amd64.tar.gz
-$ tar -xvf go1.12.9.linux-amd64.tar.gz
+$ wget https://dl.google.com/go/go1.13.9.linux-amd64.tar.gz
+$ tar -xvf go1.13.9.linux-amd64.tar.gz
 $ sudo mv go /usr/local
-$ rm go1.12.9.linux-amd64.tar.gz
+$ rm go1.13.9.linux-amd64.tar.gz
 ```
 Add the following lines to ~/.profile
 ```
