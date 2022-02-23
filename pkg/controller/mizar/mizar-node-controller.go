@@ -47,7 +47,7 @@ type MizarNodeController struct {
 	nodeListersSynced map[string]cache.InformerSynced
 
 	// A store of node objects, populated from Tenant partition node informer
-	tpNodeListers      corelisters.NodeLister
+	tpNodeLister       corelisters.NodeLister
 	tpNodeListerSynced cache.InformerSynced
 
 	// To allow injection for testing.
@@ -73,7 +73,7 @@ func NewMizarNodeController(tpNodeInformer coreinformers.NodeInformer, nodeInfor
 	c := &MizarNodeController{
 		nodeListers:        nodeListers,
 		nodeListersSynced:  nodeListersSynced,
-		tpNodeListers:      tpNodeInformer.Lister(),
+		tpNodeLister:       tpNodeInformer.Lister(),
 		tpNodeListerSynced: tpNodeInformer.Informer().HasSynced,
 		queue:              workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), controllerForMizarNode),
 		grpcHost:           grpcHost,
@@ -194,7 +194,7 @@ func (c *MizarNodeController) handle(keyWithEventType KeyWithEventType) error {
 
 	var nodeObj *v1.Node
 	// check tenant partition
-	nodeObj, err = c.tpNodeListers.Get(name)
+	nodeObj, err = c.tpNodeLister.Get(name)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// check resource partitions

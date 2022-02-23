@@ -309,7 +309,6 @@ func getSubnetNameFromVPC(vpc string) string {
 func getVPC(network *arktosextv1.Network) string {
 	vpc := network.Spec.VPCID
 	if len(vpc) == 0 {
-		//vpc = tenant + vpcSuffix
 		vpc = fmt.Sprintf("%s%s", network.Tenant, vpcSuffix)
 	}
 	return vpc

@@ -226,7 +226,7 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 	}
 
 	if tenantDefaultNetwork.Status.Phase != arktosapisv1.NetworkReady {
-		return errors.New(fmt.Sprintf("The arktos network %s is not Ready.", tenantDefaultNetwork.Name))
+		return errors.New(fmt.Sprintf("arktos network %s is not Ready.", tenantDefaultNetwork.Name))
 	}
 
 	vpc, vpcNameOk := service.Annotations[mizarAnnotationsVpcKey]
