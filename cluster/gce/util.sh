@@ -651,6 +651,14 @@ EOF
 fi
 }
 
+# copy controller config into a temporary file.
+# Assumed vars
+function write-network-template {
+  if [[ -s ${ARKTOS_NETWORK_TEMPLATE} ]]; then
+    cp "${ARKTOS_NETWORK_TEMPLATE}" "${KUBE_TEMP}/network.tmpl"
+  fi
+}
+
 # Writes the cluster name into a temporary file.
 # Assumed vars
 #   CLUSTER_NAME
@@ -895,7 +903,7 @@ function construct-linux-kubelet-flags {
     flags+=" --register-schedulable=false"
   fi
   if [[ -n "${NETWORK_PROVIDER:-}" || -n "${NETWORK_POLICY_PROVIDER:-}" ]]; then
-    flags+=" --cni-bin-dir=/home/kubernetes/bin"
+    flags+=" --cni-bin-dir=${CNI_BIN_DIR}"
     if [[ "${NETWORK_POLICY_PROVIDER:-}" == "calico" || "${ENABLE_NETD:-}" == "true" ]]; then
       # Calico uses CNI always.
       # Note that network policy won't work for master node.
@@ -904,10 +912,12 @@ function construct-linux-kubelet-flags {
       else
         flags+=" --network-plugin=cni"
       fi
+    elif [[ "${NETWORK_POLICY_PROVIDER:-}" == "mizar" ]]; then
+      # Mizar uses CNI
+      flags+=" --network-plugin=cni"
     else
       # Otherwise use the configured value.
       flags+=" --network-plugin=${NETWORK_PROVIDER}"
-
     fi
   fi
   if [[ -n "${NON_MASQUERADE_CIDR:-}" ]]; then
@@ -1241,6 +1251,7 @@ function build-linux-kube-env {
 
   rm -f ${file}
   cat >$file <<EOF
+KUBE_GCI_VERSION: $(yaml-quote ${GCI_VERSION})
 CLUSTER_NAME: $(yaml-quote ${CLUSTER_NAME})
 ENV_TIMESTAMP: $(yaml-quote $(date -u +%Y-%m-%dT%T%z))
 INSTANCE_PREFIX: $(yaml-quote ${INSTANCE_PREFIX})
@@ -1248,6 +1259,7 @@ NODE_INSTANCE_PREFIX: $(yaml-quote ${NODE_INSTANCE_PREFIX})
 NODE_TAGS: $(yaml-quote ${NODE_TAGS:-})
 NODE_NETWORK: $(yaml-quote ${NETWORK:-})
 NODE_SUBNETWORK: $(yaml-quote ${SUBNETWORK:-})
+SCALEOUT_CLUSTER: $(yaml-quote ${SCALEOUT_CLUSTER:-})
 ARKTOS_SCALEOUT_SERVER_TYPE: $(yaml-quote ${ARKTOS_SCALEOUT_SERVER_TYPE:-})
 SCALEOUT_TP_COUNT: $(yaml-quote ${SCALEOUT_TP_COUNT:-1})
 SCALEOUT_RP_COUNT: $(yaml-quote ${SCALEOUT_RP_COUNT:-1})
@@ -1281,6 +1293,7 @@ NODE_PROBLEM_DETECTOR_RELEASE_PATH: $(yaml-quote ${NODE_PROBLEM_DETECTOR_RELEASE
 NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS: $(yaml-quote ${NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS:-})
 CNI_VERSION: $(yaml-quote ${CNI_VERSION:-})
 CNI_SHA1: $(yaml-quote ${CNI_SHA1:-})
+CNI_BIN_DIR: $(yaml-quote ${CNI_BIN_DIR:-/home/kubernetes/bin})
 ENABLE_NODE_LOGGING: $(yaml-quote ${ENABLE_NODE_LOGGING:-false})
 LOGGING_DESTINATION: $(yaml-quote ${LOGGING_DESTINATION:-})
 ELASTICSEARCH_LOGGING_REPLICAS: $(yaml-quote ${ELASTICSEARCH_LOGGING_REPLICAS:-})
@@ -1304,6 +1317,7 @@ CA_CERT: $(yaml-quote ${CA_CERT_BASE64:-})
 KUBELET_CERT: $(yaml-quote ${KUBELET_CERT_BASE64:-})
 KUBELET_KEY: $(yaml-quote ${KUBELET_KEY_BASE64:-})
 NETWORK_PROVIDER: $(yaml-quote ${NETWORK_PROVIDER:-})
+NETWORK_PROVIDER_VERSION: $(yaml-quote ${NETWORK_PROVIDER_VERSION:-})
 NETWORK_POLICY_PROVIDER: $(yaml-quote ${NETWORK_POLICY_PROVIDER:-})
 HAIRPIN_MODE: $(yaml-quote ${HAIRPIN_MODE:-})
 E2E_STORAGE_TEST_ENVIRONMENT: $(yaml-quote ${E2E_STORAGE_TEST_ENVIRONMENT:-})
@@ -1574,6 +1588,11 @@ EOF
 WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
+    if [ -n "${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL: $(yaml-quote ${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL})
+EOF
+    fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_ARGS: $(yaml-quote ${SCHEDULER_TEST_ARGS})
@@ -1582,6 +1601,11 @@ EOF
     if [ -n "${SCHEDULER_TEST_LOG_LEVEL:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_LOG_LEVEL: $(yaml-quote ${SCHEDULER_TEST_LOG_LEVEL})
+EOF
+    fi
+    if [ -n "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]; then
+      cat >>$file <<EOF
+DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
 EOF
     fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then
@@ -2138,7 +2162,7 @@ function update-or-verify-gcloud() {
     ${sudo_prefix} gcloud ${gcloud_prompt:-} components update
   else
     local version=$(gcloud version --format=json)
-    python -c'
+    python3 -c'
 import json,sys
 from distutils import version
 
@@ -2594,6 +2618,7 @@ function kube-up() {
     write-cluster-location
     write-cluster-name
     write-controller-config
+    write-network-template
     create-autoscaler-config
     if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
       echo "DBG: Generating shared CA certificates"

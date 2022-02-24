@@ -2,7 +2,7 @@
 "apiVersion": "v1",
 "kind": "Pod",
 "metadata": {
-  "name":"kube-controller-manager",
+  "name":"arktos-network-controller",
   "namespace": "kube-system",
   "annotations": {
     "scheduler.alpha.kubernetes.io/critical-pod": "",
@@ -10,15 +10,15 @@
   },
   "labels": {
     "tier": "control-plane",
-    "component": "kube-controller-manager"
+    "component": "arktos-network-controller"
   }
 },
 "spec":{
 "hostNetwork": true,
 "containers":[
     {
-    "name": "kube-controller-manager",
-    "image": "{{pillar['kube_docker_registry']}}/kube-controller-manager:{{pillar['kube-controller-manager_docker_tag']}}",
+    "name": "arktos-network-controller",
+    "image": "{{pillar['kube_docker_registry']}}/arktos-network-controller:{{pillar['arktos-network-controller_docker_tag']}}",
     "resources": {
       "requests": {
         "cpu": "{{cpurequest}}"
@@ -27,18 +27,9 @@
     "command": [
                  "/bin/sh",
                  "-c",
-                 "exec /usr/local/bin/kube-controller-manager {{params}} 1>>/var/log/kube-controller-manager.log 2>&1"
+                 "exec /usr/local/bin/arktos-network-controller {{params}} 1>>/var/log/arktos-network-controller.log 2>&1"
                ],
     {{container_env}}
-    "livenessProbe": {
-      "httpGet": {
-        "host": "127.0.0.1",
-        "port": 10252,
-        "path": "/healthz"
-      },
-      "initialDelaySeconds": 15,
-      "timeoutSeconds": 15
-    },
     "volumeMounts": [
         {{cloud_config_mount}}
         {{additional_cloud_config_mount}}
@@ -48,9 +39,8 @@
         "readOnly": true},
         {{flexvolume_hostpath_mount}}
         { "name": "logfile",
-        "mountPath": "/var/log/kube-controller-manager.log",
+        "mountPath": "/var/log/arktos-network-controller.log",
         "readOnly": false},
-        {{defaulttemplate_hostpath_mount}}
         { "name": "etcssl",
         "mountPath": "/etc/ssl",
         "readOnly": true},
@@ -80,10 +70,9 @@
   {{flexvolume_hostpath}}
   { "name": "logfile",
     "hostPath": {
-        "path": "/var/log/kube-controller-manager.log",
+        "path": "/var/log/arktos-network-controller.log",
         "type": "FileOrCreate"}
   },
-  {{defaulttemplate_hostpath}}
   { "name": "etcssl",
     "hostPath": {
         "path": "/etc/ssl"}

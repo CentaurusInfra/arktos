@@ -91,6 +91,22 @@ if [[ "${NODE_OS_DISTRIBUTION}" == "debian" ]]; then
     NODE_ACCELERATORS=""
 fi
 
+# Networking plugin specific settings.
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  NETWORK_PROVIDER_VERSION="dev"
+  NETWORK_POLICY_PROVIDER="mizar"
+  CNI_BIN_DIR="/opt/cni/bin"
+  KUBE_CONTAINER_RUNTIME="docker"
+  # Mizar currently needs ubuntu due to python dependencies
+  KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
+  KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
+  KUBE_GCI_VERSION="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_MASTER_IMAGE="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_NODE_IMAGE="ubuntu-2004-focal-v20211202"
+fi
+
 # To avoid failing large tests due to some flakes in starting nodes, allow
 # for a small percentage of nodes to not start during cluster startup.
 ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
@@ -100,7 +116,7 @@ ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 # you are updating the os image versions, update this variable.
 # Also please update corresponding image for node e2e at:
 # https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/jenkins/image-config.yaml
-GCI_VERSION=${KUBE_GCI_VERSION:-cos-73-11647-163-0}
+GCI_VERSION=${KUBE_GCI_VERSION:-cos-93-16623-39-21}
 MASTER_IMAGE=${KUBE_GCE_MASTER_IMAGE:-}
 MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-cos-cloud}
 NODE_IMAGE=${KUBE_GCE_NODE_IMAGE:-${GCI_VERSION}}
@@ -255,6 +271,7 @@ DOCKER_TEST_LOG_LEVEL="${DOCKER_TEST_LOG_LEVEL:---log-level=info}"
 API_SERVER_TEST_LOG_LEVEL="${API_SERVER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 CONTROLLER_MANAGER_TEST_LOG_LEVEL="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL="${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
+ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL="${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 SCHEDULER_TEST_LOG_LEVEL="${SCHEDULER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 KUBEPROXY_TEST_LOG_LEVEL="${KUBEPROXY_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 
@@ -346,6 +363,25 @@ if [[ ! -z "${NODE_ACCELERATORS}" ]]; then
     fi
 fi
 
+# Arktos specific network and service support is a feature that each
+ # pod is associated to certain network, which has its own DNS service.
+ # By default, this feature is enabled in the dev cluster started by this script.
+DISABLE_NETWORK_SERVICE_SUPPORT="${DISABLE_NETWORK_SERVICE_SUPPORT:-}"
+ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
+
+# check for network service support flags
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+
+  # tenant controller automatically creates a default network resource for new tenant
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
+fi
+
 # Optional: Install cluster DNS.
 # Set CLUSTER_DNS_CORE_DNS to 'false' to install kube-dns instead of CoreDNS.
 CLUSTER_DNS_CORE_DNS="${CLUSTER_DNS_CORE_DNS:-true}"
@@ -378,6 +414,7 @@ NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS="${NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS:-}"
 
 CNI_VERSION="${CNI_VERSION:-}"
 CNI_SHA1="${CNI_SHA1:-}"
+CNI_BIN_DIR="${CNI_BIN_DIR:-/home/kubernetes/bin}"
 
 # Optional: Create autoscaler for cluster's nodes.
 ENABLE_CLUSTER_AUTOSCALER="${KUBE_ENABLE_CLUSTER_AUTOSCALER:-false}"
@@ -447,6 +484,9 @@ if [[ -z "${KUBE_ADMISSION_CONTROL:-}" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
     ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
   fi
+  if [[ -z ${DISABLE_NETWORK_SERVICE_SUPPORT:-} ]]; then # when network service is enabled
+    ADMISSION_CONTROL="${ADMISSION_CONTROL},DeploymentNetwork"
+  fi
   # ResourceQuota must come last, or a creation is recorded, but the pod may be forbidden.
   ADMISSION_CONTROL="${ADMISSION_CONTROL},MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"
 else
@@ -468,8 +508,6 @@ TEST_CLUSTER="${TEST_CLUSTER:-true}"
 STORAGE_BACKEND=${STORAGE_BACKEND:-}
 # Storage media type: application/json and application/vnd.kubernetes.protobuf are supported.
 STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-}
-
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet, cni
 
 # Network Policy plugin specific settings.
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-bridge}" # calico, flannel, bridge
@@ -596,7 +634,7 @@ GCE_UPLOAD_KUBCONFIG_TO_MASTER_METADATA=true
 
 # ScaleOut arch vars
 PROXY_IMAGE_PROJECT=${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}
-PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}
+PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-2004-focal-v20211202}
 PROXY_NAME="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 ARKTOS_SCALEOUT_PROXY_APP="${ARKTOS_SCALEOUT_PROXY_APP:-haproxy}"

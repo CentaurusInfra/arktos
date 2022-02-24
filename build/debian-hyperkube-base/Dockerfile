@@ -27,6 +27,7 @@ RUN ln -s /hyperkube /apiserver \
  && ln -s /hyperkube /usr/local/bin/kube-apiserver \
  && ln -s /hyperkube /usr/local/bin/kube-controller-manager \
  && ln -s /hyperkube /usr/local/bin/workload-controller-manager \
+ && ln -s /hyperkube /usr/local/bin/arktos-network-controller \
  && ln -s /hyperkube /usr/local/bin/kube-proxy \
  && ln -s /hyperkube /usr/local/bin/kube-scheduler \
  && ln -s /hyperkube /usr/local/bin/kubectl \

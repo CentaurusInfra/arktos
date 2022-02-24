@@ -56,13 +56,15 @@ EOF
 }
 
 function validate-python {
-  local ver=$(python -c"import sys; print(sys.version_info.major)")
-  echo "python version: $ver"
-  if [[ $ver -ne 2 && $ver -ne 3 ]]; then
+  local ver=$(python3 -c"import sys; print(sys.version_info.major)")
+  echo "python3 version: $ver"
+  if [[ $ver -ne 3 ]]; then
     apt -y update
-    apt install -y python
-    apt install -y python-pip
+    apt install -y python3
+    apt install -y python3-pip
     pip install pyyaml
+  else
+    echo "python3: $ver is running.."
   fi
 }
 
@@ -76,9 +78,10 @@ function download-kube-env {
       -o "${tmp_kube_env}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-env
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k, v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_env}" > "${KUBE_HOME}/kube-env")
     rm -f "${tmp_kube_env}"
@@ -208,9 +211,10 @@ function download-kube-master-certs {
       -o "${tmp_kube_master_certs}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-master-certs
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k,v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_master_certs}" > "${KUBE_HOME}/kube-master-certs")
     rm -f "${tmp_kube_master_certs}"
@@ -230,6 +234,23 @@ function download-controller-config {
         http://metadata.google.internal/computeMetadata/v1/instance/attributes/controllerconfig; then
       # only write to the final location if curl succeeds
       mv ${tmp_controller_config} ${dest}
+    fi
+  )
+}
+
+function download-network-template {
+  local -r dest="$1"
+  echo "Downloading network template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_network_template="/tmp/network.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_network_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/networktemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_network_template} ${dest}
     fi
   )
 }
@@ -265,7 +286,7 @@ function validate-hash {
 # Get default service account credentials of the VM.
 GCE_METADATA_INTERNAL="http://metadata.google.internal/computeMetadata/v1/instance"
 function get-credentials {
-  curl "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python -c \
+  curl  --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python3 -c \
     'import sys; import json; print(json.loads(sys.stdin.read())["access_token"])'
 }
 
@@ -376,6 +397,14 @@ function install-node-problem-detector {
 function install-cni-network {
   mkdir -p /etc/cni/net.d
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    mizar)
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      setup-mizar-cni-conf
+      install-mizar-cni-bin
+    else
+      download-mizar-cni-yaml
+    fi
+    ;;
     flannel)
     setup-flannel-cni-conf
     install-flannel-yml
@@ -384,6 +413,34 @@ function install-cni-network {
     setup-bridge-cni-conf
     ;;
   esac
+}
+
+function setup-mizar-cni-conf {
+  cat > /etc/cni/net.d/10-mizarcni.conf <<EOF
+{
+        "cniVersion": "0.3.1",
+        "name": "mizarcni",
+        "type": "mizarcni"
+}
+EOF
+}
+
+function install-mizar-cni-bin {
+  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v0.9/mizarcni -O ${KUBE_BIN}/mizarcni
+  else
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
+  fi
+  chmod +x ${KUBE_BIN}/mizarcni
+}
+
+function download-mizar-cni-yaml {
+  mkdir -p ${KUBE_HOME}/mizar
+  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+    wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  else
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  fi
 }
 
 function setup-bridge-cni-conf {
@@ -460,8 +517,10 @@ function install-cni-binaries {
   download-or-bust "${cni_sha1}" "https://storage.googleapis.com/kubernetes-release/network-plugins/${cni_tar}"
   local -r cni_dir="${KUBE_HOME}/cni"
   mkdir -p "${cni_dir}/bin"
+  mkdir -p "${CNI_BIN_DIR}"
   tar xzf "${KUBE_HOME}/${cni_tar}" -C "${cni_dir}/bin" --overwrite
-  mv "${cni_dir}/bin"/* "${KUBE_BIN}"
+  cp -f "${cni_dir}/bin"/* "${KUBE_BIN}" #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
+  mv "${cni_dir}/bin"/* "${CNI_BIN_DIR}"
   rmdir "${cni_dir}/bin"
   rm -f "${KUBE_HOME}/${cni_tar}"
 }
@@ -590,6 +649,10 @@ function load-docker-images {
     try-load-docker-image "${img_dir}/kube-controller-manager.tar"
     try-load-docker-image "${img_dir}/kube-scheduler.tar"
     try-load-docker-image "${img_dir}/workload-controller-manager.tar"
+    try-load-docker-image "${img_dir}/arktos-network-controller.tar"
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      try-load-docker-image "${img_dir}/kube-proxy.tar"
+    fi
   else
     try-load-docker-image "${img_dir}/kube-proxy.tar"
   fi
@@ -627,11 +690,22 @@ function install-kube-binary-config {
       cp "${src_dir}/kube-controller-manager.tar" "${dst_dir}"
       cp "${src_dir}/kube-scheduler.tar" "${dst_dir}"
       cp "${src_dir}/workload-controller-manager.tar" "${dst_dir}"
+      cp "${src_dir}/arktos-network-controller.tar" "${dst_dir}"
       cp -r "${KUBE_HOME}/kubernetes/addons" "${dst_dir}"
+      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+        cp "${src_dir}/kube-proxy.tar" "${dst_dir}"
+      fi
     fi
     load-docker-images
     mv "${src_dir}/kubelet" "${KUBE_BIN}"
     mv "${src_dir}/kubectl" "${KUBE_BIN}"
+
+    if [ ! -f /usr/bin/kubectl ]; then
+      cp ${KUBE_BIN}/kubectl /usr/bin/
+    fi
+    if [ ! -f /usr/bin/kubelet ]; then
+      cp ${KUBE_BIN}/kubelet /usr/bin/
+    fi
 
     mv "${KUBE_HOME}/kubernetes/LICENSES" "${KUBE_HOME}"
     mv "${KUBE_HOME}/kubernetes/kubernetes-src.tar.gz" "${KUBE_HOME}"
@@ -643,6 +717,7 @@ function install-kube-binary-config {
   fi
 
   if [[ "${NETWORK_PROVIDER:-}" == "kubenet" ]] || \
+     [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] || \
      [[ "${NETWORK_PROVIDER:-}" == "cni" ]]; then
     install-cni-binaries
     install-cni-network
@@ -670,6 +745,27 @@ function install-kube-binary-config {
   rm -rf "${KUBE_HOME}/kubernetes"
   rm -f "${KUBE_HOME}/${server_binary_tar}"
   rm -f "${KUBE_HOME}/${server_binary_tar}.sha1"
+}
+
+function ensure-mizar-kernel-and-ifname() {
+  sed -i "s/set-name: .*/set-name: eth0/" /etc/netplan/50-cloud-init.yaml
+  local kernel_ver=`uname -r`
+  echo "Running kernel version: $kernel_ver"
+  local mj_ver=$(echo $kernel_ver | cut -d. -f1)
+  local mn_ver=$(echo $kernel_ver | cut -d. -f2)
+  if [[ "$mj_ver" < "5" ]] || [[ "$mn_ver" < "6" ]]; then
+    echo "Mizar requires an updated kernel: linux-5.6-rc2 or above for TCP to function correctly. Current version is $kernel_ver. Updating.."
+    local mz_kernel_tmp_dir="/tmp/linux-5.6-rc2"
+    mkdir -p $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-headers-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2-dbg_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-libc-dev_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    sudo dpkg -i $mz_kernel_tmp_dir/*.deb
+    sudo reboot
+  else
+    echo "Kernel version needed by Mizar is running."
+  fi
 }
 
 # If we are on ubuntu we can try to install docker
@@ -811,8 +907,19 @@ validate-python
 download-kube-env
 source "${KUBE_HOME}/kube-env"
 
+# This hack is only needed because arktos does not support ubuntu 20.04 with latest kernels
+# When arktos adds support for 20.04 that has 5.11.0 kernel, we don't need to update kernel.
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
+  OS_VER=$(cat /etc/os-release | grep ^VERSION= | cut -d= -f2)
+  if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
+    ensure-mizar-kernel-and-ifname
+  fi
+fi
+
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-network-template "${KUBE_HOME}/network.tmpl"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
 if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
@@ -838,6 +945,5 @@ else
   # binaries and kube-system manifests
   install-kube-binary-config
 fi
-
 
 echo "Done for installing kubernetes files"

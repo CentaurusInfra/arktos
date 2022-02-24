@@ -84,8 +84,8 @@ function create-proxy-instance-internal() {
       --project "${PROJECT}" \
       --zone "${ZONE}" \
       --machine-type "${MASTER_SIZE}" \
-      --image-project="${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}" \
-      --image "${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}" \
+      --image-project="${PROXY_IMAGE_PROJECT}" \
+      --image "${PROXY_IMAGE}" \
       --tags "${PROXY_TAG}" \
       --scopes "storage-ro,compute-rw,monitoring,logging-write" \
       --metadata-from-file "${metadata}" \
@@ -160,6 +160,9 @@ function create-scaleoutserver-instance-internal() {
   metadata="${metadata},kube-master-certs=${KUBE_TEMP}/kube-master-certs.yaml"
   metadata="${metadata},cluster-location=${KUBE_TEMP}/cluster-location.txt"
   metadata="${metadata},controllerconfig=${KUBE_TEMP}/controllerconfig.json"
+  if [[ -s ${KUBE_TEMP}/network.tmpl ]]; then
+    metadata="${metadata},networktemplate=${KUBE_TEMP}/network.tmpl"
+  fi
   metadata="${metadata},${MASTER_EXTRA_METADATA}"
 
   local disk="name=${server_name}-pd"
