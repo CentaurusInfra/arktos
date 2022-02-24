@@ -426,15 +426,9 @@ EOF
 }
 
 function install-mizar-cni-bin {
-  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
-    wget https://github.com/CentaurusInfra/mizar/releases/download/v0.9/mizarcni -O ${KUBE_BIN}/mizarcni
-  else
-    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/mizarcni -O ${KUBE_BIN}/mizarcni
-  fi
-  chmod +x ${KUBE_BIN}/mizarcni
-  #BUGBUG: This is a hack around arktos runtime hardcoding of CNI bin dir
+  # create folder only here
+  # mizar will be installed via daemonset or other means later
   mkdir -p /opt/cni/bin
-  cp -f ${KUBE_BIN}/mizarcni /opt/cni/bin/
 }
 
 function download-mizar-cni-yaml {
