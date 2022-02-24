@@ -62,6 +62,8 @@ message BuiltinsServiceMessage {
   string namespace = 3;
   string tenant = 4;
   string ip = 5;
+  string vpc = 6;
+  string subnet = 7;
 }
 
 message BuiltinsServiceEndpointMessage {

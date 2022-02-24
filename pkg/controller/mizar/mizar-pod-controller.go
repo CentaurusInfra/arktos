@@ -243,12 +243,6 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 		}
 		klog.V(4).Infof("Get network %s - VPCID: %s.", network.Name, network.Spec.VPCID)
 
-		vpc := network.Spec.VPCID
-		if len(vpc) == 0 {
-			vpc = fmt.Sprintf("%s%s", tenant, vpcSuffix)
-		}
-		subnet := fmt.Sprintf("%s%s", vpc, subnetSuffix)
-
 		_, vpcNameOk := obj.Annotations[mizarAnnotationsVpcKey]
 		_, subnetNameOk := obj.Annotations[mizarAnnotationsSubnetKey]
 
@@ -258,13 +252,18 @@ func (c *MizarPodController) handle(keyWithEventType KeyWithEventType) error {
 			if obj.Annotations == nil {
 				obj.Annotations = make(map[string]string)
 			}
-			obj.Annotations[mizarAnnotationsVpcKey] = vpc
-			obj.Annotations[mizarAnnotationsSubnetKey] = subnet
+			obj.Annotations[mizarAnnotationsVpcKey] = getVPC(network)
+			obj.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(network.Spec.VPCID)
 			klog.V(4).Infof("Pod %s/%s/%s - The annotation for mizar vpc and subnet are not empty. Skipping", tenant, namespace, name)
 
-			_, err := c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
+			_, err = c.kubeClient.CoreV1().PodsWithMultiTenancy(obj.Namespace, obj.Tenant).Update(obj)
 			if err != nil {
 				klog.Errorf("Pod %s/%s/%s - update pod's annotation to API server got error (%v)", tenant, namespace, name, err)
+				if eventType == EventType_Create {
+					c.createObj(obj)
+				} else { // Update
+					c.queue.Add(KeyWithEventType{Key: key, EventType: EventType_Update, ResourceVersion: obj.ResourceVersion})
+				}
 				return err
 			}
 			klog.V(4).Infof("Pod %s/%s/%s - update pod's annotation to API server successfully", tenant, namespace, name)
@@ -301,4 +300,16 @@ func processPodGrpcReturnCode(c *MizarPodController, returnCode *ReturnCode, key
 	default:
 		klog.Errorf("unimplemented for CodeType %v", returnCode.Code)
 	}
+}
+
+func getSubnetNameFromVPC(vpc string) string {
+	return fmt.Sprintf("%s%s", vpc, subnetSuffix)
+}
+
+func getVPC(network *arktosextv1.Network) string {
+	vpc := network.Spec.VPCID
+	if len(vpc) == 0 {
+		vpc = fmt.Sprintf("%s%s", network.Tenant, vpcSuffix)
+	}
+	return vpc
 }
