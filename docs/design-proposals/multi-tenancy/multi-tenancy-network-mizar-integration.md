@@ -78,6 +78,17 @@ metadata:
     mizar.com/subnet: "<subnet name>"
 ```
 
+* Service Spec
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: <service name>
+  annotations:
+    mizar.com/vpc: "<vpc name>"
+    mizar.com/subnet: "<subnet name>"
+```
+
 ### 3.2 Related Arktos Specs <a name="arktos-spec"></a>
 * Network Spec
 ```
@@ -150,21 +161,22 @@ spec:
 
 
 4. Client creates pod for tenant
-5. Mizar-pod-controller (existing controller) gets VPC and subnet from arktos network object and annotate pod
+5. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
+6. Client creates service for tenant
+7. Mizar-service-controller gets VPC and subnet from arktos network object and annotate service 
 
 Note:
 1. In 2022-01-30 release cycle, only one VPC and one subnet will be supported in Mizar-Arktos integration. Hence only 
 default VPC and default subnet will be supported.
-2. Highlighted text described what needs to be done in 2022-01-30 release cycle. Others are existing logic.
-3. It is better simplify pod spec and not add multiple labels/annotations into pod spec for same network configuration. However, in order to 
-minimize changes in Mizar, Arktos will check whether it is possible to not annotate pod with Mizar VPC/Subnet. If it is not possible, Arktos
-will annotate pod with Mizar VPC/Subnet in relase cycle 2022-01-30.
+2. Ideally, service ip should be within the VPC ip range assigned to the service. However, this logic is not implemented in Mizar and there might need significant changes in arktos to support it. This also caused API server cannot be accessed from non system pods. [Issue 1378]((https://github.com/CentaurusInfra/arktos/issues/1378)) is recorded and will be resolved after 130 release. 
 
 #### 3.3.2 Workflow for secondary VPC and subnet in tenant <a name="vpc-creation-second-vpc-wf"></a>
 1. **Client creates secondary network object for tenant**
 2. Mizar-arktos-network-controller creates Mizar VPC and subnet, update corresponding arktos network object
 3. Client creates pod for tenant, **specifying which network object it will be referring to**
 4. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
+5. Client creates service for tenant, **specifying which network object it will be referring to**
+6. Mizar-service-controller gets VPC and subnet from arktos network object and annotate service
 
 **Note**: This is not planned in 2022-01-30 release cycle.
 
@@ -173,6 +185,8 @@ will annotate pod with Mizar VPC/Subnet in relase cycle 2022-01-30.
 2. Mizar-arktos-network-controller **creates Mizar subnet**
 3. Client creates pod for tenant, specifying which network object it will be referring to
 4. Mizar-pod-controller gets VPC and subnet from arktos network object and annotate pod
+5. Client creates service for tenant, **specifying which network object it will be referring to**
+6. Mizar-service-controller gets VPC and subnet from arktos network object and annotate service
 
 **Note**: This is a non-goal in 2022-01-30 release cycle as subnets in same VPC do not isolate from others and behave the same as 
 in a single subnet.
