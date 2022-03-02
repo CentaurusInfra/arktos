@@ -623,7 +623,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
   fi
   if [ "${IS_RESOURCE_PARTITION}" != "true" ]; then
      kube::common::start_kubescheduler
-     start_kubedns
+     # start_kubedns
   fi  
   if [[ "${ENABLE_NODELOCAL_DNS:-}" == "true" ]]; then
     start_nodelocaldns
