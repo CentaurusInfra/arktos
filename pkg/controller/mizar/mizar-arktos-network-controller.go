@@ -253,17 +253,15 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 }
 
 func generateVPCSpec(vpcName string) (int, *MizarVPC) {
+	// TODO: this is a quick solution to randomize VPC start ip address. Due to variously reasons, Arktos
+	//   needs randomize VPC start ip to prevent service ip collision for now.
+	// This is a simplified version to avoid reserved internal address - however, it may collision with real external ip address.
+	// Will log as an issue and solve in the future
 	// randomize ip start segment:
-	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
+	ipStart := ran.Intn(100) + 11 // IpStart range [11, 99] - 20
 
-	// 224.x.x.x - 239.x.x.x is reserved for IPv4 multicast
-	// https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml
-	if ipStart >= 224 && ipStart <= 239 {
-		ipStart %= 224
-	}
-
-	// Simply not allow ip start from 10, 172, 192, 100 for well-known private range
-	if ipStart == 0 || ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
+	// Exclude 20 as it is used by mizar internally
+	if ipStart == 20 {
 		ipStart++
 	}
 
