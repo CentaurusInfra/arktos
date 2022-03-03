@@ -23,31 +23,34 @@ import (
 )
 
 func TestGenerateVPCSpec(t *testing.T) {
-	ipStart, vpcSpec := generateVPCSpec("vpc1")
-	verifyIpStart(t, ipStart)
-	verifyVPCSpec(t, vpcSpec)
+	for i := 0; i < 1000; i++ {
+		ipStart, vpcSpec := generateVPCSpec("vpc1")
+		verifyIpStart(t, ipStart)
+		verifyVPCSpec(t, vpcSpec)
 
-	vpcJsonData, err := json.Marshal(vpcSpec)
-	assert.Nil(t, err, "Unexpected marshalling error")
-	var unmarshallData MizarVPC
-	err = json.Unmarshal(vpcJsonData, &unmarshallData)
-	assert.Nil(t, err, "Unexpected unmarshalling error")
-	assert.Equal(t, vpcSpec.APIVersion, unmarshallData.APIVersion)
-	assert.Equal(t, vpcSpec.Kind, unmarshallData.Kind)
-	assert.Equal(t, vpcSpec.Metadata.Name, unmarshallData.Metadata.Name)
-	assert.Equal(t, vpcSpec.Spec.IP, unmarshallData.Spec.IP)
-	assert.Equal(t, vpcSpec.Spec.Prefix, unmarshallData.Spec.Prefix)
-	assert.Equal(t, vpcSpec.Spec.Divider, unmarshallData.Spec.Divider)
-	assert.Equal(t, vpcSpec.Spec.Status, unmarshallData.Spec.Status)
+		vpcJsonData, err := json.Marshal(vpcSpec)
+		assert.Nil(t, err, "Unexpected marshalling error")
+		var unmarshallData MizarVPC
+		err = json.Unmarshal(vpcJsonData, &unmarshallData)
+		assert.Nil(t, err, "Unexpected unmarshalling error")
+		assert.Equal(t, vpcSpec.APIVersion, unmarshallData.APIVersion)
+		assert.Equal(t, vpcSpec.Kind, unmarshallData.Kind)
+		assert.Equal(t, vpcSpec.Metadata.Name, unmarshallData.Metadata.Name)
+		assert.Equal(t, vpcSpec.Spec.IP, unmarshallData.Spec.IP)
+		assert.Equal(t, vpcSpec.Spec.Prefix, unmarshallData.Spec.Prefix)
+		assert.Equal(t, vpcSpec.Spec.Divider, unmarshallData.Spec.Divider)
+		assert.Equal(t, vpcSpec.Spec.Status, unmarshallData.Spec.Status)
+	}
 }
 
 func verifyIpStart(t *testing.T, ipStart int) {
-	assert.True(t, ipStart >= 1, "VPC started should be in range [1, 255]")
-	assert.True(t, ipStart <= 255, "VPC started should be in range [1, 255]")
-	assert.True(t, ipStart != 10, "VPC cannot start with 10.x.x.x")
-	assert.True(t, ipStart != 172, "VPC cannot start with 172.x.x.x")
-	assert.True(t, ipStart != 192, "VPC cannot start with 192.x.x.x")
-	assert.True(t, ipStart != 100, "VPC cannot start with 100.x.x.x")
+	assert.True(t, ipStart >= 1, "VPC started should be in range [1, 255], got %d", ipStart)
+	assert.True(t, ipStart <= 255, "VPC started should be in range [1, 255], got %d", ipStart)
+	assert.True(t, ipStart != 10, "VPC cannot start with 10.x.x.x, got %d", ipStart)
+	assert.True(t, ipStart != 172, "VPC cannot start with 172.x.x.x, got %d", ipStart)
+	assert.True(t, ipStart != 192, "VPC cannot start with 192.x.x.x, got %d", ipStart)
+	assert.True(t, ipStart != 100, "VPC cannot start with 100.x.x.x, got %d", ipStart)
+	assert.True(t, ipStart < 224 || ipStart > 239, "VPC cannot start with 224-239.x.x.x, got %d", ipStart)
 }
 
 func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
