@@ -255,8 +255,15 @@ func createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) err
 func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	// randomize ip start segment:
 	ipStart := ran.Intn(255) + 1 // IpStart range [1, 255]
+
+	// 224.x.x.x - 239.x.x.x is reserved for IPv4 multicast
+	// https://www.iana.org/assignments/multicast-addresses/multicast-addresses.xhtml
+	if ipStart >= 224 && ipStart <= 239 {
+		ipStart %= 224
+	}
+
 	// Simply not allow ip start from 10, 172, 192, 100 for well-known private range
-	if ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
+	if ipStart == 0 || ipStart == 10 || ipStart == 172 || ipStart == 192 || ipStart == 100 {
 		ipStart++
 	}
 
