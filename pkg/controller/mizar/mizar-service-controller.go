@@ -245,7 +245,7 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 		service.Annotations[mizarAnnotationsVpcKey] = getVPC(tenantDefaultNetwork)
 		service.Annotations[mizarAnnotationsSubnetKey] = getSubnetNameFromVPC(tenantDefaultNetwork.Spec.VPCID)
 		_, err := c.kubeClientset.CoreV1().ServicesWithMultiTenancy(service.Namespace, service.Tenant).Update(service)
-		klog.V(4).Infof("Add mizar annotation for service %s/%s/%s. error %v", key, err)
+		klog.V(4).Infof("Add mizar annotation for service %s. error %v", key, err)
 		if err != nil {
 			return errors.New(fmt.Sprintf("update service %s mizar annotation got error (%v)", key, err))
 		}
@@ -303,7 +303,7 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 			}
 		}
 	case CodeType_TEMP_ERROR:
-		klog.Warningf("Mizar hit temporary error for service creation for service: %s.")
+		klog.Warningf("Mizar hit temporary error for service creation for service: %s.", key)
 		return errors.New("Service creation failed on mizar side, will try again.....")
 	case CodeType_PERM_ERROR:
 		klog.Errorf("Mizar hit permanent error for service creation for service: %s.", key)
@@ -323,7 +323,7 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 			return err
 		}
 	} else if service.Spec.ClusterIP != ip {
-		klog.Warningf("Service %s cluster ip %s is different from mizar assigned ip %s", key, ip)
+		klog.Warningf("Service %s cluster ip %s is different from mizar assigned ip %s", key, service.Spec.ClusterIP, ip)
 	}
 
 	return nil
