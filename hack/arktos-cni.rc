@@ -33,7 +33,8 @@ setup_cni_conf() {
 
     echo "copying ${conf_source_file} to ${conf_target_file}..."
     local cni_conf_dir=$(dirname ${conf_target_file})
-    local backup_dir="/var/backups/$(basename ${cni_conf_dir})_"$(date -d "today" +"%Y%m%d%H%M")
+    local backup_dir_prefix="/var/backups"
+    local backup_dir="${backup_dir_prefix}/$(basename ${cni_conf_dir})_"$(date -d "today" +"%Y%m%d%H%M")
     test -d ${cni_conf_dir} && sudo mv ${cni_conf_dir} ${backup_dir}
     sudo mkdir -p ${cni_conf_dir}
     sudo cp ${conf_source_file} ${conf_target_file}
@@ -67,10 +68,10 @@ install_cni_bridge() {
 }
 
 cleanup_cni_mizar() {
-    sudo rm -rf /opt/cni/bin/
+    sudo rm -rf "${cni_bin_dir}"
     [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
     [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
-    sudo find /etc/cni/net.d/ -type f -not -name '10-mizarcni.conf' -delete
+    sudo find ${cni_conf_dir}/ -type f -not -name '10-mizarcni.conf' -delete
 }
 
 build_alktron() {

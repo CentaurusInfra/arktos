@@ -20,31 +20,31 @@ die() { echo "$*" 1>&2 ; exit 1; }
 echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
-OPT_CNI_BIN=/opt/cni/bin
-ETC_CNI_NET_DIR=/etc/cni/net.d
-echo "Clean up two directories $OPT_CNI_BIN and $ETC_CNI_NET_DIR ......"
+CNI_BIN_DIR=/opt/cni/bin
+CNI_CONF_DIR=/etc/cni/net.d
+echo "Clean up two directories $CNI_BIN_DIR and $CNI_CONF_DIR ......"
 
-if [[ ! -d "${ETC_CNI_NET_DIR}" ]]; then
-   mkdir -p "${ETC_CNI_NET_DIR}" &>/dev/null || sudo mkdir -p "${ETC_CNI_NET_DIR}"
+if [[ ! -d "${CNI_CONF_DIR}" ]]; then
+   mkdir -p "${CNI_CONF_DIR}" &>/dev/null || sudo mkdir -p "${CNI_CONF_DIR}"
 fi
-CNI_SUDO=$(test -w "${ETC_CNI_NET_DIR}" || echo "sudo")
+CNI_SUDO=$(test -w "${CNI_CONF_DIR}" || echo "sudo")
 
-if ${CNI_SUDO} test -f $ETC_CNI_NET_DIR/bridge.conf; then
-  ${CNI_SUDO} rm -f $ETC_CNI_NET_DIR/bridge.conf
+if ${CNI_SUDO} test -f $CNI_CONF_DIR/bridge.conf; then
+  ${CNI_SUDO} rm -f $CNI_CONF_DIR/bridge.conf
 fi
-if ${CNI_SUDO} test -f $ETC_CNI_NET_DIR/10-flannel.conflist; then
-  ${CNI_SUDO} rm -f $ETC_CNI_NET_DIR/10-flannel.conflist
+if ${CNI_SUDO} test -f $CNI_CONF_DIR/10-flannel.conflist; then
+  ${CNI_SUDO} rm -f $CNI_CONF_DIR/10-flannel.conflist
 fi
-if ${CNI_SUDO} test -f $ETC_CNI_NET_DIR/10-mizarcni.conf; then
-  ${CNI_SUDO} rm -f $ETC_CNI_NET_DIR/10-mizarcni.conf
+if ${CNI_SUDO} test -f $CNI_CONF_DIR/10-mizarcni.conf; then
+  ${CNI_SUDO} rm -f $CNI_CONF_DIR/10-mizarcni.conf
 fi
-${CNI_SUDO} ls -alg $ETC_CNI_NET_DIR
+${CNI_SUDO} ls -alg $CNI_CONF_DIR
 
-if [[ ! -d "${OPT_CNI_BIN}" ]]; then
-   mkdir -p "${OPT_CNI_BIN}" &>/dev/null || sudo mkdir -p "${OPT_CNI_BIN}"
+if [[ ! -d "${CNI_BIN_DIR}" ]]; then
+   mkdir -p "${CNI_BIN_DIR}" &>/dev/null || sudo mkdir -p "${CNI_BIN_DIR}"
 fi
-${CNI_SUDO} rm -f $OPT_CNI_BIN/*
-${CNI_SUDO} ls -alg $OPT_CNI_BIN
+${CNI_SUDO} rm -f $CNI_BIN_DIR/*
+${CNI_SUDO} ls -alg $CNI_BIN_DIR
 
 # install cni plugin related packages
 KUBE_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
