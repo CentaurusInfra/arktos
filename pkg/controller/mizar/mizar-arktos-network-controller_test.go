@@ -44,7 +44,7 @@ func TestGenerateVPCSpec(t *testing.T) {
 }
 
 func verifyIpStart(t *testing.T, ipStart int) {
-	assert.True(t, ipStart >= 1, "VPC started should be in range [11, 20) or [21, 99], got %d", ipStart)
+	assert.True(t, ipStart >= 11 && ipStart <= 99 && ipStart != 20, "VPC started should be in range [11, 20) or [21, 99], got %d", ipStart)
 }
 
 func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {

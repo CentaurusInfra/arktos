@@ -258,7 +258,7 @@ func generateVPCSpec(vpcName string) (int, *MizarVPC) {
 	// This is a simplified version to avoid reserved internal address - however, it may collision with real external ip address.
 	// Will log as an issue and solve in the future
 	// randomize ip start segment:
-	ipStart := ran.Intn(100) + 11 // IpStart range [11, 99] - 20
+	ipStart := ran.Intn(89) + 11 // IpStart range [11, 99] - 20
 
 	// Exclude 20 as it is used by mizar internally
 	if ipStart == 20 {
