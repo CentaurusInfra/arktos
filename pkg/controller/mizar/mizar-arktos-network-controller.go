@@ -63,14 +63,24 @@ type MizarArktosNetworkController struct {
 	recorder            record.EventRecorder
 	grpcHost            string
 	grpcAdaptor         IGrpcAdaptor
+
+	// Temporary solution for mizar VPC range cannot overlapping issue
+	// VPC range inclusive [vpcRangeStart, vpcRangeEnd] - cannot have overlapping across TPs
+	vpcRangeStart int
+	vpcRangeEnd   int
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
-func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset, networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor) *MizarArktosNetworkController {
+func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClientset *arktos.Clientset, kubeClientset *kubernetes.Clientset,
+	networkInformer arktosinformer.NetworkInformer, grpcHost string, grpcAdaptor IGrpcAdaptor, vpcRangeStart int, vpcRangeEnd int) *MizarArktosNetworkController {
 	utilruntime.Must(arktoscheme.AddToScheme(scheme.Scheme))
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
 	eventBroadcaster.StartRecordingToSink(&v1core.EventSinkImpl{Interface: kubeClientset.CoreV1().EventsWithMultiTenancy(metav1.NamespaceAll, metav1.TenantAll)})
+
+	if !isValidVPCRange(vpcRangeStart, vpcRangeEnd) {
+		klog.Fatalf("Invalid VPC range [%d, %d]", vpcRangeStart, vpcRangeEnd)
+	}
 
 	c := &MizarArktosNetworkController{
 		dynamicClient:       dynamicClient,
@@ -81,6 +91,8 @@ func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClients
 		recorder:            eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: "mizar-arktos-network-controller"}),
 		grpcHost:            grpcHost,
 		grpcAdaptor:         grpcAdaptor,
+		vpcRangeStart:       vpcRangeStart,
+		vpcRangeEnd:         vpcRangeEnd,
 	}
 
 	networkInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
@@ -311,4 +323,18 @@ func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, err
 	}
 
 	return json.Marshal(subnet)
+}
+
+// Currently only allows [11-99], mizar default VPC 20 will be excluded implicitly
+func isValidVPCRange(rangeStart, rangeEnd int) bool {
+	if rangeStart < 10 || rangeStart > 99 {
+		return false
+	}
+	if rangeEnd < 10 || rangeEnd > 99 {
+		return false
+	}
+	if rangeStart < rangeEnd {
+		return false
+	}
+	return true
 }
