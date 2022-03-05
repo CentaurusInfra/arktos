@@ -44,6 +44,9 @@ export ALLOW_PRIVILEGED=true
 # onebox has option to choose cni plugin: bridge(default), alktron(neutron integration), mizar
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 
+VPC_RANGE_START=${VPC_RANGE_START:-11}
+VPC_RANGE_END=${VPC_RANGE_END:-99}
+
 # This command builds and runs a local kubernetes cluster.
 # You may need to run this as root to allow kubelet to open docker's socket,
 # and to write the test CA in /var/run/kubernetes.
