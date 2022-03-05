@@ -84,6 +84,9 @@ type KubeControllerManagerOptions struct {
 	TenantController                 *TenantControllerOptions
 	TTLAfterFinishedController       *TTLAfterFinishedControllerOptions
 
+	// Temporary solution for mizar cniplugin
+	MizarArktosNetworkController *MizarArktosNetworkControllerOptions
+
 	SecureServing *apiserveroptions.SecureServingOptionsWithLoopback
 	// TODO: remove insecure serving mode
 	InsecureServing *apiserveroptions.DeprecatedInsecureServingOptionsWithLoopback
@@ -170,6 +173,9 @@ func NewKubeControllerManagerOptions() (*KubeControllerManagerOptions, error) {
 		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
 			&componentConfig.TTLAfterFinishedController,
 		},
+		MizarArktosNetworkController: &MizarArktosNetworkControllerOptions{
+			&componentConfig.MizarArktosNetworkController,
+		},
 		SecureServing: apiserveroptions.NewSecureServingOptions().WithLoopback(),
 		InsecureServing: (&apiserveroptions.DeprecatedInsecureServingOptions{
 			BindAddress: net.ParseIP(componentConfig.Generic.Address),
@@ -246,6 +252,7 @@ func (s *KubeControllerManagerOptions) Flags(allControllers []string, disabledBy
 	s.SAController.AddFlags(fss.FlagSet("serviceaccount controller"))
 	s.TenantController.AddFlags(fss.FlagSet("tenant controller"))
 	s.TTLAfterFinishedController.AddFlags(fss.FlagSet("ttl-after-finished controller"))
+	s.MizarArktosNetworkController.AddFlags(fss.FlagSet("mizar arktos network controller"))
 
 	fs := fss.FlagSet("misc")
 	fs.StringVar(&s.Master, "master", s.Master, "The address of the Kubernetes API server (overrides any value in kubeconfig).")
@@ -342,6 +349,10 @@ func (s *KubeControllerManagerOptions) ApplyTo(c *kubecontrollerconfig.Config) e
 		}
 	}
 
+	if err := s.MizarArktosNetworkController.ApplyTo(&c.ComponentConfig.MizarArktosNetworkController); err != nil {
+		return err
+	}
+
 	// sync back to component config
 	// TODO: find more elegant way than syncing back the values.
 	c.ComponentConfig.Generic.Port = int32(s.InsecureServing.BindPort)
@@ -381,6 +392,8 @@ func (s *KubeControllerManagerOptions) Validate(allControllers []string, disable
 	errs = append(errs, s.InsecureServing.Validate()...)
 	errs = append(errs, s.Authentication.Validate()...)
 	errs = append(errs, s.Authorization.Validate()...)
+
+	errs = append(errs, s.MizarArktosNetworkController.Validate()...)
 
 	// TODO: validate component config, master and kubeconfig
 

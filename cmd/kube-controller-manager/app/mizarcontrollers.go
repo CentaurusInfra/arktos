@@ -179,6 +179,8 @@ func startArktosNetworkController(ctx *ControllerContext, networkInformerFactory
 			networkInformerFactory.Arktos().V1().Networks(),
 			grpcHost,
 			grpcAdaptor,
+			int(ctx.ComponentConfig.MizarArktosNetworkController.VPCRangeStart),
+			int(ctx.ComponentConfig.MizarArktosNetworkController.VPCRangeEnd),
 		)
 
 		networkController.Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
