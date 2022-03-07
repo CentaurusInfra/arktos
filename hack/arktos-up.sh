@@ -45,7 +45,7 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 if [[ "${CNIPLUGIN}" == "mizar" ]]; then
-  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeOverlap=true"
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeNoOverlap=true"
 fi
 
 echo "DBG: ${CNIPLUGIN} CNI plugin will be installed AFTER cluster is up"

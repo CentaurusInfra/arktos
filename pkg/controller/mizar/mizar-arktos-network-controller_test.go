@@ -29,7 +29,7 @@ import (
 )
 
 func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
-	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeOverlap, true)()
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, true)()
 
 	fakeClient := func() *dynamicfakeclient.FakeDynamicClient{
 		return dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
@@ -96,7 +96,7 @@ func generateVPCUsedCache() *vpcUsedCache {
 
 func TestGenerateVPCSpecWithVPCRangeOverlap(t *testing.T) {
 	c := &MizarArktosNetworkController{}
-	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeOverlap, false)()
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, false)()
 
 	for i := 0; i < 1000; i++ {
 		ipStart, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")

@@ -115,7 +115,7 @@ func NewMizarArktosNetworkController(dynamicClient dynamic.Interface, netClients
 	c.networkListerSynced = networkInformer.Informer().HasSynced
 	c.syncHandler = c.syncNetwork
 
-	if utilfeature.DefaultFeatureGate.Enabled(features.MizarVPCRangeOverlap) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.MizarVPCRangeNoOverlap) {
 		klog.Infof("features MizarVPCRangeOverlap enabled")
 		if !isValidVPCRange(vpcRangeStart, vpcRangeEnd) {
 			klog.Fatalf("Invalid VPC range [%d, %d]", vpcRangeStart, vpcRangeEnd)
@@ -344,7 +344,7 @@ func (c *MizarArktosNetworkController) generateVPCSpec(vpcName string) (int, *Mi
 	// Will log as an issue and solve in the future
 	// randomize ip start segment:
 	var ipStart int
-	if utilfeature.DefaultFeatureGate.Enabled(features.MizarVPCRangeOverlap) {
+	if utilfeature.DefaultFeatureGate.Enabled(features.MizarVPCRangeNoOverlap) {
 		if c.vpcCache.vpcRangeStart > c.vpcCache.vpcRangeEnd {
 			return 0, nil, nil, fmt.Errorf("Mizar VPC range exhausted. %#v", c.vpcCache.vpcUsedCache)
 		}
