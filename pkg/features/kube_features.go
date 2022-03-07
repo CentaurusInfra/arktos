@@ -538,6 +538,12 @@ const (
 	//
 	// Enable all logic related to the PodDisruptionBudget API object in policy
 	PodDisruptionBudget featuregate.Feature = "PodDisruptionBudget"
+
+	// owner: @sindica
+	// arktos: v0.10
+	//
+	// Enable VPC range overlapping
+	MizarVPCRangeOverlap featuregate.Feature = "MizarVPCRangeOverlap"
 )
 
 func init() {
@@ -627,6 +633,7 @@ var defaultKubernetesFeatureGates = map[featuregate.Feature]featuregate.FeatureS
 	QPSDoubleGCController:                          {Default: false, PreRelease: featuregate.Alpha},
 	QPSDoubleRSController:                          {Default: false, PreRelease: featuregate.Alpha},
 	PodDisruptionBudget:                            {Default: true, PreRelease: featuregate.Beta},
+	MizarVPCRangeOverlap:                           {Default: false, PreRelease: featuregate.Alpha}, // remove when mizar supports VPC cidr overlapping
 
 	// inherited features from generic apiserver, relisted here to get a conflict if it is changed
 	// unintentionally on either side:

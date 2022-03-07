@@ -120,6 +120,9 @@ if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
+if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeOverlap=true"
+fi
 
 # check for network service support flags
 if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled

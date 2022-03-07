@@ -221,6 +221,10 @@ func (c *MizarServiceController) processServiceCreateOrUpdate(service *v1.Servic
 
 	// Get tenant default network
 	tenantDefaultNetwork, err := c.networkLister.NetworksWithMultiTenancy(tenant).Get(defaultNetworkName)
+	if err != nil {
+		klog.Warningf("Failed to retrieve network in local cache by tenant %s, name %s: %v", tenant, defaultNetworkName, err)
+		return err
+	}
 	if tenantDefaultNetwork.Spec.Type != mizarNetworkType {
 		return nil
 	}

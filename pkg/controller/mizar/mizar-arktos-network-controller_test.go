@@ -19,14 +19,91 @@ package mizar
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
+	utilfeaturetesting "k8s.io/component-base/featuregate/testing"
+	"k8s.io/kubernetes/pkg/features"
+	"sync"
 	"testing"
 )
 
-func TestGenerateVPCSpec(t *testing.T) {
+func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeOverlap, true)()
+
+	fakeClient := func() *dynamicfakeclient.FakeDynamicClient{
+		return dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
+	}
+
+	c := &MizarArktosNetworkController{
+		dynamicClient: fakeClient(),
+	}
+	c.vpcCache = generateVPCUsedCache()
+	c.populateCache()
+
+	// Check initial values
+	assert.Equal(t, 11, c.vpcCache.vpcRangeStart)
+	assert.Equal(t, 50, c.vpcCache.vpcRangeEnd)
+	assert.Equal(t, 1, len(c.vpcCache.vpcUsedCache))
+	value, isOK := c.vpcCache.vpcUsedCache[mizarInternalIPStart]
+	assert.True(t, isOK)
+	assert.True(t, value)
+
+	// Generate vpc start ips
+	expectedTotal := c.vpcCache.vpcRangeEnd - c.vpcCache.vpcRangeStart + 1
+	if mizarInternalIPStart >= c.vpcCache.vpcRangeStart && mizarInternalIPStart <= c.vpcCache.vpcRangeEnd {
+		expectedTotal--
+	}
+
+	generatedVPC := 0
+	for i:= c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd - 1; i++ {
+		vpcIPStart, vpcSpec, err, permErr := c.generateVPCSpec("vpc1")
+		assert.Nil(t, err)
+		assert.Nil(t, permErr)
+		verifyVPCSpec(t, vpcSpec)
+		if i < mizarInternalIPStart {
+			assert.Equal(t, i, vpcIPStart)
+		} else if i >= mizarInternalIPStart {
+			assert.Equal(t, i + 1, vpcIPStart)
+		}
+		generatedVPC++
+		assert.Equal(t, generatedVPC + 1, len(c.vpcCache.vpcUsedCache))
+	}
+
+	// Check used IP cache
+	for i := c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd; i++ {
+		value, isOK := c.vpcCache.vpcUsedCache[i]
+		assert.True(t, isOK)
+		assert.True(t, value)
+	}
+	assert.Equal(t, generatedVPC + 1, len(c.vpcCache.vpcUsedCache))
+
+	// Check permanent error
+	_, vpcSpec, err, permErr := c.generateVPCSpec("test")
+	assert.NotNil(t, permErr)
+	assert.Nil(t, err)
+	assert.Nil(t, vpcSpec)
+}
+
+func generateVPCUsedCache() *vpcUsedCache {
+	return &vpcUsedCache{
+		vpcRangeStart: 11,
+		vpcRangeEnd:   50,
+		vpcUsedCache:  make(map[int]bool),
+		vpcCacheLock:  sync.RWMutex{},
+	}
+}
+
+func TestGenerateVPCSpecWithVPCRangeOverlap(t *testing.T) {
+	c := &MizarArktosNetworkController{}
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeOverlap, false)()
+
 	for i := 0; i < 1000; i++ {
-		ipStart, vpcSpec := generateVPCSpec("vpc1")
+		ipStart, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
 		verifyIpStart(t, ipStart)
 		verifyVPCSpec(t, vpcSpec)
+		assert.Nil(t, tempErr)
+		assert.Nil(t, permErr)
 
 		vpcJsonData, err := json.Marshal(vpcSpec)
 		assert.Nil(t, err, "Unexpected marshalling error")
@@ -55,7 +132,10 @@ func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
 }
 
 func TestGenerateSubnetSpec(t *testing.T) {
-	ipStart, vpcSpec := generateVPCSpec("vpc1")
+	c := &MizarArktosNetworkController{}
+	ipStart, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+	assert.Nil(t, tempErr)
+	assert.Nil(t, permErr)
 
 	subnetSpecData, err := generateSubnetSpec(vpcSpec.Metadata.Name, "subnet1", ipStart)
 	assert.Nil(t, err)

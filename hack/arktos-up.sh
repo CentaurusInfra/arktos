@@ -44,6 +44,9 @@ if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
 fi
 FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
+if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeOverlap=true"
+fi
 
 echo "DBG: ${CNIPLUGIN} CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
