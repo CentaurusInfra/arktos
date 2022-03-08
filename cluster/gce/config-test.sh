@@ -382,6 +382,15 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   fi
 fi
 
+VPC_RANGE_START=${VPC_RANGE_START:-11}
+VPC_RANGE_END=${VPC_RANGE_END:-99}
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeNoOverlap=true"
+  MIZAR_VPC_RANGE_START=${VPC_RANGE_START:-}
+  MIZAR_VPC_RANGE_END=${VPC_RANGE_END:-}
+fi
+
 # Optional: Install cluster DNS.
 # Set CLUSTER_DNS_CORE_DNS to 'false' to install kube-dns instead of CoreDNS.
 CLUSTER_DNS_CORE_DNS="${CLUSTER_DNS_CORE_DNS:-true}"

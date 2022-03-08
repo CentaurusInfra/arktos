@@ -1695,6 +1695,16 @@ EOF
 TENANT_SERVER_KUBECONFIGS: $(yaml-quote ${TENANT_SERVER_KUBECONFIGS})
 EOF
   fi
+  if [ -n "${MIZAR_VPC_RANGE_START:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_START: $(yaml-quote ${MIZAR_VPC_RANGE_START})
+EOF
+    fi
+    if [ -n "${MIZAR_VPC_RANGE_END:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_END: $(yaml-quote ${MIZAR_VPC_RANGE_END})
+EOF
+    fi
 }
 
 function build-proxy-kube-env {
@@ -3257,6 +3267,7 @@ function prepare-master {
 
 function prepare-tpmaster {
   local tpserver_name=""
+  local vpc_range_num=$(((VPC_RANGE_END-VPC_RANGE_START)/SCALEOUT_TP_COUNT))
   for num in $(seq ${SCALEOUT_TP_COUNT:-1}); do
     tpserver_name="-tp-${num}-master"
     TPSERVER_NAME[$num]="${INSTANCE_PREFIX}${tpserver_name}"
@@ -3269,9 +3280,18 @@ function prepare-tpmaster {
 
     if [[ ${num} == 1 ]]; then
       TPCONFIG_METADATA="tp-${num}=${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${num}"
+      MIZAR_VPC_RANGE_START[$num]=${VPC_RANGE_START}
     else
       TPCONFIG_METADATA=${TPCONFIG_METADATA},"tp-${num}=${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-${num}"
+      MIZAR_VPC_RANGE_START[$num]=$((VPC_RANGE_START+vpc_range_num*(num-1)+1))
     fi
+
+    if [[ ${num} == ${SCALEOUT_TP_COUNT} ]]; then
+      MIZAR_VPC_RANGE_END[$num]=${VPC_RANGE_END}
+    else
+      MIZAR_VPC_RANGE_END[$num]=$((VPC_RANGE_START+vpc_range_num*num))
+    fi
+
     create-static-ip "${TPSERVER_NAME[$num]}-ip" "${REGION}"
     TPSERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${TPSERVER_NAME[$num]}-ip" \
           --project "${PROJECT}" --region "${REGION}" -q --format='value(address)')
@@ -3320,6 +3340,8 @@ function create-tpmaster {
   MASTER_ADVERTISE_ADDRESS="${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
   KUBERNETES_MASTER_INTERNAL_IP="${TPSERVER_RESERVED_INTERNAL_IP[$tp_sequence]}"
   KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-$tp_sequence"
+  MIZAR_VPC_RANGE_START="${MIZAR_VPC_RANGE_START[$tp_sequence]}"
+  MIZAR_VPC_RANGE_END="${MIZAR_VPC_RANGE_END[$tp_sequence]}"
 
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
     KUBELET_APISERVER="${TPSERVER_RESERVED_IP[${tp_sequence}]}"
@@ -3342,6 +3364,8 @@ function create-rpmaster {
   MASTER_ADVERTISE_ADDRESS="${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
   KUBERNETES_MASTER_INTERNAL_IP="${RPSERVER_RESERVED_INTERNAL_IP[$rp_sequence]}"
   KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-$rp_sequence"
+  MIZAR_VPC_RANGE_START=""
+  MIZAR_VPC_RANGE_END=""
 
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
     KUBELET_APISERVER="${RPSERVER_RESERVED_IP[${rp_sequence}]}"
