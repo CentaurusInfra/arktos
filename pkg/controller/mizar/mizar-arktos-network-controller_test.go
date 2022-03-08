@@ -24,6 +24,8 @@ import (
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
 	utilfeaturetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/kubernetes/pkg/features"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -31,7 +33,7 @@ import (
 func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
 	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, true)()
 
-	fakeClient := func() *dynamicfakeclient.FakeDynamicClient{
+	fakeClient := func() *dynamicfakeclient.FakeDynamicClient {
 		return dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
 	}
 
@@ -44,42 +46,51 @@ func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
 	// Check initial values
 	assert.Equal(t, 11, c.vpcCache.vpcRangeStart)
 	assert.Equal(t, 50, c.vpcCache.vpcRangeEnd)
-	assert.Equal(t, 1, len(c.vpcCache.vpcUsedCache))
-	value, isOK := c.vpcCache.vpcUsedCache[mizarInternalIPStart]
-	assert.True(t, isOK)
-	assert.True(t, value)
+	assert.Equal(t, 0, len(c.vpcCache.vpcUsedCache))
+	assert.Equal(t, c.vpcCache.vpcRangeStart*256, c.vpcCache.vpcNextAvailableRange)
 
 	// Generate vpc start ips
-	expectedTotal := c.vpcCache.vpcRangeEnd - c.vpcCache.vpcRangeStart + 1
+	expectedTotal := (c.vpcCache.vpcRangeEnd - c.vpcCache.vpcRangeStart + 1) * 256
 	if mizarInternalIPStart >= c.vpcCache.vpcRangeStart && mizarInternalIPStart <= c.vpcCache.vpcRangeEnd {
-		expectedTotal--
+		expectedTotal -= 256
 	}
 
 	generatedVPC := 0
-	for i:= c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd - 1; i++ {
-		vpcIPStart, vpcSpec, err, permErr := c.generateVPCSpec("vpc1")
-		assert.Nil(t, err)
-		assert.Nil(t, permErr)
-		verifyVPCSpec(t, vpcSpec)
-		if i < mizarInternalIPStart {
-			assert.Equal(t, i, vpcIPStart)
-		} else if i >= mizarInternalIPStart {
-			assert.Equal(t, i + 1, vpcIPStart)
+	for i := c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd-1; i++ {
+		for j := 0; j < 256; j++ {
+			ipSeg1, ipSeg2, vpcSpec, err, permErr := c.generateVPCSpec("vpc1")
+			assert.Nil(t, err)
+			assert.Nil(t, permErr)
+			verifyIpStart(t, ipSeg1)
+			verifyIpSeg2(t, ipSeg2)
+			verifyVPCSpec(t, vpcSpec)
+			verifyIP(t, vpcSpec.Spec.IP)
+			if i < mizarInternalIPStart {
+				assert.Equal(t, i, ipSeg1)
+			} else if i >= mizarInternalIPStart {
+				assert.Equal(t, i+1, ipSeg1)
+			}
+			generatedVPC++
+			assert.Equal(t, generatedVPC, len(c.vpcCache.vpcUsedCache))
 		}
-		generatedVPC++
-		assert.Equal(t, generatedVPC + 1, len(c.vpcCache.vpcUsedCache))
 	}
 
 	// Check used IP cache
 	for i := c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd; i++ {
-		value, isOK := c.vpcCache.vpcUsedCache[i]
-		assert.True(t, isOK)
-		assert.True(t, value)
+		if i == mizarInternalIPStart {
+			continue
+		}
+		for j := 0; j < 256; j++ {
+			key := i*256 + j
+			value, isOK := c.vpcCache.vpcUsedCache[key]
+			assert.True(t, isOK)
+			assert.True(t, value)
+		}
 	}
-	assert.Equal(t, generatedVPC + 1, len(c.vpcCache.vpcUsedCache))
+	assert.Equal(t, generatedVPC, len(c.vpcCache.vpcUsedCache))
 
 	// Check permanent error
-	_, vpcSpec, err, permErr := c.generateVPCSpec("test")
+	_, _, vpcSpec, err, permErr := c.generateVPCSpec("test")
 	assert.NotNil(t, permErr)
 	assert.Nil(t, err)
 	assert.Nil(t, vpcSpec)
@@ -99,8 +110,9 @@ func TestGenerateVPCSpecWithVPCRangeOverlap(t *testing.T) {
 	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, false)()
 
 	for i := 0; i < 1000; i++ {
-		ipStart, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
-		verifyIpStart(t, ipStart)
+		ipSeg1, ipSeg2, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+		verifyIpStart(t, ipSeg1)
+		verifyIpSeg2(t, ipSeg2)
 		verifyVPCSpec(t, vpcSpec)
 		assert.Nil(t, tempErr)
 		assert.Nil(t, permErr)
@@ -124,6 +136,20 @@ func verifyIpStart(t *testing.T, ipStart int) {
 	assert.True(t, ipStart >= 11 && ipStart <= 99 && ipStart != 20, "VPC started should be in range [11, 20) or [21, 99], got %d", ipStart)
 }
 
+func verifyIpSeg2(t *testing.T, seg2 int) {
+	assert.True(t, seg2 >= 0 && seg2 <= 255, "Second segment of VPC should be in range [0, 255]", seg2)
+}
+
+func verifyIP(t *testing.T, ipString string) {
+	segs := strings.Split(ipString, ".")
+	assert.Equal(t, 4, len(segs))
+	for i := 0; i < 4; i++ {
+		seg, err := strconv.Atoi(segs[i])
+		assert.Nil(t, err)
+		verifyIpSeg2(t, seg)
+	}
+}
+
 func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
 	assert.True(t, vpcSpec.TypeMeta.APIVersion == "mizar.com/v1")
 	assert.True(t, vpcSpec.TypeMeta.Kind == "Vpc")
@@ -133,15 +159,19 @@ func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
 
 func TestGenerateSubnetSpec(t *testing.T) {
 	c := &MizarArktosNetworkController{}
-	ipStart, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+	ipSeg1, ipSeg2, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+	verifyIpStart(t, ipSeg1)
+	verifyIpSeg2(t, ipSeg2)
+	verifyVPCSpec(t, vpcSpec)
 	assert.Nil(t, tempErr)
 	assert.Nil(t, permErr)
 
-	subnetSpecData, err := generateSubnetSpec(vpcSpec.Metadata.Name, "subnet1", ipStart)
+	subnetSpecData, err := generateSubnetSpec(vpcSpec.Metadata.Name, "subnet1", vpcSpec.Spec.IP)
 	assert.Nil(t, err)
 	assert.NotNil(t, subnetSpecData)
 	var unmarshallData MizarSubnet
 	err = json.Unmarshal(subnetSpecData, &unmarshallData)
 	assert.Nil(t, err, "Unexpected unmarshalling error")
 	assert.Equal(t, unmarshallData.Metadata.Name, "subnet1")
+	verifyIP(t, unmarshallData.Spec.IP)
 }

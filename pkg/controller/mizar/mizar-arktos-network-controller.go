@@ -50,25 +50,26 @@ import (
 )
 
 const (
-	mizarNetworkType = "mizar"
+	mizarNetworkType     = "mizar"
 	mizarInternalIPStart = 20
 
-	resource_group ="mizar.com"
+	resource_group   = "mizar.com"
 	resource_version = "v1"
-	resource_vpc = "vpcs"
-	resource_subnet = "subnets"
+	resource_vpc     = "vpcs"
+	resource_subnet  = "subnets"
 )
 
 var seed = rand.NewSource(time.Now().UnixNano())
 var ran = rand.New(seed)
 
 // Temporary solution for mizar VPC range cannot overlapping issue
-// VPC range inclusive [vpcRangeStart, vpcRangeEnd] - cannot have overlapping across TPs
+// VPC range will be class B ips: [vpcRangeStart.0, vpcRangeEnd.255] - cannot have overlapping across TPs
 type vpcUsedCache struct {
-	vpcRangeStart int
-	vpcRangeEnd   int
-	vpcUsedCache  map[int]bool
-	vpcCacheLock  sync.RWMutex	// protects vpcUsedCache
+	vpcRangeStart         int // Class A ip addresses start number - passed in from arg. Donot change
+	vpcRangeEnd           int // Class A ip addresses last number - passed in from arg. Donot change
+	vpcNextAvailableRange int // next VPC prefix that can be used
+	vpcUsedCache          map[int]bool
+	vpcCacheLock          sync.RWMutex // protects vpcUsedCache
 }
 
 // MizarArktosNetworkController delivers grpc message to Mizar to update VPC with arktos network name
@@ -85,7 +86,7 @@ type MizarArktosNetworkController struct {
 	grpcHost            string
 	grpcAdaptor         IGrpcAdaptor
 
-	vpcCache            *vpcUsedCache
+	vpcCache *vpcUsedCache
 }
 
 // NewMizarArktosNetworkController starts arktos network controller for mizar
@@ -163,6 +164,9 @@ func (c *MizarArktosNetworkController) populateCache() error {
 	if err != nil {
 		klog.Fatalf("Error in getting mizar vpc objects: %v", err)
 	}
+	if len(vpcs.Items) == 0 {
+		c.vpcCache.vpcNextAvailableRange = c.vpcCache.vpcRangeStart * 256
+	}
 	for _, vpcData := range vpcs.Items {
 		vpc := &MizarVPC{}
 		rawData, err := json.Marshal(vpcData)
@@ -173,15 +177,15 @@ func (c *MizarArktosNetworkController) populateCache() error {
 		if err != nil {
 			klog.Fatalf("Error in unmarshal mizar vpc object: %v", err)
 		}
-		ipPrefix := getVPCStart(vpc.Spec.IP)
-		if ipPrefix >= c.vpcCache.vpcRangeStart && ipPrefix <= c.vpcCache.vpcRangeEnd {
-			c.vpcCache.vpcUsedCache[ipPrefix] = true
-			c.vpcCache.vpcRangeStart = ipPrefix + 1
+		ipSeg1, ipSeg2 := getVPCStart(vpc.Spec.IP)
+		if ipSeg1 >= c.vpcCache.vpcRangeStart && ipSeg1 <= c.vpcCache.vpcRangeEnd {
+			cacheKey := ipSeg1*256 + ipSeg2
+			c.vpcCache.vpcUsedCache[cacheKey] = true
+			if cacheKey >= c.vpcCache.vpcNextAvailableRange {
+				c.vpcCache.vpcNextAvailableRange = cacheKey + 1
+			}
 		}
 	}
-
-	// Not allow mizar internal ip
-	c.vpcCache.vpcUsedCache[mizarInternalIPStart] = true
 
 	return nil
 }
@@ -305,7 +309,7 @@ func (c *MizarArktosNetworkController) processNetworkCreation(key string) error 
 // Return: first error is recoverable, 2nd error cannot be recovered
 func (c *MizarArktosNetworkController) createVpcAndSubnet(vpc, subnet string, dynamicClient dynamic.Interface) (error, error) {
 	// Create VPC object
-	vpcIpStart, vpcSpec, err, permErr := c.generateVPCSpec(vpc)
+	_, _, vpcSpec, err, permErr := c.generateVPCSpec(vpc)
 	if err != nil || permErr != nil {
 		return err, permErr
 	}
@@ -322,7 +326,7 @@ func (c *MizarArktosNetworkController) createVpcAndSubnet(vpc, subnet string, dy
 	}
 
 	// Create Subnet object
-	subnetSpec, err := generateSubnetSpec(vpc, subnet, vpcIpStart)
+	subnetSpec, err := generateSubnetSpec(vpc, subnet, vpcSpec.Spec.IP)
 	if err != nil {
 		klog.Errorf("Error getting Subnet %s spec. Error: %v", subnet, err)
 		return err, nil
@@ -337,40 +341,45 @@ func (c *MizarArktosNetworkController) createVpcAndSubnet(vpc, subnet string, dy
 }
 
 // Return: first error is recoverable, 2nd error cannot be recovered
-func (c *MizarArktosNetworkController) generateVPCSpec(vpcName string) (int, *MizarVPC, error, error) {
-	// TODO: this is a quick solution to randomize VPC start ip address. Due to variously reasons, Arktos
-	//   needs randomize VPC start ip to prevent service ip collision for now.
-	// This is a simplified version to avoid reserved internal address - however, it may collision with real external ip address.
-	// Will log as an issue and solve in the future
-	// randomize ip start segment:
-	var ipStart int
+func (c *MizarArktosNetworkController) generateVPCSpec(vpcName string) (int, int, *MizarVPC, error, error) {
+	var ipSeg1 int
+	var ipSeg2 int
 	if utilfeature.DefaultFeatureGate.Enabled(features.MizarVPCRangeNoOverlap) {
-		if c.vpcCache.vpcRangeStart > c.vpcCache.vpcRangeEnd {
-			return 0, nil, nil, fmt.Errorf("Mizar VPC range exhausted. %#v", c.vpcCache.vpcUsedCache)
-		}
 		c.vpcCache.vpcCacheLock.Lock()
 		defer c.vpcCache.vpcCacheLock.Unlock()
 
-		ipStart = c.vpcCache.vpcRangeStart
 		for {
-			if ipStart > c.vpcCache.vpcRangeEnd {
-				return 0, nil, nil, fmt.Errorf("Mizar VPC range exhausted. %#v", c.vpcCache.vpcUsedCache)
+			ipSeg1 = c.vpcCache.vpcNextAvailableRange / 256
+			ipSeg2 = c.vpcCache.vpcNextAvailableRange % 256
+			if ipSeg1 == mizarInternalIPStart {
+				ipSeg1 = mizarInternalIPStart + 1
+				c.vpcCache.vpcNextAvailableRange = ipSeg1*256 + ipSeg2
 			}
 
-			value, isOK := c.vpcCache.vpcUsedCache[ipStart]
+			if ipSeg1 > c.vpcCache.vpcRangeEnd {
+				return 0, 0, nil, nil, fmt.Errorf("Mizar VPC range exhausted. %#v", c.vpcCache.vpcUsedCache)
+			}
+
+			value, isOK := c.vpcCache.vpcUsedCache[c.vpcCache.vpcNextAvailableRange]
 			if isOK && value {
-				ipStart++
+				c.vpcCache.vpcNextAvailableRange++
 			} else {
-				c.vpcCache.vpcUsedCache[ipStart] = true
-				c.vpcCache.vpcRangeStart = ipStart + 1
+				c.vpcCache.vpcUsedCache[c.vpcCache.vpcNextAvailableRange] = true
+				c.vpcCache.vpcNextAvailableRange++
 				break
 			}
 		}
 	} else {
-		ipStart = ran.Intn(89) + 11 // IpStart range [11, 99] - 20
+		// TODO: this is a quick solution to randomize VPC start ip address. Due to variously reasons, Arktos
+		//   needs randomize VPC start ip to prevent service ip collision for now.
+		// This is a simplified version to avoid reserved internal address - however, it may collision with real external ip address.
+		// Will log as an issue and solve in the future
+		// randomize ip start segment:
+		ipSeg1 = ran.Intn(89) + 11 // IpStart range [11, 99] - 20
+		ipSeg2 = ran.Intn(256)     // range [0, 255]
 		// Exclude mizarInternalIPStart as it is used by mizar internally
-		if ipStart == mizarInternalIPStart {
-			ipStart = mizarInternalIPStart + 1
+		if ipSeg1 == mizarInternalIPStart {
+			ipSeg1 = mizarInternalIPStart + 1
 		}
 	}
 
@@ -385,18 +394,17 @@ func (c *MizarArktosNetworkController) generateVPCSpec(vpcName string) (int, *Mi
 			Tenant:    metav1.TenantSystem,
 		},
 		Spec: MizarVPCSpec{
-			IP:      fmt.Sprintf("%d.0.0.0", ipStart),
-			Prefix:  "8",
+			IP:      fmt.Sprintf("%d.%d.0.0", ipSeg1, ipSeg2),
+			Prefix:  "16",
 			Divider: 1,
 			Status:  "Init",
 		},
 	}
 
-	return ipStart, vpc, nil, nil
+	return ipSeg1, ipSeg2, vpc, nil, nil
 }
 
-func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, error) {
-	subnetIpSeg := ran.Intn(256) // 0-255
+func generateSubnetSpec(vpcName, subnetName string, vpcIp string) ([]byte, error) {
 	subnet := &MizarSubnet{
 		TypeMeta: TypeMeta{
 			APIVersion: fmt.Sprintf("%s/%s", resource_group, resource_version),
@@ -408,8 +416,8 @@ func generateSubnetSpec(vpcName, subnetName string, vpcIpStart int) ([]byte, err
 			Tenant:    metav1.TenantSystem,
 		},
 		Spec: MizarSubnetSpec{
-			IP:       fmt.Sprintf("%d.%d.0.0", vpcIpStart, subnetIpSeg),
-			Prefix:   "16",
+			IP:       vpcIp,
+			Prefix:   "18", // this give each subnet 16,384 ipV4 ip addresses
 			Bouncers: 1,
 			VPC:      vpcName,
 			Status:   "Init",
@@ -433,8 +441,9 @@ func isValidVPCRange(rangeStart, rangeEnd int) bool {
 	return true
 }
 
-func getVPCStart(s string) int {
+func getVPCStart(s string) (int, int) {
 	ips := strings.Split(s, ".")
-	i, _ := strconv.Atoi(ips[0])
-	return i
+	ipSeg1, _ := strconv.Atoi(ips[0])
+	ipSeg2, _ := strconv.Atoi(ips[1])
+	return ipSeg1, ipSeg2
 }
