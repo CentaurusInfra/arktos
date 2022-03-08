@@ -37,15 +37,15 @@ if [ "${CLOUD_PROVIDER}" == "openstack" ]; then
 fi
 
 # set feature gates if enable Pod priority and preemption
+FEATURE_GATES="${FEATURE_GATES_COMMON_BASE}"
 if [ "${ENABLE_POD_PRIORITY_PREEMPTION}" == true ]; then
     FEATURE_GATES="${FEATURE_GATES},PodPriority=true"
 fi
 if [[ "${ENABLE_POD_VERTICAL_SCALING:-false}" == "true" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
 fi
-FEATURE_GATES="${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"
 
-echo "DBG: Flannel CNI plugin will be installed AFTER cluster is up"
+echo "DBG: ${CNIPLUGIN} CNI plugin will be installed AFTER cluster is up"
 [ "${CNIPLUGIN}" == "flannel" ] && ARKTOS_NO_CNI_PREINSTALLED="y"
 
 # check for network service support flags
@@ -53,7 +53,12 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   # kubelet enforces per-network DNS ip in pod
   FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
   # tenant controller automatically creates a default network resource for new tenant
-  ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  if [ "${CNIPLUGIN}" == "mizar" ]; then
+    # ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-mizar-network.tmpl"
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
 else # when disabled
   # kube-apiserver not to enforce deployment-network validation
   DISABLE_ADMISSION_PLUGINS="DeploymentNetwork"
@@ -88,8 +93,8 @@ if [[ ! -e "${CONTAINERD_SOCK_PATH}" ]]; then
   exit 1
 fi
 
-# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron) before cluster is up.
-# If more advanced cni like Flannel is desired, it should be installed AFTER the clsuter is up;
+# Install simple cni plugin based on env var CNIPLUGIN (bridge, alktron, mizar) before cluster is up.
+# If more advanced cni like Flannel is desired, it should be installed AFTER the cluster is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
 source ${KUBE_ROOT}/hack/arktos-cni.rc
 
@@ -511,7 +516,7 @@ if [[ "${START_MODE}" != "kubeletonly" ]]; then
     kube::common::start_apiserver $i
   done
   #remove workload controller manager cluster role and rolebinding applying per this already be added to bootstrappolicy
-  
+
   # If there are other resources ready to sync thru workload-controller-mananger, please add them to the following clusterrole file
   #cluster/kubectl.sh create -f hack/runtime/workload-controller-manager-clusterrole.yaml
 
@@ -554,6 +559,13 @@ if [[ "${START_MODE}" != "nokubelet" ]]; then
     esac
 fi
 
+# Applying mizar cni
+if [[ "${CNIPLUGIN}" == "mizar" ]]; then
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+  # ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f ${KUBE_ROOT}/hack/testdata/mizar/deploy.mizar.next.yaml 
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml
+fi
+
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
   create_psp_policy
 fi
@@ -588,6 +600,12 @@ ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get ds --namespace kube-s
 
 ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f "${KUBE_ROOT}/cluster/addons/rbac/kubelet-network-reader/kubelet-network-reader.yaml"
 
+# Give the master node corresponding permission to get resource "leases" in API group
+# "coordination.k8s.io" in the namespace "kube-node-lease" for cniplugin=flannel
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create clusterrolebinding system-node-role-bound --clusterrole=system:node --group=system:nodes
+
+${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" get clusterrolebinding/system-node-role-bound -o yaml
+
 echo ""
 echo "Arktos Setup done."
 echo "*******************************************"
@@ -595,6 +613,10 @@ echo "Setup Kata Containers components ..."
 KUBECTL=${KUBECTL} "${KUBE_ROOT}"/hack/install-kata.sh
 echo "Kata Setup done."
 echo "*******************************************"
+
+if [ "${CNIPLUGIN}" == "mizar" ]; then
+  kube::common::wait-until-mizar-ready
+fi
 
 print_success
 
