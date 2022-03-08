@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"hash/fnv"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -1206,4 +1207,10 @@ func CreateUnstructuredObject(data []byte, dynamicClient dynamic.Interface) erro
 	}
 
 	return err
+}
+
+// List CRD objects
+func ListUnstructuredObjects(resource schema.GroupVersionResource, dynamicClient dynamic.Interface, tenant, ns string) (*unstructured.UnstructuredList, error) {
+	return dynamicClient.Resource(resource).NamespaceWithMultiTenancy(ns, tenant).List(metav1.ListOptions{})
+
 }

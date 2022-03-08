@@ -64,7 +64,10 @@ filegroup(
 
 filegroup(
     name = "all-srcs",
-    srcs = [":package-srcs"],
+    srcs = [
+        ":package-srcs",
+        "//pkg/controller/mizar/config:all-srcs",
+    ],
     tags = ["automanaged"],
 )
 

@@ -673,6 +673,7 @@ items:
     - vpcs
     verbs:
     - create
+    - list
     - update
   - apiGroups:
     - mizar.com

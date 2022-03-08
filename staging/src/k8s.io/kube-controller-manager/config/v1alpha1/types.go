@@ -151,6 +151,9 @@ type KubeControllerManagerConfiguration struct {
 	// TTLAfterFinishedControllerConfiguration holds configuration for
 	// TTLAfterFinishedController related features.
 	TTLAfterFinishedController TTLAfterFinishedControllerConfiguration
+	// MizarArktosNetworkControllerConfiguration holds configuration for
+	// MizarArktosNetworkController related features.
+	MizarArktosNetworkController MizarArktosNetworkControllerConfiguration
 }
 
 // GenericControllerManagerConfiguration holds configuration for a generic controller-manager.
@@ -464,4 +467,12 @@ type TTLAfterFinishedControllerConfiguration struct {
 	// concurrentTTLSyncs is the number of TTL-after-finished collector workers that are
 	// allowed to sync concurrently.
 	ConcurrentTTLSyncs int32
+}
+
+// MizarArktosNetworkControllerConfiguration contains elements describing MizarArktosNetworkController.
+type MizarArktosNetworkControllerConfiguration struct {
+	// VPCRangeStart is the class A ip smallest numer for VPC created by mizar cniplugin
+	VPCRangeStart int32 `json:"vpcRangeStart,omitempty"`
+	// VPCRangeEnd is the class A ip biggest number for VPC created by mizar cniplugin
+	VPCRangeEnd int32 `json:"vpcRangeEnd,omitempty"`
 }
