@@ -26,6 +26,7 @@ import (
 	endpointconfig "k8s.io/kubernetes/pkg/controller/endpoint/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
+	mizararktosnetworkconfig "k8s.io/kubernetes/pkg/controller/mizar/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
 	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
@@ -114,6 +115,9 @@ type KubeControllerManagerConfiguration struct {
 	// TTLAfterFinishedControllerConfiguration holds configuration for
 	// TTLAfterFinishedController related features.
 	TTLAfterFinishedController ttlafterfinishedconfig.TTLAfterFinishedControllerConfiguration
+	// MizarArktosNetworkControllerConfiguration holds configuration for
+	// MizarArktosNetworkController related features.
+	MizarArktosNetworkController mizararktosnetworkconfig.MizarArktosNetworkControllerConfiguration
 }
 
 // GenericControllerManagerConfiguration holds configuration for a generic controller-manager

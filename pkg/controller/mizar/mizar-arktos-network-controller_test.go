@@ -19,35 +19,136 @@ package mizar
 import (
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"strings"
+	"sync"
 	"testing"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	utilfeature "k8s.io/apiserver/pkg/util/feature"
+	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
+	utilfeaturetesting "k8s.io/component-base/featuregate/testing"
+	"k8s.io/kubernetes/pkg/features"
 )
 
-func TestGenerateVPCSpec(t *testing.T) {
-	ipStart, vpcSpec := generateVPCSpec("vpc1")
-	verifyIpStart(t, ipStart)
-	verifyVPCSpec(t, vpcSpec)
+func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, true)()
 
-	vpcJsonData, err := json.Marshal(vpcSpec)
-	assert.Nil(t, err, "Unexpected marshalling error")
-	var unmarshallData MizarVPC
-	err = json.Unmarshal(vpcJsonData, &unmarshallData)
-	assert.Nil(t, err, "Unexpected unmarshalling error")
-	assert.Equal(t, vpcSpec.APIVersion, unmarshallData.APIVersion)
-	assert.Equal(t, vpcSpec.Kind, unmarshallData.Kind)
-	assert.Equal(t, vpcSpec.Metadata.Name, unmarshallData.Metadata.Name)
-	assert.Equal(t, vpcSpec.Spec.IP, unmarshallData.Spec.IP)
-	assert.Equal(t, vpcSpec.Spec.Prefix, unmarshallData.Spec.Prefix)
-	assert.Equal(t, vpcSpec.Spec.Divider, unmarshallData.Spec.Divider)
-	assert.Equal(t, vpcSpec.Spec.Status, unmarshallData.Spec.Status)
+	fakeClient := func() *dynamicfakeclient.FakeDynamicClient {
+		return dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
+	}
+
+	c := &MizarArktosNetworkController{
+		dynamicClient: fakeClient(),
+	}
+	c.vpcCache = generateVPCUsedCache()
+	c.populateCache()
+
+	// Check initial values
+	assert.Equal(t, 11, c.vpcCache.vpcRangeStart)
+	assert.Equal(t, 50, c.vpcCache.vpcRangeEnd)
+	assert.Equal(t, 0, len(c.vpcCache.vpcUsedCache))
+	assert.Equal(t, c.vpcCache.vpcRangeStart*256, c.vpcCache.vpcNextAvailableRange)
+
+	// Generate vpc start ips
+	expectedTotal := (c.vpcCache.vpcRangeEnd - c.vpcCache.vpcRangeStart + 1) * 256
+	if mizarInternalIPStart >= c.vpcCache.vpcRangeStart && mizarInternalIPStart <= c.vpcCache.vpcRangeEnd {
+		expectedTotal -= 256
+	}
+
+	generatedVPC := 0
+	for i := c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd-1; i++ {
+		for j := 0; j < 256; j++ {
+			ipSeg1, ipSeg2, vpcSpec, err, permErr := c.generateVPCSpec("vpc1")
+			assert.Nil(t, err)
+			assert.Nil(t, permErr)
+			verifyIpStart(t, ipSeg1)
+			verifyIpSeg2(t, ipSeg2)
+			verifyVPCSpec(t, vpcSpec)
+			verifyIP(t, vpcSpec.Spec.IP)
+			if i < mizarInternalIPStart {
+				assert.Equal(t, i, ipSeg1)
+			} else if i >= mizarInternalIPStart {
+				assert.Equal(t, i+1, ipSeg1)
+			}
+			generatedVPC++
+			assert.Equal(t, generatedVPC, len(c.vpcCache.vpcUsedCache))
+		}
+	}
+
+	// Check used IP cache
+	for i := c.vpcCache.vpcRangeStart; i <= c.vpcCache.vpcRangeEnd; i++ {
+		if i == mizarInternalIPStart {
+			continue
+		}
+		for j := 0; j < 256; j++ {
+			key := i*256 + j
+			value, isOK := c.vpcCache.vpcUsedCache[key]
+			assert.True(t, isOK)
+			assert.True(t, value)
+		}
+	}
+	assert.Equal(t, generatedVPC, len(c.vpcCache.vpcUsedCache))
+
+	// Check permanent error
+	_, _, vpcSpec, err, permErr := c.generateVPCSpec("test")
+	assert.NotNil(t, permErr)
+	assert.Nil(t, err)
+	assert.Nil(t, vpcSpec)
+}
+
+func generateVPCUsedCache() *vpcUsedCache {
+	return &vpcUsedCache{
+		vpcRangeStart: 11,
+		vpcRangeEnd:   50,
+		vpcUsedCache:  make(map[int]bool),
+		vpcCacheLock:  sync.RWMutex{},
+	}
+}
+
+func TestGenerateVPCSpecWithVPCRangeOverlap(t *testing.T) {
+	c := &MizarArktosNetworkController{}
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, false)()
+
+	for i := 0; i < 1000; i++ {
+		ipSeg1, ipSeg2, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+		verifyIpStart(t, ipSeg1)
+		verifyIpSeg2(t, ipSeg2)
+		verifyVPCSpec(t, vpcSpec)
+		assert.Nil(t, tempErr)
+		assert.Nil(t, permErr)
+
+		vpcJsonData, err := json.Marshal(vpcSpec)
+		assert.Nil(t, err, "Unexpected marshalling error")
+		var unmarshallData MizarVPC
+		err = json.Unmarshal(vpcJsonData, &unmarshallData)
+		assert.Nil(t, err, "Unexpected unmarshalling error")
+		assert.Equal(t, vpcSpec.APIVersion, unmarshallData.APIVersion)
+		assert.Equal(t, vpcSpec.Kind, unmarshallData.Kind)
+		assert.Equal(t, vpcSpec.Metadata.Name, unmarshallData.Metadata.Name)
+		assert.Equal(t, vpcSpec.Spec.IP, unmarshallData.Spec.IP)
+		assert.Equal(t, vpcSpec.Spec.Prefix, unmarshallData.Spec.Prefix)
+		assert.Equal(t, vpcSpec.Spec.Divider, unmarshallData.Spec.Divider)
+		assert.Equal(t, vpcSpec.Spec.Status, unmarshallData.Spec.Status)
+	}
 }
 
 func verifyIpStart(t *testing.T, ipStart int) {
-	assert.True(t, ipStart >= 1, "VPC started should be in range [1, 255]")
-	assert.True(t, ipStart <= 255, "VPC started should be in range [1, 255]")
-	assert.True(t, ipStart != 10, "VPC cannot start with 10.x.x.x")
-	assert.True(t, ipStart != 172, "VPC cannot start with 172.x.x.x")
-	assert.True(t, ipStart != 192, "VPC cannot start with 192.x.x.x")
-	assert.True(t, ipStart != 100, "VPC cannot start with 100.x.x.x")
+	assert.True(t, ipStart >= 11 && ipStart <= 99 && ipStart != 20, "VPC started should be in range [11, 20) or [21, 99], got %d", ipStart)
+}
+
+func verifyIpSeg2(t *testing.T, seg2 int) {
+	assert.True(t, seg2 >= 0 && seg2 <= 255, "Second segment of VPC should be in range [0, 255]", seg2)
+}
+
+func verifyIP(t *testing.T, ipString string) {
+	segs := strings.Split(ipString, ".")
+	assert.Equal(t, 4, len(segs))
+	for i := 0; i < 4; i++ {
+		seg, err := strconv.Atoi(segs[i])
+		assert.Nil(t, err)
+		verifyIpSeg2(t, seg)
+	}
 }
 
 func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
@@ -58,13 +159,20 @@ func verifyVPCSpec(t *testing.T, vpcSpec *MizarVPC) {
 }
 
 func TestGenerateSubnetSpec(t *testing.T) {
-	ipStart, vpcSpec := generateVPCSpec("vpc1")
+	c := &MizarArktosNetworkController{}
+	ipSeg1, ipSeg2, vpcSpec, tempErr, permErr := c.generateVPCSpec("vpc1")
+	verifyIpStart(t, ipSeg1)
+	verifyIpSeg2(t, ipSeg2)
+	verifyVPCSpec(t, vpcSpec)
+	assert.Nil(t, tempErr)
+	assert.Nil(t, permErr)
 
-	subnetSpecData, err := generateSubnetSpec(vpcSpec.Metadata.Name, "subnet1", ipStart)
+	subnetSpecData, err := generateSubnetSpec(vpcSpec.Metadata.Name, "subnet1", vpcSpec.Spec.IP)
 	assert.Nil(t, err)
 	assert.NotNil(t, subnetSpecData)
 	var unmarshallData MizarSubnet
 	err = json.Unmarshal(subnetSpecData, &unmarshallData)
 	assert.Nil(t, err, "Unexpected unmarshalling error")
 	assert.Equal(t, unmarshallData.Metadata.Name, "subnet1")
+	verifyIP(t, unmarshallData.Spec.IP)
 }
