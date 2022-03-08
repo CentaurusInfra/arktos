@@ -1,0 +1,47 @@
+# Daemonset to deploy Mizar node agents
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mizar-daemon
+  namespace: default
+spec:
+  selector:
+    matchLabels:
+      job: mizar-daemon
+  template:
+    metadata:
+      labels:
+        job: mizar-daemon
+    spec:
+      tolerations:
+        # The daemon shall run on the master node
+        - effect: NoSchedule
+          operator: Exists
+      nodeName: "{{tp_master_name}}"
+      terminationGracePeriodSeconds: 5
+      serviceAccountName: mizar-operator
+      hostNetwork: true
+      hostPID: true
+      initContainers:
+      - name: node-init
+        image: mizarnet/mizar:{{network_provider_version}}
+        command: [./node-init.sh]
+        securityContext:
+        # Start mizar daemon static pod
+          privileged: true
+        volumeMounts:
+        - name: mizar
+          mountPath: /home
+      containers:
+      - name: mizar-daemon
+        image: mizarnet/dropletd:{{network_provider_version}}
+        env:
+        - name: FEATUREGATE_BWQOS
+          value: 'false'
+        securityContext:
+          privileged: true
+      volumes:
+      - name: mizar
+        hostPath:
+          path: /var
+          type: Directory
