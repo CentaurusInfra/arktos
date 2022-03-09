@@ -67,11 +67,27 @@ install_cni_bridge() {
     echo "done with bridge cni plugin installation"
 }
 
-cleanup_cni_mizar() {
-    sudo rm -rf "${cni_bin_dir}"
-    [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
-    [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
-    sudo find ${cni_conf_dir}/ -type f -not -name '10-mizarcni.conf' -delete
+cleanup_cni() {
+    echo "Cleaning directory /opt/cni/bin"
+    if [ ! -d "${cni_bin_dir}" ]; then
+      sudo mkdir -p "${cni_bin_dir}"
+    else
+      sudo rm -f "${cni_bin_dir}/*"
+      sudo ls -alg "${cni_bin_dir}"
+    fi
+
+    echo "Cleaning directory /etc/cni/net.d" 
+    if ! sudo test -d "${cni_conf_dir}"; then
+      sudo mkdir -p "${cni_conf_dir}"
+    else
+      sudo chmod 0755 "${cni_conf_parent_dir}"
+      sudo chmod 0775 "${cni_conf_dir}"
+      sudo rm -f ${cni_conf_dir}/[0-9a-zA-Z_-]*
+    fi
+    sudo chmod 0700 "${cni_conf_dir}"
+    sudo chmod 0700 "${cni_conf_parent_dir}"
+
+    echo "Done with two cni directories cleaning"
 }
 
 build_alktron() {
@@ -230,8 +246,10 @@ EOF"
 
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
+cni_conf_parent_dir=${CNI_CONF_PARENT_DIR:-"/etc/cni"}
 cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
 
+cleanup_cni
 if [[ -n "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
     echo "CNI plugin will be installed after cluster is started"
     echo "Right now the minimum common cni binary package is being installed only"
@@ -249,7 +267,6 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
 elif [ "${CNIPLUGIN}" == "mizar" ]; then
     echo "cni plugin is mizar; arktos will use mizar to provision pod network"
     install_mizar_arktos_containerd
-    cleanup_cni_mizar
     install_loopback_cni
 else
     echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
