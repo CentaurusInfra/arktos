@@ -18,15 +18,19 @@ package mizar
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/stretchr/testify/assert"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilfeature "k8s.io/apiserver/pkg/util/feature"
 	dynamicfakeclient "k8s.io/client-go/dynamic/fake"
+	clienttesting "k8s.io/client-go/testing"
 	utilfeaturetesting "k8s.io/component-base/featuregate/testing"
 	"k8s.io/kubernetes/pkg/features"
 )
@@ -95,6 +99,48 @@ func TestGenerateVPCSpecWithoutVPCRangeOverlap(t *testing.T) {
 	assert.NotNil(t, permErr)
 	assert.Nil(t, err)
 	assert.Nil(t, vpcSpec)
+}
+
+func TestPopolateVPCCache_VPC0Only(t *testing.T) {
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, true)()
+
+	fakeClient := dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
+	fakeClient.PrependReactor("list", "vpcs", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, newUnstructuredList(newUnstructuredVPC("vpc0", "20.0.0.0")), nil
+	})
+
+	c := &MizarArktosNetworkController{
+		dynamicClient: fakeClient,
+	}
+	c.vpcCache = generateVPCUsedCache()
+	c.populateCache()
+
+	// Check initial values
+	assert.Equal(t, 11, c.vpcCache.vpcRangeStart)
+	assert.Equal(t, 50, c.vpcCache.vpcRangeEnd)
+	assert.Equal(t, 0, len(c.vpcCache.vpcUsedCache))
+	assert.Equal(t, c.vpcCache.vpcRangeStart*256, c.vpcCache.vpcNextAvailableRange)
+}
+
+func TestPopolateVPCCache(t *testing.T) {
+	defer utilfeaturetesting.SetFeatureGateDuringTest(t, utilfeature.DefaultFeatureGate, features.MizarVPCRangeNoOverlap, true)()
+
+	fakeClient := dynamicfakeclient.NewSimpleDynamicClient(runtime.NewScheme())
+	fakeClient.PrependReactor("list", "vpcs", func(action clienttesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, newUnstructuredList(newUnstructuredVPC("vpc1", "21.0.0.0")), nil
+	})
+
+	c := &MizarArktosNetworkController{
+		dynamicClient: fakeClient,
+	}
+	c.vpcCache = generateVPCUsedCache()
+	c.populateCache()
+
+	// Check initial values
+	assert.Equal(t, 11, c.vpcCache.vpcRangeStart)
+	assert.Equal(t, 50, c.vpcCache.vpcRangeEnd)
+	assert.Equal(t, 1, len(c.vpcCache.vpcUsedCache))
+	assert.Equal(t, 21*256+1, c.vpcCache.vpcNextAvailableRange)
 }
 
 func generateVPCUsedCache() *vpcUsedCache {
@@ -175,4 +221,32 @@ func TestGenerateSubnetSpec(t *testing.T) {
 	assert.Nil(t, err, "Unexpected unmarshalling error")
 	assert.Equal(t, unmarshallData.Metadata.Name, "subnet1")
 	verifyIP(t, unmarshallData.Spec.IP)
+}
+
+func newUnstructuredList(items ...*unstructured.Unstructured) *unstructured.UnstructuredList {
+	list := &unstructured.UnstructuredList{}
+	for i := range items {
+		list.Items = append(list.Items, *items[i])
+	}
+	return list
+}
+
+func newUnstructuredVPC(vpcName string, ip string) *unstructured.Unstructured {
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": fmt.Sprintf("%s/%s", resource_group, resource_version),
+			"kind":       "Vpc",
+			"metadata": map[string]interface{}{
+				"tenant":    metav1.TenantSystem,
+				"namespace": metav1.NamespaceDefault,
+				"name":      vpcName,
+			},
+			"spec": map[string]interface{}{
+				"ip":      ip,
+				"prefix":  "8",
+				"divider": 1,
+				"status":  "Init",
+			},
+		},
+	}
 }
