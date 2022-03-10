@@ -164,21 +164,28 @@ func (c *MizarArktosNetworkController) populateCache() error {
 	if err != nil {
 		klog.Fatalf("Error in getting mizar vpc objects: %v", err)
 	}
-	if len(vpcs.Items) == 0 {
-		c.vpcCache.vpcNextAvailableRange = c.vpcCache.vpcRangeStart * 256
-	}
+	c.vpcCache.vpcNextAvailableRange = c.vpcCache.vpcRangeStart * 256
+
 	for _, vpcData := range vpcs.Items {
-		vpc := &MizarVPC{}
-		rawData, err := json.Marshal(vpcData)
+		klog.V(4).Infof("VPC items [%v]", vpcData)
 		if err != nil {
 			klog.Fatalf("Error in marshal mizar vpc object: %v", err)
 		}
-		err = json.Unmarshal(rawData, vpc)
-		if err != nil {
-			klog.Fatalf("Error in unmarshal mizar vpc object: %v", err)
+		specRaw, isOK := vpcData.Object["spec"]
+		if !isOK {
+			klog.Fatalf("Failed getting spec from mizar vpc object [%v]", vpcData)
 		}
-		ipSeg1, ipSeg2 := getVPCStart(vpc.Spec.IP)
-		if ipSeg1 >= c.vpcCache.vpcRangeStart && ipSeg1 <= c.vpcCache.vpcRangeEnd {
+		spec, isOK := specRaw.(map[string]interface{})
+		if !isOK {
+			klog.Fatalf("Error get spec from mizar vpc object [%v]: %v", vpcData, err)
+		}
+		ipStr, isOK := spec["ip"]
+		if !isOK {
+			klog.Fatalf("Failed to get ip from mizar vpc object [%v]", vpcData)
+		}
+
+		ipSeg1, ipSeg2 := getVPCStart(ipStr.(string))
+		if ipSeg1 != mizarInternalIPStart && ipSeg1 >= c.vpcCache.vpcRangeStart && ipSeg1 <= c.vpcCache.vpcRangeEnd {
 			cacheKey := ipSeg1*256 + ipSeg2
 			c.vpcCache.vpcUsedCache[cacheKey] = true
 			if cacheKey >= c.vpcCache.vpcNextAvailableRange {
@@ -443,6 +450,9 @@ func isValidVPCRange(rangeStart, rangeEnd int) bool {
 
 func getVPCStart(s string) (int, int) {
 	ips := strings.Split(s, ".")
+	if len(ips) < 4 {
+		klog.Fatalf("Invalid ip address %s", s)
+	}
 	ipSeg1, _ := strconv.Atoi(ips[0])
 	ipSeg2, _ := strconv.Atoi(ips[1])
 	return ipSeg1, ipSeg2
