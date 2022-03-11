@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 # Copyright 2016 The Kubernetes Authors.
+# Copyright 2020 Authors of Arktos - file modified.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -108,6 +109,20 @@ function get-cluster-ip-range {
     suggested_range="10.64.0.0/11"
   fi
   echo "${suggested_range}"
+}
+
+function get-service-ip-range {
+  local service_ip_range_base=${1}
+  local sequence=${2:-1}    ### the sequence of master to get service ip range 
+  if [[ $sequence == 1 ]]; then
+    echo "$service_ip_range_base"
+  else
+    local cidr=($(echo "${service_ip_range_base}" | sed -e 's/.*\///'))
+    local octets=($(echo "${service_ip_range_base}" | sed -e 's|/.*||' -e 's/\./ /g'))
+    ((octets[1]+=(sequence-1)))
+    local service_ip=$(echo "${octets[*]}" | sed 's/ /./g')
+    echo "${service_ip}/$cidr"
+  fi
 }
 
 # Calculate ip alias range based on max number of pods.

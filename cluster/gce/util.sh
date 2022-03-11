@@ -3291,6 +3291,7 @@ function prepare-tpmaster {
     else
       MIZAR_VPC_RANGE_END[$num]=$((VPC_RANGE_START+vpc_range_num*num))
     fi
+    SERVICE_CLUSTER_IP_RANGE[$num]=$(get-service-ip-range ${SERVICE_CLUSTER_IP_RANGE_BASE} ${num})
 
     create-static-ip "${TPSERVER_NAME[$num]}-ip" "${REGION}"
     TPSERVER_RESERVED_IP[$num]=$(gcloud compute addresses describe "${TPSERVER_NAME[$num]}-ip" \
@@ -3342,6 +3343,7 @@ function create-tpmaster {
   KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.tp-$tp_sequence"
   MIZAR_VPC_RANGE_START="${MIZAR_VPC_RANGE_START[$tp_sequence]}"
   MIZAR_VPC_RANGE_END="${MIZAR_VPC_RANGE_END[$tp_sequence]}"
+  SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE[$tp_sequence]}"
 
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
     KUBELET_APISERVER="${TPSERVER_RESERVED_IP[${tp_sequence}]}"
@@ -3366,6 +3368,7 @@ function create-rpmaster {
   KUBECONFIG="${RESOURCE_DIRECTORY}/kubeconfig${KUBEMARK_PREFIX}.rp-$rp_sequence"
   MIZAR_VPC_RANGE_START=""
   MIZAR_VPC_RANGE_END=""
+  SERVICE_CLUSTER_IP_RANGE=${SERVICE_CLUSTER_IP_RANGE_BASE}
 
   if [[ "${REGISTER_MASTER_KUBELET:-}" == "true" ]]; then
     KUBELET_APISERVER="${RPSERVER_RESERVED_IP[${rp_sequence}]}"
