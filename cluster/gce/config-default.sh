@@ -206,7 +206,8 @@ EXTRA_DOCKER_OPTS="${EXTRA_DOCKER_OPTS:-}"
 
 VOLUME_PLUGIN_DIR="${VOLUME_PLUGIN_DIR:-/home/kubernetes/flexvolume}"
 
-SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE:-10.0.0.0/16}"  # formerly PORTAL_NET
+SERVICE_CLUSTER_IP_RANGE_BASE="${SERVICE_CLUSTER_IP_RANGE_BASE:-10.0.0.0/16}"  # formerly PORTAL_NET
+SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_BASE:-10.0.0.0/16}"  # formerly PORTAL_NET
 ALLOCATE_NODE_CIDRS=true
 
 # When set to true, Docker Cache is enabled by default as part of the cluster bring up.
@@ -367,6 +368,15 @@ if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
   else
     ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
   fi
+fi
+
+VPC_RANGE_START=${VPC_RANGE_START:-11}
+VPC_RANGE_END=${VPC_RANGE_END:-99}
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeNoOverlap=true"
+  MIZAR_VPC_RANGE_START=${VPC_RANGE_START:-}
+  MIZAR_VPC_RANGE_END=${VPC_RANGE_END:-}
 fi
 
 # Optional: Install cluster DNS.

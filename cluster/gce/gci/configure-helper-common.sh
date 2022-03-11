@@ -2314,6 +2314,13 @@ function start-kube-controller-manager {
     params+=" --resource-providers=${rp_kubeconfigs}"
   fi
 
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -n "${MIZAR_VPC_RANGE_START:-}" && -n "${MIZAR_VPC_RANGE_END:-}" ]]; then
+      params+=" --vpc-range-start=${MIZAR_VPC_RANGE_START}"
+      params+=" --vpc-range-end=${MIZAR_VPC_RANGE_END}"
+    fi
+  fi
+
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
   if [[ "${ENABLE_KCM_LEADER_ELECT:-true}" == "false" ]]; then
     params+=" --leader-elect=false"

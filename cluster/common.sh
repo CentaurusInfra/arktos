@@ -942,6 +942,16 @@ EOF
 DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
 EOF
     fi
+    if [ -n "${MIZAR_VPC_RANGE_START:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_START: $(yaml-quote ${MIZAR_VPC_RANGE_START})
+EOF
+    fi
+    if [ -n "${MIZAR_VPC_RANGE_END:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_END: $(yaml-quote ${MIZAR_VPC_RANGE_END})
+EOF
+    fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then
       cat >>$file <<EOF
 INITIAL_ETCD_CLUSTER: $(yaml-quote ${INITIAL_ETCD_CLUSTER})
