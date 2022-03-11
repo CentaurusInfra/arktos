@@ -100,7 +100,6 @@ fi
 # If more advanced cni like Flannel is desired, it should be installed AFTER the cluster is up;
 # in that case, please set ARKTOS-NO-CNI_PREINSTALLED to any no-empty value
 source ${KUBE_ROOT}/hack/arktos-cni.rc
-
 source "${KUBE_ROOT}/hack/lib/init.sh"
 source "${KUBE_ROOT}/hack/lib/common.sh"
 
@@ -236,6 +235,13 @@ cleanup()
   fi
 
   [[ -n "${FLANNELD_PID-}" ]] && sudo kill "${FLANNELD_PID}" 2>/dev/null
+
+  if [[ "${CNIPLUGIN}" == "flannel" || "${CNIPLUGIN}" == "bridge" ]]; then
+    echo "Cleaning interface and ip link for cni0 to fix the conflict of cni0"
+    echo "associating with different ip addresses when switching cniplugin"
+    sudo ifconfig cni0 down
+    sudo ip link delete cni0
+  fi
 
   exit 0
 }

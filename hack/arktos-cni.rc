@@ -44,13 +44,13 @@ setup_cni_conf() {
 ensure_cni_binaries() {
     echo "Ensuring minimum cni plugin installation..."
 
-    if (test -x ${cni_bin_dir}/bridge && test -x ${cni_bin_dir}/host-local && test -x ${cni_bin_dir}/loopback); then
+    if (test -x ${CNI_BIN_DIR}/bridge && test -x ${CNI_BIN_DIR}/host-local && test -x ${CNI_BIN_DIR}/loopback); then
         echo "found bridge, host-local, loopback"
     else
         echo "installing cni plugin binaries"
         local cniplugin_release_url="https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
-        sudo mkdir -p ${cni_bin_dir}
-        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv
+        sudo mkdir -p ${CNI_BIN_DIR}
+        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${CNI_BIN_DIR} -xzv
     fi
 }
 
@@ -62,31 +62,47 @@ install_cni_bridge() {
     ensure_cni_binaries
 
     local cni_conf_source=$(dirname "$BASH_SOURCE[0]}")/testdata/cni-conf/bridge.conf
-    setup_cni_conf  "${cni_conf_dir}/bridge.conf" ${cni_conf_source}
+    setup_cni_conf  "${CNI_CONF_DIR}/bridge.conf" ${cni_conf_source}
 
     echo "done with bridge cni plugin installation"
 }
 
-cleanup_cni_mizar() {
-    sudo rm -rf "${cni_bin_dir}"
-    [ ! -d "${cni_conf_dir}" ] && sudo mkdir -p "${cni_conf_dir}"
-    [ ! -d "${cni_bin_dir}" ] && sudo mkdir -p "${cni_bin_dir}"
-    sudo find ${cni_conf_dir}/ -type f -not -name '10-mizarcni.conf' -delete
+cleanup_cni() {
+    echo "Cleaning directory /opt/cni/bin"
+    if [ ! -d "${CNI_BIN_DIR}" ]; then
+      sudo mkdir -p "${CNI_BIN_DIR}"
+    else
+      sudo rm -f "${CNI_BIN_DIR}/*"
+      sudo ls -alg "${CNI_BIN_DIR}"
+    fi
+
+    echo "Cleaning directory /etc/cni/net.d" 
+    if ! sudo test -d "${CNI_CONF_DIR}"; then
+      sudo mkdir -p "${CNI_CONF_DIR}"
+    else
+      sudo chmod 0755 "${CNI_CONF_PARENT_DIR}"
+      sudo chmod 0775 "${CNI_CONF_DIR}"
+      sudo rm -f ${CNI_CONF_DIR}/[0-9a-zA-Z_-]*
+    fi
+    sudo chmod 0700 "${CNI_CONF_DIR}"
+    sudo chmod 0700 "${CNI_CONF_PARENT_DIR}"
+
+    echo "Done with two cni directories cleaning"
 }
 
 build_alktron() {
-    local ALKTRON_DIR=$1
-    [ "${ALKTRON_DIR}" == "" ] && die "expected alktron repo folder; invalid parameter"
+    local alktron_dir=$1
+    [ "${alktron_dir}" == "" ] && die "expected alktron repo folder; invalid parameter"
 
-    local ALKTRON_BIN=${ALKTRON_DIR}/alktron/alktron
-    if [ ! -d ${ALKTRON_DIR} ]; then
-        echo "cniplugins folder not exists; please run git clone https://github.com/futurewei-cloud/cniplugins.git ${ALKTRON_DIR}" 1>&2
+    local alktron_bin=${alktron_dir}/alktron/alktron
+    if [ ! -d ${alktron_dir} ]; then
+        echo "cniplugins folder not exists; please run git clone https://github.com/futurewei-cloud/cniplugins.git ${alktron_dir}" 1>&2
         exit 1
     fi
 
-    if [ ! -x ${ALKTRON_BIN} ]; then
+    if [ ! -x ${alktron_bin} ]; then
         echo "building alktron binary..."
-        pushd ${ALKTRON_DIR}/alktron >/dev/null && go build . || die "error: failed to build alktron"
+        pushd ${alktron_dir}/alktron >/dev/null && go build . || die "error: failed to build alktron"
         echo "alktron built successfully"
         popd > /dev/null
     fi
@@ -94,12 +110,12 @@ build_alktron() {
 
 install_cni_alktron() {
     echo "installing alktron cni plugin..."
-    if [ ! -x ${cni_bin_dir}/alktron ]; then
-        local ALKTRON_DIR=$(dirname "$BASH_SOURCE[0]}")/../../cniplugins
-        build_alktron ${ALKTRON_DIR}
-        sudo mkdir -p ${cni_bin_dir}
-        sudo cp ${ALKTRON_DIR}/alktron/alktron ${cni_bin_dir}
-        echo "alktron copied to ${cni_bin_dir}"
+    if [ ! -x ${CNI_BIN_DIR}/alktron ]; then
+        local alktron_dir=$(dirname "$BASH_SOURCE[0]}")/../../cniplugins
+        build_alktron ${alktron_dir}
+        sudo mkdir -p ${CNI_BIN_DIR}
+        sudo cp ${alktron_dir}/alktron/alktron ${CNI_BIN_DIR}
+        echo "alktron copied to ${CNI_BIN_DIR}"
     fi
 
     echo "setting up neutron connection info..."
@@ -127,10 +143,10 @@ EOF"
 }
 
 install_loopback_cni() {
-    if [ ! -x ${cni_bin_dir}/loopback ]; then
+    if [ ! -x ${CNI_BIN_DIR}/loopback ]; then
         echo "installing loopback cni binary..."
         local cniplugin_release_url="https://github.com/containernetworking/plugins/releases/download/v0.8.2/cni-plugins-linux-amd64-v0.8.2.tgz"
-        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${cni_bin_dir} -xzv ./loopback
+        wget -nv -O - ${cniplugin_release_url} | sudo tar -C ${CNI_BIN_DIR} -xzv ./loopback
     fi
 }
 
@@ -141,24 +157,24 @@ ensure_devstack() {
 
 
 install_arktos_containerd() {
-    local CONTAINERD_DIR=$(dirname "$BASH_SOURCE[0]}")/../../arktos-containerd
-    [ -d ${CONTAINERD_DIR} ] || die "arktos-containerd repo not found. please clone futurewei-cloud/arktos-containerd branch wip-pod-annotation-to-cni-args side by side with arktos"
-    if [ ! -x ${CONTAINERD_DIR}/bin/containerd ]; then
+    local containerd_dir=$(dirname "$BASH_SOURCE[0]}")/../../arktos-containerd
+    [ -d ${containerd_dir} ] || die "arktos-containerd repo not found. please clone futurewei-cloud/arktos-containerd branch wip-pod-annotation-to-cni-args side by side with arktos"
+    if [ ! -x ${containerd_dir}/bin/containerd ]; then
         echo "building arktos containerd..."
-        pushd ${CONTAINERD_DIR} > /dev/null
+        pushd ${containerd_dir} > /dev/null
         docker run --rm -e GOPATH=/go -v ${PWD}:/go/src/github.com/containerd/containerd -w /go/src/github.com/containerd/containerd golang:1.12 sh -c "apt update; apt install -y libbtrfs-dev libseccomp-dev; make bin/containerd"
         popd > /dev/null
         echo "...built"
     fi
 
     echo "make sure arktos containerd in power"
-    if [ ! "$(${CONTAINERD_DIR}/bin/containerd --version)" == "$(containerd --version)" ]; then
+    if [ ! "$(${containerd_dir}/bin/containerd --version)" == "$(containerd --version)" ]; then
         echo "stopping containerd shortly to replace the binary..."
         local containerd_path=$(which containerd)
         sudo systemctl stop containerd
         local containerd_back_path=$(dirname ${containerd_path})/containerd_arktos_backup
         sudo mv ${containerd_path} ${containerd_back_path}
-        sudo cp ${CONTAINERD_DIR}/bin/containerd ${containerd_path}
+        sudo cp ${containerd_dir}/bin/containerd ${containerd_path}
         sudo systemctl start containerd
         echo "warning: original containerd binary is saved to ${containerd_path})/containerd_arktos_backup"
         echo "...done"
@@ -167,10 +183,10 @@ install_arktos_containerd() {
 
 install_mizar_arktos_containerd () {
     [ ! -d "$HOME/arktos-containerd" ] && mkdir $HOME/arktos-containerd
-    local CONTAINERD_DIR=$HOME/arktos-containerd
-    [ ! -f "$CONTAINERD_DIR/containerd" ] && wget -qO- https://github.com/CentaurusInfra/containerd/releases/download/tenant-cni-args/containerd.zip | zcat > $CONTAINERD_DIR/containerd && sudo chmod +x $CONTAINERD_DIR/containerd
+    local containerd_dir=$HOME/arktos-containerd
+    [ ! -f "$containerd_dir/containerd" ] && wget -qO- https://github.com/CentaurusInfra/containerd/releases/download/tenant-cni-args/containerd.zip | zcat > $containerd_dir/containerd && sudo chmod +x $containerd_dir/containerd
     echo "Checking arktos containerd..."
-    if [ ! "$(${CONTAINERD_DIR}/containerd --version)" == "$(containerd --version)" ] ; then
+    if [ ! "$(${containerd_dir}/containerd --version)" == "$(containerd --version)" ] ; then
       echo "arktos containerd not found..."
       [ ! -f "$HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz" ] && wget https://github.com/containerd/containerd/releases/download/v1.4.2/containerd-1.4.2-linux-amd64.tar.gz -P $HOME/arktos-containerd/
       sudo tar -zxf $HOME/arktos-containerd/containerd-1.4.2-linux-amd64.tar.gz --directory /usr/
@@ -229,9 +245,11 @@ EOF"
 
 
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
-cni_conf_dir=${CNI_CONF_DIR:-"/etc/cni/net.d"}
-cni_bin_dir=${CNI_BIN_DIR:-"/opt/cni/bin"}
+CNI_CONF_DIR=${CNI_CONF_DIR:-"/etc/cni/net.d"}
+CNI_CONF_PARENT_DIR=${CNI_CONF_PARENT_DIR:-"/etc/cni"}
+CNI_BIN_DIR=${CNI_BIN_DIR:-"/opt/cni/bin"}
 
+cleanup_cni
 if [[ -n "${ARKTOS_NO_CNI_PREINSTALLED}" ]]; then
     echo "CNI plugin will be installed after cluster is started"
     echo "Right now the minimum common cni binary package is being installed only"
@@ -249,7 +267,6 @@ elif [ "${CNIPLUGIN}" == "alktron" ]; then
 elif [ "${CNIPLUGIN}" == "mizar" ]; then
     echo "cni plugin is mizar; arktos will use mizar to provision pod network"
     install_mizar_arktos_containerd
-    cleanup_cni_mizar
     install_loopback_cni
 else
     echo "cni plugin is ${CNIPLUGIN}; arktos onebox cannot use it out of box." 1>&2
