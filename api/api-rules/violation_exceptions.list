@@ -643,6 +643,7 @@ API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,K
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,HPAController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,JobController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,KubeCloudShared
+API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,MizarArktosNetworkController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,NamespaceController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,NodeIPAMController
 API rule violation: names_match,k8s.io/kube-controller-manager/config/v1alpha1,KubeControllerManagerConfiguration,NodeLifecycleController

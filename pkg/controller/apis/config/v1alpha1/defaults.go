@@ -30,6 +30,7 @@ import (
 	endpointconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/endpoint/config/v1alpha1"
 	garbagecollectorconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/garbagecollector/config/v1alpha1"
 	jobconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/job/config/v1alpha1"
+	mizararktosnetworkconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/mizar/config/v1alpha1"
 	namespaceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/namespace/config/v1alpha1"
 	nodeipamconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/nodeipam/config/v1alpha1"
 	nodelifecycleconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/nodelifecycle/config/v1alpha1"
@@ -107,6 +108,8 @@ func SetDefaults_KubeControllerManagerConfiguration(obj *kubectrlmgrconfigv1alph
 	ttlafterfinishedconfigv1alpha1.RecommendedDefaultTTLAfterFinishedControllerConfiguration(&obj.TTLAfterFinishedController)
 	// Use the default RecommendedDefaultPersistentVolumeBinderControllerConfiguration options
 	persistentvolumeconfigv1alpha1.RecommendedDefaultPersistentVolumeBinderControllerConfiguration(&obj.PersistentVolumeBinderController)
+	// Use the default RecommendedDefaultTenantControllerConfiguration options
+	mizararktosnetworkconfigv1alpha1.RecommendedDefaultTenantControllerConfiguration(&obj.MizarArktosNetworkController)
 }
 
 func RecommendedDefaultGenericControllerManagerConfiguration(obj *kubectrlmgrconfigv1alpha1.GenericControllerManagerConfiguration) {

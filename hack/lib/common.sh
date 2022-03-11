@@ -578,6 +578,8 @@ function kube::common::start_controller_manager {
           ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS} \
           --use-service-account-credentials \
           --controllers="${KUBE_CONTROLLERS}" \
+          --vpc-range-start=${VPC_RANGE_START} \
+          --vpc-range-end=${VPC_RANGE_END} \
           --leader-elect=false \
           --cert-dir="${CERT_DIR}" \
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
@@ -603,6 +605,8 @@ function kube::common::start_controller_manager {
           --kubeconfig "${kubeconfigfilepaths}" \
           --use-service-account-credentials \
           --controllers="${KUBE_CONTROLLERS}" \
+          --vpc-range-start=${VPC_RANGE_START} \
+          --vpc-range-end=${VPC_RANGE_END} \
           --leader-elect=false \
           --cert-dir="${CERT_DIR}" \
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &

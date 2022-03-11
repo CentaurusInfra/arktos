@@ -38,6 +38,7 @@ import (
 	endpointconfig "k8s.io/kubernetes/pkg/controller/endpoint/config"
 	garbagecollectorconfig "k8s.io/kubernetes/pkg/controller/garbagecollector/config"
 	jobconfig "k8s.io/kubernetes/pkg/controller/job/config"
+	mizarconfig "k8s.io/kubernetes/pkg/controller/mizar/config"
 	namespaceconfig "k8s.io/kubernetes/pkg/controller/namespace/config"
 	nodeipamconfig "k8s.io/kubernetes/pkg/controller/nodeipam/config"
 	nodelifecycleconfig "k8s.io/kubernetes/pkg/controller/nodelifecycle/config"
@@ -330,6 +331,12 @@ func TestAddFlags(t *testing.T) {
 			&tenantconfig.TenantControllerConfiguration{
 				TenantSyncPeriod:      metav1.Duration{Duration: 10 * time.Minute},
 				ConcurrentTenantSyncs: 20,
+			},
+		},
+		MizarArktosNetworkController: &MizarArktosNetworkControllerOptions{
+			&mizarconfig.MizarArktosNetworkControllerConfiguration{
+				VPCRangeStart: 11,
+				VPCRangeEnd:   99,
 			},
 		},
 		TTLAfterFinishedController: &TTLAfterFinishedControllerOptions{
