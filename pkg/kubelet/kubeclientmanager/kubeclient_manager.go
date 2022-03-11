@@ -23,18 +23,19 @@ import (
 	"sync"
 
 	"k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	kubetypes "k8s.io/kubernetes/pkg/kubelet/types"
 )
 
 /*
-This manager keeps a map between tenant name and its corresponding tenant partition apiserver id.
+This manager keeps a map between pod UID and its corresponding tenant partition apiserver id.
 This map is to be used together with kubeTPClients in the Kubelet struct to obtain the correct kubeclient
 */
 type KubeClientManager struct {
-	tenant2api     map[string]int // tenant name -> tenant partition apiserver id
-	tenant2apiLock sync.RWMutex
+	puid2api     map[types.UID]int // pod UID -> apiserver id
+	puid2apiLock sync.RWMutex
 }
 
 var ClientManager *KubeClientManager
@@ -49,25 +50,29 @@ func NewKubeClientManager() {
 func newKubeClientManagerFunc() func() {
 	return func() {
 		ClientManager = &KubeClientManager{
-			tenant2api: make(map[string]int),
+			puid2api: make(map[types.UID]int),
 		}
-		klog.Infof("kubeclient manager initialized %v", ClientManager)
+		klog.V(2).Infof("kubeclient manager initialized %v", ClientManager)
 	}
 }
 
-func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref *v1.Pod) {
+func (manager *KubeClientManager) RegisterPodSourceServer(source string, ref *v1.Pod) {
 	if len(ref.Tenant) == 0 || !strings.HasPrefix(source, kubetypes.ApiserverSource) {
-		klog.Warningf("unable to register tenant source : tenant='%s', source='%s'", ref.Tenant, source)
+		klog.Warningf("unable to register source: pod uid='%s', tenant='%s', source='%s', ", ref.UID, ref.Tenant, source)
 		return
 	}
 
-	manager.tenant2apiLock.Lock()
-	defer manager.tenant2apiLock.Unlock()
+	if len(ref.UID) == 0 {
+		klog.Warningf("unable to register source for pod with empty UID: tenant='%s', namespace='%s', name='%s', source='%s'", ref.Tenant, ref.Namespace, ref.Name, source)
+		return
+	}
 
-	key := strings.ToLower(ref.Tenant)
+	manager.puid2apiLock.Lock()
+	defer manager.puid2apiLock.Unlock()
+
 	if source == kubetypes.ApiserverSource {
-		klog.Infof("source is '%s', will only use kube client #0", kubetypes.ApiserverSource)
-		manager.tenant2api[key] = 0
+		klog.V(6).Infof("source is '%s', will only use kube client #0", kubetypes.ApiserverSource)
+		manager.puid2api[ref.UID] = 0
 		return
 	}
 
@@ -77,28 +82,48 @@ func (manager *KubeClientManager) RegisterTenantSourceServer(source string, ref 
 		return
 	}
 
-	if _, ok := manager.tenant2api[key]; !ok {
-		manager.tenant2api[key] = clientId
-		klog.Infof("added %d to the map, map has %+v", clientId, manager.tenant2api)
+	if _, ok := manager.puid2api[ref.UID]; !ok {
+		manager.puid2api[ref.UID] = clientId
+		klog.V(6).Infof("added %d to the map, map has %+v", clientId, manager.puid2api)
+	} else {
+		// todo: consider more stringent error handling
+		if clientId == manager.puid2api[ref.UID] {
+			klog.Warningf("pod uid=%s already registered in source map", ref.UID)
+		} else {
+			klog.Errorf("pod uid=%s source tracking conflicts: in source map %d, to set %d", ref.UID, manager.puid2api[ref.UID], clientId)
+		}
 	}
 }
 
-func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface, tenant string) clientset.Interface {
+func (manager *KubeClientManager) UnregisterPodSourceServer(ref *v1.Pod) {
+	if len(ref.UID) == 0 {
+		klog.Warningf("unable to unregister source for pod with empty UID: tenant='%s'", ref.Tenant)
+		return
+	}
+
+	manager.puid2apiLock.Lock()
+	defer manager.puid2apiLock.Unlock()
+
+	delete(manager.puid2api, ref.UID)
+}
+
+func (manager *KubeClientManager) GetTPClient(kubeClients []clientset.Interface, podUID types.UID) clientset.Interface {
 	if kubeClients == nil || len(kubeClients) == 0 {
 		klog.Errorf("invalid kubeClients : %v", kubeClients)
 		return nil
 	}
-	pick := manager.PickClient(tenant)
-	klog.Infof("using client #%v for tenant '%s'", pick, tenant)
+	// todo: calling param w/ use pod uid only
+	pick := manager.PickClient(podUID)
+	klog.V(6).Infof("using client #%v for pod UID '%s'", pick, podUID)
 	return kubeClients[pick]
 }
 
-func (manager *KubeClientManager) PickClient(tenant string) int {
-	manager.tenant2apiLock.RLock()
-	defer manager.tenant2apiLock.RUnlock()
-	pick, ok := manager.tenant2api[strings.ToLower(tenant)]
+func (manager *KubeClientManager) PickClient(podUID types.UID) int {
+	manager.puid2apiLock.RLock()
+	defer manager.puid2apiLock.RUnlock()
+	pick, ok := manager.puid2api[podUID]
 	if !ok {
-		klog.Warningf("no registered client for tenant %s, defaulted to client #0", tenant)
+		klog.Warningf("no registered client for pod UID %s, defaulted to client #0", podUID)
 		pick = 0
 	}
 	return pick

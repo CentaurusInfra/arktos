@@ -21,6 +21,7 @@ import (
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
+	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/metadata"
 	tenantcontroller "k8s.io/kubernetes/pkg/controller/tenant"
@@ -62,6 +63,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 		}), all), err
 	}
 	networkClient := arktos.NewForConfigOrDie(configs)
+	networkInformers := externalversions.NewSharedInformerFactory(networkClient, 0)
 	controller := tenantcontroller.NewTenantController(clientSet,
 		informerSet.Core().V1().Tenants(),
 		informerSet.Core().V1().Namespaces(),
@@ -69,6 +71,7 @@ func setup(t *testing.T) (*httptest.Server, framework.CloseFunc, *tenantcontroll
 		informerSet.Rbac().V1().ClusterRoleBindings(),
 		resyncPeriod,
 		networkClient,
+		networkInformers.Arktos().V1().Networks(),
 		"",
 		metadataClient,
 		discoverTenantedResourcesFn,

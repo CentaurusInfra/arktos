@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/informers"
 	coreinformers "k8s.io/client-go/informers/core/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/tools/cache"
 	"k8s.io/kubernetes/pkg/controller"
 	"k8s.io/kubernetes/pkg/controller/testutil"
 )
@@ -34,13 +35,16 @@ const (
 	testGrpcHost = "10.0.1.17"
 
 	mizarNodeControllerWorkerCount = 2
+
+	rpId0 = "rp0"
 )
 
 func TestMizarNodeController_Create(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mizarNodeController, _, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
-	mizarNodeController.listerSynced = alwaysReady
+	mizarNodeController.nodeListersSynced = make(map[string]cache.InformerSynced, 1)
+
 	go mizarNodeController.Run(mizarNodeControllerWorkerCount, ctx.Done())
 
 	go nodeInformer.Informer().Run(ctx.Done())
@@ -53,7 +57,8 @@ func TestMizarNodeController_Update(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mizarNodeController, kubeClient, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
-	mizarNodeController.listerSynced = alwaysReady
+	mizarNodeController.nodeListersSynced = make(map[string]cache.InformerSynced, 1)
+	mizarNodeController.nodeListersSynced[rpId0] = alwaysReady
 	go mizarNodeController.Run(mizarNodeControllerWorkerCount, ctx.Done())
 
 	syncNodeStore(nodeInformer, kubeClient)
@@ -69,7 +74,8 @@ func TestMizarNodeController_Retry(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	mizarNodeController, _, nodeInformer, grpcAdaptorMock, node := getNewMizarNodeController()
-	mizarNodeController.listerSynced = alwaysReady
+	mizarNodeController.nodeListersSynced = make(map[string]cache.InformerSynced, 1)
+	mizarNodeController.nodeListersSynced[rpId0] = alwaysReady
 	grpcAdaptorMock.returnCodeFunc = func(grpcAdaptorMock *GrpcAdaptorMock) *ReturnCode {
 		if grpcAdaptorMock.retryCount < retryCount {
 			grpcAdaptorMock.retryCount++
@@ -134,9 +140,11 @@ func getNewMizarNodeController() (*MizarNodeController, *testutil.FakeNodeHandle
 		}
 	factory := informers.NewSharedInformerFactory(kubeClient, controller.NoResyncPeriodFunc())
 	nodeInformer := factory.Core().V1().Nodes()
+	nodeInformerMap := make(map[string]coreinformers.NodeInformer, 1)
+	nodeInformerMap[rpId0] = nodeInformer
 
 	kubeClient.CreateHook = func(c *testutil.FakeNodeHandler, n *v1.Node) bool { return true }
 
 	grpcAdaptor := NewGrpcAdaptorMock()
-	return NewMizarNodeController(nodeInformer, kubeClient, testGrpcHost, grpcAdaptor), kubeClient, nodeInformer, grpcAdaptor, node
+	return NewMizarNodeController(nodeInformer, nodeInformerMap, kubeClient, testGrpcHost, grpcAdaptor), kubeClient, nodeInformer, grpcAdaptor, node
 }

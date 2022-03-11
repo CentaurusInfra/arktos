@@ -84,7 +84,7 @@ func TestFindAndAddNewPods_FindAndRemoveDeletedPods(t *testing.T) {
 	pod := createPodWithVolume("dswp-test-pod", "dswp-test-volume-name", "file-bound", containers)
 
 	kubeclientmanager.NewKubeClientManager()
-	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
+	kubeclientmanager.ClientManager.RegisterPodSourceServer(kubetypes.ApiserverSource, pod)
 
 	fakePodManager.AddPod(pod)
 
@@ -419,7 +419,7 @@ func TestCreateVolumeSpec_Valid_File_VolumeMounts(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, pod.UID, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec == nil || err != nil {
@@ -468,7 +468,7 @@ func TestCreateVolumeSpec_Valid_Block_VolumeDevices(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, pod.UID, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec == nil || err != nil {
@@ -517,7 +517,7 @@ func TestCreateVolumeSpec_Invalid_File_VolumeDevices(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, pod.UID, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec != nil || err == nil {
@@ -566,7 +566,7 @@ func TestCreateVolumeSpec_Invalid_Block_VolumeMounts(t *testing.T) {
 	fakePodManager.AddPod(pod)
 	mountsMap, devicesMap := dswp.makeVolumeMap(pod.Spec.Containers)
 	_, volumeSpec, _, err :=
-		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, mountsMap, devicesMap)
+		dswp.createVolumeSpec(pod.Spec.Volumes[0], pod.Name, pod.Namespace, metav1.TenantSystem, pod.UID, mountsMap, devicesMap)
 
 	// Assert
 	if volumeSpec != nil || err == nil {
@@ -575,6 +575,7 @@ func TestCreateVolumeSpec_Invalid_Block_VolumeMounts(t *testing.T) {
 }
 
 func TestCheckVolumeFSResize(t *testing.T) {
+	kubeclientmanager.NewKubeClientManager()
 	mode := v1.PersistentVolumeFilesystem
 	pv := &v1.PersistentVolume{
 		ObjectMeta: metav1.ObjectMeta{

@@ -36,6 +36,7 @@ import (
 	endpointconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/endpoint/config/v1alpha1"
 	garbagecollectorconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/garbagecollector/config/v1alpha1"
 	jobconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/job/config/v1alpha1"
+	mizarconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/mizar/config/v1alpha1"
 	namespaceconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/namespace/config/v1alpha1"
 	nodeipamconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/nodeipam/config/v1alpha1"
 	nodelifecycleconfigv1alpha1 "k8s.io/kubernetes/pkg/controller/nodelifecycle/config/v1alpha1"
@@ -356,6 +357,9 @@ func autoConvert_v1alpha1_KubeControllerManagerConfiguration_To_config_KubeContr
 	if err := ttlafterfinishedconfigv1alpha1.Convert_v1alpha1_TTLAfterFinishedControllerConfiguration_To_config_TTLAfterFinishedControllerConfiguration(&in.TTLAfterFinishedController, &out.TTLAfterFinishedController, s); err != nil {
 		return err
 	}
+	if err := mizarconfigv1alpha1.Convert_v1alpha1_MizarArktosNetworkControllerConfiguration_To_config_MizarArktosNetworkControllerConfiguration(&in.MizarArktosNetworkController, &out.MizarArktosNetworkController, s); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -432,6 +436,9 @@ func autoConvert_config_KubeControllerManagerConfiguration_To_v1alpha1_KubeContr
 		return err
 	}
 	if err := ttlafterfinishedconfigv1alpha1.Convert_config_TTLAfterFinishedControllerConfiguration_To_v1alpha1_TTLAfterFinishedControllerConfiguration(&in.TTLAfterFinishedController, &out.TTLAfterFinishedController, s); err != nil {
+		return err
+	}
+	if err := mizarconfigv1alpha1.Convert_config_MizarArktosNetworkControllerConfiguration_To_v1alpha1_MizarArktosNetworkControllerConfiguration(&in.MizarArktosNetworkController, &out.MizarArktosNetworkController, s); err != nil {
 		return err
 	}
 	return nil

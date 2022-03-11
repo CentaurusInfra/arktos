@@ -54,6 +54,12 @@ func TestCrossGroupStorageWithMultiTenancy(t *testing.T) {
 	// Group by persisted GVK
 	for _, resourceToPersist := range master.Resources {
 		gvk := resourceToPersist.Mapping.GroupVersionKind
+
+		// daemonset not allowed in user tenant; skip its checking in multi tenants
+		if gvk.GroupKind().Kind == "DaemonSet" {
+			continue
+		}
+
 		data, exists := etcdStorageData[resourceToPersist.Mapping.Resource]
 		if !exists {
 			continue

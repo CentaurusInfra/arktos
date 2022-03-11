@@ -31,8 +31,10 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/clock"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -40,11 +42,13 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	v1core "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/record"
 	clientretry "k8s.io/client-go/util/retry"
+	scheme "k8s.io/kubernetes/pkg/api/legacyscheme"
 	podutil "k8s.io/kubernetes/pkg/api/v1/pod"
 	_ "k8s.io/kubernetes/pkg/apis/core/install"
 	"k8s.io/kubernetes/pkg/apis/core/validation"
@@ -1180,4 +1184,33 @@ func getOrCreateServiceAccountWithMultiTenancy(coreClient v1core.CoreV1Interface
 		return coreClient.ServiceAccountsWithMultiTenancy(namespace, tenant).Get(name, metav1.GetOptions{})
 	}
 	return sa, err
+}
+
+// Create CRD object from raw data
+func CreateUnstructuredObject(data []byte, dynamicClient dynamic.Interface) error {
+	unstructuredObj := &unstructured.Unstructured{}
+	_, gvk, err := scheme.Codecs.UniversalDeserializer().Decode(data, nil, unstructuredObj)
+	if err != nil {
+		klog.Errorf("Getting GVK for %v/%v/%v result in error (%v).",
+			unstructuredObj.GetTenant(), unstructuredObj.GetNamespace(), unstructuredObj.GetName(), err)
+		return err
+	}
+
+	gvr, _ := meta.UnsafeGuessKindToResource(*gvk)
+
+	_, err = dynamicClient.Resource(gvr).NamespaceWithMultiTenancy(
+		unstructuredObj.GetNamespace(), unstructuredObj.GetTenant()).Create(unstructuredObj, metav1.CreateOptions{})
+
+	if err != nil {
+		klog.Errorf("Create unstructed object (%s/%s/%s) result in error (%v).",
+			unstructuredObj.GetTenant(), unstructuredObj.GetNamespace(), unstructuredObj.GetName(), err)
+	}
+
+	return err
+}
+
+// List CRD objects
+func ListUnstructuredObjects(resource schema.GroupVersionResource, dynamicClient dynamic.Interface, tenant, ns string) (*unstructured.UnstructuredList, error) {
+	return dynamicClient.Resource(resource).NamespaceWithMultiTenancy(ns, tenant).List(metav1.ListOptions{})
+
 }

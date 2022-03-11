@@ -10,6 +10,7 @@ go_library(
         "index.go",
         "metrics.go",
         "openapi.go",
+        "openstack.go",
         "profiling.go",
         "version.go",
     ],
@@ -17,6 +18,7 @@ go_library(
     importpath = "k8s.io/apiserver/pkg/server/routes",
     deps = [
         "//staging/src/k8s.io/apimachinery/pkg/apis/meta/v1:go_default_library",
+        "//staging/src/k8s.io/apimachinery/pkg/util/json:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/util/sets:go_default_library",
         "//staging/src/k8s.io/apimachinery/pkg/version:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/endpoints/filters:go_default_library",
@@ -24,6 +26,7 @@ go_library(
         "//staging/src/k8s.io/apiserver/pkg/endpoints/metrics:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/server/mux:go_default_library",
         "//staging/src/k8s.io/apiserver/pkg/storage/etcd3/metrics:go_default_library",
+        "//staging/src/k8s.io/apiserver/pkg/util/openstack:go_default_library",
         "//vendor/github.com/emicklei/go-restful:go_default_library",
         "//vendor/github.com/go-openapi/spec:go_default_library",
         "//vendor/github.com/prometheus/client_golang/prometheus:go_default_library",

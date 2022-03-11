@@ -1,0 +1,8 @@
+{
+    "restore" : {
+        "ImageRef" : "foobar",
+        "metadata": {
+            "meta_var": "meta_val"
+        }
+    }
+}

@@ -41,8 +41,11 @@ export VIRTLET_SOCK_PATH="/run/virtlet.sock"
 # This is required by virtlet deamonset installation
 export ALLOW_PRIVILEGED=true
 
-# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration)
+# onebox has option to choose cni plugin: bridge(default), alktron(neutron integration), mizar
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
+
+VPC_RANGE_START=${VPC_RANGE_START:-11}
+VPC_RANGE_END=${VPC_RANGE_END:-99}
 
 # This command builds and runs a local kubernetes cluster.
 # You may need to run this as root to allow kubelet to open docker's socket,
@@ -109,6 +112,7 @@ EXTERNAL_CLOUD_PROVIDER_BINARY=${EXTERNAL_CLOUD_PROVIDER_BINARY:-""}
 CLOUD_PROVIDER=${CLOUD_PROVIDER:-""}
 CLOUD_CONFIG=${CLOUD_CONFIG:-""}
 FEATURE_GATES=${FEATURE_GATES:-"AllAlpha=false"}
+FEATURE_GATES_COMMON_BASE=${FEATURE_GATES_COMMON_BASE:-"${FEATURE_GATES},WorkloadInfoDefaulting=true,QPSDoubleGCController=true,QPSDoubleRSController=true"}
 STORAGE_BACKEND=${STORAGE_BACKEND:-"etcd3"}
 STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-""}
 # preserve etcd data. you also need to set ETCD_DIR.

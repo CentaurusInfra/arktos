@@ -1,0 +1,97 @@
+{
+"apiVersion": "v1",
+"kind": "Pod",
+"metadata": {
+  "name":"arktos-network-controller",
+  "namespace": "kube-system",
+  "annotations": {
+    "scheduler.alpha.kubernetes.io/critical-pod": "",
+    "seccomp.security.alpha.kubernetes.io/pod": "docker/default"
+  },
+  "labels": {
+    "tier": "control-plane",
+    "component": "arktos-network-controller"
+  }
+},
+"spec":{
+"hostNetwork": true,
+"containers":[
+    {
+    "name": "arktos-network-controller",
+    "image": "{{pillar['kube_docker_registry']}}/arktos-network-controller:{{pillar['arktos-network-controller_docker_tag']}}",
+    "resources": {
+      "requests": {
+        "cpu": "{{cpurequest}}"
+      }
+    },
+    "command": [
+                 "/bin/sh",
+                 "-c",
+                 "exec /usr/local/bin/arktos-network-controller {{params}} 1>>/var/log/arktos-network-controller.log 2>&1"
+               ],
+    {{container_env}}
+    "volumeMounts": [
+        {{cloud_config_mount}}
+        {{additional_cloud_config_mount}}
+        {{pv_recycler_mount}}
+        { "name": "srvkube",
+        "mountPath": "/etc/srv/kubernetes",
+        "readOnly": true},
+        {{flexvolume_hostpath_mount}}
+        { "name": "logfile",
+        "mountPath": "/var/log/arktos-network-controller.log",
+        "readOnly": false},
+        { "name": "etcssl",
+        "mountPath": "/etc/ssl",
+        "readOnly": true},
+        { "name": "usrsharecacerts",
+        "mountPath": "/usr/share/ca-certificates",
+        "readOnly": true},
+        { "name": "varssl",
+        "mountPath": "/var/ssl",
+        "readOnly": true},
+        { "name": "etcopenssl",
+        "mountPath": "/etc/openssl",
+        "readOnly": true},
+        { "name": "etcpki",
+        "mountPath": "/etc/pki",
+        "readOnly": true}
+      ]
+    }
+],
+"volumes":[
+  {{cloud_config_volume}}
+  {{additional_cloud_config_volume}}
+  {{pv_recycler_volume}}
+  { "name": "srvkube",
+    "hostPath": {
+        "path": "/etc/srv/kubernetes"}
+  },
+  {{flexvolume_hostpath}}
+  { "name": "logfile",
+    "hostPath": {
+        "path": "/var/log/arktos-network-controller.log",
+        "type": "FileOrCreate"}
+  },
+  { "name": "etcssl",
+    "hostPath": {
+        "path": "/etc/ssl"}
+  },
+  { "name": "usrsharecacerts",
+    "hostPath": {
+        "path": "/usr/share/ca-certificates"}
+  },
+  { "name": "varssl",
+    "hostPath": {
+        "path": "/var/ssl"}
+  },
+  { "name": "etcopenssl",
+    "hostPath": {
+        "path": "/etc/openssl"}
+  },
+  { "name": "etcpki",
+    "hostPath": {
+        "path": "/etc/pki"}
+  }
+]
+}}

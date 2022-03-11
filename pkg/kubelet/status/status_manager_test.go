@@ -93,7 +93,7 @@ func newTestManager(kubeClient clientset.Interface) *manager {
 		kubeClient,
 	}
 	kubeclientmanager.NewKubeClientManager()
-	kubeclientmanager.ClientManager.RegisterTenantSourceServer(kubetypes.ApiserverSource, pod)
+	kubeclientmanager.ClientManager.RegisterPodSourceServer(kubetypes.ApiserverSource, pod)
 
 	return NewManager(kubeTPClients, podManager, &statustest.FakePodDeletionSafetyProvider{}).(*manager)
 }

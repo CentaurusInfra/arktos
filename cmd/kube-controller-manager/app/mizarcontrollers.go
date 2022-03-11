@@ -20,10 +20,10 @@ package app
 
 import (
 	"net/http"
-	"time"
 
 	arktos "k8s.io/arktos-ext/pkg/generated/clientset/versioned"
 	"k8s.io/arktos-ext/pkg/generated/informers/externalversions"
+	"k8s.io/client-go/dynamic"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/klog"
 	controllers "k8s.io/kubernetes/pkg/controller/mizar"
@@ -56,13 +56,21 @@ func startMizarStarterController(ctx ControllerContext) (http.Handler, bool, err
 func startHandler(controllerContext interface{}, grpcHost string) {
 	grpcAdaptor := new(controllers.GrpcAdaptor)
 	ctx := controllerContext.(ControllerContext)
+
+	// get arktos informer
+	kubeConfigs := ctx.ClientBuilder.ConfigOrDie("mizar-controller-shared-informers")
+	networkClient := arktos.NewForConfigOrDie(kubeConfigs)
+	networkInformerFactory := externalversions.NewSharedInformerFactory(networkClient, 0)
+
 	startMizarEndpointsController(&ctx, grpcHost, grpcAdaptor)
 	startMizarNodeController(&ctx, grpcHost, grpcAdaptor)
-	startMizarPodController(&ctx, grpcHost, grpcAdaptor)
-	startMizarServiceController(&ctx, grpcHost, grpcAdaptor)
-	startArktosNetworkController(&ctx, grpcHost, grpcAdaptor)
+	startMizarPodController(&ctx, networkInformerFactory, grpcHost, grpcAdaptor)
+	startMizarServiceController(&ctx, networkInformerFactory, grpcHost, grpcAdaptor)
+	startArktosNetworkController(&ctx, networkInformerFactory, grpcHost, grpcAdaptor)
 	startMizarNetworkPolicyController(&ctx, grpcHost, grpcAdaptor)
 	startMizarNamespaceController(&ctx, grpcHost, grpcAdaptor)
+
+	networkInformerFactory.Start(ctx.Stop)
 }
 
 func startMizarEndpointsController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
@@ -85,6 +93,7 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string, grpcAdapt
 
 	go controllers.NewMizarNodeController(
 		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.ResourceProviderNodeInformers,
 		ctx.ClientBuilder.ClientOrDie(controllerName),
 		grpcHost,
 		grpcAdaptor,
@@ -92,20 +101,25 @@ func startMizarNodeController(ctx *ControllerContext, grpcHost string, grpcAdapt
 	return nil, true, nil
 }
 
-func startMizarPodController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
+func startMizarPodController(ctx *ControllerContext, networkInformerFactory externalversions.SharedInformerFactory, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
 	controllerName := "mizar-pod-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
-	go controllers.NewMizarPodController(
-		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.ClientBuilder.ClientOrDie(controllerName),
-		grpcHost,
-		grpcAdaptor,
-	).Run(mizarPodControllerWorkerCount, ctx.Stop)
+	go func() {
+		podController := controllers.NewMizarPodController(
+			ctx.InformerFactory.Core().V1().Pods(),
+			ctx.ClientBuilder.ClientOrDie(controllerName),
+			networkInformerFactory.Arktos().V1().Networks(),
+			grpcHost,
+			grpcAdaptor,
+		)
+
+		podController.Run(mizarPodControllerWorkerCount, ctx.Stop)
+	}()
 	return nil, true, nil
 }
 
-func startMizarServiceController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
+func startMizarServiceController(ctx *ControllerContext, networkInformerFactory externalversions.SharedInformerFactory, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
 	controllerName := "mizar-service-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
@@ -123,20 +137,18 @@ func startMizarServiceController(ctx *ControllerContext, grpcHost string, grpcAd
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
-
 	go controllers.NewMizarServiceController(
 		svcKubeClient,
 		networkClient,
 		ctx.InformerFactory.Core().V1().Services(),
-		informerFactory.Arktos().V1().Networks(),
+		networkInformerFactory.Arktos().V1().Networks(),
 		grpcHost,
 		grpcAdaptor,
 	).Run(mizarServiceControllerWorkerCount, ctx.Stop)
 	return nil, true, nil
 }
 
-func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
+func startArktosNetworkController(ctx *ControllerContext, networkInformerFactory externalversions.SharedInformerFactory, grpcHost string, grpcAdaptor controllers.IGrpcAdaptor) (http.Handler, bool, error) {
 	controllerName := "mizar-arktos-network-controller"
 	klog.V(2).Infof("Starting %v", controllerName)
 
@@ -152,15 +164,22 @@ func startArktosNetworkController(ctx *ControllerContext, grpcHost string, grpcA
 	}
 	networkClient := arktos.NewForConfigOrDie(&crConfigs)
 	svcKubeClient := clientset.NewForConfigOrDie(netKubeconfigs)
-	informerFactory := externalversions.NewSharedInformerFactory(networkClient, 10*time.Minute)
+	dynamicClient := dynamic.NewForConfigOrDie(netKubeconfigs)
 
-	go controllers.NewMizarArktosNetworkController(
-		networkClient,
-		svcKubeClient,
-		informerFactory.Arktos().V1().Networks(),
-		grpcHost,
-		grpcAdaptor,
-	).Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	go func() {
+		networkController := controllers.NewMizarArktosNetworkController(
+			dynamicClient,
+			networkClient,
+			svcKubeClient,
+			networkInformerFactory.Arktos().V1().Networks(),
+			grpcHost,
+			grpcAdaptor,
+			int(ctx.ComponentConfig.MizarArktosNetworkController.VPCRangeStart),
+			int(ctx.ComponentConfig.MizarArktosNetworkController.VPCRangeEnd),
+		)
+
+		networkController.Run(mizarArktosNetworkControllerWorkerCount, ctx.Stop)
+	}()
 	return nil, true, nil
 }
 

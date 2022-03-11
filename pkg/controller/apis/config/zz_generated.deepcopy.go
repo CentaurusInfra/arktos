@@ -130,6 +130,7 @@ func (in *KubeControllerManagerConfiguration) DeepCopyInto(out *KubeControllerMa
 	out.ServiceController = in.ServiceController
 	out.TenantController = in.TenantController
 	out.TTLAfterFinishedController = in.TTLAfterFinishedController
+	out.MizarArktosNetworkController = in.MizarArktosNetworkController
 	return
 }
 

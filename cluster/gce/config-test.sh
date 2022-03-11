@@ -50,12 +50,6 @@ START_ETCD_GRPC_PROXY=${START_ETCD_GRPC_PROXY:-false}
 ENABLE_KCM_LEADER_ELECT=${ENABLE_KCM_LEADER_ELECT:-true}
 #switch to enable/disable kube-scheduler leader-elect: --leader-elect=true/false
 ENABLE_SCHEDULER_LEADER_ELECT=${ENABLE_SCHEDULER_LEADER_ELECT:-true}
-SHARE_PARTITIONSERVER=${SHARE_PARTITIONSERVER:-false}
-PARTITIONSERVER_SIZE=${PARTITIONSERVER_SIZE:-${MASTER_SIZE}}
-PARTITIONSERVER_MIN_CPU_ARCHITECTURE=${PARTITIONSERVER_MIN_CPU_ARCHITECTURE:-${MASTER_MIN_CPU_ARCHITECTURE:-}} # To allow choosing better architectures.
-PARTITIONSERVER_DISK_TYPE=${PARTITIONSERVER_DISK_TYPE:-${MASTER_DISK_TYPE}}
-PARTITIONSERVER_DISK_SIZE=${PARTITIONSERVER_DISK_SIZE:-${MASTER_DISK_SIZE}}
-PARTITIONSERVER_ROOT_DISK_SIZE=${PARTITIONSERVER_ROOT_DISK_SIZE:-${MASTER_ROOT_DISK_SIZE}}
 
 # KUBE_CREATE_NODES can be used to avoid creating nodes, while master will be sized for NUM_NODES nodes.
 # Firewalls and node templates are still created.
@@ -97,6 +91,22 @@ if [[ "${NODE_OS_DISTRIBUTION}" == "debian" ]]; then
     NODE_ACCELERATORS=""
 fi
 
+# Networking plugin specific settings.
+NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with container runtime, update to cni and flannel
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  NETWORK_PROVIDER_VERSION="dev"
+  NETWORK_POLICY_PROVIDER="mizar"
+  CNI_BIN_DIR="/opt/cni/bin"
+  KUBE_CONTAINER_RUNTIME="docker"
+  # Mizar currently needs ubuntu due to python dependencies
+  KUBE_GCE_MASTER_PROJECT="ubuntu-os-cloud"
+  KUBE_GCE_NODE_PROJECT="ubuntu-os-cloud"
+  KUBE_GCI_VERSION="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_MASTER_IMAGE="ubuntu-2004-focal-v20211202"
+  KUBE_GCE_NODE_IMAGE="ubuntu-2004-focal-v20211202"
+fi
+
 # To avoid failing large tests due to some flakes in starting nodes, allow
 # for a small percentage of nodes to not start during cluster startup.
 ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
@@ -106,40 +116,75 @@ ALLOWED_NOTREADY_NODES="${ALLOWED_NOTREADY_NODES:-0}"
 # you are updating the os image versions, update this variable.
 # Also please update corresponding image for node e2e at:
 # https://github.com/kubernetes/kubernetes/blob/master/test/e2e_node/jenkins/image-config.yaml
-GCI_VERSION=${KUBE_GCI_VERSION:-cos-73-11647-163-0}
+GCI_VERSION=${KUBE_GCI_VERSION:-cos-93-16623-39-21}
 MASTER_IMAGE=${KUBE_GCE_MASTER_IMAGE:-}
 MASTER_IMAGE_PROJECT=${KUBE_GCE_MASTER_PROJECT:-cos-cloud}
 NODE_IMAGE=${KUBE_GCE_NODE_IMAGE:-${GCI_VERSION}}
 NODE_IMAGE_PROJECT=${KUBE_GCE_NODE_PROJECT:-cos-cloud}
 NODE_SERVICE_ACCOUNT=${KUBE_GCE_NODE_SERVICE_ACCOUNT:-default}
+
+# Data partition server env
+SHARE_PARTITIONSERVER=${SHARE_PARTITIONSERVER:-false}
+PARTITIONSERVER_SIZE=${PARTITIONSERVER_SIZE:-${MASTER_SIZE}}
+PARTITIONSERVER_MIN_CPU_ARCHITECTURE=${PARTITIONSERVER_MIN_CPU_ARCHITECTURE:-${MASTER_MIN_CPU_ARCHITECTURE:-}} # To allow choosing better architectures.
+PARTITIONSERVER_DISK_TYPE=${PARTITIONSERVER_DISK_TYPE:-${MASTER_DISK_TYPE}}
+PARTITIONSERVER_DISK_SIZE=${PARTITIONSERVER_DISK_SIZE:-${MASTER_DISK_SIZE}}
+PARTITIONSERVER_ROOT_DISK_SIZE=${PARTITIONSERVER_ROOT_DISK_SIZE:-${MASTER_ROOT_DISK_SIZE}}
 PARTITIONSERVER_IMAGE=${PARTITIONSERVER_IMAGE:-${MASTER_IMAGE}}
 PARTITIONSERVER_IMAGE_PROJECT=${PARTITIONSERVER_IMAGE_PROJECT:-${MASTER_IMAGE_PROJECT}}
 
-CONTAINER_RUNTIME=${KUBE_CONTAINER_RUNTIME:-docker}
-CONTAINER_RUNTIME_ENDPOINT=${KUBE_CONTAINER_RUNTIME_ENDPOINT:-}
-CONTAINER_RUNTIME_NAME=${KUBE_CONTAINER_RUNTIME_NAME:-}
-LOAD_IMAGE_COMMAND=${KUBE_LOAD_IMAGE_COMMAND:-}
-GCI_DOCKER_VERSION=${KUBE_GCI_DOCKER_VERSION:-}
-if [[ "${CONTAINER_RUNTIME}" == "containerd" ]]; then
-  CONTAINER_RUNTIME_NAME=${KUBE_CONTAINER_RUNTIME_NAME:-containerd}
-  CONTAINER_RUNTIME_ENDPOINT=${KUBE_CONTAINER_RUNTIME_ENDPOINT:-unix:///run/containerd/containerd.sock}
-  LOAD_IMAGE_COMMAND=${KUBE_LOAD_IMAGE_COMMAND:-ctr -n=k8s.io images import}
-  KUBELET_TEST_ARGS="${KUBELET_TEST_ARGS:-} --runtime-cgroups=/system.slice/containerd.service"
+# scaleout server env
+SCALEOUTSERVER_SIZE=${SCALEOUTSERVER_SIZE:-${MASTER_SIZE}}
+SCALEOUTSERVER_MIN_CPU_ARCHITECTURE=${SCALEOUTSERVER_MIN_CPU_ARCHITECTURE:-${MASTER_MIN_CPU_ARCHITECTURE:-}} # To allow choosing better architectures.
+SCALEOUTSERVER_DISK_TYPE=${SCALEOUTSERVER_DISK_TYPE:-${MASTER_DISK_TYPE}}
+SCALEOUTSERVER_DISK_SIZE=${SCALEOUTSERVER_DISK_SIZE:-${MASTER_DISK_SIZE}}
+SCALEOUTSERVER_ROOT_DISK_SIZE=${SCALEOUTSERVER_ROOT_DISK_SIZE:-${MASTER_ROOT_DISK_SIZE}}
+SCALEOUTSERVER_IMAGE_PROJECT=${SCALEOUTSERVER_IMAGE_PROJECT:-${MASTER_IMAGE_PROJECT}}
+SCALEOUTSERVER_IMAGE=${SCALEOUTSERVER_IMAGE:-${MASTER_IMAGE}}
+
+# KUBELET_TEST_ARGS are extra arguments passed to kubelet.
+KUBELET_TEST_ARGS=${KUBE_KUBELET_EXTRA_ARGS:-}
+CONTAINER_RUNTIME=${KUBE_CONTAINER_RUNTIME:-containerd}
+# Set default values with override
+if [[ "${CONTAINER_RUNTIME}" == "docker" ]]; then
+  export CONTAINER_RUNTIME_ENDPOINT=${KUBE_CONTAINER_RUNTIME_ENDPOINT:-unix:///var/run/dockershim.sock}
+  export CONTAINER_RUNTIME_NAME=${KUBE_CONTAINER_RUNTIME_NAME:-docker}
+  export LOAD_IMAGE_COMMAND=${KUBE_LOAD_IMAGE_COMMAND:-}
+elif [[ "${CONTAINER_RUNTIME}" == "containerd" ]]; then
+  export CONTAINER_RUNTIME_ENDPOINT=${KUBE_CONTAINER_RUNTIME_ENDPOINT:-unix:///run/containerd/containerd.sock}
+  export CONTAINER_RUNTIME_NAME=${KUBE_CONTAINER_RUNTIME_NAME:-containerd}
+  export LOAD_IMAGE_COMMAND=${KUBE_LOAD_IMAGE_COMMAND:-ctr -n=k8s.io images import}
+  KUBELET_TEST_ARGS="${KUBELET_TEST_ARGS} --runtime-cgroups=/system.slice/containerd.service"
 fi
+
+# Ability to inject custom versions (Ubuntu OS images ONLY)
+# if KUBE_UBUNTU_INSTALL_CONTAINERD_VERSION or KUBE_UBUNTU_INSTALL_RUNC_VERSION
+# is set to empty then we do not override the version(s) and just
+# use whatever is in the default installation of containerd package
+export UBUNTU_INSTALL_CONTAINERD_VERSION=${KUBE_UBUNTU_INSTALL_CONTAINERD_VERSION:-}
+export UBUNTU_INSTALL_RUNC_VERSION=${KUBE_UBUNTU_INSTALL_RUNC_VERSION:-}
+
+GCI_DOCKER_VERSION=${KUBE_GCI_DOCKER_VERSION:-}
 
 # MASTER_EXTRA_METADATA is the extra instance metadata on master instance separated by commas.
 MASTER_EXTRA_METADATA=${KUBE_MASTER_EXTRA_METADATA:-${KUBE_EXTRA_METADATA:-}}
 # MASTER_EXTRA_METADATA is the extra instance metadata on node instance separated by commas.
 NODE_EXTRA_METADATA=${KUBE_NODE_EXTRA_METADATA:-${KUBE_EXTRA_METADATA:-}}
 
+KUBE_APISERVER_EXTRA_ARGS="${KUBE_APISERVER_EXTRA_ARGS:-}"
+KUBE_CONTROLLER_EXTRA_ARGS="${KUBE_CONTROLLER_EXTRA_ARGS:-}"
+KUBE_SCHEDULER_EXTRA_ARGS="${KUBE_SCHEDULER_EXTRA_ARGS:-}"
+
 NETWORK=${KUBE_GCE_NETWORK:-e2e-test-${USER}}
 if [[ "${CREATE_CUSTOM_NETWORK}" == true ]]; then
   SUBNETWORK="${SUBNETWORK:-${NETWORK}-custom-subnet}"
 fi
+KUBE_GCE_INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-kubernetes}"
 INSTANCE_PREFIX="${KUBE_GCE_INSTANCE_PREFIX:-e2e-test-${USER}}"
+KUBEMARK_PREFIX="${KUBEMARK_PREFIX:-}"
 CLUSTER_NAME="${CLUSTER_NAME:-${INSTANCE_PREFIX}}"
-MASTER_NAME="${INSTANCE_PREFIX}-master"
-AGGREGATOR_MASTER_NAME="${INSTANCE_PREFIX}-aggregator"
+MASTER_NAME="${CLUSTER_NAME}-master"
+AGGREGATOR_MASTER_NAME="${CLUSTER_NAME}-aggregator"
 INITIAL_ETCD_CLUSTER="${MASTER_NAME}"
 MASTER_TAG="${INSTANCE_PREFIX}-master"
 NODE_TAG="${INSTANCE_PREFIX}-minion"
@@ -167,7 +212,8 @@ EXTRA_DOCKER_OPTS="${EXTRA_DOCKER_OPTS:-}"
 # Enable the docker debug mode.
 EXTRA_DOCKER_OPTS="${EXTRA_DOCKER_OPTS} --debug"
 
-SERVICE_CLUSTER_IP_RANGE="10.0.0.0/16"  # formerly PORTAL_NET
+SERVICE_CLUSTER_IP_RANGE_BASE="${SERVICE_CLUSTER_IP_RANGE_BASE:-10.0.0.0/16}"  # formerly PORTAL_NET
+SERVICE_CLUSTER_IP_RANGE="${SERVICE_CLUSTER_IP_RANGE_BASE:-10.0.0.0/16}"  # formerly PORTAL_NET
 
 # When set to true, Docker Cache is enabled by default as part of the cluster bring up.
 ENABLE_DOCKER_REGISTRY_CACHE=true
@@ -226,6 +272,7 @@ DOCKER_TEST_LOG_LEVEL="${DOCKER_TEST_LOG_LEVEL:---log-level=info}"
 API_SERVER_TEST_LOG_LEVEL="${API_SERVER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 CONTROLLER_MANAGER_TEST_LOG_LEVEL="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL="${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
+ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL="${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 SCHEDULER_TEST_LOG_LEVEL="${SCHEDULER_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 KUBEPROXY_TEST_LOG_LEVEL="${KUBEPROXY_TEST_LOG_LEVEL:-$TEST_CLUSTER_LOG_LEVEL}"
 
@@ -317,6 +364,34 @@ if [[ ! -z "${NODE_ACCELERATORS}" ]]; then
     fi
 fi
 
+# Arktos specific network and service support is a feature that each
+ # pod is associated to certain network, which has its own DNS service.
+ # By default, this feature is enabled in the dev cluster started by this script.
+DISABLE_NETWORK_SERVICE_SUPPORT="${DISABLE_NETWORK_SERVICE_SUPPORT:-}"
+ARKTOS_NETWORK_TEMPLATE="${ARKTOS_NETWORK_TEMPLATE:-}"
+
+# check for network service support flags
+if [ -z ${DISABLE_NETWORK_SERVICE_SUPPORT} ]; then # when enabled
+  # kubelet enforces per-network DNS ip in pod
+  FEATURE_GATES="${FEATURE_GATES},MandatoryArktosNetwork=true"
+
+  # tenant controller automatically creates a default network resource for new tenant
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/runtime/default_mizar_network.json"
+  else
+    ARKTOS_NETWORK_TEMPLATE="${KUBE_ROOT}/hack/testdata/default-flat-network.tmpl"
+  fi
+fi
+
+VPC_RANGE_START=${VPC_RANGE_START:-11}
+VPC_RANGE_END=${VPC_RANGE_END:-99}
+
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  FEATURE_GATES="${FEATURE_GATES},MizarVPCRangeNoOverlap=true"
+  MIZAR_VPC_RANGE_START=${VPC_RANGE_START:-}
+  MIZAR_VPC_RANGE_END=${VPC_RANGE_END:-}
+fi
+
 # Optional: Install cluster DNS.
 # Set CLUSTER_DNS_CORE_DNS to 'false' to install kube-dns instead of CoreDNS.
 CLUSTER_DNS_CORE_DNS="${CLUSTER_DNS_CORE_DNS:-true}"
@@ -349,6 +424,7 @@ NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS="${NODE_PROBLEM_DETECTOR_CUSTOM_FLAGS:-}"
 
 CNI_VERSION="${CNI_VERSION:-}"
 CNI_SHA1="${CNI_SHA1:-}"
+CNI_BIN_DIR="${CNI_BIN_DIR:-/home/kubernetes/bin}"
 
 # Optional: Create autoscaler for cluster's nodes.
 ENABLE_CLUSTER_AUTOSCALER="${KUBE_ENABLE_CLUSTER_AUTOSCALER:-false}"
@@ -418,6 +494,9 @@ if [[ -z "${KUBE_ADMISSION_CONTROL:-}" ]]; then
     FEATURE_GATES="${FEATURE_GATES},InPlacePodVerticalScaling=true"
     ADMISSION_CONTROL="${ADMISSION_CONTROL},PodResourceAllocation"
   fi
+  if [[ -z ${DISABLE_NETWORK_SERVICE_SUPPORT:-} ]]; then # when network service is enabled
+    ADMISSION_CONTROL="${ADMISSION_CONTROL},DeploymentNetwork"
+  fi
   # ResourceQuota must come last, or a creation is recorded, but the pod may be forbidden.
   ADMISSION_CONTROL="${ADMISSION_CONTROL},MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota"
 else
@@ -439,8 +518,6 @@ TEST_CLUSTER="${TEST_CLUSTER:-true}"
 STORAGE_BACKEND=${STORAGE_BACKEND:-}
 # Storage media type: application/json and application/vnd.kubernetes.protobuf are supported.
 STORAGE_MEDIA_TYPE=${STORAGE_MEDIA_TYPE:-}
-
-NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet, cni
 
 # Network Policy plugin specific settings.
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-bridge}" # calico, flannel, bridge
@@ -567,18 +644,21 @@ GCE_UPLOAD_KUBCONFIG_TO_MASTER_METADATA=true
 
 # ScaleOut arch vars
 PROXY_IMAGE_PROJECT=${PROXY_IMAGE_PROJECT:-ubuntu-os-cloud}
-PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-1804-bionic-v20201014}
+PROXY_IMAGE=${PROXY_IMAGE:-ubuntu-2004-focal-v20211202}
 PROXY_NAME="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
 PROXY_TAG="${SCALEOUT_PROXY_NAME:-scaleoutproxy}"
+ARKTOS_SCALEOUT_PROXY_APP="${ARKTOS_SCALEOUT_PROXY_APP:-haproxy}"
 
-# true if this is a resource partition cluster
-KUBERNETES_RESOURCE_PARTITION="${KUBERNETES_RESOURCE_PARTITION:-false}"
-# true if this is a tenant partition cluster
-KUBERNETES_TENANT_PARTITION="${KUBERNETES_TENANT_PARTITION:-false}"
+SCALEOUT_CLUSTER=${SCALEOUT_CLUSTER:-false}
+SCALEOUT_TP_COUNT="${SCALEOUT_TP_COUNT:-1}"
+SCALEOUT_RP_COUNT="${SCALEOUT_RP_COUNT:-1}"
 
-if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == true ]]; then
+# ARKTOS_SCALEOUT_SERVER_TYPE indictes the scaleout cluster server type: tp, rp, proxy
+ARKTOS_SCALEOUT_SERVER_TYPE="${ARKTOS_SCALEOUT_SERVER_TYPE:-}"
+
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
   USE_INSECURE_SCALEOUT_CLUSTER_MODE=${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}
 fi
-if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == true ]]; then
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
   USE_INSECURE_SCALEOUT_CLUSTER_MODE=${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}
 fi

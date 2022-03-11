@@ -232,7 +232,7 @@ function get-kubeconfig-user-basicauth() {
 #   KUBE_PASSWORD
 function gen-kube-basicauth() {
     KUBE_USER=admin
-    KUBE_PASSWORD=$(python -c 'import string,random; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(16)))')
+    KUBE_PASSWORD=$(python3 -c 'import string,random; print("".join(random.SystemRandom().choice(string.ascii_letters + string.digits) for _ in range(16)))')
 }
 
 # Get the bearer token for the current-context in kubeconfig if one exists.
@@ -271,7 +271,7 @@ function gen-kube-bearertoken() {
 # Vars set:
 #   KUBE_UID
 function gen-uid {
-    KUBE_UID=$(python -c 'import uuid; print(uuid.uuid1().fields[0])')
+    KUBE_UID=$(python3 -c 'import uuid; print(uuid.uuid1().fields[0])')
 }
 
 function load-or-gen-kube-basicauth() {
@@ -922,6 +922,11 @@ EOF
 WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL: $(yaml-quote ${WORKLOAD_CONTROLLER_MANAGER_TEST_LOG_LEVEL})
 EOF
     fi
+    if [ -n "${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-}" ]; then
+      cat >>$file <<EOF
+ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL: $(yaml-quote ${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL})
+EOF
+    fi
     if [ -n "${SCHEDULER_TEST_ARGS:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_ARGS: $(yaml-quote ${SCHEDULER_TEST_ARGS})
@@ -930,6 +935,21 @@ EOF
     if [ -n "${SCHEDULER_TEST_LOG_LEVEL:-}" ]; then
       cat >>$file <<EOF
 SCHEDULER_TEST_LOG_LEVEL: $(yaml-quote ${SCHEDULER_TEST_LOG_LEVEL})
+EOF
+    fi
+    if [ -n "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]; then
+      cat >>$file <<EOF
+DISABLE_NETWORK_SERVICE_SUPPORT: $(yaml-quote ${DISABLE_NETWORK_SERVICE_SUPPORT})
+EOF
+    fi
+    if [ -n "${MIZAR_VPC_RANGE_START:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_START: $(yaml-quote ${MIZAR_VPC_RANGE_START})
+EOF
+    fi
+    if [ -n "${MIZAR_VPC_RANGE_END:-}" ]; then
+      cat >>$file <<EOF
+MIZAR_VPC_RANGE_END: $(yaml-quote ${MIZAR_VPC_RANGE_END})
 EOF
     fi
     if [ -n "${INITIAL_ETCD_CLUSTER:-}" ]; then

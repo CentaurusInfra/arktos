@@ -1,0 +1,41 @@
+# mizar operator
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mizar-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mizar-operator
+  template:
+    metadata:
+      labels:
+        app: mizar-operator
+        mizar: operator
+    spec:
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+      nodeName: "{{tp_master_name}}"
+      terminationGracePeriodSeconds: 5
+      serviceAccountName: mizar-operator
+      hostNetwork: true
+      containers:
+      - name: mizar-operator
+        image: mizarnet/endpointopr:{{network_provider_version}}
+        env:
+        - name: CLUSTER_VPC_VNI
+          value: "{{cluster_vpc_vni_id}}"
+        - name: FEATUREGATE_BWQOS
+          value: 'false'
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: kubeconfig
+          mountPath: /kubeconf
+      volumes:
+      - name: kubeconfig
+        hostPath:
+          path: /etc/kubernetes
+          type: Directory

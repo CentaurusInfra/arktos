@@ -124,6 +124,9 @@ function create-dirs {
   if [[ "${KUBERNETES_MASTER:-}" == "false" ]]; then
     mkdir -p /var/lib/kube-proxy
   fi
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    mkdir -p /var/lib/kube-proxy
+  fi
 }
 
 # Gets the total number of $(1) and $(2) type disks specified
@@ -1194,7 +1197,7 @@ function assemble-docker-flags {
     docker_opts+=" --log-level=warn"
   fi
   local use_net_plugin="true"
-  if [[ "${NETWORK_PROVIDER:-}" == "kubenet" || "${NETWORK_PROVIDER:-}" == "cni" ]]; then
+  if [[ "${NETWORK_PROVIDER:-}" == "kubenet" || "${NETWORK_PROVIDER:-}" == "cni" || "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
     # set docker0 cidr to private ip address range to avoid conflict with cbr0 cidr range
     docker_opts+=" --bip=169.254.123.1/24"
   else
@@ -1263,6 +1266,16 @@ function start-kubelet {
 
   local -r kubelet_env_file="/etc/default/kubelet"
   local kubelet_opts="${KUBELET_ARGS} ${KUBELET_CONFIG_FILE_ARG:-}"
+
+  #extra applicable resolv-conf
+  if [ -f "/run/systemd/resolve/resolv.conf" ]; then
+    # ubuntu 18.04/20.04
+    kubelet_opts="${kubelet_opts} --resolv-conf=/run/systemd/resolve/resolv.conf"
+  elif [ -f "/run/resolvconf/resolv.conf" ]; then
+    # ubuntu 16.04
+    kubelet_opts="${kubelet_opts} --resolv-conf=/run/resolvconf/resolv.conf"
+  fi
+
   echo "KUBELET_OPTS=\"${kubelet_opts}\"" > "${kubelet_env_file}"
   echo "KUBE_COVERAGE_FILE=\"/var/log/kubelet.cov\"" >> "${kubelet_env_file}"
 
@@ -1354,7 +1367,19 @@ function prepare-log-file {
 function prepare-kube-proxy-manifest-variables {
   local -r src_file=$1;
 
-  local -r kubeconfig="--kubeconfig=/var/lib/kube-proxy/kubeconfig"
+  local kubeconfig="--kubeconfig=/var/lib/kube-proxy/kubeconfig"
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
+    kubeconfig+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
+  fi
+
+  local proxy_tpconfig_mount=""
+  local proxy_tpconfig_volume=""
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    proxy_tpconfig_volume="  - hostPath:\n      path: /etc/srv/kubernetes/tp-kubeconfigs\n    name: tp-configs"
+    proxy_tpconfig_mount="    - mountPath: /etc/srv/kubernetes/tp-kubeconfigs\n      name: tp-configs\n      readOnly: true"
+  fi
+
   local kube_docker_registry="k8s.gcr.io"
   if [[ -n "${KUBE_DOCKER_REGISTRY:-}" ]]; then
     kube_docker_registry=${KUBE_DOCKER_REGISTRY}
@@ -1389,6 +1414,8 @@ function prepare-kube-proxy-manifest-variables {
     kube_cache_mutation_detector_env_value="value: \"${ENABLE_CACHE_MUTATION_DETECTOR}\""
   fi
   sed -i -e "s@{{kubeconfig}}@${kubeconfig}@g" ${src_file}
+  sed -i -e "s@{{proxy_tpconfig_mount}}@${proxy_tpconfig_mount}@g" ${src_file}
+  sed -i -e "s@{{proxy_tpconfig_volume}}@${proxy_tpconfig_volume}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${kube_docker_registry}@g" ${src_file}
   sed -i -e "s@{{pillar\['kube-proxy_docker_tag'\]}}@${kube_proxy_docker_tag}@g" ${src_file}
   sed -i -e "s@{{params}}@${params}@g" ${src_file}
@@ -1491,7 +1518,7 @@ function start-collect-pprof {
 # $5: pod name, which should be either etcd or etcd-events
 function prepare-etcd-manifest {
   local host_name=${ETCD_HOSTNAME:-$(hostname -s)}
-  local host_ip=$(python -c "import socket;print(socket.gethostbyname(\"${host_name}\"))")
+  local host_ip=$(python3 -c "import socket;print(socket.gethostbyname(\"${host_name}\"))")
   local etcd_cluster=""
   local cluster_state="new"
   local etcd_protocol="http"
@@ -1760,7 +1787,7 @@ function start-kube-apiserver {
     # Default is :8080
     params+=" --insecure-port=0"
   fi
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]] || [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]] || [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     params+=" --insecure-bind-address=0.0.0.0"
   fi
   params+=" --tls-cert-file=${APISERVER_SERVER_CERT_PATH}"
@@ -2264,9 +2291,9 @@ function start-kube-controller-manager {
   prepare-log-file /var/log/kube-controller-manager.log
   # Calculate variables and assemble the command line.
   local params="${CONTROLLER_MANAGER_TEST_LOG_LEVEL:-"--v=4"} ${CONTROLLER_MANAGER_TEST_ARGS:-} ${CLOUD_CONFIG_OPT}"
-  #if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "false" ]] && [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "false" ]]; then
-    params+=" --use-service-account-credentials"
-  #fi
+  
+  params+=" --use-service-account-credentials"
+  
   params+=" --cloud-provider=gce"
   ## hack, to workaround a RBAC issue with the controller token, it failed syncing replicasets so pods cannot be created from the deployments
   ## TODO: investigate and fix it later
@@ -2278,13 +2305,20 @@ function start-kube-controller-manager {
   fi
 
    # the resource provider kubeconfig
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     local rp_kubeconfigs="/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-1"
     for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do
       rp_kubeconfigs+=",/etc/srv/kubernetes/kube-controller-manager/rp-kubeconfig-${rp_num}"
     done
     params+=" --resource-providers=${rp_kubeconfigs}"
+  fi
+
+  if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+    if [[ -n "${MIZAR_VPC_RANGE_START:-}" && -n "${MIZAR_VPC_RANGE_END:-}" ]]; then
+      params+=" --vpc-range-start=${MIZAR_VPC_RANGE_START}"
+      params+=" --vpc-range-end=${MIZAR_VPC_RANGE_END}"
+    fi
   fi
 
   ##switch to enable/disable kube-controller-manager leader-elect: --leader-elect=true/false
@@ -2296,8 +2330,8 @@ function start-kube-controller-manager {
   if [[ -n "${ENABLE_GARBAGE_COLLECTOR:-}" ]]; then
     params+=" --enable-garbage-collector=${ENABLE_GARBAGE_COLLECTOR}"
   fi
-  if [[ -n "${INSTANCE_PREFIX:-}" ]]; then
-    params+=" --cluster-name=${INSTANCE_PREFIX}"
+  if [[ -n "${CLUSTER_NAME:-}" ]]; then
+    params+=" --cluster-name=${CLUSTER_NAME}"
   fi
   if [[ -n "${CLUSTER_IP_RANGE:-}" ]]; then
     params+=" --cluster-cidr=${CLUSTER_IP_RANGE}"
@@ -2343,20 +2377,20 @@ function start-kube-controller-manager {
     params+=" --pv-recycler-pod-template-filepath-nfs=$PV_RECYCLER_OVERRIDE_TEMPLATE"
     params+=" --pv-recycler-pod-template-filepath-hostpath=$PV_RECYCLER_OVERRIDE_TEMPLATE"
   fi
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,ttl,daemonset"
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
+    RUN_CONTROLLERS="serviceaccount,serviceaccount-token,nodelifecycle,nodeipam,ttl,csrsigning,csrapproving,csrcleaner"
   fi
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
-    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-mizar-controllers,-network,-ttl,-daemonset"
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
+    RUN_CONTROLLERS="*,-nodeipam,-nodelifecycle,-ttl"
   fi
   if [[ -n "${RUN_CONTROLLERS:-}" ]]; then
     params+=" --controllers=${RUN_CONTROLLERS}"
   fi
+  if [[ -s ${DEFAULT_NETWORK_TEMPLATE} && -z "${DISABLE_NETWORK_SERVICE_SUPPORT:-}" ]]; then
+    params+=" --default-network-template-path=$DEFAULT_NETWORK_TEMPLATE"
+  fi
 
-  if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
-    # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
-    sudo mkdir /etc/srv/kubernetes/tp-kubeconfigs
-    sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     echo "DBG:Set tenant-server-kubeconfig parameters:  ${TENANT_SERVER_KUBECONFIGS}"
     params+=" --tenant-server-kubeconfig=${TENANT_SERVER_KUBECONFIGS}"
   fi
@@ -2383,6 +2417,8 @@ function start-kube-controller-manager {
   sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath_mount}}@${DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{defaulttemplate_hostpath}}@${DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
   sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
   sed -i -e "s@{{cpurequest}}@${KUBE_CONTROLLER_MANAGER_CPU_REQUEST}@g" "${src_file}"
@@ -2445,6 +2481,70 @@ function start-workload-controller-manager {
   cp "${src_file}" /etc/kubernetes/manifests
 }
 
+function apply-network-crd {
+  local -r src_dir="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty"
+  local -r dst_dir="/etc/srv/kubernetes/arktos-network-controller"
+
+  mkdir -p ${dst_dir} 
+  cp "${src_dir}/crd-network.yaml" ${dst_dir}
+
+  # apply network crd before start network-controller
+  kubectl apply -f "${dst_dir}/crd-network.yaml"
+}
+
+# Starts arktos-network controller.
+# It prepares the log file, loads the docker image, calculates variables, sets them
+# in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
+#
+# Assumed vars (which are calculated in function compute-master-manifest-variables)
+#   CLOUD_CONFIG_OPT
+#   CLOUD_CONFIG_VOLUME
+#   CLOUD_CONFIG_MOUNT
+#   DOCKER_REGISTRY
+function start-arktos-network-controller {
+  local SALT=${1:-}
+  echo "Start arktos-network-controller"
+  prepare-log-file /var/log/arktos-network-controller.log
+
+  # Calculate variables and assemble the command line.
+  local params="${ARKTOS_NETWORK_CONTROLLER_TEST_LOG_LEVEL:-"--v=4"}"
+  params+=" --master=http://127.0.0.1:8080"
+  params+=" --kube-apiserver-ip ${KUBERNETES_MASTER_INTERNAL_IP}"
+  if [[ "${USE_INSECURE_SCALEOUT_CLUSTER_MODE:-false}" == "true" ]]; then
+    params+=" --kube-apiserver-port=6443"
+  else
+    params+=" --kube-apiserver-port=443"
+  fi
+  params+=" --resource-name-salt="${SALT}""
+  
+  # Disable using HPA metrics REST clients if metrics-server isn't enabled,
+  # or if we want to explicitly disable it by setting HPA_USE_REST_CLIENT.
+
+  local -r kube_rc_docker_tag=$(cat /home/kubernetes/kube-docker-files/arktos-network-controller.docker_tag)
+  local container_env=""
+  if [[ -n "${ENABLE_CACHE_MUTATION_DETECTOR:-}" ]]; then
+    container_env="\"env\":[{\"name\": \"KUBE_CACHE_MUTATION_DETECTOR\", \"value\": \"${ENABLE_CACHE_MUTATION_DETECTOR}\"}],"
+  fi
+
+  local -r src_file="${KUBE_HOME}/kube-manifests/kubernetes/gci-trusty/arktos-network-controller.manifest"
+  # Evaluate variables.
+  sed -i -e "s@{{pillar\['kube_docker_registry'\]}}@${DOCKER_REGISTRY}@g" "${src_file}"
+  sed -i -e "s@{{pillar\['arktos-network-controller_docker_tag'\]}}@${kube_rc_docker_tag}@g" "${src_file}"
+  sed -i -e "s@{{params}}@${params}@g" "${src_file}"
+  sed -i -e "s@{{container_env}}@${container_env}@g" ${src_file}
+  sed -i -e "s@{{cloud_config_mount}}@${CLOUD_CONFIG_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{cloud_config_volume}}@${CLOUD_CONFIG_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_mount}}@@g" "${src_file}"
+  sed -i -e "s@{{additional_cloud_config_volume}}@@g" "${src_file}"
+  sed -i -e "s@{{pv_recycler_mount}}@${PV_RECYCLER_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{pv_recycler_volume}}@${PV_RECYCLER_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{flexvolume_hostpath_mount}}@${FLEXVOLUME_HOSTPATH_MOUNT}@g" "${src_file}"
+  sed -i -e "s@{{flexvolume_hostpath}}@${FLEXVOLUME_HOSTPATH_VOLUME}@g" "${src_file}"
+  sed -i -e "s@{{cpurequest}}@${ARKTOS_NETWORK_CONTROLLER_CPU_REQUEST}@g" "${src_file}"
+
+  cp "${src_file}" /etc/kubernetes/manifests
+}
+
 # Starts kubernetes scheduler.
 # It prepares the log file, loads the docker image, calculates variables, sets them
 # in the manifest file, and then copies the manifest file to /etc/kubernetes/manifests.
@@ -2466,7 +2566,7 @@ function start-kube-scheduler {
   params+=" --kubeconfig=/etc/srv/kubernetes/kube-scheduler/kubeconfig"
 
   # the resource provider kubeconfig
-  if [[ "${KUBERNETES_TENANT_PARTITION:-false}" == "true" ]]; then
+  if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "tp" ]]; then
     local rp_kubeconfigs="/etc/srv/kubernetes/kube-scheduler/rp-kubeconfig-1"
     for (( rp_num=2; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
     do
@@ -3130,6 +3230,9 @@ function start-lb-controller {
 ###start cluster networking: flannel, bridge
 function start-cluster-networking {
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    mizar)
+    start-mizar
+    ;;
     flannel)
     start-flannel-ds
     ;;
@@ -3137,6 +3240,79 @@ function start-cluster-networking {
     start-bridge-networking
     ;;
   esac
+}
+
+function wait-for-node-registered {
+  local start_time=$(date +%s)
+  until kubectl get nodes | grep `hostname`; do
+    sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for nodes ready failed after 3 minutes elapsed"
+      exit 1
+    fi
+  done
+}
+
+function wait-until-mizar-ready {
+  echo "Waiting for Mizar CRDs to reach 'Provisioned' state ..."
+  local start_time=$(date +%s) 
+  local elapsed
+  until kubectl get vpcs | grep Provisioned; do
+    sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for vpcs provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
+  done
+  start_time=$(date +%s)
+  until kubectl get dividers | grep Provisioned; do
+    sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for dividers provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
+  done
+  start_time=$(date +%s)
+  until kubectl get bouncers | grep Provisioned; do
+    sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for bouncers provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
+  done
+  start_time=$(date +%s)
+  until kubectl get subnets | grep Provisioned; do
+    sleep 5
+    elapsed=$(($(date +%s) - ${start_time}))
+    if [[ ${elapsed} -gt 180 ]]; then
+      echo "Waiting for subnets provisioned failed after 3 minutes elapsed"
+      exit 1
+    fi
+  done
+}
+
+function start-mizar-scaleup {
+  echo "Installing Mizar for scale-up architecture..."
+  kubectl create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
+  kubectl create -f "${KUBE_HOME}/mizar/deploy.mizar.yaml"
+  wait-until-mizar-ready
+}
+
+function start-mizar {
+  wait-for-node-registered
+  #Wait for apiserver to setup default namespace
+  until kubectl get ns | grep default; do
+    sleep 5
+  done
+  kubectl label node `hostname` node-role.kubernetes.io/master=""
+  #For scaleout cluster, mizar will started after all tp and rp ready
+  if [[ "${SCALEOUT_CLUSTER:-false}" == "false" ]]; then
+    start-mizar-scaleup
+  fi
 }
 
 function start-flannel-ds {
@@ -3255,6 +3431,18 @@ spec:
 EOF
 }
 
+function create-default-network-template-volume-mount {
+  if [[ -z "${DEFAULT_NETWORK_TEMPLATE:-}" ]]; then
+    echo "DEFAULT_NETWORK_TEMPLATE is not set"
+    exit 1
+  fi
+
+  DEFAULT_NETWORK_TEMPLATE_PATH_VOLUME="{\"name\": \"defaulttemplate\",\"hostPath\": {\"path\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"type\": \"File\"}},"
+  DEFAULT_NETWORK_TEMPLATE_PATH_MOUNT="{\"name\": \"defaulttemplate\",\"mountPath\": \"${DEFAULT_NETWORK_TEMPLATE}\", \"readOnly\": false},"
+
+  cat > ${DEFAULT_NETWORK_TEMPLATE} < ${KUBE_HOME}/network.tmpl
+}
+
 function wait-till-apiserver-ready() {
   until kubectl get nodes; do
     sleep 5
@@ -3342,4 +3530,3 @@ EOF
   echo "Restart containerd to load the config change"
   systemctl restart containerd
 }
-

@@ -523,7 +523,7 @@ function kube::common::start_controller_manager {
     if [[ "${IS_SCALE_OUT}" == "true" ]]; then
       # scale out resource partition
       if [ "${IS_RESOURCE_PARTITION}" == "true" ]; then
-        KUBE_CONTROLLERS="daemonset,nodelifecycle,nodeipam,ttl,serviceaccount,serviceaccount-token"
+        KUBE_CONTROLLERS="nodelifecycle,nodeipam,ttl,serviceaccount,serviceaccount-token"
 
         ${CONTROLPLANE_SUDO} "${GO_OUT}/hyperkube" kube-controller-manager \
           --v="${LOG_LEVEL}" \
@@ -547,6 +547,7 @@ function kube::common::start_controller_manager {
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
       else
         KUBE_CONTROLLERS="*,-daemonset,-nodelifecycle,-nodeipam,-ttl"
+        [[ -n ${SCALE_OUT_TP_ENABLE_DAEMONSET} ]] && KUBE_CONTROLLERS="*,-nodelifecycle,-nodeipam,-ttl"
 
         RESOURCE_PROVIDER_KUBECONFIG_FLAGS="--resource-providers="
         serverCount=${#RESOURCE_SERVERS[@]}
@@ -577,6 +578,8 @@ function kube::common::start_controller_manager {
           ${RESOURCE_PROVIDER_KUBECONFIG_FLAGS} \
           --use-service-account-credentials \
           --controllers="${KUBE_CONTROLLERS}" \
+          --vpc-range-start=${VPC_RANGE_START} \
+          --vpc-range-end=${VPC_RANGE_END} \
           --leader-elect=false \
           --cert-dir="${CERT_DIR}" \
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
@@ -602,6 +605,8 @@ function kube::common::start_controller_manager {
           --kubeconfig "${kubeconfigfilepaths}" \
           --use-service-account-credentials \
           --controllers="${KUBE_CONTROLLERS}" \
+          --vpc-range-start=${VPC_RANGE_START} \
+          --vpc-range-end=${VPC_RANGE_END} \
           --leader-elect=false \
           --cert-dir="${CERT_DIR}" \
           --default-network-template-path="${ARKTOS_NETWORK_TEMPLATE}" >"${CTLRMGR_LOG}" 2>&1 &
@@ -875,4 +880,24 @@ function kube::common::generate_kubeproxy_certs {
     fi
 }
 
-
+function kube::common::wait-until-mizar-ready {
+    echo "Waiting for Mizar CRDs to reach 'Provisioned' state"
+    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get vpcs 2> /dev/null | grep Provisioned > /dev/null; do
+        echo -n .
+        sleep 5
+    done
+    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get dividers 2> /dev/null | grep Provisioned > /dev/null; do
+        echo -n .
+        sleep 5
+    done
+    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get bouncers 2> /dev/null | grep Provisioned > /dev/null; do
+        echo -n .
+        sleep 5
+    done
+    until ${KUBECTL} --kubeconfig "${CERT_DIR}/admin.kubeconfig" get subnets 2> /dev/null | grep Provisioned > /dev/null; do
+        echo -n .
+        sleep 5
+    done
+    echo
+    echo "Mizar is ready."
+}

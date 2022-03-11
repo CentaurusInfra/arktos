@@ -42,11 +42,12 @@ func startDaemonSetController(ctx ControllerContext) (http.Handler, bool, error)
 	if !ctx.AvailableResources[schema.GroupVersionResource{Group: "apps", Version: "v1", Resource: "daemonsets"}] {
 		return nil, false, nil
 	}
+
 	dsc, err := daemon.NewDaemonSetsController(
 		ctx.InformerFactory.Apps().V1().DaemonSets(),
 		ctx.InformerFactory.Apps().V1().ControllerRevisions(),
 		ctx.InformerFactory.Core().V1().Pods(),
-		ctx.InformerFactory.Core().V1().Nodes(),
+		ctx.ResourceProviderNodeInformers,
 		ctx.ClientBuilder.ClientOrDie("daemon-set-controller"),
 		flowcontrol.NewBackOff(1*time.Second, 15*time.Minute),
 	)

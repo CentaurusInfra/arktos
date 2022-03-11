@@ -55,6 +55,19 @@ Node instance:
 EOF
 }
 
+function validate-python {
+  local ver=$(python3 -c"import sys; print(sys.version_info.major)")
+  echo "python3 version: $ver"
+  if [[ $ver -ne 3 ]]; then
+    apt -y update
+    apt install -y python3
+    apt install -y python3-pip
+    pip install pyyaml
+  else
+    echo "python3: $ver is running.."
+  fi
+}
+
 function download-kube-env {
   # Fetch kube-env from GCE metadata server.
   (
@@ -65,9 +78,10 @@ function download-kube-env {
       -o "${tmp_kube_env}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-env
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k, v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_env}" > "${KUBE_HOME}/kube-env")
     rm -f "${tmp_kube_env}"
@@ -96,6 +110,28 @@ function download-tenantpartition-kubeconfig {
   )
 }
 
+function download-resourcepartition-kubeconfig {
+  local -r dest="$1"
+  local -r rp_num="$2"
+
+  echo "Downloading resource partition kubeconfig file, if it exists"
+  (
+    umask 077
+    local -r tmp_resourcepartition_kubeconfig="/tmp/resource_parition_kubeconfig"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_resourcepartition_kubeconfig}" \
+        "http://metadata.google.internal/computeMetadata/v1/instance/attributes/rp-${rp_num}"; then
+      # only write to the final location if curl succeeds
+      mv "${tmp_resourcepartition_kubeconfig}" "${dest}"
+      chmod 755 ${dest}
+    else
+      echo "== Failed to download required resource partition config file from metadata server =="
+      exit 1
+    fi
+  )
+}
+
 function download-tenantpartition-kubeconfigs {
   local -r tpconfigs_directory="${KUBE_HOME}/tp-kubeconfigs"
   mkdir -p ${tpconfigs_directory}
@@ -106,6 +142,26 @@ function download-tenantpartition-kubeconfigs {
     echo "DBG: download tenant partition kubeconfig: ${config}"
     download-tenantpartition-kubeconfig "${config}" "${tp_num}"
   done
+
+  # copy over the configfiles from ${KUBE_HOME}/tp-kubeconfigs
+  sudo mkdir -p /etc/srv/kubernetes/tp-kubeconfigs
+  sudo cp -f ${KUBE_HOME}/tp-kubeconfigs/* /etc/srv/kubernetes/tp-kubeconfigs/
+}
+
+function download-resourcepartition-kubeconfigs {
+  local -r rpconfigs_directory="${KUBE_HOME}/rp-kubeconfigs"
+  mkdir -p ${rpconfigs_directory}
+
+  for (( rp_num=1; rp_num<=${SCALEOUT_RP_COUNT}; rp_num++ ))
+  do
+    config="${rpconfigs_directory}/rp-${rp_num}-kubeconfig"
+    echo "DBG: download resource partition kubeconfig: ${config}"
+    download-resourcepartition-kubeconfig "${config}" "${rp_num}"
+  done
+
+  # copy over the configfiles from ${KUBE_HOME}/rp-kubeconfigs
+  sudo mkdir -p /etc/srv/kubernetes/rp-kubeconfigs
+  sudo cp -f ${KUBE_HOME}/rp-kubeconfigs/* /etc/srv/kubernetes/rp-kubeconfigs/
 }
 
 function download-kubelet-config {
@@ -155,9 +211,10 @@ function download-kube-master-certs {
       -o "${tmp_kube_master_certs}" \
       http://metadata.google.internal/computeMetadata/v1/instance/attributes/kube-master-certs
     # Convert the yaml format file into a shell-style file.
-    eval $(python -c '''
+    eval $(python3 -c '''
 import pipes,sys,yaml
-for k,v in yaml.load(sys.stdin).iteritems():
+items = yaml.load(sys.stdin, Loader=yaml.BaseLoader).items()
+for k,v in items:
   print("readonly {var}={value}".format(var = k, value = pipes.quote(str(v))))
 ''' < "${tmp_kube_master_certs}" > "${KUBE_HOME}/kube-master-certs")
     rm -f "${tmp_kube_master_certs}"
@@ -181,6 +238,40 @@ function download-controller-config {
   )
 }
 
+function download-network-template {
+  local -r dest="$1"
+  echo "Downloading network template file, if it exists"
+  # Fetch kubelet config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_network_template="/tmp/network.tmpl"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_network_template}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/networktemplate; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_network_template} ${dest}
+    fi
+  )
+}
+
+function download-proxy-config {
+  local -r dest="$1"
+  echo "Downloading proxy config file, if it exists"
+  # Fetch proxy config file from GCE metadata server.
+  (
+    umask 077
+    local -r tmp_proxy_config="/tmp/proxy.config"
+    if curl --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error \
+        -H "X-Google-Metadata-Request: True" \
+        -o "${tmp_proxy_config}" \
+        http://metadata.google.internal/computeMetadata/v1/instance/attributes/proxy-config; then
+      # only write to the final location if curl succeeds
+      mv ${tmp_proxy_config} ${dest}
+    fi
+  )
+}
+
 function validate-hash {
   local -r file="$1"
   local -r expected="$2"
@@ -195,7 +286,7 @@ function validate-hash {
 # Get default service account credentials of the VM.
 GCE_METADATA_INTERNAL="http://metadata.google.internal/computeMetadata/v1/instance"
 function get-credentials {
-  curl "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python -c \
+  curl  --fail --retry 5 --retry-delay 3 ${CURL_RETRY_CONNREFUSED} --silent --show-error "${GCE_METADATA_INTERNAL}/service-accounts/default/token" -H "Metadata-Flavor: Google" -s | python3 -c \
     'import sys; import json; print(json.loads(sys.stdin.read())["access_token"])'
 }
 
@@ -306,6 +397,14 @@ function install-node-problem-detector {
 function install-cni-network {
   mkdir -p /etc/cni/net.d
   case "${NETWORK_POLICY_PROVIDER:-flannel}" in
+    mizar)
+    if [[ "${SCALEOUT_CLUSTER:-false}" == "true" ]]; then
+      setup-mizar-cni-conf
+      install-mizar-cni-bin
+    else
+      download-mizar-cni-yaml
+    fi
+    ;;
     flannel)
     setup-flannel-cni-conf
     install-flannel-yml
@@ -314,6 +413,31 @@ function install-cni-network {
     setup-bridge-cni-conf
     ;;
   esac
+}
+
+function setup-mizar-cni-conf {
+  cat > /etc/cni/net.d/10-mizarcni.conf <<EOF
+{
+        "cniVersion": "0.3.1",
+        "name": "mizarcni",
+        "type": "mizarcni"
+}
+EOF
+}
+
+function install-mizar-cni-bin {
+  # create folder only here
+  # mizar will be installed via daemonset or other means later
+  mkdir -p /opt/cni/bin
+}
+
+function download-mizar-cni-yaml {
+  mkdir -p ${KUBE_HOME}/mizar
+  if [[ "${NETWORK_PROVIDER_VERSION}" == "dev" ]]; then
+    wget https://raw.githubusercontent.com/CentaurusInfra/mizar/dev-next/etc/deploy/deploy.mizar.dev.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  else
+    wget https://github.com/CentaurusInfra/mizar/releases/download/v${NETWORK_PROVIDER_VERSION}/deploy.mizar.yaml -O ${KUBE_HOME}/mizar/deploy.mizar.yaml
+  fi
 }
 
 function setup-bridge-cni-conf {
@@ -390,8 +514,10 @@ function install-cni-binaries {
   download-or-bust "${cni_sha1}" "https://storage.googleapis.com/kubernetes-release/network-plugins/${cni_tar}"
   local -r cni_dir="${KUBE_HOME}/cni"
   mkdir -p "${cni_dir}/bin"
+  mkdir -p "${CNI_BIN_DIR}"
   tar xzf "${KUBE_HOME}/${cni_tar}" -C "${cni_dir}/bin" --overwrite
-  mv "${cni_dir}/bin"/* "${KUBE_BIN}"
+  cp -f "${cni_dir}/bin"/* "${KUBE_BIN}" #TODO: This is a hack for arktos runtime hard-coding of /home/kubernetes/bin path. Remove when arktos is fixed.
+  mv "${cni_dir}/bin"/* "${CNI_BIN_DIR}"
   rmdir "${cni_dir}/bin"
   rm -f "${KUBE_HOME}/${cni_tar}"
 }
@@ -520,6 +646,10 @@ function load-docker-images {
     try-load-docker-image "${img_dir}/kube-controller-manager.tar"
     try-load-docker-image "${img_dir}/kube-scheduler.tar"
     try-load-docker-image "${img_dir}/workload-controller-manager.tar"
+    try-load-docker-image "${img_dir}/arktos-network-controller.tar"
+    if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+      try-load-docker-image "${img_dir}/kube-proxy.tar"
+    fi
   else
     try-load-docker-image "${img_dir}/kube-proxy.tar"
   fi
@@ -557,11 +687,22 @@ function install-kube-binary-config {
       cp "${src_dir}/kube-controller-manager.tar" "${dst_dir}"
       cp "${src_dir}/kube-scheduler.tar" "${dst_dir}"
       cp "${src_dir}/workload-controller-manager.tar" "${dst_dir}"
+      cp "${src_dir}/arktos-network-controller.tar" "${dst_dir}"
       cp -r "${KUBE_HOME}/kubernetes/addons" "${dst_dir}"
+      if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+        cp "${src_dir}/kube-proxy.tar" "${dst_dir}"
+      fi
     fi
     load-docker-images
     mv "${src_dir}/kubelet" "${KUBE_BIN}"
     mv "${src_dir}/kubectl" "${KUBE_BIN}"
+
+    if [ ! -f /usr/bin/kubectl ]; then
+      cp ${KUBE_BIN}/kubectl /usr/bin/
+    fi
+    if [ ! -f /usr/bin/kubelet ]; then
+      cp ${KUBE_BIN}/kubelet /usr/bin/
+    fi
 
     mv "${KUBE_HOME}/kubernetes/LICENSES" "${KUBE_HOME}"
     mv "${KUBE_HOME}/kubernetes/kubernetes-src.tar.gz" "${KUBE_HOME}"
@@ -573,6 +714,7 @@ function install-kube-binary-config {
   fi
 
   if [[ "${NETWORK_PROVIDER:-}" == "kubenet" ]] || \
+     [[ "${NETWORK_PROVIDER:-}" == "mizar" ]] || \
      [[ "${NETWORK_PROVIDER:-}" == "cni" ]]; then
     install-cni-binaries
     install-cni-network
@@ -602,6 +744,149 @@ function install-kube-binary-config {
   rm -f "${KUBE_HOME}/${server_binary_tar}.sha1"
 }
 
+function ensure-mizar-kernel-and-ifname() {
+  sed -i "s/set-name: .*/set-name: eth0/" /etc/netplan/50-cloud-init.yaml
+  local kernel_ver=`uname -r`
+  echo "Running kernel version: $kernel_ver"
+  local mj_ver=$(echo $kernel_ver | cut -d. -f1)
+  local mn_ver=$(echo $kernel_ver | cut -d. -f2)
+  if [[ "$mj_ver" < "5" ]] || [[ "$mn_ver" < "6" ]]; then
+    echo "Mizar requires an updated kernel: linux-5.6-rc2 or above for TCP to function correctly. Current version is $kernel_ver. Updating.."
+    local mz_kernel_tmp_dir="/tmp/linux-5.6-rc2"
+    mkdir -p $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-headers-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2-dbg_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-image-5.6.0-rc2_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    wget https://mizar.s3.amazonaws.com/linux-5.6-rc2/linux-libc-dev_5.6.0-rc2-1_amd64.deb -P $mz_kernel_tmp_dir
+    sudo dpkg -i $mz_kernel_tmp_dir/*.deb
+    sudo reboot
+  else
+    echo "Kernel version needed by Mizar is running."
+  fi
+}
+
+# If we are on ubuntu we can try to install docker
+function install-docker {
+  # bailout if we are not on ubuntu
+  echo "Installing docker .."
+  if ! command -v apt-get >/dev/null 2>&1; then
+    echo "Unable to automatically install docker. Bailing out..."
+    return
+  fi
+  # Install Docker deps, some of these are already installed in the image but
+  # that's fine since they won't re-install and we can reuse the code below
+  # for another image someday.
+  apt-get update
+  apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    socat \
+    curl \
+    gnupg2 \
+    software-properties-common \
+    lsb-release
+
+  # Add the Docker apt-repository
+  curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg \
+    | apt-key add -
+  add-apt-repository \
+    "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+    $(lsb_release -cs) stable"
+
+  # Install Docker
+  apt-get update && \
+    apt-get install -y --no-install-recommends ${GCI_DOCKER_VERSION:-"docker-ce=5:19.03.*"}
+  rm -rf /var/lib/apt/lists/*
+}
+
+# If we are on ubuntu we can try to install containerd
+function install-containerd-ubuntu {
+  echo "Installing conttainerd .."
+  # bailout if we are not on ubuntu
+  if [[ -z "$(command -v lsb_release)" || $(lsb_release -si) != "Ubuntu" ]]; then
+    echo "Unable to automatically install containerd in non-ubuntu image. Bailing out..."
+    exit 2
+  fi
+
+  if [[ $(dpkg --print-architecture) != "amd64" ]]; then
+    echo "Unable to automatically install containerd in non-amd64 image. Bailing out..."
+    exit 2
+  fi
+
+  # Install dependencies, some of these are already installed in the image but
+  # that's fine since they won't re-install and we can reuse the code below
+  # for another image someday.
+  apt-get update
+  apt-get install -y --no-install-recommends \
+    apt-transport-https \
+    ca-certificates \
+    socat \
+    curl \
+    gnupg2 \
+    software-properties-common \
+    lsb-release
+
+  # Add the Docker apt-repository (as we install containerd from there)
+  curl -fsSL https://download.docker.com/linux/$(. /etc/os-release; echo "$ID")/gpg \
+    | apt-key add -
+  add-apt-repository \
+    "deb [arch=amd64] https://download.docker.com/linux/$(. /etc/os-release; echo "$ID") \
+    $(lsb_release -cs) stable"
+
+  # Install containerd from Docker repo
+  apt-get update && \
+    apt-get install -y --no-install-recommends containerd
+  rm -rf /var/lib/apt/lists/*
+
+  # Override to latest versions of containerd and runc
+  systemctl stop containerd
+  if [[ ! -z "${UBUNTU_INSTALL_CONTAINERD_VERSION:-}" ]]; then
+    curl -fsSL "https://github.com/containerd/containerd/releases/download/${UBUNTU_INSTALL_CONTAINERD_VERSION}/containerd-${UBUNTU_INSTALL_CONTAINERD_VERSION:1}.linux-amd64.tar.gz" | tar --overwrite -xzv -C /usr/
+  fi
+  if [[ ! -z "${UBUNTU_INSTALL_RUNC_VERSION:-}" ]]; then
+    curl -fsSL "https://github.com/opencontainers/runc/releases/download/${UBUNTU_INSTALL_RUNC_VERSION}/runc.amd64" --output /usr/sbin/runc && chmod 755 /usr/sbin/runc
+  fi
+  sudo systemctl start containerd
+}
+
+function ensure-container-runtime {
+  container_runtime="${CONTAINER_RUNTIME:-docker}"
+  if [[ "${container_runtime}" == "docker" ]]; then
+    if ! command -v docker >/dev/null 2>&1; then
+      install-docker
+      if ! command -v docker >/dev/null 2>&1; then
+        echo "ERROR docker not found. Aborting."
+        exit 2
+      fi
+    fi
+    docker version
+  elif [[ "${container_runtime}" == "containerd" ]]; then
+    # Install containerd/runc if requested
+    if [[ ! -z "${UBUNTU_INSTALL_CONTAINERD_VERSION:-}" || ! -z "${UBUNTU_INSTALL_RUNC_VERSION:-}" ]]; then
+      install-containerd-ubuntu
+    fi
+    # Verify presence and print versions of ctr, containerd, runc
+    if ! command -v ctr >/dev/null 2>&1; then
+      echo "ERROR ctr not found. Aborting."
+      exit 2
+    fi
+    ctr --version
+
+    if ! command -v containerd >/dev/null 2>&1; then
+      echo "ERROR containerd not found. Aborting."
+      exit 2
+    fi
+    containerd --version
+
+    if ! command -v runc >/dev/null 2>&1; then
+      echo "ERROR runc not found. Aborting."
+      exit 2
+    fi
+    runc --version
+  fi
+}
+
+
 ######### Main Function ##########
 # redirect stdout/stderr to a file
 exec >> /var/log/master-init.log 2>&1
@@ -612,24 +897,49 @@ set-broken-motd
 KUBE_HOME="/home/kubernetes"
 KUBE_BIN="${KUBE_HOME}/bin"
 
+ensure-container-runtime
+# validate or install python
+validate-python
 # download and source kube-env
 download-kube-env
 source "${KUBE_HOME}/kube-env"
 
+# When arktos adds support for 20.04 that has 5.11.0 kernel, we don't need to update kernel.
+if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
+  OS_ID=$(cat /etc/os-release | grep ^ID= | cut -d= -f2)
+  OS_VER=$(cat /etc/os-release | grep ^VERSION= | cut -d= -f2)
+  if [[ "${OS_ID}" =~ "ubuntu".* ]] && [[ "${OS_VER}" =~ "18.04".* ]]; then
+    ensure-mizar-kernel-and-ifname
+  fi
+fi
+
 download-kubelet-config "${KUBE_HOME}/kubelet-config.yaml"
 download-controller-config "${KUBE_HOME}/controllerconfig.json"
+download-network-template "${KUBE_HOME}/network.tmpl"
 download-apiserver-config "${KUBE_HOME}/apiserver.config"
 
-if [[ "${KUBERNETES_RESOURCE_PARTITION:-false}" == "true" ]]; then
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "rp" ]]; then
     download-tenantpartition-kubeconfigs
 fi
 
-# master certs
-if [[ "${KUBERNETES_MASTER:-}" == "true" ]]; then
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "node" ]]; then
+    download-tenantpartition-kubeconfigs
+    #download-resourcepartition-kubeconfigs
+fi
+
+# master/proxy certs
+# will do: use ARKTOS_SCALEOUT_SERVER_TYPE to figure out server type: tp, rp, proxy
+if [[ "${KUBERNETES_MASTER:-}" == "true" || "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
   download-kube-master-certs
 fi
 
-# binaries and kube-system manifests
-install-kube-binary-config
+if [[ "${ARKTOS_SCALEOUT_SERVER_TYPE:-}" == "proxy" ]]; then
+  mkdir -p /etc/${ARKTOS_SCALEOUT_PROXY_APP}
+  download-proxy-config "/etc/${ARKTOS_SCALEOUT_PROXY_APP}/${PROXY_CONFIG_FILE}.tmp"
+else
+  echo "install binaries and kube-system manifests"
+  # binaries and kube-system manifests
+  install-kube-binary-config
+fi
 
 echo "Done for installing kubernetes files"

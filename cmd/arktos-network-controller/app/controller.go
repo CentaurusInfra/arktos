@@ -49,7 +49,7 @@ const (
 	clusterAddonLabelKey  = "k8s-app"
 )
 
-// Controller represents the flat network controller
+// Controller represents the arktos network controller
 type Controller struct {
 	saltSuffix        string
 	domainName        string
@@ -89,21 +89,21 @@ func (c *Controller) Run(workers int, stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.queue.ShutDown()
 
-	klog.Info("starting flat network controller")
+	klog.Info("starting arktos network controller")
 	klog.V(5).Info("waiting for informer caches to sync")
 	if !cache.WaitForCacheSync(stopCh, c.cacheSynced) {
 		klog.Error("failed to wait for cache to sync")
 		return
 	}
 
-	klog.V(5).Info("staring workers of flat network controller")
+	klog.V(5).Info("staring workers of arktos network controller")
 	for i := 0; i < workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
 	klog.V(5).Infof("%d workers started", workers)
 	<-stopCh
-	klog.Info("shutting down flat network controller")
+	klog.Info("shutting down arktos network controller")
 }
 
 func (c *Controller) runWorker() {

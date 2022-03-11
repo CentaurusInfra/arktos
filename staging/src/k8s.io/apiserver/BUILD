@@ -44,6 +44,7 @@ filegroup(
         "//staging/src/k8s.io/apiserver/pkg/util/feature:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/util/flushwriter:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/util/openapi:all-srcs",
+        "//staging/src/k8s.io/apiserver/pkg/util/openstack:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/util/proxy:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/util/term:all-srcs",
         "//staging/src/k8s.io/apiserver/pkg/util/webhook:all-srcs",

@@ -1,0 +1,468 @@
+# mizar CRD bouncers.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: bouncers.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Bouncer
+    plural: bouncers
+    singular: bouncer
+    shortNames:
+      - bncr
+      - bncrs
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: vpc
+          type: string
+          priority: 0
+          jsonPath: .spec.vpc
+          description: The VPC of the divider
+        - name: net
+          type: string
+          priority: 0
+          jsonPath: .spec.net
+          description: The Network of the bouncer
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the droplet
+        - name: Mac
+          type: string
+          priority: 0
+          jsonPath: .spec.mac
+          description: The mac address of the divider's droplet
+        - name: Droplet
+          type: string
+          priority: 0
+          jsonPath: .spec.droplet
+          description: The name of the droplet resource
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Status of the divider
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+---
+# mizar CRD dividers.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dividers.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Divider
+    plural: dividers
+    singular: divider
+    shortNames:
+      - divd
+      - divds
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: vpc
+          type: string
+          priority: 0
+          jsonPath: .spec.vpc
+          description: The VPC of the divider
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the divider's droplet
+        - name: Mac
+          type: string
+          priority: 0
+          jsonPath: .spec.mac
+          description: The mac address of the divider's droplet
+        - name: Droplet
+          type: string
+          priority: 0
+          jsonPath: .spec.droplet
+          description: The name of the droplet resource
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Status of the divider
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+---
+# mizar CRD droplets.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: droplets.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Droplet
+    plural: droplets
+    singular: droplet
+    shortNames:
+      - drp
+      - drps
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Mac
+          type: string
+          priority: 0
+          jsonPath: .spec.mac
+          description: The mac address of the endpoint
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the endpoint
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Status of the droplet
+        - name: Interface
+          type: string
+          priority: 0
+          jsonPath: .spec.itf
+          description: The main interface of the droplet
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+---
+# mizar CRD endpoints.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: endpoints.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Endpoint
+    plural: endpoints
+    singular: endpoint
+    shortNames:
+      - ep
+      - eps
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          priority: 0
+          jsonPath: .spec.type
+          description: The type of the endpoint
+        - name: Mac
+          type: string
+          priority: 0
+          jsonPath: .spec.mac
+          description: The mac address of the endpoint
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the endpoint
+        - name: Gw
+          type: string
+          priority: 0
+          jsonPath: .spec.gw
+          description: The GW of the endpoint
+        - name: Prefix
+          type: string
+          priority: 0
+          jsonPath: .spec.prefix
+          description: The network prefix of the endpoint
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Provisioning Status of the endpoint
+        - name: Network
+          type: string
+          priority: 0
+          jsonPath: .spec.net
+          description: The network of the endpoint
+        - name: Vpc
+          type: string
+          priority: 0
+          jsonPath: .spec.vpc
+          description: The vpc of the endpoint
+        - name: Vni
+          type: string
+          priority: 0
+          jsonPath: .spec.vni
+          description: The VNI of the VPC
+        - name: Droplet
+          type: string
+          priority: 0
+          jsonPath: .spec.droplet
+          description: The droplet hosting the endpoint
+        - name: Interface
+          type: string
+          priority: 0
+          jsonPath: .spec.itf
+          description: The interface name of the endpoint
+        - name: Veth
+          type: string
+          priority: 0
+          jsonPath: .spec.veth
+          description: The veth peer interface name of the endpoint
+        - name: Netns
+          type: string
+          priority: 0
+          jsonPath: .spec.netns
+          description: The netns of the endpoint
+        - name: HostIp
+          type: string
+          priority: 0
+          jsonPath: .spec.hostip
+          description: The Host IP of the endpoint
+        - name: HostMac
+          type: string
+          priority: 0
+          jsonPath: .spec.hostmac
+          description: The Host MAC of the endpoint
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+        - name: CniDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.cnidelay
+          description: Time to setup endpoint on droplet
+        - name: Pod
+          type: string
+          priority: 0
+          jsonPath: .spec.pod
+          description: The pod associated with the endpoint
+---
+# mizar CRD subnets.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: subnets.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Subnet
+    plural: subnets
+    singular: subnet
+    shortNames:
+      - subnet
+      - subnets
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the NET CIDR block
+        - name: Prefix
+          type: string
+          priority: 0
+          jsonPath: .spec.prefix
+          description: The prefix of the NET CIDR block
+        - name: Vni
+          type: string
+          priority: 0
+          jsonPath: .spec.vni
+          description: The VNI of the VPC
+        - name: Vpc
+          type: string
+          priority: 0
+          jsonPath: .spec.vpc
+          description: The name of the VPC
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Provisioning Status of the net
+        - name: Bouncers
+          type: integer
+          priority: 0
+          jsonPath: .spec.bouncers
+          description: The number of bouncers of the Net
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+---
+# mizar CRD vpcs.mizar.com
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: vpcs.mizar.com
+spec:
+  scope: Namespaced
+  group: mizar.com
+  versions:
+    - name: v1
+      served: true
+      storage: true
+  names:
+    kind: Vpc
+    plural: vpcs
+    singular: vpc
+    shortNames:
+      - vpc
+      - vpcs
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Ip
+          type: string
+          priority: 0
+          jsonPath: .spec.ip
+          description: The IP of the VPC CIDR block
+        - name: Prefix
+          type: string
+          priority: 0
+          jsonPath: .spec.prefix
+          description: The prefix of the VPC CIDR block
+        - name: Vni
+          type: string
+          priority: 0
+          jsonPath: .spec.vni
+          description: The VNI of the VPC
+        - name: Dividers
+          type: integer
+          priority: 0
+          jsonPath: .spec.dividers
+          description: The number of dividers of the VPC
+        - name: Status
+          type: string
+          priority: 0
+          jsonPath: .spec.status
+          description: The Current Provisioning Status of the net
+        - name: CreateTime
+          type: string
+          priority: 0
+          jsonPath: .spec.createtime
+          description: Time the object is created
+        - name: ProvisionDelay
+          type: string
+          priority: 0
+          jsonPath: .spec.provisiondelay
+          description: Time to provision an object from creation
+---
+# mizar service account
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mizar-operator
+---
+# mizar cluster role binding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: mizar-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+  - kind: ServiceAccount
+    name: mizar-operator
+    namespace: default

@@ -52,6 +52,8 @@ message BuiltinsPodMessage {
   string arktos_network = 6;
   string phase = 7;
   repeated InterfacesMessage interfaces = 8;
+  string vpc = 9;
+  string subnet = 10;
 }
 
 message BuiltinsServiceMessage {
@@ -60,6 +62,8 @@ message BuiltinsServiceMessage {
   string namespace = 3;
   string tenant = 4;
   string ip = 5;
+  string vpc = 6;
+  string subnet = 7;
 }
 
 message BuiltinsServiceEndpointMessage {
