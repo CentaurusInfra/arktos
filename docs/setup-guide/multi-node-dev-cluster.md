@@ -4,7 +4,7 @@ It may be desired to setup a dev cluster having one or more worker nodes in orde
 
 1. Start the worker node with default network solution, bridge, and register into arktos scale up cluster:
 
-* Create folder /var/run/kubernetes or start ./hack/arktos-up.sh so it will create the folder automatically.
+* Create folder /var/run/kubernetes or start and stop ./hack/arktos-up.sh so it will create the folder automatically.
 * Copy /var/run/kubernetes/client-ca.crt file from arktos master. Or if you started arktos-up.sh in step 1, it will be created automatically.
 * The following command will add worker into existing arktos cluster that is started with bridge network:
 

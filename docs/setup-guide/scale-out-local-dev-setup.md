@@ -14,7 +14,7 @@
 
 1. Two Tenant Partitions
 2. Two Resource Partitions
-3. Use CNIPlugin bridge, mizar, or flannel 
+3. Use CNIPlugin bridge or Mizar 
 
 ## Prerequsite <a name="prereq"></a>
 
@@ -49,7 +49,6 @@ Note:
 1. As certificates generating and sharing is confusing and time consuming in local test environment. We will use insecure mode for local test for now. Secured mode can be added back later when main goal is acchieved.
 
 ### Setting up RPs <a name="steps-setup-rps"></a>
-1. Make sure hack/arktos-up.sh can be run at the box
 
 1. Set up environment variables
 
@@ -65,9 +64,9 @@ an examplative allocation of pod cidr for 2 RPs could be
 | --- | --- |
 | 10.244.0.0/16 | 10.245.0.0/16 |
 
-1. Run ./hack/arktos-up-scale-out-poc.sh
+2. Run ./hack/arktos-up-scale-out-poc.sh
 
-1. Expected last line of output: "Resource Partition Cluster is Running ..."
+3. Expected last line of output: "Resource Partition Cluster is Running ..."
 
 ### Add workers <a name="add-worker"></a>
 
