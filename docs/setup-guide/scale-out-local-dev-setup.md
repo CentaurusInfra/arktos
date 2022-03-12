@@ -6,6 +6,7 @@
 3. [Steps to set up Arktos scaleout cluster](scale-out-local-dev-setup.md#steps)<br>
     3.1. [Setting up TPs](scale-out-local-dev-setup.md#steps-setup-tps)<br>
     3.2. [Setting up RPs](scale-out-local-dev-setup.md#steps-setup-rps)<br>
+    3.3. [Add worker(s)](scale-out-local-dev-setup.md#add-worker)<br>
 4. [Use Mizar Network plugin](scale-out-local-dev-setup.md#setup-mizar)
 5. [Test Cluster](scale-out-local-dev-setup.md#test-cluster)
 
@@ -68,7 +69,19 @@ an examplative allocation of pod cidr for 2 RPs could be
 
 1. Expected last line of output: "Resource Partition Cluster is Running ..."
 
-### Use Mizar Network plugin <a name="setup-mizar"></a>
+### Add workers <a name="add-worker"></a>
+
+Workers can be added into existing arktos scale out resource partition.
+* Add worker into arktos scale out cluster started with default network solution, bridge:
+  1. On worker node, create folder /var/run/kubernetes or start ./hack/arktos-up.sh so it will create the folder automatically.
+  2. Copy /var/run/kubernetes/client-ca.crt file from arktos master. Or if you started arktos-up.sh in step 2, it will be created automatically.
+  3. Start worker with the following command, it will be automatically registered as into the cluster:
+
+```bash
+IS_SCALE_OUT=true API_HOST=<resource partition master ip> API_TENANT_SERVER=<tenant partition ips separated by comma> ./hack/arktos-worker-up.sh
+```
+
+## Use Mizar Network plugin <a name="setup-mizar"></a>
 The above instruction shows how to set up arktos scaleout cluster with default network solution, bridge, in local dev environment. This section
 shows how to start arktos scaleout cluster with [Mizar](https://github.com/CentaurusInfra/mizar), an advanced network solution that supports Arktos 
 tenant isolation. Mizar was introduced into Arktos since release 0.9.
@@ -115,7 +128,15 @@ an example start up command will be
 CNIPLUGIN=mizar IS_RESOURCE_PARTITION=true TENANT_SERVER=172.30.0.14,172.30.0.156 RESOURCE_PARTITION_POD_CIDR=10.244.0.0/16 ./hack/arktos-up-scale-out-poc.sh
 ```
 
-### Test Cluster <a name="test-cluster"></a>
+3. Add worker into arktos scale out cluster started with default network solution, bridge:
+    1. On worker node, create folder /var/run/kubernetes or start ./hack/arktos-up.sh so it will create the folder automatically.
+    2. Copy /var/run/kubernetes/client-ca.crt file from arktos master. Or if you started arktos-up.sh in step 2, it will be created automatically.
+    3. Start worker with the following command, it will be automatically registered as into the cluster:
+```bash
+CNIPLUGIN=mizar IS_SCALE_OUT=true API_HOST=<resource partition master ip> API_TENANT_SERVER=<tenant partition ips separated by comma> ./hack/arktos-worker-up.sh
+```
+
+## Test Cluster <a name="test-cluster"></a>
 
 1. Use kubectl with kubeconfig. For example:
 
