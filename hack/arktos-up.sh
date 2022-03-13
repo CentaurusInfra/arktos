@@ -556,7 +556,7 @@ fi
 # Applying mizar cni
 if [[ "${CNIPLUGIN}" == "mizar" ]]; then
   ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" create configmap system-source --namespace=kube-system --from-literal=name=arktos --from-literal=company=futurewei
-  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/v0.9/etc/deploy/deploy.mizar.yaml
+  ${KUBECTL} --kubeconfig="${CERT_DIR}/admin.kubeconfig" apply -f https://raw.githubusercontent.com/CentaurusInfra/mizar/${MIZAR_VERSION}/etc/deploy/deploy.mizar.yaml
 fi
 
 if [[ -n "${PSP_ADMISSION}" && "${AUTHORIZATION_MODE}" = *RBAC* ]]; then
