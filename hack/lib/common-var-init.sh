@@ -44,7 +44,7 @@ export ALLOW_PRIVILEGED=true
 # onebox has option to choose cni plugin: bridge(default), alktron(neutron integration), mizar
 CNIPLUGIN=${CNIPLUGIN:-"bridge"}
 
-MIZAR_VERSION=${MIZAR_VERSION:-"v0.91"}
+MIZAR_VERSION=${MIZAR_VERSION:-"0.91"}
 VPC_RANGE_START=${VPC_RANGE_START:-11}
 VPC_RANGE_END=${VPC_RANGE_END:-99}
 
