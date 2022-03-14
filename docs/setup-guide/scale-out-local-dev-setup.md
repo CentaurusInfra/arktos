@@ -122,7 +122,7 @@ export RESOURCE_PARTITION_POD_CIDR=[pod-cidr]
 CNIPLUGIN=mizar 
 ```
 
-an example start up command will be
+An example start up command will be
 ```
 CNIPLUGIN=mizar IS_RESOURCE_PARTITION=true TENANT_SERVER=172.30.0.14,172.30.0.156 RESOURCE_PARTITION_POD_CIDR=10.244.0.0/16 ./hack/arktos-up-scale-out-poc.sh
 ```
@@ -140,7 +140,7 @@ CNIPLUGIN=mizar IS_SCALE_OUT=true API_HOST=<resource partition master ip> API_TE
 1. Use kubectl with kubeconfig. For example:
 
 ```
-kubectl --kubeconfig /var/run/kubernetes/scheduler.kubeconfig get pods
+kubectl --kubeconfig /var/run/kubernetes/admin.kubeconfig get pods
 ```
 
 1. Create pod for system tenant. For example:
