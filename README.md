@@ -57,7 +57,7 @@ cd $GOPATH/src/github.com/arktos
 ./hack/arktos-up.sh
 ```
 
-The above command shows how to set up arktos with default network solution, bridge. With release 0.10, an advanced network solution,
+The above command shows how to set up arktos with default network solution, bridge. With release 1.0, an advanced network solution,
 [Mizar](https://github.com/CentaurusInfra/mizar), is introduced into Arktos. The integration with Mizar allows tenant pods/services to
 be truely isolated from pods/services in another tenant. To start Arktos cluster with Mizar, make sure you are using Ubuntu 18.04+, run the following command:
 
