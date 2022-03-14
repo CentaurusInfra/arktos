@@ -4,7 +4,7 @@ This document gives brief introduction on how to set up Arktos scale out environ
 
 Step 1. Request a VM in Google Cloud Platform, recommended configuration: ubuntu 18.04+, 8 cpu or above, disk size 200GB or up.
 
-Step 2. Run "gcloud version" to encure the Google Gloud DSK is updated (recommended Google Cloud SDK version is 298.0.0 and up). Please refer to https://cloud.google.com/sdk/docs/downloads-apt-get or https://cloud.google.com/sdk/docs/downloads-versioned-archives to upgrade your google cloud SDK. 
+Step 2. Run "gcloud version" to ensure the Google Gloud DSK is updated (recommended Google Cloud SDK version is 298.0.0 and up). Please refer to https://cloud.google.com/sdk/docs/downloads-apt-get or https://cloud.google.com/sdk/docs/downloads-versioned-archives to upgrade your google cloud SDK. 
 
 Step 3. Follow [dev environment setup instruction](setup-dev.md) to set up developer environment on this newly created GCE instance.
 
