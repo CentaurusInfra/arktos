@@ -75,7 +75,9 @@ cd $GOPATH/src/github.com/arktos
 
 To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
 
-To setup an Arktos scale out cluster in local dev environment, please refer to [Setting up local dev environment for scale out](docs/setup-guide/scale-out-local-dev-setup.md).
+To setup an Arktos scale out cluster in Google Cloud, please refer to [Setting up Arktos scale out environment in Google Cloud](docs/setup-guide/cluster-up-kube-up.md). 
+
+To setup an Arktos scale out cluster in local dev environment, follow the instructions on [Setting up local dev environment for scale out](docs/setup-guide/scale-out-local-dev-setup.md).
 
 ## Community Meetings 
 
