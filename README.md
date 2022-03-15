@@ -54,17 +54,30 @@ The easiest way to run Arktos is to bring up a single-node cluster in your local
 
 ```
 cd $GOPATH/src/github.com/arktos
-hack/arktos-up.sh
+./hack/arktos-up.sh
 ```
 
-After the Arktos cluster is up, you can access the cluster with [Kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) tool just like what you do with a Kubernetes cluster. For example:
+The above command shows how to set up arktos with default network solution, bridge. With release 1.0, an advanced network solution,
+[Mizar](https://github.com/CentaurusInfra/mizar), is introduced into Arktos. The integration with Mizar allows tenant pods/services to
+be truely isolated from pods/services in another tenant. To start Arktos cluster with Mizar, make sure you are using Ubuntu 18.04+, run the following command:
 
 ```
 cd $GOPATH/src/github.com/arktos
-cluster/kubectl.sh get nodes
+CNIPLUGIN=mizar ./hack/arktos-up.sh
+```
+
+After the Arktos cluster is up, you can access the cluster with kubectl tool released in Arktos just like what you do with a Kubernetes cluster. For example:
+
+```
+cd $GOPATH/src/github.com/arktos
+./cluster/kubectl.sh get nodes
 ```
 
 To setup a multi-node cluster, please refer to [Arktos Cluster Setup Guide](docs/setup-guide/multi-node-dev-cluster.md). And [this guide](docs/setup-guide/arktos-apiserver-partition.md) gives detailed instructions if you want to enable partitions in the cluster.
+
+To setup an Arktos scale out cluster in Google Cloud, please refer to [Setting up Arktos scale out environment in Google Cloud](docs/setup-guide/scale-out-kube-up.md). 
+
+To setup an Arktos scale out cluster in local dev environment, follow the instructions on [Setting up local dev environment for scale out](docs/setup-guide/scale-out-local-dev-setup.md).
 
 ## Community Meetings 
 
