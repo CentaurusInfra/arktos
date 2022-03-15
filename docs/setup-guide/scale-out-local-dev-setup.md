@@ -83,7 +83,7 @@ IS_SCALE_OUT=true API_HOST=<resource partition master ip> API_TENANT_SERVER=<ten
 ## Use Mizar Network plugin <a name="setup-mizar"></a>
 The above instruction shows how to set up arktos scaleout cluster with default network solution, bridge, in local dev environment. This section
 shows how to start arktos scaleout cluster with [Mizar](https://github.com/CentaurusInfra/mizar), an advanced network solution that supports Arktos 
-tenant isolation. Mizar was introduced into Arktos since release 0.9.
+tenant isolation. Mizar was introduced into Arktos since release 1.0.
 
 There are some additional environment variables that need to be setup in order to start arktos scaleout cluster with Mizar.
 1. Set up environment variables in Tenant Partition(s)
