@@ -94,7 +94,7 @@ NETWORK_PROVIDER="${NETWORK_PROVIDER:-cni}" # none, kubenet doesn't work with co
 NETWORK_POLICY_PROVIDER="${NETWORK_POLICY_PROVIDER:-flannel}" # calico kubenet doesn't work with container runtime, update to cni and flannel
 
 if [[ "${NETWORK_PROVIDER:-}" == "mizar" ]]; then
-  NETWORK_PROVIDER_VERSION="dev"
+  NETWORK_PROVIDER_VERSION="0.91"
   NETWORK_POLICY_PROVIDER="mizar"
   CNI_BIN_DIR="/opt/cni/bin"
   KUBE_CONTAINER_RUNTIME="docker"
