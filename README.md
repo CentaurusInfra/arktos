@@ -13,7 +13,8 @@ Arktos is an open source project designed for large scale cloud compute infrastr
 Arktos aims to be an open source solution to address key challenges of large-scale clouds, including system scalability, resource efficiency, multitenancy, edge computing, and the native support for the fast-growing modern workloads such as containers and serverless functions. 
 
 ## Architecture
-![Architecture Diagram](https://raw.githubusercontent.com/CentaurusInfra/arktos/master/docs/design-proposals/arch/project_architecture.png)
+![Arktos-Architecture](https://user-images.githubusercontent.com/50963591/168185290-ae46195e-5caf-4478-9182-9bdfb37e1992.png)
+
 ## Key Features
 
 ### Large Scalability
