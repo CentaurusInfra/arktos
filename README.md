@@ -31,7 +31,7 @@ In addition to container orchestration, Arktos implements a built-in support for
 
 ### More Features
 
-There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [the project introduction](https://docs.google.com/presentation/d/1PG1m27MYRh4kuq654W9HvdoZ5QDX9tWxoCMCfeOZUrE/edit#slide=id.g8a27d34398_8_0) for more information.
+There are more features under development, such as cloud-edge scheduling, in-place vertical scaling, etc. Check out [our releases ](https://github.com/CentaurusInfra/arktos/releases) for more information.
 
 
 ## Build Arktos
@@ -82,9 +82,9 @@ To setup an Arktos scale out cluster in local dev environment, follow the instru
 
 ## Community Meetings 
 
- Pacific Time: **Tuesday, 6:00PM PT (Biweekly), starting 7/20/2021.** Please join our slack channel/email group for the latest update. 
+ Pacific Time: **Tuesday, 6:00PM PT (Weekly).** Please check our discussion page [here](https://github.com/CentaurusInfra/arktos/discussions/1422) for the latest meeting information. 
 
- Resources: [Meeting Link](https://futurewei.zoom.us/j/92636035970) | [Meeting Summary](https://docs.google.com/document/d/1Cwpp44pQhMZ_MQ4ebralDHCt0AZHqhSkj14kNAzA7lY/edit#)
+ Resources: [Meeting Link](https://futurewei.zoom.us/j/92636035970) | [Meeting Agenda](https://github.com/CentaurusInfra/arktos/discussions/1422) | [Meeting Summary](https://docs.google.com/document/d/1Cwpp44pQhMZ_MQ4ebralDHCt0AZHqhSkj14kNAzA7lY/edit#)
 
 ## Documents and Support
 
@@ -94,4 +94,4 @@ The [user guide folder](https://github.com/CentaurusInfra/arktos/tree/master/doc
 
 To report a problem, please [create an issue](https://github.com/CentaurusInfra/arktos/issues) in the project repo. 
 
-To ask a question, here is [the invitation](https://join.slack.com/t/arktosworkspace/shared_invite/zt-cmak5gjq-rBxX4vX2TGMyNeU~jzAMLQ) to join [Arktos slack channels](http://arktosworkspace.slack.com/). You can also post in the [email group](https://groups.google.com/forum/#!forum/arktos-user), or [create an issue](https://github.com/CentaurusInfra/arktos/issues) of question type in the repo.
+To ask a question, please start a new discussion [here](https://github.com/CentaurusInfra/arktos/discussions/new).
